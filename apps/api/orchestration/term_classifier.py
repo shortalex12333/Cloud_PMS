@@ -91,117 +91,23 @@ class TermClassifier:
     Converts extracted entities + text into retrieval intent.
     """
 
-    # Domain keywords → scope mapping
-    DOMAIN_KEYWORDS = {
-        'email': ['emails'],
-        'emails': ['emails'],
-        'mail': ['emails'],
-        'inbox': ['emails'],
-        'message': ['emails'],
-        'messages': ['emails'],
-        'work order': ['work_orders'],
-        'work orders': ['work_orders'],
-        'wo': ['work_orders'],
-        'task': ['work_orders'],
-        'tasks': ['work_orders'],
-        'equipment': ['equipment'],
-        'machine': ['equipment'],
-        'engine': ['equipment'],
-        'generator': ['equipment'],
-        'part': ['parts'],
-        'parts': ['parts'],
-        'spare': ['parts'],
-        'spares': ['parts'],
-        'inventory': ['parts'],
-        'stock': ['parts'],
-        'low stock': ['parts'],
-        'out of stock': ['parts'],
-        'stock level': ['parts'],
-        # Common part types (Inventory Lens - Finish Line)
-        'filter': ['parts'],
-        'oil filter': ['parts'],
-        'fuel filter': ['parts'],
-        'air filter': ['parts'],
-        'hydraulic filter': ['parts'],
-        'bearing': ['parts'],
-        'bearings': ['parts'],
-        'gasket': ['parts'],
-        'gaskets': ['parts'],
-        'seal': ['parts'],
-        'seals': ['parts'],
-        'o-ring': ['parts'],
-        'o-rings': ['parts'],
-        'belt': ['parts'],
-        'belts': ['parts'],
-        'hose': ['parts'],
-        'hoses': ['parts'],
-        'fitting': ['parts'],
-        'fittings': ['parts'],
-        'valve': ['parts'],
-        'valves': ['parts'],
-        'fault': ['faults'],
-        'faults': ['faults'],
-        'error': ['faults'],
-        'alarm': ['faults'],
-        'document': ['documents'],
-        'documents': ['documents'],
-        'manual': ['documents'],
-        'manuals': ['documents'],
-        'schematic': ['documents'],
-        # Shopping List keywords
-        'shopping list': ['shopping_list'],
-        'shopping': ['shopping_list'],
-        'requisition': ['shopping_list'],
-        'requisitions': ['shopping_list'],
-        'procurement': ['shopping_list'],
-        'candidate part': ['shopping_list'],
-        'candidate parts': ['shopping_list'],
-        'buy list': ['shopping_list'],
-        'purchase list': ['shopping_list'],
-        'pending approval': ['shopping_list'],
-        'needs approval': ['shopping_list'],
-        'need approval': ['shopping_list'],
-        'awaiting approval': ['shopping_list'],
-        # Certificates
-        'certificate': ['certificates'],
-        'certificates': ['certificates'],
-        'cert': ['certificates'],
-        'certs': ['certificates'],
-        'expiry': ['certificates'],
-        'expiring': ['certificates'],
-        'renewal': ['certificates'],
-        # Hours of Rest
-        'hours of rest': ['hours_of_rest'],
-        'hor': ['hours_of_rest'],
-        'rest hours': ['hours_of_rest'],
-        'crew rest': ['hours_of_rest'],
-        'work hours': ['hours_of_rest'],
-        'mlc': ['hours_of_rest'],
-        # Receiving / Deliveries
-        'receiving': ['receiving'],
-        'delivery': ['receiving'],
-        'deliveries': ['receiving'],
-        'shipment': ['receiving'],
-        'shipments': ['receiving'],
-        'package': ['receiving'],
-        'packages': ['receiving'],
-        # Handover
-        'handover': ['handover'],
-        'handovers': ['handover'],
-        'hand over': ['handover'],
-        'shift handover': ['handover'],
-        # Checklist
-        'checklist': ['checklists'],
-        'checklists': ['checklists'],
-        'check list': ['checklists'],
-        # Purchase Orders
-        'purchase order': ['purchase_orders'],
-        'purchase orders': ['purchase_orders'],
-        'po': ['purchase_orders'],
-        'supplier': ['purchase_orders'],
-        'suppliers': ['purchase_orders'],
-        'vendor': ['purchase_orders'],
-    }
+    # ==========================================================================
+    # LAW 19: NO HARDCODED SYNONYM DICTIONARIES
+    # ==========================================================================
+    # REMOVED: DOMAIN_KEYWORDS semantic mapping dictionary
+    #
+    # Previous implementation tried to guess user intent via keyword matching:
+    #   'filter' -> ['parts'], 'cat' -> ['equipment'], etc.
+    #
+    # This approach does NOT scale to 134 yachts with unique slang.
+    # Let vectors + trigrams + feedback loop do the semantic work instead.
+    #
+    # Domain scoping is now handled by:
+    #   1. Surface state (EMAIL_INBOX -> emails scope)
+    #   2. Vector similarity (semantic intent)
+    #   3. Feedback loop learning (yacht-specific terminology)
+    # ==========================================================================
+    DOMAIN_KEYWORDS = {}  # Intentionally empty - vectors handle semantics
 
     # Time keywords → days mapping
     TIME_KEYWORDS = {

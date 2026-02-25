@@ -186,7 +186,10 @@ class PrepareModule:
 
         vector_queries = []
 
-        # Vector search on document chunks
+        # Vector search across ALL indexable entity types
+        # Semantic bridging: natural language -> structured data
+
+        # Document chunks - core knowledge base
         if 'documents' in scopes or 'document_chunks' in scopes:
             vector_queries.append(VectorQuery(
                 table='document_chunks',
@@ -197,16 +200,19 @@ class PrepareModule:
                 filters={'yacht_id': yacht_id},
             ))
 
-        # Vector search on equipment (if has embedding column)
-        if 'equipment' in scopes:
-            vector_queries.append(VectorQuery(
-                table='pms_equipment',
-                column='embedding',
-                input_text=query,
-                top_k=20,
-                threshold=0.70,
-                filters={'yacht_id': yacht_id},
-            ))
+        # Global semantic search across the unified Storefront (search_index)
+        # LAW 21: All vector searches MUST route to search_index, not pms_* tables
+        # This searches ALL entity types (equipment, parts, work_orders, faults)
+        # and lets them compete mathematically based on semantic relevance
+        vector_queries.append(VectorQuery(
+            table='search_index',
+            column='embedding_1536',  # Correct column name for search_index
+            input_text=query,
+            top_k=50,  # Higher limit since we're searching all types
+            threshold=0.65,  # Slightly lower threshold for broader recall
+            filters={'yacht_id': yacht_id},
+            # No object_type filter - let ALL entity types compete mathematically
+        ))
 
         time_days = classification.time_window_days or 90
 
@@ -253,7 +259,10 @@ class PrepareModule:
                 yacht_id, [], query
             ))
 
-        # Vector queries for semantic search
+        # Vector queries for semantic search across ALL indexable entity types
+        # This enables semantic bridging: "thing that makes drinking water" -> Desalinator
+
+        # Document chunks - core knowledge base
         if 'documents' in scopes or 'document_chunks' in scopes:
             vector_queries.append(VectorQuery(
                 table='document_chunks',
@@ -264,7 +273,7 @@ class PrepareModule:
                 filters={'yacht_id': yacht_id},
             ))
 
-        # Search graph nodes if available
+        # Graph nodes - relationship data
         vector_queries.append(VectorQuery(
             table='graph_nodes',
             column='embedding',
@@ -272,6 +281,20 @@ class PrepareModule:
             top_k=20,
             threshold=0.70,
             filters={'yacht_id': yacht_id},
+        ))
+
+        # Global semantic search across the unified Storefront (search_index)
+        # LAW 21: All vector searches MUST route to search_index, not pms_* tables
+        # This searches ALL entity types (equipment, parts, work_orders, faults)
+        # and lets them compete mathematically based on semantic relevance
+        vector_queries.append(VectorQuery(
+            table='search_index',
+            column='embedding_1536',  # Correct column name for search_index
+            input_text=query,
+            top_k=50,  # Higher limit since we're searching all types
+            threshold=0.65,  # Slightly lower threshold for broader recall
+            filters={'yacht_id': yacht_id},
+            # No object_type filter - let ALL entity types compete mathematically
         ))
 
         time_days = classification.time_window_days or 90
