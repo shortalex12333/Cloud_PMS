@@ -142,6 +142,9 @@ async def search_parts(yacht_id: str, query: str, tenant_key_alias: str) -> tupl
     """
     Search parts across multiple columns with preprocessing.
 
+    Uses hybrid ILIKE + pg_trgm similarity for typo tolerance.
+    LAW 20: Universal trigram matching for fuzzy search.
+
     Returns:
         (results, total_count) - List of part dictionaries and total count
     """
@@ -156,8 +159,8 @@ async def search_parts(yacht_id: str, query: str, tenant_key_alias: str) -> tupl
     results = []
     seen_ids = set()
 
-    # Search across multiple columns
-    # This matches the stress test implementation (86% success rate)
+    # Phase 1: Exact ILIKE search (fast, indexed)
+    # Search across multiple columns for substring matches
     columns = ['name', 'description', 'category', 'manufacturer', 'location']
 
     for column in columns:
@@ -179,6 +182,52 @@ async def search_parts(yacht_id: str, query: str, tenant_key_alias: str) -> tupl
         except Exception as e:
             logger.warning(f"[SearchParts] Column search failed for {column}: {e}")
             continue
+
+    # Phase 2: pg_trgm fuzzy search (handles misspellings like "mantenance")
+    # Only if ILIKE didn't find enough results
+    if len(results) < 5:
+        try:
+            # Use RPC to call pg_trgm similarity search
+            # This catches typos: "mantenance" -> "maintenance", "filtre" -> "filter"
+            trigram_response = await asyncio.to_thread(
+                lambda: supabase.rpc('search_parts_fuzzy', {
+                    'p_yacht_id': yacht_id,
+                    'p_query': clean_query,
+                    'p_threshold': 0.3,
+                    'p_limit': 20
+                }).execute()
+            )
+
+            if trigram_response.data:
+                for item in trigram_response.data:
+                    if item['id'] not in seen_ids:
+                        seen_ids.add(item['id'])
+                        results.append(item)
+                logger.info(f"[SearchParts] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
+
+        except Exception as e:
+            # Fallback: If RPC doesn't exist, try inline similarity query
+            logger.warning(f"[SearchParts] Trigram RPC failed, trying fallback: {e}")
+            try:
+                # Direct similarity query using Supabase's raw filter
+                # This uses pg_trgm's similarity() function via raw SQL filter
+                trigram_fallback = await asyncio.to_thread(
+                    lambda: supabase.rpc('search_parts_trigram_fallback', {
+                        'p_yacht_id': yacht_id,
+                        'p_query': clean_query,
+                        'p_threshold': 0.3,
+                        'p_limit': 20
+                    }).execute()
+                )
+
+                if trigram_fallback.data:
+                    for item in trigram_fallback.data:
+                        if item['id'] not in seen_ids:
+                            seen_ids.add(item['id'])
+                            results.append(item)
+
+            except Exception as fallback_error:
+                logger.warning(f"[SearchParts] Trigram fallback also failed: {fallback_error}")
 
     return results, len(results)
 
