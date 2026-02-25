@@ -11,6 +11,9 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
 import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
 import { ScheduleMaintenanceModal } from '@/components/modals/ScheduleMaintenanceModal';
+import { WorkOrderCreateModal } from './actions';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 export interface EquipmentLensContentProps {
   id: string;
@@ -34,6 +37,8 @@ function mapStatusToColor(status: string): 'critical' | 'warning' | 'success' | 
 export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLensContentProps) {
   const [reportFaultOpen, setReportFaultOpen] = useState(false);
   const [scheduleMaintenanceOpen, setScheduleMaintenanceOpen] = useState(false);
+  const [createWorkOrderOpen, setCreateWorkOrderOpen] = useState(false);
+  const { user } = useAuth();
 
   const name = (data.name as string) || 'Equipment';
   const equipment_type = (data.equipment_type as string) || (data.category as string) || 'General';
@@ -64,8 +69,9 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
           <LensTitleBlock title={name} subtitle={manufacturer && model ? `${manufacturer} ${model}` : undefined} status={{ label: status.charAt(0).toUpperCase() + status.slice(1), color: statusColor }} />
         </div>
         <div className="mt-3"><VitalSignsRow signs={vitalSigns} /></div>
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex items-center gap-2 flex-wrap">
           <PrimaryButton onClick={() => setReportFaultOpen(true)} className="text-[13px] min-h-9 px-4 py-2">Report Fault</PrimaryButton>
+          <GhostButton onClick={() => setCreateWorkOrderOpen(true)} className="text-[13px] min-h-9 px-4 py-2">Create Work Order</GhostButton>
           <GhostButton onClick={() => setScheduleMaintenanceOpen(true)} className="text-[13px] min-h-9 px-4 py-2">Schedule Maintenance</GhostButton>
         </div>
         <div className="mt-6 border-t border-surface-border" aria-hidden="true" />
@@ -98,6 +104,21 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
           equipment_name: name,
         }}
       />
+
+      {user?.yachtId && (
+        <WorkOrderCreateModal
+          open={createWorkOrderOpen}
+          onClose={() => setCreateWorkOrderOpen(false)}
+          yachtId={user.yachtId}
+          extractedEntities={[name]}
+          onSuccess={(workOrderId, woNumber) => {
+            setCreateWorkOrderOpen(false);
+            toast.success(`Created ${woNumber}`, {
+              description: `Work order created for ${name}`,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
