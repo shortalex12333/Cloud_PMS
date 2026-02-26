@@ -788,7 +788,7 @@ def process_item(cur, item: Dict) -> Tuple[bool, str]:
 # =============================================================================
 
 def run_worker():
-    """Main worker loop."""
+    """Main worker loop with connection recovery."""
     if not CONFIG.enabled:
         logger.error("Worker not enabled. Set F1_PROJECTION_WORKER_ENABLED=true")
         sys.exit(1)
@@ -805,71 +805,130 @@ def run_worker():
     logger.info(f"Max search_text: {CONFIG.max_search_text}")
     logger.info(f"Chunk keywords top-K: {CONFIG.chunk_keywords_top_k}")
 
-    # Connect using Supavisor (should be port 6543 in DATABASE_URL)
-    logger.info("Connecting to database...")
-    conn = psycopg2.connect(CONFIG.db_dsn, cursor_factory=psycopg2.extras.RealDictCursor)
-    conn.autocommit = False
-    cur = conn.cursor()
+    max_reconnect_attempts = 10
+    reconnect_delay = 5
+    reconnect_attempts = 0
 
-    logger.info("Loading mappings...")
-    load_mappings(cur)
-    conn.commit()
+    while not _shutdown:
+        conn = None
+        cur = None
+        try:
+            # Connect using Supavisor (should be port 6543 in DATABASE_URL)
+            logger.info("Connecting to database...")
+            conn = psycopg2.connect(CONFIG.db_dsn, cursor_factory=psycopg2.extras.RealDictCursor)
+            conn.autocommit = False
+            cur = conn.cursor()
 
-    logger.info("Starting worker loop...")
+            # Reset reconnect state on successful connection
+            reconnect_attempts = 0
+            reconnect_delay = 5
 
-    try:
-        while not _shutdown:
-            # Claim batch
-            items = claim_batch(cur)
+            logger.info("Loading mappings...")
+            load_mappings(cur)
             conn.commit()
 
-            if not items:
-                logger.debug(f"Queue empty, waiting {CONFIG.poll_interval}s...")
-                time.sleep(CONFIG.poll_interval)
-                continue
+            # Reset orphaned processing items
+            cur.execute("""
+                UPDATE search_index
+                SET embedding_status = 'pending'
+                WHERE embedding_status = 'processing'
+                AND updated_at < now() - interval '10 minutes'
+            """)
+            conn.commit()
+            logger.info(f"Reset {cur.rowcount} orphaned processing items")
 
-            logger.info(f"Processing {len(items)} items...")
+            logger.info("Starting worker loop...")
 
-            for item in items:
-                object_type = item['object_type']
-                object_id = str(item['object_id'])
-                source = f"{item.get('source_table', object_type)}/{object_id[:8]}..."
-
+            while not _shutdown:
+                # Connection health check before processing each batch
                 try:
-                    success, error = process_item(cur, item)
+                    cur.execute("SELECT 1")
+                    cur.fetchone()
+                except Exception:
+                    logger.warning("Connection check failed, reconnecting...")
+                    raise psycopg2.OperationalError("Health check failed")
 
-                    if success:
-                        mark_done(cur, object_type, object_id)
-                        METRICS.total_processed += 1
-                        logger.debug(f"  OK: {source}")
-                    else:
-                        mark_failed(cur, object_type, object_id, error)
+                # Claim batch
+                items = claim_batch(cur)
+                conn.commit()
+
+                if not items:
+                    logger.debug(f"Queue empty, waiting {CONFIG.poll_interval}s...")
+                    time.sleep(CONFIG.poll_interval)
+                    continue
+
+                logger.info(f"Processing {len(items)} items...")
+
+                for item in items:
+                    if _shutdown:
+                        break
+
+                    object_type = item['object_type']
+                    object_id = str(item['object_id'])
+                    source = f"{item.get('source_table', object_type)}/{object_id[:8]}..."
+
+                    try:
+                        success, error = process_item(cur, item)
+
+                        if success:
+                            mark_done(cur, object_type, object_id)
+                            METRICS.total_processed += 1
+                            logger.debug(f"  OK: {source}")
+                        else:
+                            mark_failed(cur, object_type, object_id, error)
+                            METRICS.total_failed += 1
+                            METRICS.record_error(f"{source}: {error}")
+                            logger.warning(f"  FAIL: {source}: {error}")
+
+                        conn.commit()
+
+                    except Exception as e:
+                        conn.rollback()
+                        mark_failed(cur, object_type, object_id, str(e))
+                        conn.commit()
                         METRICS.total_failed += 1
-                        METRICS.record_error(f"{source}: {error}")
-                        logger.warning(f"  FAIL: {source}: {error}")
+                        METRICS.record_error(f"{source}: {e}")
+                        logger.error(f"  ERROR: {source}: {e}")
 
-                    conn.commit()
+                # Log batch summary
+                logger.info(f"Batch complete. Total: {METRICS.total_processed} done, "
+                           f"{METRICS.total_failed} failed. "
+                           f"Timings: claim={METRICS.last_claim_ms:.1f}ms, "
+                           f"process={METRICS.last_process_ms:.1f}ms")
 
-                except Exception as e:
-                    conn.rollback()
-                    mark_failed(cur, object_type, object_id, str(e))
-                    conn.commit()
-                    METRICS.total_failed += 1
-                    METRICS.record_error(f"{source}: {e}")
-                    logger.error(f"  ERROR: {source}: {e}")
+        except psycopg2.OperationalError as e:
+            reconnect_attempts += 1
+            logger.error(f"Connection lost: {e} (attempt {reconnect_attempts}/{max_reconnect_attempts})")
 
-            # Log batch summary
-            logger.info(f"Batch complete. Total: {METRICS.total_processed} done, "
-                       f"{METRICS.total_failed} failed. "
-                       f"Timings: claim={METRICS.last_claim_ms:.1f}ms, "
-                       f"process={METRICS.last_process_ms:.1f}ms")
+            if reconnect_attempts >= max_reconnect_attempts:
+                logger.error("Max reconnect attempts reached, exiting")
+                break
 
-    except KeyboardInterrupt:
-        logger.info(f"Worker stopped by user.")
-    finally:
-        logger.info(f"Final metrics: {json.dumps(METRICS.summary(), indent=2)}")
-        cur.close()
-        conn.close()
+            logger.info(f"Reconnecting in {reconnect_delay}s...")
+            time.sleep(reconnect_delay)
+            reconnect_delay = min(reconnect_delay * 2, 120)  # Exponential backoff
+
+        except KeyboardInterrupt:
+            logger.info("Worker stopped by user.")
+            break
+
+        except Exception as e:
+            logger.exception(f"Unexpected error: {e}")
+            time.sleep(10)
+
+        finally:
+            if cur:
+                try:
+                    cur.close()
+                except Exception:
+                    pass
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+    logger.info(f"Final metrics: {json.dumps(METRICS.summary(), indent=2)}")
 
 # =============================================================================
 # SINGLE BATCH (for testing)

@@ -44,7 +44,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 import psycopg2
-import psycopg2.extras
+from psycopg2.extras import execute_batch
 
 # ============================================================================
 # Configuration from Environment
@@ -110,8 +110,8 @@ class ObjectLearning:
 # Database Connection
 # ============================================================================
 
-def get_connection():
-    """Create a database connection."""
+def get_connection(retries=3, delay=5):
+    """Create a database connection with retry logic."""
     if not DB_DSN:
         logger.error("DATABASE_URL not set")
         sys.exit(1)
@@ -122,7 +122,16 @@ def get_connection():
         dsn = dsn.replace(":5432", ":6543")
         logger.warning("Switched port 5432 → 6543 (Supavisor pooler)")
 
-    return psycopg2.connect(dsn)
+    for attempt in range(retries):
+        try:
+            return psycopg2.connect(dsn)
+        except psycopg2.OperationalError as e:
+            if attempt < retries - 1:
+                logger.warning(f"Connection failed, retrying in {delay}s: {e}")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
 
 
 # ============================================================================
@@ -147,12 +156,14 @@ def stream_aggregated_clicks(
     object_keywords: Dict[Tuple[str, str, str], Set[str]] = defaultdict(set)
     total_bridges = 0
 
-    with conn.cursor(name='aggregate_clicks_cursor') as cur:
+    with conn.cursor() as cur:
         # Use the aggregate_click_events function we created in the migration
+        # Note: Named cursors are incompatible with Supavisor transaction pooling
         cur.execute(
             """
             SELECT yacht_id, object_type, object_id, query_text, click_count
             FROM aggregate_click_events(%s, %s)
+            LIMIT 5000
             """,
             (min_clicks, lookback_days)
         )
@@ -270,37 +281,45 @@ def record_learned_bridges(
     Record learned bridges to audit table for observability.
 
     This creates an audit trail of what the system learned.
+    Uses execute_batch for efficient bulk inserts.
     """
+    # Collect all bridge data for batch insert
+    bridge_data = []
+    for (yacht_id, object_type, object_id), keywords in object_keywords.items():
+        if _shutdown:
+            break
+        for query_text in keywords:
+            bridge_data.append((yacht_id, object_type, object_id, query_text))
+
+    if not bridge_data:
+        return 0
+
     recorded = 0
-
     with conn.cursor() as cur:
-        for (yacht_id, object_type, object_id), keywords in object_keywords.items():
-            if _shutdown:
-                break
-
-            for query_text in keywords:
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO search_learned_bridges (
-                            yacht_id, object_type, object_id, query_text,
-                            click_count, applied, applied_at, last_clicked_at
-                        )
-                        VALUES (%s, %s, %s, %s, 1, TRUE, NOW(), NOW())
-                        ON CONFLICT (yacht_id, object_type, object_id, query_text)
-                        DO UPDATE SET
-                            click_count = search_learned_bridges.click_count + 1,
-                            applied = TRUE,
-                            applied_at = NOW(),
-                            last_clicked_at = NOW()
-                        """,
-                        (yacht_id, object_type, object_id, query_text)
-                    )
-                    recorded += 1
-                except Exception as e:
-                    logger.warning(f"Failed to record bridge: {e}")
-
-        conn.commit()
+        try:
+            execute_batch(
+                cur,
+                """
+                INSERT INTO search_learned_bridges (
+                    yacht_id, object_type, object_id, query_text,
+                    click_count, applied, applied_at, last_clicked_at
+                )
+                VALUES (%s, %s, %s, %s, 1, TRUE, NOW(), NOW())
+                ON CONFLICT (yacht_id, object_type, object_id, query_text)
+                DO UPDATE SET
+                    click_count = search_learned_bridges.click_count + 1,
+                    applied = TRUE,
+                    applied_at = NOW(),
+                    last_clicked_at = NOW()
+                """,
+                bridge_data,
+                page_size=500
+            )
+            recorded = len(bridge_data)
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"Failed to record bridges in batch: {e}")
+            conn.rollback()
 
     return recorded
 
