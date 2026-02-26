@@ -243,7 +243,8 @@ function WorkOrderContent({
 function WorkOrderDetailPageContent() {
   const router = useRouter();
   const params = useParams();
-  const { token } = useAuth();
+  const { session } = useAuth();
+  const token = session?.access_token;
 
   const workOrderId = params.id as string;
 
@@ -301,8 +302,9 @@ function WorkOrderDetailPageContent() {
   );
 
   // Derive display values
-  const title = (workOrder?.title || workOrder?.payload?.title || 'Work Order') as string;
-  const woNumber = (workOrder?.wo_number || workOrder?.payload?.wo_number) as string | undefined;
+  const payload = workOrder?.payload as Record<string, unknown> | undefined;
+  const title = (workOrder?.title || payload?.title || 'Work Order') as string;
+  const woNumber = (workOrder?.wo_number || payload?.wo_number) as string | undefined;
 
   // Render content based on state
   let content: React.ReactNode;

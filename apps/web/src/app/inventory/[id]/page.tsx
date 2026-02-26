@@ -175,7 +175,8 @@ function PartContent({ data, onNavigate }: { data: Record<string, unknown>; onNa
 function InventoryDetailPageContent() {
   const router = useRouter();
   const params = useParams();
-  const { token } = useAuth();
+  const { session } = useAuth();
+  const token = session?.access_token;
   const partId = params.id as string;
 
   const { data: part, isLoading, error, refetch } = useQuery({
