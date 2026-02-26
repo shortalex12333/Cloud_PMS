@@ -18,7 +18,7 @@ export { ReassignModal } from './ReassignModal';
 export type { ReassignModalProps, CrewMember } from './ReassignModal';
 
 export { ArchiveModal } from './ArchiveModal';
-export type { ArchiveModalProps } from './ArchiveModal';
+export type { ArchiveModalProps, SignaturePayload } from './ArchiveModal';
 
 export { AddHoursModal } from './AddHoursModal';
 export type { AddHoursModalProps } from './AddHoursModal';

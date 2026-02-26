@@ -1,4 +1,4 @@
-import { test, expect, RBAC_CONFIG } from '../rbac-fixtures';
+import { test, expect, RBAC_CONFIG, ActionModalPO, ToastPO } from '../rbac-fixtures';
 
 /**
  * SHARD 31: Fragmented Routes - Receiving
@@ -15,11 +15,34 @@ import { test, expect, RBAC_CONFIG } from '../rbac-fixtures';
  * - T3-RCV-06: Browser back/forward works
  * - Feature flag OFF redirects to /app
  *
+ * SHIPPABLE Lens - Receiving Button Tests (Task R2):
+ * - R2-BTN-01: start_receiving_event (create_receiving action)
+ * - R2-BTN-02: add_line_item (add_receiving_item action)
+ * - R2-BTN-03: complete_receiving_event (accept_receiving action)
+ * - R2-BTN-04: report_discrepancy (reject_receiving action)
+ * - R2-BTN-05: verify_line_item (adjust_receiving_item action) - HoD only
+ * - R2-RBAC-01: HoD can perform all actions including verify
+ * - R2-RBAC-02: Crew cannot see verify_line_item button
+ * - R2-LOCK-01: Locked events cannot be edited
+ *
  * Receiving Status Values:
  * - draft: Initial state, can be edited
+ * - in_progress: Being received
+ * - partial: Partially received
+ * - completed: Fully received and locked
+ * - discrepancy: Has reported discrepancies
  * - in_review: Submitted for review, Accept/Reject visible
  * - accepted: Approved receiving
  * - rejected: Rejected receiving
+ *
+ * Test Users:
+ * - HoD (hod.test@alex-short.com): Can do everything including verify_line_item
+ * - Crew (crew.test@alex-short.com): Can start, add items, report discrepancy
+ *
+ * Known-Good Receiving IDs (from verification matrix):
+ * - bc096e3c-a5a6-4299-ba6d-7fa69b71726f (RCV-2026-001, completed)
+ * - 64c321c9-01e5-4648-b0c1-b1f29afea714 (RCV-2026-002, completed)
+ * - 05c0aade-451b-4038-a4ac-2cc045461aef (RCV-2026-003, completed)
  */
 
 // Route configuration
@@ -28,6 +51,116 @@ const ROUTES_CONFIG = {
   receivingList: '/receiving',
   receivingDetail: (id: string) => `/receiving/${id}`,
 };
+
+// Known-good receiving IDs for testing
+const KNOWN_RECEIVING_IDS = {
+  RCV_2026_001: 'bc096e3c-a5a6-4299-ba6d-7fa69b71726f',
+  RCV_2026_002: '64c321c9-01e5-4648-b0c1-b1f29afea714',
+  RCV_2026_003: '05c0aade-451b-4038-a4ac-2cc045461aef',
+};
+
+// Receiving action names (as defined in the UI)
+const RECEIVING_ACTIONS = {
+  START_RECEIVING: 'create_receiving',
+  ADD_LINE_ITEM: 'add_receiving_item',
+  COMPLETE_RECEIVING: 'accept_receiving',
+  REPORT_DISCREPANCY: 'reject_receiving',
+  VERIFY_LINE_ITEM: 'adjust_receiving_item',
+};
+
+// Button labels for UI locators
+const BUTTON_LABELS = {
+  START_RECEIVING: 'Start Receiving Event',
+  ADD_LINE_ITEM: 'Add Line Item',
+  COMPLETE_RECEIVING: 'Complete Receiving',
+  REPORT_DISCREPANCY: 'Report Discrepancy',
+  VERIFY_LINE_ITEM: 'Verify Line Item',
+};
+
+/**
+ * Helper to execute an action via the Pipeline API
+ */
+async function executeApiAction(
+  page: import('@playwright/test').Page,
+  action: string,
+  context: Record<string, string>,
+  payload: Record<string, unknown>
+): Promise<{ status: number; body: { success: boolean; error?: string; data?: unknown } }> {
+  return page.evaluate(
+    async ({ apiUrl, action, context, payload }) => {
+      let accessToken = '';
+      for (const key of Object.keys(localStorage)) {
+        if (key.includes('supabase') && key.includes('auth')) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key) || '{}');
+            if (data.access_token) {
+              accessToken = data.access_token;
+              break;
+            }
+          } catch {
+            continue;
+          }
+        }
+      }
+
+      const response = await fetch(`${apiUrl}/v1/actions/execute`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action, context, payload }),
+      });
+
+      return {
+        status: response.status,
+        body: await response.json(),
+      };
+    },
+    { apiUrl: ROUTES_CONFIG.apiUrl, action, context, payload }
+  );
+}
+
+/**
+ * Helper to intercept and verify network calls for actions
+ */
+async function interceptActionCall(
+  page: import('@playwright/test').Page,
+  expectedAction: string,
+  timeout = 10000
+): Promise<{ actionName: string; payload: Record<string, unknown>; status: number }> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`Timeout waiting for action ${expectedAction}`));
+    }, timeout);
+
+    page.route('**/v1/actions/execute', async (route) => {
+      const request = route.request();
+      const postData = request.postDataJSON();
+
+      if (postData?.action === expectedAction) {
+        clearTimeout(timeoutId);
+
+        // Let the request continue
+        await route.continue();
+
+        // Wait for response
+        const response = await page.waitForResponse(
+          (resp) => resp.url().includes('/v1/actions/execute'),
+          { timeout: 5000 }
+        );
+
+        resolve({
+          actionName: postData.action,
+          payload: postData.payload || {},
+          status: response.status(),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+  });
+}
 
 // ============================================================================
 // SECTION 1: ROUTE LOADING TESTS

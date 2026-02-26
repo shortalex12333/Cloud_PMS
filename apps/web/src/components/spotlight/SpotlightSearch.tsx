@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useCelesteSearch } from '@/hooks/useCelesteSearch';
+import { useDomain } from '@/lib/domain/hooks';
 import { useSituationState } from '@/hooks/useSituationState';
 import { useSurfaceSafe } from '@/contexts/SurfaceContext';
 import type { SearchResult as APISearchResult } from '@/types/search';
@@ -36,6 +37,7 @@ import { EntityLine, StatusLine } from '@/components/celeste';
 import { EmailInboxView } from '@/components/email/EmailInboxView';
 import SituationRouter from '@/components/situations/SituationRouter';
 import SuggestedActions from '@/components/SuggestedActions';
+import FilterChips from './FilterChips';
 import { LedgerPanel } from '@/components/ledger';
 import { HandoverDraftPanel } from '@/components/handover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -230,7 +232,11 @@ export default function SpotlightSearch({
   // CRITICAL: Must get user FIRST before useCelesteSearch to pass yachtId
   const { user } = useAuth();
 
+  // Get domain context for domain-scoped search (null when not in fragmented route)
+  const { objectType, label: domainLabel } = useDomain();
+
   // Pass yacht_id from AuthContext to hooks - this is the ONLY correct source
+  // Pass objectType for domain-scoped search when in fragmented routes
   const {
     query,
     results: apiResults,
@@ -242,7 +248,10 @@ export default function SpotlightSearch({
     clear,
     actionSuggestions,
     refetch,
-  } = useCelesteSearch(user?.yachtId ?? null);
+  } = useCelesteSearch(
+    user?.yachtId ?? null,
+    objectType ? [objectType] : null
+  );
 
   // Pass yacht_id to situation state hook as well
   const {
@@ -909,6 +918,13 @@ export default function SpotlightSearch({
               </div>
             )}
 
+            {/* Domain Scope Indicator - shows when in fragmented route */}
+            {objectType && !emailScopeActive && (
+              <span className="text-xs text-white/40 mr-2 whitespace-nowrap">
+                in {domainLabel}
+              </span>
+            )}
+
             {/* Search Input */}
             <div className="flex-1 h-full relative">
               <input
@@ -997,6 +1013,21 @@ export default function SpotlightSearch({
               actions={actionSuggestions}
               yachtId={user?.yachtId ?? null}
               onActionComplete={refetch}
+            />
+          )}
+
+          {/* Quick Filter Chips - deterministic filter suggestions */}
+          {hasQuery && !emailScopeActive && (
+            <FilterChips
+              query={query}
+              onFilterClick={(filterId, route) => {
+                // Record ledger event for filter click
+                recordLedgerEvent('quick_filter_clicked', {
+                  filter_id: filterId,
+                  route: route,
+                  query: query,
+                });
+              }}
             />
           )}
 

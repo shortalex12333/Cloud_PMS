@@ -49,6 +49,11 @@ export function isHOD(user: CelesteUser | null): boolean {
   return ['chief_engineer', 'eto', 'captain', 'manager'].includes(user.role);
 }
 
+export function isEngineer(user: CelesteUser | null): boolean {
+  if (!user) return false;
+  return ['chief_engineer', 'eto', 'engineer', 'manager'].includes(user.role);
+}
+
 export function isFullyActivated(user: CelesteUser | null): boolean {
   return user !== null && user.bootstrapStatus === 'active' && user.yachtId !== null;
 }

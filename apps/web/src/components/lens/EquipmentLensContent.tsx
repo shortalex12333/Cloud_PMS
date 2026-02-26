@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { LensHeader, LensTitleBlock } from './LensHeader';
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
@@ -14,6 +14,10 @@ import { ScheduleMaintenanceModal } from '@/components/modals/ScheduleMaintenanc
 import { WorkOrderCreateModal } from './actions';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { useEquipmentActions, useEquipmentPermissions, type EquipmentStatus, type SignatureData } from '@/hooks/useEquipmentActions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { SignatureCanvas } from '@/components/lens/handover-export-sections/SignatureCanvas';
+import { Flag, FileUp, Link, AlertTriangle, RefreshCw, StickyNote, Archive } from 'lucide-react';
 
 export interface EquipmentLensContentProps {
   id: string;

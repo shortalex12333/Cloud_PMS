@@ -116,29 +116,60 @@ export function useFaultActions(faultId: string) {
   // Typed action helpers — one per registry action
   // -------------------------------------------------------------------------
 
-  /** acknowledge_fault — HOD+ acknowledges the fault (sets acknowledged_at) */
+  /** report_fault — all crew can report a new fault */
+  const reportFault = useCallback(
+    (params: {
+      equipment_id: string;
+      title: string;
+      description?: string;
+      severity?: 'cosmetic' | 'minor' | 'major' | 'critical' | 'safety';
+    }) =>
+      execute('report_fault', {
+        equipment_id: params.equipment_id,
+        title: params.title,
+        description: params.description,
+        severity: params.severity ?? 'minor',
+      }),
+    [execute]
+  );
+
+  /** acknowledge_fault — Engineer+ acknowledges the fault (sets status=investigating) */
   const acknowledgeFault = useCallback(
     () => execute('acknowledge_fault', {}),
     [execute]
   );
 
-  /** close_fault — HOD+ closes/resolves the fault */
+  /** close_fault — Engineer+ closes/resolves the fault (sets status=closed) */
   const closeFault = useCallback(
     (resolutionNotes?: string) =>
       execute('close_fault', { resolution_notes: resolutionNotes }),
     [execute]
   );
 
-  /** diagnose_fault — HOD+ records root cause analysis */
-  const diagnoseFault = useCallback(
-    (diagnosis: string, recommendedAction?: string) =>
-      execute('diagnose_fault', { diagnosis, recommended_action: recommendedAction }),
+  /** update_fault — Engineer+ updates severity/description */
+  const updateFault = useCallback(
+    (params: {
+      severity?: 'cosmetic' | 'minor' | 'major' | 'critical' | 'safety';
+      description?: string;
+      title?: string;
+    }) =>
+      execute('update_fault', {
+        severity: params.severity,
+        description: params.description,
+        title: params.title,
+      }),
     [execute]
   );
 
-  /** reopen_fault — HOD+ reopens a previously closed fault */
+  /** reopen_fault — Engineer+ reopens a previously closed fault (sets status=open) */
   const reopenFault = useCallback(
     (reason?: string) => execute('reopen_fault', { reason }),
+    [execute]
+  );
+
+  /** mark_fault_false_alarm — Engineer+ marks fault as false alarm (sets status=false_alarm) */
+  const markFalseAlarm = useCallback(
+    (reason?: string) => execute('mark_fault_false_alarm', { reason }),
     [execute]
   );
 
@@ -164,13 +195,17 @@ export function useFaultActions(faultId: string) {
     isLoading,
     error,
 
+    // Create
+    reportFault,
+
     // Status transitions
     acknowledgeFault,
     closeFault,
     reopenFault,
+    markFalseAlarm,
 
-    // Diagnostic
-    diagnoseFault,
+    // Update
+    updateFault,
 
     // Notes and media
     addNote,
@@ -182,27 +217,31 @@ export function useFaultActions(faultId: string) {
 // Role permission helpers
 // ---------------------------------------------------------------------------
 
-/** Roles with HOD-level or above access (acknowledge, diagnose, close, reopen) */
-const HOD_ROLES = ['chief_engineer', 'eto', 'chief_officer', 'captain', 'manager'];
+/** All crew roles (can report faults, add notes/photos) */
+const ALL_CREW_ROLES = ['crew', 'deckhand', 'steward', 'chef', 'eto', 'engineer', 'chief_engineer', 'chief_officer', 'captain', 'manager'];
 
-/** Roles allowed to close / diagnose / acknowledge faults — registry: chief_engineer, chief_officer, captain */
-const FAULT_ACTION_ROLES = ['chief_engineer', 'chief_officer', 'captain'];
+/** Engineer+ roles (acknowledge, close, update, reopen, mark false alarm) */
+const ENGINEER_PLUS_ROLES = ['eto', 'engineer', 'chief_engineer', 'chief_officer', 'captain', 'manager'];
 
-/** Roles allowed to add notes/photos — registry: crew + HOD + captain */
-const ADD_CONTENT_ROLES = ['crew', 'chief_engineer', 'chief_officer', 'captain'];
+/** Roles allowed to add notes/photos — all crew per LENS.md */
+const ADD_CONTENT_ROLES = ['crew', 'deckhand', 'steward', 'chef', 'eto', 'engineer', 'chief_engineer', 'chief_officer', 'captain', 'manager'];
 
 export interface FaultPermissions {
-  /** Can acknowledge fault (HOD+) */
+  /** Can report a new fault (all crew) */
+  canReport: boolean;
+  /** Can acknowledge fault (engineer+) */
   canAcknowledge: boolean;
-  /** Can close / resolve fault (chief_engineer, chief_officer, captain) */
+  /** Can close / resolve fault (engineer+) */
   canClose: boolean;
-  /** Can diagnose fault (chief_engineer, chief_officer, captain) */
-  canDiagnose: boolean;
-  /** Can reopen a closed fault (chief_engineer, chief_officer, captain) */
+  /** Can update fault severity/description (engineer+) */
+  canUpdate: boolean;
+  /** Can reopen a closed fault (engineer+) */
   canReopen: boolean;
-  /** Can add notes (crew + HOD + captain) */
+  /** Can mark fault as false alarm (engineer+) */
+  canMarkFalseAlarm: boolean;
+  /** Can add notes (all crew) */
   canAddNote: boolean;
-  /** Can add photos (crew + HOD + captain) */
+  /** Can add photos (all crew) */
   canAddPhoto: boolean;
 }
 
@@ -211,16 +250,29 @@ export interface FaultPermissions {
  *
  * Derives boolean capability flags from the current user's role.
  * Used to conditionally show (not disable) action buttons in FaultLens.
+ * Per UI_SPEC.md: hide, not disable for role gates.
+ *
+ * Role matrix per LENS.md:
+ * - report_fault:            all crew
+ * - acknowledge_fault:       engineer+ (eto, engineer, chief_engineer, chief_officer, captain, manager)
+ * - close_fault:             engineer+
+ * - update_fault:            engineer+
+ * - reopen_fault:            engineer+
+ * - mark_fault_false_alarm:  engineer+
+ * - add_fault_note:          all crew
+ * - add_fault_photo:         all crew
  */
 export function useFaultPermissions(): FaultPermissions {
   const { user } = useAuth();
   const role = user?.role ?? '';
 
   return {
-    canAcknowledge: HOD_ROLES.includes(role),
-    canClose: FAULT_ACTION_ROLES.includes(role),
-    canDiagnose: FAULT_ACTION_ROLES.includes(role),
-    canReopen: FAULT_ACTION_ROLES.includes(role),
+    canReport: ALL_CREW_ROLES.includes(role),
+    canAcknowledge: ENGINEER_PLUS_ROLES.includes(role),
+    canClose: ENGINEER_PLUS_ROLES.includes(role),
+    canUpdate: ENGINEER_PLUS_ROLES.includes(role),
+    canReopen: ENGINEER_PLUS_ROLES.includes(role),
+    canMarkFalseAlarm: ENGINEER_PLUS_ROLES.includes(role),
     canAddNote: ADD_CONTENT_ROLES.includes(role),
     canAddPhoto: ADD_CONTENT_ROLES.includes(role),
   };
