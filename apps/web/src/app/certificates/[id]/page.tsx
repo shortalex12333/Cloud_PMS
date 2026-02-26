@@ -380,6 +380,7 @@ function CertificateDetailPageContent() {
         data={certificate}
         onBack={handleBack}
         onNavigate={handleNavigate}
+        onRefresh={handleRefresh}
       />
     );
   }
