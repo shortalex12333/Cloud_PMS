@@ -225,7 +225,8 @@ function FaultDetailContent({
 function FaultsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, token } = useAuth();
+  const { user, session } = useAuth();
+  const token = session?.access_token;
 
   const selectedId = searchParams.get('id');
 

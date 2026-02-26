@@ -142,7 +142,8 @@ function EquipmentDetailContent({ data, onBack }: { data: Record<string, unknown
 function EquipmentPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, token } = useAuth();
+  const { user, session } = useAuth();
+  const token = session?.access_token;
   const selectedId = searchParams.get('id');
 
   const { data: equipment, isLoading: isLoadingList, error: listError } = useQuery({

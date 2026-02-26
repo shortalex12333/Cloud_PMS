@@ -325,7 +325,7 @@ export const test = base.extend<RBACFixtures>({
       }
 
       // If the field equals the forbidden value, the mutation occurred (FAIL)
-      if (data[field] === forbiddenValue) {
+      if ((data as unknown as Record<string, unknown>)[field] === forbiddenValue) {
         console.error(`SECURITY BREACH: Unauthorized mutation detected! ${table}.${field} = ${forbiddenValue}`);
         return false;
       }

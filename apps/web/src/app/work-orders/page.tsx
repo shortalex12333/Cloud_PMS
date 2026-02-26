@@ -232,7 +232,8 @@ function WorkOrderDetailContent({
 function WorkOrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, token } = useAuth();
+  const { user, session } = useAuth();
+  const token = session?.access_token;
 
   // Get selected ID from URL params
   const selectedId = searchParams.get('id');

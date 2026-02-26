@@ -150,8 +150,9 @@ function EquipmentContent({ data, onNavigate }: { data: Record<string, unknown>;
 function EquipmentDetailPageContent() {
   const router = useRouter();
   const params = useParams();
-  const { token } = useAuth();
+  const { session } = useAuth();
   const equipmentId = params.id as string;
+  const token = session?.access_token;
 
   const { data: equipment, isLoading, error, refetch } = useQuery({
     queryKey: ['equipment-detail', equipmentId],
