@@ -20,7 +20,7 @@ function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const params = useParams();
   React.useEffect(() => { if (!isFragmentedRoutesEnabled()) router.replace(`/app?entity=part&id=${params.id}`); }, [router, params]);
-  if (!isFragmentedRoutesEnabled()) return <div className="h-screen flex items-center justify-center bg-[#0a0a0a]"><p className="text-white/60">Redirecting...</p></div>;
+  if (!isFragmentedRoutesEnabled()) return <div className="h-screen flex items-center justify-center bg-surface-base"><p className="text-white/60">Redirecting...</p></div>;
   return <>{children}</>;
 }
 
