@@ -16,6 +16,7 @@
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, Menu, type LucideIcon } from 'lucide-react';
 import {
   DropdownMenu,
@@ -50,6 +51,7 @@ import {
   type DomainGroup,
   DOMAIN_ICONS,
 } from '@/lib/spotlightGrouping';
+import { isFragmentedRoutesEnabled, getEntityRoute } from '@/lib/featureFlags';
 
 // Domain icon component mapping
 const DomainIconMap: Record<string, LucideIcon> = {
@@ -129,6 +131,7 @@ export interface SpotlightResult {
   type: string;
   title: string;
   subtitle: string;
+  snippet?: string;
   icon?: string;
   metadata?: Record<string, unknown>;
 }
@@ -209,6 +212,7 @@ function mapAPIResult(result: APISearchResult): SpotlightResult {
     type: result.type || result.source_table || 'document',
     title: title.trim(),
     subtitle: subtitle.trim(),
+    snippet: result.snippet,
     metadata: result.metadata || result.raw_data || (result as Record<string, any>),
   };
 }
@@ -251,6 +255,9 @@ export default function SpotlightSearch({
 
   // SurfaceContext for email overlay (returns null if not in SurfaceProvider)
   const surfaceContext = useSurfaceSafe();
+
+  // Router for fragmented routes navigation
+  const router = useRouter();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [placeholderIndex, setPlaceholderIndex] = useState(-1); // -1 = not mounted yet
@@ -528,22 +535,89 @@ export default function SpotlightSearch({
 
   /**
    * Handle result open (double-click or Enter) - Navigate to detail page
-   * For email_thread: Opens EmailOverlay with selected thread
+   *
+   * FRAGMENTED ROUTES BEHAVIOR (flag ON):
+   * - Supported types (work_order, fault, equipment, part, email_thread) → router.push
+   * - Unsupported types (document) → legacy ContextPanel or toast
+   *
+   * LEGACY BEHAVIOR (flag OFF):
+   * - Opens EmailOverlay for email_thread
+   * - Opens ContextPanel for all other types
    */
   const handleResultOpen = useCallback(async (result: SpotlightResult) => {
     console.log('[SpotlightSearch] 🖱️ Click registered:', result.type, result.id);
 
     const entityType = mapResultTypeToEntityType(result.type);
     const domain = mapEntityTypeToDomain(entityType);
+    const entityId = result.id;
+
+    if (!entityId) {
+      console.error('[SpotlightSearch] ❌ Missing entity ID for result:', {
+        resultId: result.id,
+        title: result.title,
+        type: result.type,
+        fullResult: result
+      });
+      return;
+    }
+
+    // FRAGMENTED ROUTES: Flag-gated navigation
+    if (isFragmentedRoutesEnabled()) {
+      // Map EntityType to getEntityRoute type
+      const routeTypeMap: Record<string, 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving' | 'document' | 'certificate' | 'warranty' | 'purchase_order' | 'hours_of_rest'> = {
+        work_order: 'work_order',
+        fault: 'fault',
+        equipment: 'equipment',
+        part: 'part',
+        inventory: 'part', // inventory uses part type which maps to /inventory
+        email_thread: 'email',
+        shopping_list: 'shopping_list',
+        receiving: 'receiving',
+        document: 'document',
+        certificate: 'certificate',
+        warranty: 'warranty',
+        purchase_order: 'purchase_order',
+        hours_of_rest: 'hours_of_rest',
+      };
+
+      const routeType = routeTypeMap[entityType];
+
+      if (routeType) {
+        // Supported type → route to fragmented page
+        const route = getEntityRoute(routeType, entityId);
+        console.log('[SpotlightSearch] 🚀 Routing to fragmented page:', route);
+
+        // Record ledger event before navigation
+        recordLedgerEvent('artefact_opened', {
+          artefact_type: entityType,
+          artefact_id: entityId,
+          display_name: result.title,
+          domain: domain,
+          route_mode: 'fragmented',
+        });
+
+        router.push(route);
+        onClose?.();
+        return;
+      } else {
+        // Unsupported type (e.g., document) → show toast and fallback to legacy
+        console.log('[SpotlightSearch] ⚠️ Unsupported type for fragmented routes:', entityType);
+        toast.info('Opening in context panel', {
+          description: `${entityType} routes not yet available`,
+        });
+        // Fall through to legacy behavior below
+      }
+    }
+
+    // LEGACY BEHAVIOR: Context panel / Email overlay
 
     // Special handling for email threads: open EmailOverlay
     if (entityType === 'email_thread' && surfaceContext) {
       const threadId = (result.metadata?.thread_id || result.id) as string;
       surfaceContext.showEmail({ threadId, folder: 'inbox' });
-      return; // Don't create situation for emails - overlay handles the UX
+      return;
     }
 
-    // Open entity in ContextPanel (single-surface architecture - no URL fragmentation)
     // Build metadata for ContextPanel display
     const contextMetadata = {
       ...result.metadata,
@@ -555,20 +629,6 @@ export default function SpotlightSearch({
     };
 
     if (surfaceContext) {
-      // CRITICAL FIX: useCelesteSearch already maps object_id -> id at line 596
-      // result.id is the authoritative entity identifier after mapping
-      const entityId = result.id;
-
-      if (!entityId) {
-        console.error('[SpotlightSearch] ❌ Missing entity ID for result:', {
-          resultId: result.id,
-          title: result.title,
-          type: result.type,
-          fullResult: result
-        });
-        return;
-      }
-
       console.log('[SpotlightSearch] 📍 Opening in ContextPanel:', {
         entityType,
         entityId,
@@ -581,12 +641,13 @@ export default function SpotlightSearch({
       // Record ledger event for artefact opened
       recordLedgerEvent('artefact_opened', {
         artefact_type: entityType,
-        artefact_id: result.id,
+        artefact_id: entityId,
         display_name: result.title,
         domain: domain,
+        route_mode: 'legacy',
       });
 
-      onClose?.(); // Close spotlight after opening context
+      onClose?.();
     } else {
       // Fallback for when not in SurfaceProvider (shouldn't happen in /app)
       console.warn('[SpotlightSearch] ⚠️ No SurfaceContext - falling back to situation');
@@ -607,7 +668,7 @@ export default function SpotlightSearch({
         });
       }
     }
-  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain, surfaceContext, onClose]);
+  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain, surfaceContext, onClose, router]);
 
   /**
    * Handle situation close (any viewer)
@@ -991,6 +1052,7 @@ export default function SpotlightSearch({
                           type: groupedResults.topMatch.type,
                           title: groupedResults.topMatch.title,
                           subtitle: groupedResults.topMatch.subtitle,
+                          snippet: groupedResults.topMatch.snippet,
                           metadata: groupedResults.topMatch.metadata,
                         }}
                         isSelected={selectedIndex === 0}
@@ -1000,6 +1062,7 @@ export default function SpotlightSearch({
                           type: groupedResults.topMatch!.type,
                           title: groupedResults.topMatch!.title,
                           subtitle: groupedResults.topMatch!.subtitle,
+                          snippet: groupedResults.topMatch!.snippet,
                           metadata: groupedResults.topMatch!.metadata,
                         })}
                         onDoubleClick={() => handleResultOpen({
@@ -1007,6 +1070,7 @@ export default function SpotlightSearch({
                           type: groupedResults.topMatch!.type,
                           title: groupedResults.topMatch!.title,
                           subtitle: groupedResults.topMatch!.subtitle,
+                          snippet: groupedResults.topMatch!.snippet,
                           metadata: groupedResults.topMatch!.metadata,
                         })}
                         isTopMatch
@@ -1030,7 +1094,8 @@ export default function SpotlightSearch({
                             id: r.id || '',
                             type: r.type || r.source_table || '',
                             title: r.title || (r as any).name || '',
-                            subtitle: r.subtitle || r.snippet || '',
+                            subtitle: r.subtitle || '',
+                            snippet: r.snippet,
                             metadata: r.metadata || r.raw_data || r,
                           }))
                       : group.results.map(r => ({
@@ -1038,6 +1103,7 @@ export default function SpotlightSearch({
                           type: r.type,
                           title: r.title,
                           subtitle: r.subtitle,
+                          snippet: r.snippet,
                           metadata: r.metadata,
                         }));
                     const hasMoreInDomain = group.totalCount > (isExpanded ? 12 : 4);
@@ -1061,6 +1127,7 @@ export default function SpotlightSearch({
                             type: result.type,
                             title: result.title,
                             subtitle: result.subtitle,
+                            snippet: result.snippet,
                             metadata: result.metadata as Record<string, unknown> | undefined,
                           };
                           return (
