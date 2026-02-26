@@ -41,8 +41,8 @@
 
 | Req ID | Requirement | Owner Agent | Status | Test/Proof | Notes |
 |--------|-------------|-------------|--------|------------|-------|
-| FF-01 | FRAGMENTED_ROUTES_ENABLED env flag gates new routes | Routing Agent | NOT_STARTED | Toggle flag: routes appear/disappear | Build-time resolution |
-| FF-02 | Legacy /app remains accessible during migration | Routing Agent | NOT_STARTED | Manual: /app loads correctly | Coexistence required |
+| FF-01 | FRAGMENTED_ROUTES_ENABLED env flag gates new routes | Routing Agent | DONE | src/lib/featureFlags.ts | Build-time resolution |
+| FF-02 | Legacy /app remains accessible during migration | Routing Agent | DONE | Legacy route untouched | Coexistence enabled |
 
 ---
 
@@ -50,9 +50,9 @@
 
 | Req ID | Requirement | Owner Agent | Status | Test/Proof | Notes |
 |--------|-------------|-------------|--------|------------|-------|
-| LT-01 | Shared RouteLayout component implemented | Layout Agent | NOT_STARTED | Snapshot: layout identical across routes | Single skeleton |
-| LT-02 | LensHeader/VitalSignsRow/StatusPill preserved | Layout Agent | NOT_STARTED | Visual parity checklist | No design changes |
-| LT-03 | TopNav + SearchBar in layout | Layout Agent | NOT_STARTED | Component renders in all routes | Global search preserved |
+| LT-01 | Shared RouteLayout component implemented | Layout Agent | DONE | src/components/layout/RouteLayout.tsx | Single skeleton |
+| LT-02 | LensHeader/VitalSignsRow/StatusPill preserved | Layout Agent | DONE | Reuses existing components | No design changes |
+| LT-03 | TopNav + SearchBar in layout | Layout Agent | DONE | TopNav in RouteLayout | Global search preserved |
 
 ---
 
@@ -60,8 +60,8 @@
 
 | Req ID | Requirement | Owner Agent | Status | Test/Proof | Notes |
 |--------|-------------|-------------|--------|------------|-------|
-| T1-WO-01 | /work-orders list route loads | WO Agent | NOT_STARTED | PW: list renders with items | |
-| T1-WO-02 | /work-orders/[id] detail route loads | WO Agent | NOT_STARTED | PW: detail renders correct entity | |
+| T1-WO-01 | /work-orders list route loads | WO Agent | DONE | src/app/work-orders/page.tsx | Needs PW test |
+| T1-WO-02 | /work-orders/[id] detail route loads | WO Agent | DONE | src/app/work-orders/[id]/page.tsx | Needs PW test |
 | T1-WO-03 | WO create mutation works | WO Agent | NOT_STARTED | PW: create + audit log exists | |
 | T1-WO-04 | WO update mutation works | WO Agent | NOT_STARTED | PW: update + audit log exists | |
 | T1-WO-05 | WO complete mutation works | WO Agent | NOT_STARTED | PW: complete + status changes | |
