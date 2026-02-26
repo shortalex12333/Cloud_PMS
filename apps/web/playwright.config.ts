@@ -218,6 +218,19 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
     },
+
+    // =========================================================================
+    // SHARD 31: Fragmented Routes - Work Orders, Faults, Equipment, Inventory
+    // Tests for the new /work-orders, /faults, /equipment, /inventory routes
+    // =========================================================================
+    {
+      name: 'shard-31-fragmented-routes',
+      testDir: './e2e/shard-31-fragmented-routes',
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
   ],
 
   // Web server configuration (if running locally)
