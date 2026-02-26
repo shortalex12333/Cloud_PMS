@@ -29,6 +29,7 @@ export interface SignaturePayload {
   signed_at: string;
   device_id: string;
   action_hash: string;
+  [key: string]: unknown;
 }
 
 export interface ArchiveModalProps {
