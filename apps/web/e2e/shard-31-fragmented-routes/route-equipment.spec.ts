@@ -1,4 +1,4 @@
-import { test, expect, RBAC_CONFIG } from '../rbac-fixtures';
+import { test, expect, RBAC_CONFIG, generateTestId, ActionModalPO, ToastPO } from '../rbac-fixtures';
 
 /**
  * SHARD 31: Fragmented Routes - Equipment
@@ -13,6 +13,15 @@ import { test, expect, RBAC_CONFIG } from '../rbac-fixtures';
  * - T1-EQ-05: Linked parts render in detail
  * - T1-EQ-06: Equipment status update works
  * - T1-EQ-07: Page refresh preserves state
+ *
+ * E2 Button Action Tests (7 actions from E1 wiring):
+ * - E2-EQ-01: update_equipment_status - Update Status button
+ * - E2-EQ-02: decommission_equipment - Decommission button (signed action)
+ * - E2-EQ-03: flag_equipment_attention - Flag Attention button
+ * - E2-EQ-04: create_work_order_for_equipment - Create Work Order button
+ * - E2-EQ-05: add_equipment_note - Add Note button
+ * - E2-EQ-06: log_equipment_hours - Log Hours button
+ * - E2-EQ-07: report_fault - Report Fault button
  */
 
 const ROUTES_CONFIG = {
@@ -20,6 +29,75 @@ const ROUTES_CONFIG = {
   equipmentList: '/equipment',
   equipmentDetail: (id: string) => `/equipment/${id}`,
 };
+
+// Known-good equipment IDs from verification matrix
+const KNOWN_EQUIPMENT = {
+  watermaker: 'b2a9c2dd-645a-44f4-9a74-b4d2e149ca8c', // Watermaker 1 (operational)
+  maintenanceTest: '8e91e289-a156-444c-b315-88c0a06c9492', // STATUS-TEST-maintenance
+  operationalTest: '04c518e6-c61f-42fe-a7b2-4cd69a0505ce', // STATUS-TEST-operational
+};
+
+// Equipment status values
+const EQUIPMENT_STATUS = {
+  OPERATIONAL: 'operational',
+  MAINTENANCE: 'maintenance',
+  FAULT: 'fault',
+  DECOMMISSIONED: 'decommissioned',
+  INACTIVE: 'inactive',
+} as const;
+
+/**
+ * Helper to execute an action via the Pipeline API with network interception
+ */
+async function executeApiAction(
+  page: import('@playwright/test').Page,
+  action: string,
+  context: Record<string, string>,
+  payload: Record<string, unknown>
+): Promise<{ status: number; body: { success: boolean; error?: string; data?: unknown } }> {
+  return page.evaluate(
+    async ({ apiUrl, action, context, payload }) => {
+      let accessToken = '';
+      for (const key of Object.keys(localStorage)) {
+        if (key.includes('supabase') && key.includes('auth')) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key) || '{}');
+            if (data.access_token) { accessToken = data.access_token; break; }
+          } catch { continue; }
+        }
+      }
+      const response = await fetch(`${apiUrl}/v1/actions/execute`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, context, payload }),
+      });
+      return { status: response.status, body: await response.json() };
+    },
+    { apiUrl: ROUTES_CONFIG.apiUrl, action, context, payload }
+  );
+}
+
+/**
+ * Helper to intercept and verify /v1/actions/execute calls
+ */
+async function interceptActionCall(
+  page: import('@playwright/test').Page,
+  expectedAction: string
+): Promise<{ called: boolean; requestBody?: Record<string, unknown> }> {
+  let called = false;
+  let requestBody: Record<string, unknown> | undefined;
+
+  await page.route('**/v1/actions/execute', async (route, request) => {
+    const postData = request.postDataJSON();
+    if (postData?.action === expectedAction) {
+      called = true;
+      requestBody = postData;
+    }
+    await route.continue();
+  });
+
+  return { called, requestBody };
+}
 
 test.describe('Equipment Route Loading', () => {
   test.describe.configure({ retries: 1 });

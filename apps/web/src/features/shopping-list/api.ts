@@ -1,5 +1,5 @@
 import type { FetchParams, FetchResponse } from '@/features/entity-list/types';
-import type { ShoppingListItem } from './types';
+import type { ShoppingListItem, ShoppingListStateHistory } from './types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -42,4 +42,27 @@ export async function fetchShoppingListItem(id: string, token: string): Promise<
   }
 
   return response.json();
+}
+
+export async function fetchShoppingListHistory(
+  itemId: string,
+  token: string
+): Promise<ShoppingListStateHistory[]> {
+  const response = await fetch(`${BASE_URL}/v1/entity/shopping_list/${itemId}/history`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    // Return empty array if history endpoint not available yet
+    if (response.status === 404) {
+      return [];
+    }
+    throw new Error(`Failed to fetch shopping list history: ${response.status}`);
+  }
+
+  const json = await response.json();
+  return json.history || json.data || json || [];
 }

@@ -3,10 +3,14 @@
 /**
  * FaultLensContent - Inner content for Fault lens (no LensContainer).
  * Renders inside ContextPanel following the 1-URL philosophy.
+ *
+ * Action buttons are role-gated per LENS.md:
+ * - All crew: Add Note, Add Photo
+ * - Engineer+: Acknowledge, Close, Reopen, Mark False Alarm, Update
  */
 
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { LensHeader, LensTitleBlock } from './LensHeader';
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
@@ -14,6 +18,8 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
+import { useFaultActions, useFaultPermissions } from '@/hooks/useFaultActions';
+import { toast } from 'sonner';
 
 export interface FaultLensContentProps {
   id: string;
@@ -50,9 +56,29 @@ export function FaultLensContent({
   onBack,
   onClose,
   onNavigate,
+  onRefresh,
 }: FaultLensContentProps) {
   // Modal state
   const [showCreateWO, setShowCreateWO] = useState(false);
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [showCloseInput, setShowCloseInput] = useState(false);
+  const [closeNotes, setCloseNotes] = useState('');
+  const [showReopenInput, setShowReopenInput] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
+  const [showFalseAlarmInput, setShowFalseAlarmInput] = useState(false);
+  const [falseAlarmReason, setFalseAlarmReason] = useState('');
+
+  // Actions and permissions
+  const {
+    isLoading: actionLoading,
+    acknowledgeFault,
+    closeFault,
+    reopenFault,
+    markFalseAlarm,
+    addNote,
+  } = useFaultActions(id);
+  const permissions = useFaultPermissions();
 
   // Map data
   const title = (data.title as string) || 'Fault';
@@ -79,6 +105,75 @@ export function FaultLensContent({
   const handleCreateWorkOrder = () => {
     setShowCreateWO(true);
   };
+
+  // Action handlers
+  const handleAcknowledge = useCallback(async () => {
+    const result = await acknowledgeFault();
+    if (result.success) {
+      toast.success('Fault acknowledged', { description: 'Status set to investigating' });
+      onRefresh?.();
+    } else {
+      toast.error('Failed to acknowledge fault', { description: result.error });
+    }
+  }, [acknowledgeFault, onRefresh]);
+
+  const handleClose = useCallback(async () => {
+    const result = await closeFault(closeNotes || undefined);
+    if (result.success) {
+      toast.success('Fault closed', { description: 'Status set to closed' });
+      setShowCloseInput(false);
+      setCloseNotes('');
+      onRefresh?.();
+    } else {
+      toast.error('Failed to close fault', { description: result.error });
+    }
+  }, [closeFault, closeNotes, onRefresh]);
+
+  const handleReopen = useCallback(async () => {
+    const result = await reopenFault(reopenReason || undefined);
+    if (result.success) {
+      toast.success('Fault reopened', { description: 'Status set to open' });
+      setShowReopenInput(false);
+      setReopenReason('');
+      onRefresh?.();
+    } else {
+      toast.error('Failed to reopen fault', { description: result.error });
+    }
+  }, [reopenFault, reopenReason, onRefresh]);
+
+  const handleMarkFalseAlarm = useCallback(async () => {
+    const result = await markFalseAlarm(falseAlarmReason || undefined);
+    if (result.success) {
+      toast.success('Fault marked as false alarm', { description: 'Status set to false_alarm' });
+      setShowFalseAlarmInput(false);
+      setFalseAlarmReason('');
+      onRefresh?.();
+    } else {
+      toast.error('Failed to mark as false alarm', { description: result.error });
+    }
+  }, [markFalseAlarm, falseAlarmReason, onRefresh]);
+
+  const handleAddNote = useCallback(async () => {
+    if (!noteText.trim()) {
+      toast.error('Note text is required');
+      return;
+    }
+    const result = await addNote(noteText);
+    if (result.success) {
+      toast.success('Note added');
+      setShowNoteInput(false);
+      setNoteText('');
+      onRefresh?.();
+    } else {
+      toast.error('Failed to add note', { description: result.error });
+    }
+  }, [addNote, noteText, onRefresh]);
+
+  // Determine which actions are available based on status
+  const canAcknowledge = permissions.canAcknowledge && status === 'open';
+  const canClose = permissions.canClose && ['open', 'investigating'].includes(status);
+  const canReopen = permissions.canReopen && ['closed', 'resolved', 'false_alarm'].includes(status);
+  const canMarkFalseAlarm = permissions.canMarkFalseAlarm && ['open', 'investigating'].includes(status);
 
   return (
     <>

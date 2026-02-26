@@ -45,6 +45,7 @@ import {
   type PartOption,
   type CrewMember,
   type WorkOrderEditData,
+  type SignaturePayload,
 } from './actions';
 
 // Action hook + permissions
@@ -241,8 +242,8 @@ export function WorkOrderLensContent({
     return result;
   }, [actions, onRefresh]);
 
-  const handleArchive = React.useCallback(async (reason: string) => {
-    const result = await actions.archiveWorkOrder(reason, {});
+  const handleArchive = React.useCallback(async (reason: string, signature: SignaturePayload) => {
+    const result = await actions.archiveWorkOrder(reason, signature);
     if (result.success) onRefresh?.();
     return result;
   }, [actions, onRefresh]);

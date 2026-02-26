@@ -511,11 +511,13 @@ async function* parseSSEStream(
 /**
  * Abortable streaming fetch via F1 SSE endpoint
  * @param yachtId - yacht_id from AuthContext (NOT from deprecated getYachtId())
+ * @param objectTypes - Optional array of object types to filter results
  */
 async function* streamSearch(
   query: string,
   signal: AbortSignal,
-  yachtId: string | null
+  yachtId: string | null,
+  objectTypes: string[] | null = null
 ): AsyncGenerator<SearchResult[], void, unknown> {
   console.log('[useCelesteSearch] 🎬 streamSearch STARTED (F1 SSE)');
 
@@ -542,9 +544,12 @@ async function* streamSearch(
     headers['X-Yacht-Signature'] = yachtSignature;
   }
 
-  // F1 SSE endpoint: GET /api/f1/search/stream?q=<query>
+  // F1 SSE endpoint: GET /api/f1/search/stream?q=<query>&object_types=<types>
   const searchUrl = new URL(`${API_URL}/api/f1/search/stream`);
   searchUrl.searchParams.set('q', query);
+  if (objectTypes && objectTypes.length > 0) {
+    searchUrl.searchParams.set('object_types', objectTypes.join(','));
+  }
 
   console.log('[useCelesteSearch] 📤 F1 SSE request to:', searchUrl.toString());
 
@@ -679,8 +684,9 @@ async function* streamSearch(
  * Non-streaming fallback fetch via F1 endpoint
  * Collects all SSE results into a single array
  * @param yachtId - yacht_id from AuthContext (NOT from deprecated getYachtId())
+ * @param objectTypes - Optional array of object types to filter results
  */
-async function fetchSearch(query: string, signal: AbortSignal, yachtId: string | null): Promise<SearchResult[]> {
+async function fetchSearch(query: string, signal: AbortSignal, yachtId: string | null, objectTypes: string[] | null = null): Promise<SearchResult[]> {
   // F1 Architecture: Pipeline-core backend, configurable via env var
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -701,9 +707,12 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
     headers['X-Yacht-Signature'] = yachtSignature;
   }
 
-  // F1 SSE endpoint: GET /api/f1/search/stream?q=<query>
+  // F1 SSE endpoint: GET /api/f1/search/stream?q=<query>&object_types=<types>
   const searchUrl = new URL(`${API_URL}/api/f1/search/stream`);
   searchUrl.searchParams.set('q', query);
+  if (objectTypes && objectTypes.length > 0) {
+    searchUrl.searchParams.set('object_types', objectTypes.join(','));
+  }
 
   try {
     const response = await fetch(searchUrl.toString(), {
@@ -817,8 +826,10 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
  * Main search hook
  * @param yachtId - yacht_id from AuthContext. REQUIRED for proper search scoping.
  *                  Pass user?.yachtId from useAuth() hook.
+ * @param objectTypes - Optional array of object types to filter results (e.g., ['work_order', 'fault']).
+ *                      Used for domain-scoped search when in fragmented routes.
  */
-export function useCelesteSearch(yachtId: string | null = null) {
+export function useCelesteSearch(yachtId: string | null = null, objectTypes: string[] | null = null) {
   const [state, setState] = useState<SearchState>({
     query: '',
     results: [],
@@ -835,6 +846,10 @@ export function useCelesteSearch(yachtId: string | null = null) {
   const lastQueryTimeRef = useRef<number>(0);
   const lastKeystrokeRef = useRef<number>(0);
   const pendingQueryRef = useRef<string>('');
+
+  // Store objectTypes in a ref for stable access in callbacks
+  const objectTypesRef = useRef<string[] | null>(objectTypes);
+  objectTypesRef.current = objectTypes;
 
   // Stable result map to prevent reordering
   const resultMapRef = useRef<Map<string, SearchResult>>(new Map());
@@ -1013,9 +1028,9 @@ export function useCelesteSearch(yachtId: string | null = null) {
       // Try streaming first
       let hasResults = false;
 
-      console.log('[useCelesteSearch] 📡 About to call streamSearch with yachtId:', yachtId);
+      console.log('[useCelesteSearch] 📡 About to call streamSearch with yachtId:', yachtId, 'objectTypes:', objectTypesRef.current);
       try {
-        for await (const chunk of streamSearch(query, signal, yachtId)) {
+        for await (const chunk of streamSearch(query, signal, yachtId, objectTypesRef.current)) {
           if (signal.aborted) break;
 
           hasResults = true;
@@ -1031,7 +1046,7 @@ export function useCelesteSearch(yachtId: string | null = null) {
         // If streaming fails, fall back to regular fetch
         if (!signal.aborted) {
           console.warn('[useCelesteSearch] Streaming failed, using fallback:', streamError);
-          const results = await fetchSearch(query, signal, yachtId);
+          const results = await fetchSearch(query, signal, yachtId, objectTypesRef.current);
           hasResults = results.length > 0;
 
           setState(prev => ({
