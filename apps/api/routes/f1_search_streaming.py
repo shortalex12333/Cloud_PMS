@@ -299,7 +299,7 @@ async def get_db_pool() -> asyncpg.Pool:
             READ_DSN,
             min_size=2,
             max_size=10,
-            command_timeout=0.5,  # 500ms max
+            command_timeout=1.5,  # 1500ms - must exceed statement_timeout (800ms) + network latency
             statement_cache_size=0,  # LAW 14: Disable statement caching for pgbouncer/Supavisor compatibility
             init=_init_connection,  # Set statement_timeout after connection
         )
