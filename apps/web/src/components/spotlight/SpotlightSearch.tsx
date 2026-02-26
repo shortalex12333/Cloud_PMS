@@ -564,7 +564,7 @@ export default function SpotlightSearch({
     // FRAGMENTED ROUTES: Flag-gated navigation
     if (isFragmentedRoutesEnabled()) {
       // Map EntityType to getEntityRoute type
-      const routeTypeMap: Record<string, 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving'> = {
+      const routeTypeMap: Record<string, 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving' | 'document' | 'certificate' | 'warranty' | 'purchase_order' | 'hours_of_rest'> = {
         work_order: 'work_order',
         fault: 'fault',
         equipment: 'equipment',
@@ -573,6 +573,11 @@ export default function SpotlightSearch({
         email_thread: 'email',
         shopping_list: 'shopping_list',
         receiving: 'receiving',
+        document: 'document',
+        certificate: 'certificate',
+        warranty: 'warranty',
+        purchase_order: 'purchase_order',
+        hours_of_rest: 'hours_of_rest',
       };
 
       const routeType = routeTypeMap[entityType];
