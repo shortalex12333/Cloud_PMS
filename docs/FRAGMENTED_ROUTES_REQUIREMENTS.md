@@ -125,6 +125,22 @@
 
 ---
 
+## Tier 2 Routes — Email
+
+| Req ID | Requirement | Owner Agent | Status | Test/Proof | Notes |
+|--------|-------------|-------------|--------|------------|-------|
+| T2-EM-01 | /email list route loads | Email Agent | IN_PROGRESS | Pending deployment | Uses tokenized styling |
+| T2-EM-02 | /email/[threadId] detail route loads | Email Agent | IN_PROGRESS | Pending deployment | Uses tokenized styling |
+| T2-EM-03 | Thread search works | Email Agent | IN_PROGRESS | Pending deployment | Uses useEmailSearch |
+| T2-EM-04 | Linked/Unlinked filter works | Email Agent | IN_PROGRESS | Pending deployment | Filter state preserved |
+| T2-EM-05 | Message content loads (fetch-on-click) | Email Agent | IN_PROGRESS | Pending deployment | DOMPurify sanitization |
+| T2-EM-06 | Linked objects navigation works | Email Agent | IN_PROGRESS | Pending deployment | Cross-route navigation |
+| T2-EM-07 | Page refresh preserves state | Email Agent | IN_PROGRESS | Pending deployment | URL-based state |
+| T2-EM-08 | No SurfaceContext dependency | Email Agent | IN_PROGRESS | grep verification needed | Code follows pattern |
+| T2-EM-09 | No hard-coded colors (tokenized styling) | Email Agent | IN_PROGRESS | Code review needed | Uses design tokens |
+
+---
+
 ## Merge Order (Enforced)
 
 1. Security (RLS fixes) - **DONE_VERIFIED**
@@ -134,7 +150,7 @@
 5. Faults - **DONE_VERIFIED**
 6. Equipment - **DONE_VERIFIED**
 7. Inventory - **DONE_VERIFIED**
-8. Email - NOT_STARTED
+8. Email - **IN_PROGRESS**
 
 **No skipping. No parallel merges on conflicting files.**
 

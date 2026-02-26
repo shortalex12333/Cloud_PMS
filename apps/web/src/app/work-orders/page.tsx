@@ -30,7 +30,7 @@ function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
 
   if (!isFragmentedRoutesEnabled()) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0a0a0a]">
+      <div className="h-screen flex items-center justify-center bg-surface-base">
         <p className="text-white/60">Redirecting...</p>
       </div>
     );
