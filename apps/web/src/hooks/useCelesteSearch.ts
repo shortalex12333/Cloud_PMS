@@ -596,7 +596,8 @@ async function* streamSearch(
           id: backendResult.object_id || backendResult.primary_id || backendResult.id,
           type: (backendResult.object_type || payload.source_table || backendResult.source_table || backendResult.type) as SearchResult['type'],
           title: payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
-          subtitle: payload.code || payload.status || backendResult.snippet || backendResult.subtitle,
+          subtitle: payload.code || payload.status || backendResult.subtitle,
+          snippet: backendResult.snippet || (payload as any).snippet,
           score: backendResult.fused_score ?? backendResult.rrf_score ?? backendResult.score ?? 0,
           actions: backendResult.actions || [],
           metadata: { ...backendResult.metadata, payload },
@@ -608,6 +609,7 @@ async function* streamSearch(
           id: mappedResults[0].id,
           type: mappedResults[0].type,
           title: mappedResults[0].title,
+          snippet: mappedResults[0].snippet,
         });
       }
 
@@ -742,7 +744,8 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
           id: backendResult.object_id || backendResult.primary_id || backendResult.id,
           type: (backendResult.object_type || payload.source_table || backendResult.source_table || backendResult.type) as SearchResult['type'],
           title: payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
-          subtitle: payload.code || payload.status || backendResult.snippet || backendResult.subtitle,
+          subtitle: payload.code || payload.status || backendResult.subtitle,
+          snippet: backendResult.snippet || (payload as any).snippet,
           score: backendResult.fused_score ?? backendResult.rrf_score ?? backendResult.score ?? 0,
           actions: backendResult.actions || [],
           metadata: { ...backendResult.metadata, payload },
