@@ -45,6 +45,29 @@ def mask_dsn(dsn: str) -> str:
     return re.sub(r':([^:@]+)@', ':***@', dsn)
 
 
+async def ensure_redis_connected():
+    """Ensure Redis is connected, reconnect if necessary."""
+    global _redis
+
+    if _redis is None:
+        logger.info("Redis not initialized, attempting connection...")
+        _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
+
+    try:
+        await _redis.ping()
+        return True
+    except Exception as e:
+        logger.warning(f"Redis ping failed: {e}, attempting reconnection...")
+        try:
+            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
+            await _redis.ping()
+            logger.info("Redis reconnected successfully")
+            return True
+        except Exception as reconnect_err:
+            logger.error(f"Redis reconnection failed: {reconnect_err}")
+            return False
+
+
 async def handle_notification(conn, pid, channel, payload):
     """
     Handle incoming pg_notify notification.
@@ -55,6 +78,11 @@ async def handle_notification(conn, pid, channel, payload):
 
     if _redis is None:
         logger.warning("Redis not connected, skipping eviction")
+        return
+
+    # Ensure Redis is connected (reconnect if needed)
+    if not await ensure_redis_connected():
+        logger.error("Cannot evict keys: Redis unavailable")
         return
 
     try:
@@ -130,18 +158,19 @@ async def listen_and_evict():
     await conn.add_listener('f1_cache_invalidate', handle_notification)
     logger.info("✅ Listening for f1_cache_invalidate events...")
 
-    # Keep connection alive until shutdown
+    # Keep connection alive until shutdown (10s interval for faster detection)
     try:
         while not _shutdown:
-            # Keepalive query every 30s
-            await asyncio.sleep(30)
+            # Keepalive query every 10s for faster detection of connection issues
+            await asyncio.sleep(10)
             try:
                 await conn.fetchval("SELECT 1")
             except Exception as e:
                 logger.error(f"Keepalive failed: {e}")
-                break
+                raise  # Re-raise to trigger reconnection in wrapper
     except asyncio.CancelledError:
         logger.info("Listener cancelled")
+        raise  # Re-raise to propagate cancellation
 
     # Cleanup
     logger.info("Shutting down...")
@@ -158,10 +187,35 @@ def handle_signal(sig, frame):
     _shutdown = True
 
 
+async def listen_with_reconnect():
+    """Main entry point with automatic reconnection."""
+    global _shutdown
+
+    reconnect_delay = 5
+    max_delay = 120
+
+    while not _shutdown:
+        try:
+            await listen_and_evict()  # The existing listen function
+            reconnect_delay = 5  # Reset on successful run
+        except asyncio.CancelledError:
+            logger.info("Listener cancelled, shutting down")
+            break
+        except Exception as e:
+            if _shutdown:
+                logger.info("Shutdown requested, not reconnecting")
+                break
+            logger.error(f"Listener error: {e}, reconnecting in {reconnect_delay}s...")
+            await asyncio.sleep(reconnect_delay)
+            reconnect_delay = min(reconnect_delay * 2, max_delay)
+
+    logger.info("Reconnection loop exited")
+
+
 if __name__ == "__main__":
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
 
     logger.info("=== F1 Search Cache Invalidation Listener ===")
-    asyncio.run(listen_and_evict())
+    asyncio.run(listen_with_reconnect())

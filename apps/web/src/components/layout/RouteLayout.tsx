@@ -87,8 +87,8 @@ function LoadingOverlay() {
   return (
     <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
-        <p className="text-sm text-white/60">Loading...</p>
+        <div className="w-8 h-8 border-2 border-txt-tertiary border-t-txt-primary rounded-full animate-spin" />
+        <p className="text-sm text-txt-secondary">Loading...</p>
       </div>
     </div>
   );
@@ -99,10 +99,10 @@ function LoadingOverlay() {
  */
 function TopNav({ children }: { children?: React.ReactNode }) {
   return (
-    <header className="h-14 flex-shrink-0 border-b border-white/10 bg-[#0a0a0a] px-4 flex items-center justify-between">
+    <header className="h-14 flex-shrink-0 border-b border-surface-border bg-surface-base px-4 flex items-center justify-between">
       {children || (
         <div className="flex items-center gap-4">
-          <span className="text-lg font-semibold text-white">Celeste</span>
+          <span className="text-lg font-semibold text-txt-primary">Celeste</span>
         </div>
       )}
     </header>
@@ -124,26 +124,26 @@ function PrimaryPanel({
   return (
     <div
       className={cn(
-        'w-[480px] flex-shrink-0 border-l border-white/10 bg-[#0a0a0a]',
+        'w-[480px] flex-shrink-0 border-l border-surface-border bg-surface-base',
         'flex flex-col overflow-hidden',
         'animate-in slide-in-from-right duration-200'
       )}
     >
       {/* Panel header */}
       {(config.title || onClose) && (
-        <div className="h-14 flex-shrink-0 border-b border-white/10 px-4 flex items-center justify-between">
+        <div className="h-14 flex-shrink-0 border-b border-surface-border px-4 flex items-center justify-between">
           <div>
             {config.title && (
-              <h2 className="text-sm font-medium text-white">{config.title}</h2>
+              <h2 className="text-sm font-medium text-txt-primary">{config.title}</h2>
             )}
             {config.subtitle && (
-              <p className="text-xs text-white/40">{config.subtitle}</p>
+              <p className="text-xs text-txt-tertiary">{config.subtitle}</p>
             )}
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+              className="p-2 hover:bg-surface-hover rounded-lg transition-colors"
               aria-label="Close panel"
             >
               <svg
@@ -153,7 +153,7 @@ function PrimaryPanel({
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
-                className="text-white/60"
+                className="text-txt-secondary"
               >
                 <path d="M18 6L6 18M6 6l12 12" />
               </svg>
@@ -195,7 +195,7 @@ export function RouteLayout({
   return (
     <div
       className={cn(
-        'h-screen flex flex-col bg-[#0a0a0a] text-white',
+        'h-screen flex flex-col bg-surface-base text-txt-primary',
         className
       )}
     >
@@ -216,19 +216,19 @@ export function RouteLayout({
         {contextPanel?.visible && (
           <div
             className={cn(
-              'w-[320px] flex-shrink-0 border-l border-white/10 bg-[#0f0f0f]',
+              'w-[320px] flex-shrink-0 border-l border-surface-border bg-surface-primary',
               'flex flex-col overflow-hidden'
             )}
           >
             {contextPanel.title && (
-              <div className="h-12 flex-shrink-0 border-b border-white/10 px-4 flex items-center justify-between">
-                <h3 className="text-sm font-medium text-white">
+              <div className="h-12 flex-shrink-0 border-b border-surface-border px-4 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-txt-primary">
                   {contextPanel.title}
                 </h3>
                 {onCloseContextPanel && (
                   <button
                     onClick={onCloseContextPanel}
-                    className="p-1 hover:bg-white/5 rounded transition-colors"
+                    className="p-1 hover:bg-surface-hover rounded transition-colors"
                     aria-label="Close context panel"
                   >
                     <svg
@@ -238,7 +238,7 @@ export function RouteLayout({
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2"
-                      className="text-white/40"
+                      className="text-txt-tertiary"
                     >
                       <path d="M18 6L6 18M6 6l12 12" />
                     </svg>
@@ -257,7 +257,7 @@ export function RouteLayout({
             onClick={onCloseActionPanel}
           >
             <div
-              className="bg-[#1a1a1a] rounded-lg shadow-xl border border-white/10 max-w-lg w-full mx-4"
+              className="bg-surface-elevated rounded-lg shadow-xl border border-surface-border max-w-lg w-full mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               {actionPanel.children}

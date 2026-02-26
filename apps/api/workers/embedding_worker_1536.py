@@ -473,6 +473,10 @@ def process_batch(conn) -> int:
     """
     Process one batch of jobs from embedding_jobs queue.
 
+    OPTIMIZED: Makes ONE batched OpenAI API call for the entire batch instead
+    of N individual calls. Per-job error handling is maintained by validating
+    texts before the API call and mapping results back after.
+
     HARDENED: Per-row error isolation prevents one bad row from crashing batch.
 
     Returns count of rows processed, or 0 if queue is empty.
@@ -509,8 +513,11 @@ def process_batch(conn) -> int:
         # Build lookup for jobs without search_index rows
         rows_by_key = {(r['object_type'], str(r['object_id'])): r for r in rows}
 
-        # HARDENED: Process rows individually to isolate failures
-        updated = 0
+        # PHASE 1: Collect all valid texts and track which jobs have issues
+        # This allows us to make ONE batched API call instead of N calls
+        valid_jobs = []       # Jobs with valid text that need embedding
+        valid_texts = []      # Corresponding texts for the API call
+        valid_rows = []       # Corresponding rows for writing embeddings
         failed = 0
 
         for job in jobs:
@@ -525,24 +532,59 @@ def process_batch(conn) -> int:
                 failed += 1
                 continue
 
+            text = row.get('search_text', '')
+            if not text:
+                fail_job(cur, job_id, "Empty search_text")
+                conn.commit()
+                logger.warning(f"Job {job_id} has empty search_text, marking failed")
+                failed += 1
+                continue
+
+            # This job is valid - add to batch
+            valid_jobs.append(job)
+            valid_texts.append(text)
+            valid_rows.append(row)
+
+        # If no valid jobs remain, we're done
+        if not valid_jobs:
+            if failed > 0:
+                logger.warning(f"Batch complete with errors: 0 embedded, {failed} failed")
+            return failed
+
+        logger.info(f"Making ONE batched API call for {len(valid_texts)} texts...")
+
+        # PHASE 2: Make ONE batched OpenAI API call for all valid texts
+        try:
+            embeddings = embed_texts_batch(valid_texts)
+
+            if not embeddings or len(embeddings) != len(valid_texts):
+                raise ValueError(f"Expected {len(valid_texts)} embeddings, got {len(embeddings) if embeddings else 0}")
+
+        except CircuitBreakerOpenError as cbe:
+            # Circuit breaker opened - don't mark jobs as failed, they'll be retried
+            logger.warning(f"Circuit breaker opened during batch: {cbe}")
+            conn.rollback()
+            return failed
+
+        except Exception as e:
+            # Batch API call failed - mark all remaining jobs as failed
+            conn.rollback()
+            error_msg = str(e)[:2000]
+            logger.error(f"Batch embedding API call failed: {e}")
+
+            for job in valid_jobs:
+                fail_job(cur, job['job_id'], f"Batch API error: {error_msg}")
+            conn.commit()
+            failed += len(valid_jobs)
+            logger.warning(f"Batch complete with errors: 0 embedded, {failed} failed")
+            return failed
+
+        # PHASE 3: Map embeddings back to individual jobs and write to DB
+        updated = 0
+        for i, (job, row, emb) in enumerate(zip(valid_jobs, valid_rows, embeddings)):
+            job_id = job['job_id']
+
             try:
-                # Extract text for single row
-                text = row.get('search_text', '')
-                if not text:
-                    fail_job(cur, job_id, "Empty search_text")
-                    conn.commit()
-                    logger.warning(f"Job {job_id} has empty search_text, marking failed")
-                    failed += 1
-                    continue
-
-                # Generate embedding for single row
-                embeddings = embed_texts_batch([text])
-
-                if not embeddings or len(embeddings) == 0:
-                    raise ValueError("No embedding returned")
-
-                emb = embeddings[0]
-
                 # Verify dimension
                 if len(emb) != EMBED_DIMS:
                     logger.error(f"Bad embedding dimension {len(emb)} for job {job_id}")
@@ -556,19 +598,12 @@ def process_batch(conn) -> int:
                 conn.commit()
                 updated += row_updated
 
-            except CircuitBreakerOpenError as cbe:
-                # Circuit breaker opened mid-batch - stop processing
-                # Don't mark as failed - job will be retried when circuit closes
-                logger.warning(f"Circuit breaker opened during batch: {cbe}")
-                conn.rollback()
-                break
-
             except Exception as e:
                 # HARDENED: Isolate failure to this job only
                 conn.rollback()
                 failed += 1
                 error_msg = str(e)[:2000]
-                logger.error(f"Failed to embed job {job_id}: {e}")
+                logger.error(f"Failed to write embedding for job {job_id}: {e}")
 
                 # Mark job as failed
                 fail_job(cur, job_id, error_msg)
@@ -577,7 +612,7 @@ def process_batch(conn) -> int:
         if failed > 0:
             logger.warning(f"Batch complete with errors: {updated} embedded, {failed} failed")
         else:
-            logger.info(f"Batch complete: {updated} rows embedded")
+            logger.info(f"Batch complete: {updated} rows embedded (1 API call)")
 
         return updated + failed
 
@@ -693,6 +728,25 @@ def main():
                     )
                 except Exception as qe:
                     logger.debug(f"Could not fetch queue stats (table may not exist): {qe}")
+
+                # Reset orphaned processing jobs at startup
+                # Jobs stuck in 'processing' for >10 minutes are likely from crashed workers
+                try:
+                    cur.execute("""
+                        UPDATE embedding_jobs
+                        SET status = 'queued', attempts = 0, worker_id = NULL
+                        WHERE status = 'processing'
+                        AND started_at < now() - interval '10 minutes'
+                    """)
+                    conn.commit()
+                    if cur.rowcount > 0:
+                        logger.info(f"Reset {cur.rowcount} orphaned processing jobs")
+                except Exception as oe:
+                    logger.debug(f"Could not reset orphaned jobs (table may not exist): {oe}")
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
         except Exception as e:
             logger.warning(f"Could not fetch initial stats: {e}")
             try:
