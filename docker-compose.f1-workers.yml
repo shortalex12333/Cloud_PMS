@@ -55,6 +55,8 @@ services:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
+    healthcheck:
+      disable: true
     environment:
       - READ_DB_DSN=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
       - REDIS_URL=redis://default:DKoFPPzLU5BqZfzBZZSBiB9PspphRZkh@redis-18771.c9.us-east-1-2.ec2.cloud.redislabs.com:18771
@@ -77,6 +79,8 @@ services:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
+    healthcheck:
+      disable: true
     environment:
       - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:6543/postgres
       - F1_PROJECTION_WORKER_ENABLED=true
@@ -100,6 +104,8 @@ services:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
+    healthcheck:
+      disable: true
     environment:
       - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:6543/postgres
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -126,6 +132,8 @@ services:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
+    healthcheck:
+      disable: true
     environment:
       - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:6543/postgres
       - MIN_CLICKS=1

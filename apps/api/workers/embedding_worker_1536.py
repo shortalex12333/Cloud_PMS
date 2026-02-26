@@ -413,7 +413,7 @@ def write_embeddings_batch(
             content_hash = v.hash,
             updated_at = NOW()
         FROM (VALUES %s) AS v(id, vec, model, version, hash)
-        WHERE si.id = v.id::uuid
+        WHERE si.id = v.id::bigint
         """,
         values,
         template="(%s, %s, %s, %s, %s)"
