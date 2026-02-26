@@ -8,7 +8,7 @@
  *
  * Action IDs map 1:1 to registry.py keys:
  *   view_part, consume_part, receive_part, transfer_part,
- *   adjust_stock, write_off, add_to_shopping_list
+ *   adjust_stock_quantity, write_off_part, create_shopping_list_item
  *
  * Role-based access is enforced at the API level; visibility gates live in
  * PartsLens (hide, not disable — per UI_SPEC.md pattern).
@@ -18,9 +18,9 @@
  * - consume_part:         crew, HOD, captain (everyone with vessel access)
  * - receive_part:         HOD+ (chief_engineer, chief_officer, captain, manager)
  * - transfer_part:        HOD+
- * - adjust_stock:         HOD+
+ * - adjust_stock_quantity: captain, manager (SIGNED action)
  * - write_off:            HOD+
- * - add_to_shopping_list: crew, HOD, captain
+ * - create_shopping_list_item: crew, HOD, captain
  */
 
 import { useState, useCallback } from 'react';
@@ -151,10 +151,10 @@ export function usePartActions(partId: string) {
     [execute]
   );
 
-  /** adjust_stock — manual correction of stock level (HOD+) */
+  /** adjust_stock_quantity — manual correction of stock level (captain, manager - SIGNED) */
   const adjustStock = useCallback(
-    (newQuantity: number, reason: string) =>
-      execute('adjust_stock', { new_quantity: newQuantity, reason }),
+    (newQuantity: number, reason: string, signature?: Record<string, unknown>) =>
+      execute('adjust_stock_quantity', { new_quantity: newQuantity, reason, signature }),
     [execute]
   );
 
@@ -165,10 +165,10 @@ export function usePartActions(partId: string) {
     [execute]
   );
 
-  /** add_to_shopping_list — add this part to the procurement shopping list */
+  /** create_shopping_list_item — add this part to the procurement shopping list */
   const addToShoppingList = useCallback(
     (quantity?: number, notes?: string) =>
-      execute('add_part_to_shopping_list', { quantity, notes }),
+      execute('create_shopping_list_item', { quantity_requested: quantity, source_notes: notes, source_type: 'manual_add' }),
     [execute]
   );
 
