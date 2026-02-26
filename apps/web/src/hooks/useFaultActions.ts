@@ -167,6 +167,13 @@ export function useFaultActions(faultId: string) {
     [execute]
   );
 
+  /** diagnose_fault — Engineer+ adds diagnosis notes (sets status=diagnosed) */
+  const diagnoseFault = useCallback(
+    (diagnosis: string, recommendedAction?: string) =>
+      execute('diagnose_fault', { diagnosis, recommended_action: recommendedAction }),
+    [execute]
+  );
+
   /** mark_fault_false_alarm — Engineer+ marks fault as false alarm (sets status=false_alarm) */
   const markFalseAlarm = useCallback(
     (reason?: string) => execute('mark_fault_false_alarm', { reason }),
@@ -203,6 +210,7 @@ export function useFaultActions(faultId: string) {
     closeFault,
     reopenFault,
     markFalseAlarm,
+    diagnoseFault,
 
     // Update
     updateFault,
@@ -239,6 +247,8 @@ export interface FaultPermissions {
   canReopen: boolean;
   /** Can mark fault as false alarm (engineer+) */
   canMarkFalseAlarm: boolean;
+  /** Can diagnose fault (engineer+) */
+  canDiagnose: boolean;
   /** Can add notes (all crew) */
   canAddNote: boolean;
   /** Can add photos (all crew) */
@@ -273,6 +283,7 @@ export function useFaultPermissions(): FaultPermissions {
     canUpdate: ENGINEER_PLUS_ROLES.includes(role),
     canReopen: ENGINEER_PLUS_ROLES.includes(role),
     canMarkFalseAlarm: ENGINEER_PLUS_ROLES.includes(role),
+    canDiagnose: ENGINEER_PLUS_ROLES.includes(role),
     canAddNote: ADD_CONTENT_ROLES.includes(role),
     canAddPhoto: ADD_CONTENT_ROLES.includes(role),
   };
