@@ -5979,6 +5979,286 @@ async def list_my_work_orders_endpoint(
 
 
 # ============================================================================
+# PAGINATED LIST ENDPOINTS (for Fragmented Routes / Quick Filters)
+# ============================================================================
+
+@router.get("/v1/work-orders")
+async def list_work_orders_endpoint(
+    offset: int = 0,
+    limit: int = 50,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    authorization: str = Header(None),
+):
+    """
+    List work orders with pagination and optional filters.
+
+    Query params:
+        offset: Pagination offset (default 0)
+        limit: Page size (default 50, max 100)
+        status: Filter by status (pending, open, in_progress, completed, etc.)
+        priority: Filter by priority (low, medium, high, urgent)
+
+    Returns:
+        Paginated list of work orders for the user's yacht.
+    """
+    from handlers.list_handlers import ListHandlers
+
+    # Validate JWT and extract user context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": jwt_result.error.error_code,
+                "message": jwt_result.error.message,
+            },
+        )
+
+    user_context = jwt_result.context
+    user_id = user_context.get("user_id")
+
+    # Lookup tenant if yacht_id not in JWT
+    if not user_context.get("yacht_id") and lookup_tenant_for_user:
+        tenant_info = lookup_tenant_for_user(user_id)
+        if tenant_info:
+            user_context["yacht_id"] = tenant_info.get("yacht_id")
+            user_context["role"] = tenant_info.get("role", user_context.get("role"))
+            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
+
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=400, detail="yacht_id is required")
+
+    # Role gating: crew and above can view work orders
+    user_role = user_context.get("role", "")
+    allowed_roles = ["crew", "chief_engineer", "chief_officer", "captain", "manager", "admin"]
+    if user_role not in allowed_roles:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{user_role}' is not authorized for list_work_orders"
+        )
+
+    # Clamp limit
+    limit = min(limit, 100)
+
+    # Build filters
+    filters = {}
+    if status:
+        filters["status"] = {"value": status}
+    if priority:
+        filters["priority"] = {"value": priority}
+
+    # Get tenant DB client
+    tenant_alias = user_context.get("tenant_key_alias", "")
+    db_client = get_tenant_supabase_client(tenant_alias)
+
+    # Create handler and execute
+    handlers = ListHandlers(db_client)
+    result = await handlers.list_work_orders(
+        yacht_id=yacht_id,
+        filters=filters,
+        params={"offset": offset, "limit": limit},
+    )
+
+    # Transform to match frontend FetchResponse<WorkOrder> format
+    data = result.get("data", {})
+    items = data.get("items", [])
+    total_count = data.get("total_count", len(items))
+
+    return {
+        "data": items,
+        "total": total_count,
+    }
+
+
+@router.get("/v1/faults")
+async def list_faults_endpoint(
+    offset: int = 0,
+    limit: int = 50,
+    severity: Optional[str] = None,
+    resolved: Optional[bool] = None,
+    authorization: str = Header(None),
+):
+    """
+    List faults with pagination and optional filters.
+
+    Query params:
+        offset: Pagination offset (default 0)
+        limit: Page size (default 50, max 100)
+        severity: Filter by severity (critical, high, medium, low)
+        resolved: Filter by resolved status (true/false)
+
+    Returns:
+        Paginated list of faults for the user's yacht.
+    """
+    from handlers.list_handlers import ListHandlers
+
+    # Validate JWT and extract user context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": jwt_result.error.error_code,
+                "message": jwt_result.error.message,
+            },
+        )
+
+    user_context = jwt_result.context
+    user_id = user_context.get("user_id")
+
+    # Lookup tenant if yacht_id not in JWT
+    if not user_context.get("yacht_id") and lookup_tenant_for_user:
+        tenant_info = lookup_tenant_for_user(user_id)
+        if tenant_info:
+            user_context["yacht_id"] = tenant_info.get("yacht_id")
+            user_context["role"] = tenant_info.get("role", user_context.get("role"))
+            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
+
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=400, detail="yacht_id is required")
+
+    # Role gating
+    user_role = user_context.get("role", "")
+    allowed_roles = ["crew", "chief_engineer", "chief_officer", "captain", "manager", "admin"]
+    if user_role not in allowed_roles:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{user_role}' is not authorized for list_faults"
+        )
+
+    # Clamp limit
+    limit = min(limit, 100)
+
+    # Build filters
+    filters = {}
+    if severity:
+        filters["severity"] = {"value": severity}
+    if resolved is not None:
+        if resolved:
+            filters["resolved_at"] = {"op": "not_null"}
+        else:
+            filters["resolved_at"] = {"op": "is_null"}
+
+    # Get tenant DB client
+    tenant_alias = user_context.get("tenant_key_alias", "")
+    db_client = get_tenant_supabase_client(tenant_alias)
+
+    # Create handler and execute
+    handlers = ListHandlers(db_client)
+    result = await handlers.list_faults(
+        yacht_id=yacht_id,
+        filters=filters,
+        params={"offset": offset, "limit": limit},
+    )
+
+    # Transform to match frontend FetchResponse<Fault> format
+    data = result.get("data", {})
+    items = data.get("items", [])
+    total_count = data.get("total_count", len(items))
+
+    return {
+        "data": items,
+        "total": total_count,
+    }
+
+
+@router.get("/v1/inventory")
+async def list_inventory_endpoint(
+    offset: int = 0,
+    limit: int = 50,
+    category: Optional[str] = None,
+    location: Optional[str] = None,
+    authorization: str = Header(None),
+):
+    """
+    List inventory/parts with pagination and optional filters.
+
+    Query params:
+        offset: Pagination offset (default 0)
+        limit: Page size (default 50, max 100)
+        category: Filter by category
+        location: Filter by location
+
+    Returns:
+        Paginated list of parts/inventory for the user's yacht.
+    """
+    from handlers.list_handlers import ListHandlers
+
+    # Validate JWT and extract user context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": jwt_result.error.error_code,
+                "message": jwt_result.error.message,
+            },
+        )
+
+    user_context = jwt_result.context
+    user_id = user_context.get("user_id")
+
+    # Lookup tenant if yacht_id not in JWT
+    if not user_context.get("yacht_id") and lookup_tenant_for_user:
+        tenant_info = lookup_tenant_for_user(user_id)
+        if tenant_info:
+            user_context["yacht_id"] = tenant_info.get("yacht_id")
+            user_context["role"] = tenant_info.get("role", user_context.get("role"))
+            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
+
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=400, detail="yacht_id is required")
+
+    # Role gating
+    user_role = user_context.get("role", "")
+    allowed_roles = ["crew", "chief_engineer", "chief_officer", "captain", "manager", "admin"]
+    if user_role not in allowed_roles:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{user_role}' is not authorized for list_inventory"
+        )
+
+    # Clamp limit
+    limit = min(limit, 100)
+
+    # Build filters
+    filters = {}
+    if category:
+        filters["category"] = {"value": category}
+    if location:
+        filters["location"] = {"value": location}
+
+    # Get tenant DB client
+    tenant_alias = user_context.get("tenant_key_alias", "")
+    db_client = get_tenant_supabase_client(tenant_alias)
+
+    # Create handler and execute
+    handlers = ListHandlers(db_client)
+    result = await handlers.list_parts(
+        yacht_id=yacht_id,
+        filters=filters,
+        params={"offset": offset, "limit": limit},
+    )
+
+    # Transform to match frontend FetchResponse<Part> format
+    data = result.get("data", {})
+    items = data.get("items", [])
+    total_count = data.get("total_count", len(items))
+
+    return {
+        "data": items,
+        "total": total_count,
+    }
+
+
+# ============================================================================
 # HEALTH CHECK
 # ============================================================================
 
