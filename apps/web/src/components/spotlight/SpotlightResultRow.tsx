@@ -23,6 +23,7 @@ interface SpotlightResult {
   type: string;
   title: string;
   subtitle: string;
+  snippet?: string;
   icon?: string;
   metadata?: Record<string, unknown>;
 }
@@ -35,6 +36,27 @@ interface SpotlightResultRowProps {
   onDoubleClick?: () => void;
   /** Top Match gets slightly larger styling */
   isTopMatch?: boolean;
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Render text with **bold** markers converted to <strong> elements
+ * Handles markdown-style bold syntax: **text** becomes <strong>text</strong>
+ */
+function renderSnippetWithBold(text: string): React.ReactNode {
+  // Split on **text** pattern, capturing the content
+  const parts = text.split(/\*\*([^*]+)\*\*/g);
+
+  return parts.map((part, index) => {
+    // Odd indices are the captured bold content
+    if (index % 2 === 1) {
+      return <strong key={index} className="font-semibold text-txt-primary">{part}</strong>;
+    }
+    return part;
+  });
 }
 
 // ============================================================================
@@ -93,10 +115,23 @@ export default function SpotlightResultRow({
         >
           {result.title}
         </p>
-        {result.subtitle && (
+        {result.snippet && (
           <p
             className={cn(
-              // Subtitle: smaller, muted - clear hierarchy
+              // Snippet: smaller, muted with bold highlights
+              'typo-meta font-normal leading-snug',
+              'line-clamp-2',
+              'text-txt-secondary'
+            )}
+            data-testid="search-result-snippet"
+          >
+            {renderSnippetWithBold(result.snippet)}
+          </p>
+        )}
+        {result.subtitle && !result.snippet && (
+          <p
+            className={cn(
+              // Subtitle: smaller, muted - clear hierarchy (fallback when no snippet)
               'typo-meta font-normal leading-snug',
               'truncate',
               'text-celeste-text-muted'

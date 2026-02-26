@@ -283,5 +283,41 @@ Requirements for search pipeline validation and deployment.
 - Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-02-17 (v1.0), 2026-02-19 (v1.1)*
-*Last updated: 2026-02-19 — v1.1 requirements added*
+
+# v1.2 Requirements — Search Snippet Enhancement
+
+**Defined:** 2026-02-26
+**Core Value:** Users see Google/Spotlight-style highlighted previews showing WHERE their query matches, enabling faster decisions without opening documents.
+
+---
+
+## v1.2 Requirements
+
+### Snippet Enhancement (SNIP)
+
+- [x] **SNIP-01**: f1_search_cards returns search_text column (migration 45)
+- [x] **SNIP-02**: generate_snippet() function added to f1_search_streaming.py
+- [x] **SNIP-03**: SSE response includes snippet in payload with **bold** highlighting
+- [x] **SNIP-04**: Frontend renders snippet with bold styling (SpotlightResultRow.tsx)
+- [x] **SNIP-05**: Verification complete - deployment ready (SNIP-05-VERIFICATION.md)
+
+---
+
+## v1.2 Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| SNIP-01 | Backend | Complete |
+| SNIP-02 | Backend | Complete |
+| SNIP-03 | Backend | Complete |
+| SNIP-04 | Frontend | Complete |
+| SNIP-05 | Verification | Complete |
+
+**v1.2 Coverage:**
+- v1.2 requirements: 5 total
+- Complete: 5 ✓
+- Pending: 0
+
+---
+*Requirements defined: 2026-02-17 (v1.0), 2026-02-19 (v1.1), 2026-02-26 (v1.2)*
+*Last updated: 2026-02-26 — v1.2 snippet enhancement requirements added*

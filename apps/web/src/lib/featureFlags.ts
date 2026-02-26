@@ -24,7 +24,7 @@ export function isFragmentedRoutesEnabled(): boolean {
  * Returns the fragmented route if enabled, otherwise returns legacy /app route.
  */
 export function getEntityRoute(
-  entityType: 'work_order' | 'fault' | 'equipment' | 'part' | 'email',
+  entityType: 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving' | 'document' | 'certificate' | 'warranty' | 'purchase_order' | 'hours_of_rest',
   entityId?: string
 ): string {
   if (isFragmentedRoutesEnabled()) {
@@ -34,6 +34,13 @@ export function getEntityRoute(
       equipment: '/equipment',
       part: '/inventory',
       email: '/email',
+      shopping_list: '/shopping-list',
+      receiving: '/receiving',
+      document: '/documents',
+      certificate: '/certificates',
+      warranty: '/warranties',
+      purchase_order: '/purchasing',
+      hours_of_rest: '/hours-of-rest',
     };
 
     const base = routeMap[entityType] || '/app';
