@@ -34,6 +34,7 @@ from typing import AsyncGenerator, Optional, Dict, Any, List
 
 import asyncpg
 import hashlib
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
@@ -513,6 +514,7 @@ def reciprocal_rank_fusion(
                 'object_type': item.get('object_type'),
                 'object_id': item.get('object_id'),
                 'payload': item.get('payload'),
+                'search_text': item.get('search_text'),  # For snippet generation
                 'rrf_score': 0.0,
                 'text_rank': None,
                 'vector_rank': None,
@@ -526,6 +528,9 @@ def reciprocal_rank_fusion(
         scores[key]['rrf_score'] += rrf_contribution
         scores[key]['text_rank'] = rank
         scores[key]['text_score'] = item.get('fused_score')
+        # Preserve search_text from text results
+        if item.get('search_text') and not scores[key].get('search_text'):
+            scores[key]['search_text'] = item.get('search_text')
         # Preserve original ranks/components from text search
         if item.get('ranks'):
             scores[key]['ranks'] = item.get('ranks')
@@ -542,6 +547,7 @@ def reciprocal_rank_fusion(
                 'object_type': item.get('object_type'),
                 'object_id': item.get('object_id'),
                 'payload': item.get('payload'),
+                'search_text': item.get('search_text'),  # For snippet generation
                 'rrf_score': 0.0,
                 'text_rank': None,
                 'vector_rank': None,
@@ -558,6 +564,9 @@ def reciprocal_rank_fusion(
         # Use vector payload if text didn't provide one
         if not scores[key].get('payload') and item.get('payload'):
             scores[key]['payload'] = item.get('payload')
+        # Use vector search_text if text didn't provide one
+        if not scores[key].get('search_text') and item.get('search_text'):
+            scores[key]['search_text'] = item.get('search_text')
 
     # Sort by RRF score descending
     fused = sorted(scores.values(), key=lambda x: x['rrf_score'], reverse=True)
@@ -583,6 +592,7 @@ def reciprocal_rank_fusion(
             'object_type': item['object_type'],
             'object_id': item['object_id'],
             'payload': item.get('payload'),
+            'search_text': item.get('search_text'),  # For snippet generation
             'fused_score': item['rrf_score'],
             'best_rewrite_idx': item.get('best_rewrite_idx'),
             'ranks': combined_ranks,
@@ -590,6 +600,88 @@ def reciprocal_rank_fusion(
         })
 
     return results
+
+
+# ============================================================================
+# Snippet Generation (Google/Spotlight-style highlighted previews)
+# ============================================================================
+
+def generate_snippet(
+    search_text: Optional[str],
+    query: str,
+    max_length: int = 150
+) -> Optional[str]:
+    """
+    Extract best matching segment from search_text with highlighted terms.
+
+    Returns snippet with **bold** markers around query terms.
+    Uses sliding window to find segment where most terms co-occur.
+
+    Args:
+        search_text: Raw searchable text from search_index
+        query: Original user query
+        max_length: Maximum snippet length (default 150 chars)
+
+    Returns:
+        Highlighted snippet or None if no text available
+    """
+    if not search_text or not query:
+        return None
+
+    # Tokenize query into terms (simple word split, lowercase)
+    query_terms = [t.strip().lower() for t in query.split() if len(t.strip()) >= 2]
+    if not query_terms:
+        return None
+
+    text_lower = search_text.lower()
+
+    # Find best window using sliding window approach
+    best_start = 0
+    best_score = -1
+    window_size = max_length
+    step = 20  # Check every 20 chars for performance
+
+    for i in range(0, max(1, len(search_text) - window_size), step):
+        window = text_lower[i:i + window_size]
+
+        # Score: count of terms present
+        score = sum(1 for t in query_terms if t in window)
+
+        # Proximity bonus: if multiple terms, prefer them close together
+        if score >= 2:
+            positions = [window.find(t) for t in query_terms if t in window]
+            if len(positions) >= 2:
+                span = max(positions) - min(positions)
+                # Bonus for tight clustering (smaller span = higher bonus)
+                score += (window_size - span) / window_size
+
+        if score > best_score:
+            best_score = score
+            best_start = i
+
+    # Extract window from original text (preserve case)
+    snippet = search_text[best_start:best_start + window_size]
+
+    # Trim to word boundaries
+    if best_start > 0:
+        # Start mid-document: trim to first space and prepend ellipsis
+        first_space = snippet.find(' ')
+        if first_space > 0 and first_space < 20:
+            snippet = '...' + snippet[first_space + 1:]
+
+    if best_start + window_size < len(search_text):
+        # End mid-document: trim to last space and append ellipsis
+        last_space = snippet.rfind(' ')
+        if last_space > max_length - 20:
+            snippet = snippet[:last_space] + '...'
+
+    # Highlight query terms with **bold** markers (case-insensitive, preserve case)
+    for term in sorted(query_terms, key=len, reverse=True):
+        # Word boundary matching to avoid partial matches
+        pattern = re.compile(rf'\b({re.escape(term)})\b', re.IGNORECASE)
+        snippet = pattern.sub(r'**\1**', snippet)
+
+    return snippet.strip() if snippet.strip() else None
 
 
 # ============================================================================
@@ -1100,6 +1192,7 @@ async def f1_search_stream(
                         "object_type": item.get('object_type'),
                         "object_id": str(item.get('object_id')),
                         "payload": item.get('payload'),
+                        "search_text": item.get('search_text'),  # From f1_search_cards v2
                         "fused_score": item.get('fused_score'),
                         "best_rewrite_idx": item.get('best_rewrite_idx'),
                         "ranks": item.get('ranks'),
@@ -1152,11 +1245,21 @@ async def f1_search_stream(
                     f"ranks={item.get('ranks')}"
                 )
 
+                # Generate snippet for exact win
+                exact_payload = item.get('payload') or {}
+                if isinstance(exact_payload, dict):
+                    search_text = item.get('search_text')
+                    if search_text:
+                        snippet = generate_snippet(search_text, q, max_length=150)
+                        if snippet:
+                            exact_payload = dict(exact_payload)
+                            exact_payload['snippet'] = snippet
+
                 yield sse_event("exact_match_win", {
                     "search_id": search_id,
                     "object_type": item.get('object_type'),
                     "object_id": str(item.get('object_id')),
-                    "payload": item.get('payload'),
+                    "payload": exact_payload,
                     "fused_score": item.get('fused_score'),
                     "ranks": item.get('ranks'),
                 })
@@ -1179,6 +1282,20 @@ async def f1_search_stream(
                     span.set_attribute("reranked", reranked)
                 if reranked:
                     logger.debug(f"[F1Search] Reranked {len(items)} items")
+
+            # ================================================================
+            # Phase 4c: Generate snippets for each result
+            # ================================================================
+            for item in items:
+                search_text = item.pop('search_text', None)  # Remove from output, use for snippet
+                if search_text:
+                    snippet = generate_snippet(search_text, q, max_length=150)
+                    if snippet:
+                        # Add snippet to payload
+                        payload = item.get('payload') or {}
+                        if isinstance(payload, dict):
+                            payload['snippet'] = snippet
+                            item['payload'] = payload
 
             # Emit result batch
             with tracer.start_as_current_span("fusion.emit_batch") as span:

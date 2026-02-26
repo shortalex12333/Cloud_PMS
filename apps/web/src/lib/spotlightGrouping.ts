@@ -128,6 +128,7 @@ export interface SpotlightResult {
   type: string;
   title: string;
   subtitle: string;
+  snippet?: string;
   score: number;
   domain: string;
   icon?: string;
@@ -218,6 +219,7 @@ function toSpotlightResult(result: SearchResult): SpotlightResult {
     type: objectType,
     title: title.trim(),
     subtitle: subtitle.trim(),
+    snippet: result.snippet,
     score: result.score || anyResult.final_score || 0,
     domain,
     icon: getDomainIcon(domain),
