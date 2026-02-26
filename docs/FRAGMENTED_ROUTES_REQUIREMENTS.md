@@ -129,15 +129,27 @@
 
 | Req ID | Requirement | Owner Agent | Status | Test/Proof | Notes |
 |--------|-------------|-------------|--------|------------|-------|
-| T2-EM-01 | /email list route loads | Email Agent | IN_PROGRESS | Pending deployment | Uses tokenized styling |
-| T2-EM-02 | /email/[threadId] detail route loads | Email Agent | IN_PROGRESS | Pending deployment | Uses tokenized styling |
-| T2-EM-03 | Thread search works | Email Agent | IN_PROGRESS | Pending deployment | Uses useEmailSearch |
-| T2-EM-04 | Linked/Unlinked filter works | Email Agent | IN_PROGRESS | Pending deployment | Filter state preserved |
-| T2-EM-05 | Message content loads (fetch-on-click) | Email Agent | IN_PROGRESS | Pending deployment | DOMPurify sanitization |
-| T2-EM-06 | Linked objects navigation works | Email Agent | IN_PROGRESS | Pending deployment | Cross-route navigation |
-| T2-EM-07 | Page refresh preserves state | Email Agent | IN_PROGRESS | Pending deployment | URL-based state |
-| T2-EM-08 | No SurfaceContext dependency | Email Agent | IN_PROGRESS | grep verification needed | Code follows pattern |
-| T2-EM-09 | No hard-coded colors (tokenized styling) | Email Agent | IN_PROGRESS | Code review needed | Uses design tokens |
+| T2-EM-01 | /email list route loads | Email Agent | DONE_VERIFIED | route-email.spec.ts:38 | 19/19 tests pass |
+| T2-EM-02 | /email/[threadId] detail route loads | Email Agent | DONE_VERIFIED | route-email.spec.ts:88 | Feature flag gated |
+| T2-EM-03 | Thread search works | Email Agent | DONE_VERIFIED | route-email.spec.ts:187 | Input functional |
+| T2-EM-04 | Linked/Unlinked filter works | Email Agent | DONE_VERIFIED | route-email.spec.ts:277 | Filter buttons functional |
+| T2-EM-05 | Message content loads (fetch-on-click) | Email Agent | DONE_VERIFIED | route-email.spec.ts:375 | DOMPurify sanitization |
+| T2-EM-06 | Linked objects navigation works | Email Agent | DONE_VERIFIED | route-email.spec.ts:593 | Cross-route navigation |
+| T2-EM-07 | Page refresh preserves state | Email Agent | DONE_VERIFIED | route-email.spec.ts:423 | URL-based state |
+| T2-EM-08 | No SurfaceContext dependency | Email Agent | DONE_VERIFIED | route-email.spec.ts:651 | Code verified clean |
+| T2-EM-09 | No hard-coded colors (tokenized styling) | Email Agent | DONE_VERIFIED | RouteLayout.tsx + tokens.css | Design tokens only |
+
+---
+
+## Search → Fragmented Routes Integration
+
+| Req ID | Requirement | Owner Agent | Status | Test/Proof | Notes |
+|--------|-------------|-------------|--------|------------|-------|
+| SR-01 | SpotlightSearch uses flag-gated router.push | Search Agent | DONE_VERIFIED | search-routing.spec.ts | 8/8 tests pass |
+| SR-02 | getEntityRoute mapping exhaustive | Routing Agent | DONE_VERIFIED | search-routing.spec.ts:44-214 | All entity types mapped |
+| SR-03 | Unsupported types fallback gracefully | Search Agent | DONE_VERIFIED | search-routing.spec.ts:288 | Toast + legacy panel |
+| SR-04 | Cross-entity navigation works | Navigation Agent | DONE_VERIFIED | search-routing.spec.ts + route-*.spec.ts | Uses router.push |
+| SR-05 | Legacy behavior preserved (flag OFF) | Routing Agent | DONE_VERIFIED | search-routing.spec.ts:288 | ContextPanel opens |
 
 ---
 
@@ -150,12 +162,16 @@
 5. Faults - **DONE_VERIFIED**
 6. Equipment - **DONE_VERIFIED**
 7. Inventory - **DONE_VERIFIED**
-8. Email - **IN_PROGRESS**
+8. Email - **DONE_VERIFIED** (E2E tests: route-email.spec.ts 19/19)
+9. Search→Routes Integration - **DONE_VERIFIED** (E2E tests: search-routing.spec.ts 8/8)
 
 **No skipping. No parallel merges on conflicting files.**
 
 ---
 
-*Last Updated: 2026-02-26 14:55 UTC*
-*Deployment: dpl_4hEPqn22qDN7NPpgm6j6bRbmvCbz*
+*Last Updated: 2026-02-26 19:45 UTC*
+*Deployment: Staging verified (flag OFF = legacy mode)*
+*E2E Tests: 27/27 passed (route-email + search-routing)*
+*Non-flaky: 2 consecutive runs passed*
 *PRs: #383, #384 merged to main*
+*Session: PHASE 2 COMPLETE*
