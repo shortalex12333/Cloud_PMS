@@ -154,7 +154,8 @@ function PartDetailContent({ data, onBack }: { data: Record<string, unknown>; on
 function InventoryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, token } = useAuth();
+  const { user, session } = useAuth();
+  const token = session?.access_token;
   const selectedId = searchParams.get('id');
 
   const { data: inventory, isLoading: isLoadingList, error: listError } = useQuery({

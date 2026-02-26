@@ -164,7 +164,8 @@ function FaultContent({ data, onNavigate }: { data: Record<string, unknown>; onN
 function FaultDetailPageContent() {
   const router = useRouter();
   const params = useParams();
-  const { token } = useAuth();
+  const { session } = useAuth();
+  const token = session?.access_token;
   const faultId = params.id as string;
 
   const { data: fault, isLoading, error, refetch } = useQuery({
