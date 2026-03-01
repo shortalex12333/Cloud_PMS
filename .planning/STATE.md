@@ -12,11 +12,11 @@
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
 | Phase | Phase 15 (Intent Envelope) |
-| Plan | — |
-| Status | Ready to plan |
-| Last activity | 2026-03-01 — v1.3 roadmap created |
+| Plan | 01 (complete) |
+| Status | Ready for Phase 16 |
+| Last activity | 2026-03-01 — Phase 15 Plan 01 complete |
 
-**Progress:** [░░░░░░░░░░] 0/5 phases complete
+**Progress:** [##░░░░░░░░] 1/5 phases complete
 
 ---
 
@@ -34,7 +34,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
-| 15 | Intent Envelope | Create IntentEnvelope abstraction | INTENT-01..03 | ○ Pending |
+| 15 | Intent Envelope | Create IntentEnvelope abstraction | INTENT-01..03 | ✓ Complete |
 | 16 | Prefill Integration | Build /v1/actions/prepare endpoint | PREFILL-01..05 | ○ Pending |
 | 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ○ Pending |
 | 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ○ Pending |
@@ -75,6 +75,10 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | 5 phases for v1.3 (not arbitrary) | Derived from requirement categories: INTENT, PREFILL, READY, ROUTE+DISAMB, AGENT | 2026-03-01 |
 | Modify existing files only (no new files) | User directive: useCelesteSearch.ts, SuggestedActions.tsx, ActionModal.tsx, prefill_engine.py | 2026-03-01 |
 | Use existing Action Detector + Entity Extractor | No duplicate NLP systems - leverage proven modules | 2026-03-01 |
+| Used djb2 hash for query_hash | No crypto dependencies, deterministic output | 2026-03-01 |
+| IntentMode: READ/MUTATE/MIXED | Three states covers all intent combinations | 2026-03-01 |
+| READY threshold: confidence >= 0.8 + entity present | Prevents premature READY state for mutations | 2026-03-01 |
+| ActionSuggestion.match_score -> IntentAction.confidence | Mapping backend score to envelope confidence | 2026-03-01 |
 
 ---
 
@@ -175,18 +179,24 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - **Success criteria:** 4-4-4-6-4 observable behaviors per phase
 - **Dependencies identified:** Linear flow 15→16→17→18→19
 - **Files written:** ROADMAP.md (appended v1.3 section), STATE.md (updated), REQUIREMENTS.md traceability preserved
+- **Phase 15 Plan 01 complete:**
+  - IntentEnvelope type + supporting types defined
+  - deriveIntentEnvelope() with djb2 hashing implemented
+  - intentEnvelope integrated into useCelesteSearch hook
+  - verifyEnvelopeDeterminism() utility added
+  - 3 commits: 33cdc7e3, 9d4c9271, 72ad52d4
 
 ---
 
 ## Next Single Action
 
-**Plan Phase 15: Intent Envelope**
+**Plan Phase 16: Prefill Integration**
 
-Use `/gsd:plan-phase 15` to create execution plan for:
-1. Define IntentEnvelope TypeScript type in useCelesteSearch.ts
-2. Derive envelope from Action Detector + Entity Extractor
-3. Ensure deterministic output: same query → same envelope
-4. Add readiness_state field to envelope
+Use `/gsd:plan-phase 16` to create execution plan for:
+1. Build /v1/actions/prepare endpoint in prefill_engine.py
+2. Accept IntentEnvelope and return MutationPreview
+3. Integrate with existing Action Detector + Entity Extractor
+4. Call /prepare from SuggestedActions.tsx on action selection
 
 ---
 
