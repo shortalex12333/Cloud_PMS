@@ -383,6 +383,253 @@ function useAction() {
 }
 
 // ============================================================================
+// Generic Prefill Types
+// ============================================================================
+
+/**
+ * Dropdown option for disambiguation
+ */
+export interface DropdownOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * Field warning from prefill engine
+ */
+export interface PrefillWarning {
+  field: string;
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+}
+
+/**
+ * Generic prefill response from /v1/actions/prefill/{action_id}
+ *
+ * Includes field-level confidence scoring for low-confidence highlighting.
+ * When backend returns field_confidence, the UI will show visual indicators:
+ * - confidence >= 0.8: Normal field (no indicator)
+ * - confidence 0.5-0.8: Yellow border + "Low confidence" badge
+ * - confidence < 0.5: Red border + "Review required" badge
+ */
+export interface PrefillResponse {
+  status: 'success' | 'error';
+  mutation_preview: Record<string, any>;
+  dropdown_options: Record<string, DropdownOption[]>;
+  warnings: PrefillWarning[];
+  ready_to_commit: boolean;
+  error?: string;
+  message?: string;
+  /**
+   * Field-level confidence scores (0-1) from NLP/prefill engine.
+   * Used by ConfidenceField component to highlight low-confidence fields.
+   * @example { "equipment_id": 0.65, "priority": 0.95 }
+   */
+  field_confidence?: Record<string, number>;
+  /**
+   * Alternative suggestions for fields with low confidence.
+   * Rendered as clickable correction chips by ConfidenceField.
+   * @example { "equipment_id": ["Main Engine Port", "Main Engine Starboard"] }
+   */
+  field_alternatives?: Record<string, string[]>;
+}
+
+/**
+ * Fetch prefill data for an action modal
+ *
+ * Calls /v1/actions/prefill/{actionId} to get pre-filled form values
+ * based on NLP entity extraction from the query text.
+ *
+ * @param actionId - Action ID (e.g., 'create_work_order')
+ * @param queryText - Original search query text (for NLP prefill)
+ * @param extractedEntities - Already extracted entities from search results
+ * @returns Prefill response with mutation preview and dropdown options
+ *
+ * @example
+ * ```typescript
+ * const prefill = await fetchPrefill(
+ *   'create_work_order',
+ *   'fix the main engine cooling pump',
+ *   { equipment_name: 'Main Engine' }
+ * );
+ * // prefill.mutation_preview: { title: 'Fix cooling pump', equipment_id: 'uuid', ... }
+ * // prefill.dropdown_options: { equipment_id: [{ value: 'uuid', label: 'Main Engine' }] }
+ * ```
+ */
+export async function fetchPrefill(
+  actionId: string,
+  queryText: string,
+  extractedEntities?: Record<string, string>
+): Promise<PrefillResponse> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session) {
+    throw new ActionExecutionError(
+      'prefill',
+      'unauthenticated',
+      'Authentication required to fetch prefill data',
+      401
+    );
+  }
+
+  const request_body = {
+    context: {},
+    payload: {
+      query_text: queryText,
+      extracted_entities: extractedEntities || {},
+    },
+  };
+
+  console.log('[actionClient] Fetching prefill:', {
+    actionId,
+    queryText,
+    extractedEntities,
+  });
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/actions/prefill/${actionId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(request_body),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new ActionExecutionError(
+        'prefill',
+        result.code || 'prefill_error',
+        result.error || result.detail || 'Failed to fetch prefill data',
+        response.status,
+        result
+      );
+    }
+
+    console.log('[actionClient] Prefill response:', {
+      actionId,
+      ready_to_commit: result.ready_to_commit,
+      warnings_count: result.warnings?.length || 0,
+      dropdown_fields: Object.keys(result.dropdown_options || {}),
+    });
+
+    return result;
+  } catch (error) {
+    if (error instanceof ActionExecutionError) {
+      throw error;
+    }
+    console.error('[actionClient] Prefill failed:', error);
+    throw new ActionExecutionError(
+      'prefill',
+      'network_error',
+      error instanceof Error ? error.message : 'Network error',
+      undefined,
+      error
+    );
+  }
+}
+
+// ============================================================================
+// Prefill Integration Types (v1.3)
+// ============================================================================
+
+/**
+ * Prefill field with confidence and source attribution
+ */
+export interface PrefillField {
+  value: any;
+  confidence: number;
+  source: 'entity_resolver' | 'keyword_map' | 'temporal' | 'template';
+}
+
+/**
+ * Ambiguity candidate for disambiguation UI
+ */
+export interface AmbiguityCandidate {
+  id: string;
+  label: string;
+  confidence: number;
+}
+
+/**
+ * Ambiguity requiring user selection
+ */
+export interface Ambiguity {
+  field: string;
+  candidates: AmbiguityCandidate[];
+}
+
+/**
+ * Response from /v1/actions/prepare endpoint
+ */
+export interface PrepareResponse {
+  action_id: string;
+  match_score: number;
+  ready_to_commit: boolean;
+  prefill: Record<string, PrefillField>;
+  missing_required_fields: string[];
+  ambiguities: Ambiguity[];
+  errors: Array<{ error_code: string; message: string; field?: string }>;
+}
+
+/**
+ * Request to /v1/actions/prepare endpoint
+ */
+export interface PrepareRequest {
+  q: string;
+  domain: string;
+  candidate_action_ids: string[];
+  context: { yacht_id: string; user_role: string };
+  hint_entities?: Record<string, any>;
+  client: { timezone: string; now_iso: string };
+}
+
+/**
+ * Get JWT token helper (reuse existing auth)
+ */
+async function getJwtToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
+
+/**
+ * Call /v1/actions/prepare endpoint to get prefill preview
+ *
+ * @param request - Prepare request with query, domain, candidates
+ * @param signal - Optional abort signal for cancellation
+ * @returns PrepareResponse with prefilled values
+ */
+export async function prepareAction(
+  request: PrepareRequest,
+  signal?: AbortSignal
+): Promise<PrepareResponse> {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+  const jwt = await getJwtToken();
+
+  const response = await fetch(`${API_URL}/v1/actions/prepare`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': jwt ? `Bearer ${jwt}` : '',
+    },
+    body: JSON.stringify(request),
+    signal,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || `Prepare failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// ============================================================================
 // Two-Phase Mutation Types
 // ============================================================================
 
