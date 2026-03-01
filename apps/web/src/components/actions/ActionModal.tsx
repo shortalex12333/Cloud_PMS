@@ -10,16 +10,33 @@
  * - All field definitions come from backend - no UI authority
  */
 
-import React, { useState, useCallback } from 'react';
-import { X, Loader2, FolderOpen, AlertTriangle, PenLine } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { X, Loader2, FolderOpen, AlertTriangle, PenLine, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { executeAction, type ActionSuggestion } from '@/lib/actionClient';
+import {
+  executeAction,
+  fetchPrefill,
+  type ActionSuggestion,
+  type PrefillResponse,
+  type DropdownOption,
+  type PrefillWarning,
+  type PrepareResponse,
+  type PrefillField,
+} from '@/lib/actionClient';
 import { toast } from 'sonner';
+import { DisambiguationSelector } from '@/components/ui/DisambiguationSelector';
+import { ConfidenceField } from '@/components/ui/ConfidenceField';
 
 interface ActionModalProps {
   action: ActionSuggestion;
   yachtId: string | null;
   entityId?: string;
+  /** Original search query text for NLP prefill */
+  queryText?: string;
+  /** Already extracted entities from search context */
+  extractedEntities?: Record<string, string>;
+  /** v1.3: Prefill data from /prepare endpoint */
+  prefillData?: PrepareResponse | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -68,16 +85,130 @@ export default function ActionModal({
   action,
   yachtId,
   entityId,
+  queryText,
+  extractedEntities,
+  prefillData,
   onClose,
   onSuccess,
 }: ActionModalProps) {
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  // Initialize formData from prefill if available
+  const getInitialFormData = useCallback((): Record<string, string> => {
+    if (!prefillData?.prefill) return {};
+
+    const initial: Record<string, string> = {};
+    for (const [field, data] of Object.entries(prefillData.prefill)) {
+      // Only use values with confidence >= 0.65 (per CONTEXT.md)
+      if (data.confidence >= 0.65 && data.value != null) {
+        initial[field] = String(data.value);
+      }
+    }
+    return initial;
+  }, [prefillData]);
+
+  const [formData, setFormData] = useState<Record<string, string>>(getInitialFormData);
   const [filename, setFilename] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Prefill state
+  const [isPrefilling, setIsPrefilling] = useState(false);
+  const [dropdownOptions, setDropdownOptions] = useState<Record<string, DropdownOption[]>>({});
+  const [warnings, setWarnings] = useState<PrefillWarning[]>([]);
+  const [readyToCommit, setReadyToCommit] = useState(true);
+  const [disambiguationPending, setDisambiguationPending] = useState<string[]>([]);
+
+  // Field confidence state for low-confidence highlighting
+  const [fieldConfidence, setFieldConfidence] = useState<Record<string, number>>({});
+  const [fieldAlternatives, setFieldAlternatives] = useState<Record<string, string[]>>({});
+
   // Auto-generate idempotency key on mount (stable per modal instance)
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+
+  // Update formData when prefillData changes (v1.3)
+  useEffect(() => {
+    if (prefillData?.prefill) {
+      setFormData(getInitialFormData());
+    }
+  }, [prefillData, getInitialFormData]);
+
+  // Fetch prefill data on modal open
+  useEffect(() => {
+    if (!queryText) return;
+
+    const fetchPrefillData = async () => {
+      setIsPrefilling(true);
+      setError(null);
+
+      try {
+        const response = await fetchPrefill(
+          action.action_id,
+          queryText,
+          extractedEntities
+        );
+
+        if (response.status === 'success') {
+          // Apply prefilled values to form
+          if (response.mutation_preview) {
+            const newFormData: Record<string, string> = {};
+            for (const [key, value] of Object.entries(response.mutation_preview)) {
+              if (typeof value === 'string' || typeof value === 'number') {
+                newFormData[key] = String(value);
+              }
+            }
+            setFormData((prev) => ({ ...prev, ...newFormData }));
+          }
+
+          // Store dropdown options for disambiguation
+          if (response.dropdown_options) {
+            setDropdownOptions(response.dropdown_options);
+            // Track fields that need disambiguation (multiple options)
+            const pendingFields = Object.entries(response.dropdown_options)
+              .filter(([_, opts]) => opts.length > 1)
+              .map(([field]) => field);
+            setDisambiguationPending(pendingFields);
+          }
+
+          // Store warnings
+          if (response.warnings) {
+            setWarnings(response.warnings);
+          }
+
+          // Track ready state
+          setReadyToCommit(response.ready_to_commit);
+
+          // Store field confidence scores for low-confidence highlighting
+          if (response.field_confidence) {
+            setFieldConfidence(response.field_confidence);
+          }
+
+          // Store field alternatives for correction chips
+          if (response.field_alternatives) {
+            setFieldAlternatives(response.field_alternatives);
+          }
+
+          console.log('[ActionModal] Prefill applied:', {
+            action: action.action_id,
+            prefilledFields: Object.keys(response.mutation_preview || {}),
+            dropdownFields: Object.keys(response.dropdown_options || {}),
+            warningsCount: response.warnings?.length || 0,
+            readyToCommit: response.ready_to_commit,
+            fieldConfidenceCount: Object.keys(response.field_confidence || {}).length,
+            fieldAlternativesCount: Object.keys(response.field_alternatives || {}).length,
+          });
+        }
+      } catch (err) {
+        console.error('[ActionModal] Prefill failed:', err);
+        // Don't block the modal on prefill failure - allow manual entry
+        toast.info('Could not auto-fill form', {
+          description: 'Please fill in the fields manually.',
+        });
+      } finally {
+        setIsPrefilling(false);
+      }
+    };
+
+    fetchPrefillData();
+  }, [action.action_id, queryText, extractedEntities]);
 
   // Filter out yacht_id, signature, and idempotency_key from visible fields (handled automatically)
   const visibleFields = action.required_fields.filter(
@@ -87,11 +218,40 @@ export default function ActionModal({
   const handleFieldChange = useCallback((field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setError(null);
-  }, []);
+
+    // If this field was pending disambiguation, mark it as resolved
+    if (disambiguationPending.includes(field) && value) {
+      setDisambiguationPending((prev) => prev.filter((f) => f !== field));
+    }
+  }, [disambiguationPending]);
+
+  // Check if a field has warnings
+  const getFieldWarning = useCallback((field: string): PrefillWarning | undefined => {
+    return warnings.find((w) => w.field === field);
+  }, [warnings]);
+
+  // Check if disambiguation is blocking submit
+  const isDisambiguationBlocking = disambiguationPending.length > 0;
+
+  // Helper: Get field confidence class for border styling (v1.3)
+  const getFieldConfidenceClass = useCallback((field: string): string => {
+    if (!prefillData?.prefill?.[field]) return '';
+
+    const confidence = prefillData.prefill[field].confidence;
+    if (confidence >= 0.85) return 'border-green-500/30';  // Auto-filled silently
+    if (confidence >= 0.65) return 'border-amber-500/30';  // Confirm UI
+    return 'border-red-500/30';  // Ambiguous
+  }, [prefillData]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Block submit if disambiguation is pending
+    if (isDisambiguationBlocking) {
+      setError(`Please select an option for: ${disambiguationPending.map(getFieldLabel).join(', ')}`);
+      return;
+    }
 
     // Validate required fields
     const missingFields = visibleFields.filter(
@@ -161,7 +321,7 @@ export default function ActionModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [action, formData, yachtId, entityId, visibleFields, idempotencyKey, onSuccess]);
+  }, [action, formData, yachtId, entityId, visibleFields, idempotencyKey, onSuccess, isDisambiguationBlocking, disambiguationPending]);
 
   // Build storage path preview
   const storagePathPreview = action.storage_options?.path_preview
@@ -214,8 +374,20 @@ export default function ActionModal({
           </button>
         </div>
 
+        {/* Loading State while prefilling */}
+        {isPrefilling && (
+          <div className="px-5 py-8 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-6 h-6 animate-spin text-celeste-accent" />
+            <p className="typo-meta text-txt-secondary">Loading form...</p>
+          </div>
+        )}
+
         {/* Form */}
-        <form onSubmit={handleSubmit} data-testid={`action-form-${action.action_id}`}>
+        <form
+          onSubmit={handleSubmit}
+          data-testid={`action-form-${action.action_id}`}
+          className={cn(isPrefilling && 'hidden')}
+        >
           <div className="px-5 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
             {/* Hidden idempotency key for testability */}
             <input
@@ -225,21 +397,78 @@ export default function ActionModal({
               readOnly
             />
 
+            {/* Warnings banner */}
+            {warnings.length > 0 && (
+              <div className="p-3 rounded-md bg-amber-500/10 border border-amber-500/30 space-y-2">
+                <div className="flex items-center gap-2 typo-meta font-medium text-amber-400">
+                  <AlertTriangle className="w-4 h-4" />
+                  Attention Required
+                </div>
+                <ul className="typo-meta text-amber-300 space-y-1 pl-6 list-disc">
+                  {warnings.map((warning, idx) => (
+                    <li key={idx}>
+                      {warning.field && <span className="font-medium">{getFieldLabel(warning.field)}: </span>}
+                      {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Disambiguation notice */}
+            {isDisambiguationBlocking && (
+              <div className="p-3 rounded-md bg-blue-500/10 border border-blue-500/30">
+                <div className="flex items-center gap-2 typo-meta text-blue-400">
+                  <Info className="w-4 h-4" />
+                  Please select options for highlighted fields to continue.
+                </div>
+              </div>
+            )}
+
+            {/* Disambiguation Selectors - Shown when multiple matches found */}
+            {Object.entries(dropdownOptions).map(([field, options]) => {
+              // Only show disambiguation UI for fields with multiple options
+              if (options.length <= 1) return null;
+
+              return (
+                <DisambiguationSelector
+                  key={field}
+                  fieldName={field}
+                  fieldLabel={getFieldLabel(field)}
+                  options={options.map((opt) => {
+                    // Base option with id and name
+                    const baseOption: { id: string; name: string; [key: string]: unknown } = {
+                      id: opt.value,
+                      name: opt.label,
+                    };
+                    // If the option has additional metadata, include it
+                    // Cast through unknown to satisfy TypeScript strict type checking
+                    const optAny = opt as unknown as { metadata?: Record<string, unknown> };
+                    if (optAny.metadata && typeof optAny.metadata === 'object') {
+                      Object.assign(baseOption, optAny.metadata);
+                    }
+                    return baseOption;
+                  })}
+                  selectedId={formData[field]}
+                  onSelect={(id) => {
+                    handleFieldChange(field, id);
+                  }}
+                  required
+                />
+              );
+            })}
+
             {/* Dynamic fields from required_fields */}
             {visibleFields.map((field) => {
               const fieldType = inferFieldType(field);
               const label = getFieldLabel(field);
+              const confidence = fieldConfidence[field];
+              const alternatives = fieldAlternatives[field];
 
-              return (
-                <div key={field} className="space-y-1.5">
-                  <label
-                    htmlFor={field}
-                    className="block typo-meta font-medium text-txt-secondary"
-                  >
-                    {label}
-                  </label>
-
-                  {fieldType === 'date' ? (
+              // Helper to render the actual input element
+              const renderInput = () => {
+                if (fieldType === 'date') {
+                  return (
                     <input
                       type="date"
                       id={field}
@@ -250,11 +479,16 @@ export default function ActionModal({
                         'bg-surface-base border border-surface-border',
                         'typo-body text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors duration-fast'
+                        'transition-colors duration-fast',
+                        getFieldConfidenceClass(field)
                       )}
                       required
                     />
-                  ) : fieldType === 'textarea' ? (
+                  );
+                }
+
+                if (fieldType === 'textarea') {
+                  return (
                     <textarea
                       id={field}
                       value={formData[field] || ''}
@@ -265,12 +499,17 @@ export default function ActionModal({
                         'bg-surface-base border border-surface-border',
                         'typo-body text-celeste-text-title placeholder:text-txt-tertiary',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors duration-fast'
+                        'transition-colors duration-fast',
+                        getFieldConfidenceClass(field)
                       )}
                       placeholder={`Enter ${label.toLowerCase()}...`}
                       required
                     />
-                  ) : fieldType === 'select' && field === 'certificate_type' ? (
+                  );
+                }
+
+                if (fieldType === 'select' && field === 'certificate_type') {
+                  return (
                     <select
                       id={field}
                       name={field}
@@ -281,7 +520,8 @@ export default function ActionModal({
                         'bg-surface-base border border-surface-border',
                         'typo-body text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors duration-fast'
+                        'transition-colors duration-fast',
+                        getFieldConfidenceClass(field)
                       )}
                       required
                     >
@@ -292,7 +532,11 @@ export default function ActionModal({
                         </option>
                       ))}
                     </select>
-                  ) : fieldType === 'select' && field === 'source_type' ? (
+                  );
+                }
+
+                if (fieldType === 'select' && field === 'source_type') {
+                  return (
                     <select
                       id={field}
                       name={field}
@@ -303,7 +547,8 @@ export default function ActionModal({
                         'bg-surface-base border border-surface-border',
                         'typo-body text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors duration-fast'
+                        'transition-colors duration-fast',
+                        getFieldConfidenceClass(field)
                       )}
                       required
                       data-testid="source_type-select"
@@ -314,26 +559,84 @@ export default function ActionModal({
                         </option>
                       ))}
                     </select>
-                  ) : (
-                    <input
-                      type={field.includes('quantity') || field.includes('price') ? 'number' : 'text'}
-                      id={field}
-                      name={field}
-                      value={formData[field] || ''}
-                      onChange={(e) => handleFieldChange(field, e.target.value)}
-                      className={cn(
-                        'w-full px-3 py-2.5 rounded-md',
-                        'bg-surface-base border border-surface-border',
-                        'typo-body text-celeste-text-title placeholder:text-txt-tertiary',
-                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors duration-fast'
-                      )}
-                      placeholder={`Enter ${label.toLowerCase()}...`}
-                      min={field.includes('quantity') ? '1' : undefined}
-                      step={field.includes('quantity') ? '1' : field.includes('price') ? '0.01' : undefined}
-                      required
-                      data-testid={`${field}-input`}
-                    />
+                  );
+                }
+
+                // Default: text/number input
+                return (
+                  <input
+                    type={field.includes('quantity') || field.includes('price') ? 'number' : 'text'}
+                    id={field}
+                    name={field}
+                    value={formData[field] || ''}
+                    onChange={(e) => handleFieldChange(field, e.target.value)}
+                    className={cn(
+                      'w-full px-3 py-2.5 rounded-md',
+                      'bg-surface-base border border-surface-border',
+                      'typo-body text-celeste-text-title placeholder:text-txt-tertiary',
+                      'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
+                      'transition-colors duration-fast',
+                      getFieldConfidenceClass(field)
+                    )}
+                    placeholder={`Enter ${label.toLowerCase()}...`}
+                    min={field.includes('quantity') ? '1' : undefined}
+                    step={field.includes('quantity') ? '1' : field.includes('price') ? '0.01' : undefined}
+                    required
+                    data-testid={`${field}-input`}
+                  />
+                );
+              };
+
+              return (
+                <div key={field} className="space-y-1.5">
+                  <label
+                    htmlFor={field}
+                    className="flex items-center gap-2 typo-meta font-medium text-txt-secondary"
+                  >
+                    {label}
+                    {/* v1.3: Confidence indicator badge */}
+                    {prefillData?.prefill?.[field] && (
+                      <span className={cn(
+                        "text-xs",
+                        prefillData.prefill[field].confidence >= 0.85 ? "text-green-400" : "text-amber-400"
+                      )}>
+                        {prefillData.prefill[field].confidence >= 0.85 ? "auto-filled" : "confirm"}
+                      </span>
+                    )}
+                  </label>
+
+                  {/* Wrap field with ConfidenceField for low-confidence highlighting and correction chips */}
+                  <ConfidenceField
+                    fieldName={field}
+                    value={formData[field] || ''}
+                    confidence={confidence}
+                    alternatives={alternatives}
+                    onChange={(value) => handleFieldChange(field, String(value))}
+                  >
+                    {renderInput()}
+                  </ConfidenceField>
+
+                  {/* v1.3: Disambiguation UI for low confidence fields */}
+                  {(prefillData?.ambiguities?.find(a => a.field === field) ||
+                    (prefillData?.prefill?.[field]?.confidence ?? 1) < 0.65) && (
+                    <div className="mt-1 p-2 bg-red-500/10 rounded border border-red-500/30 text-xs text-red-400">
+                      <span className="font-medium">Did you mean:</span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {prefillData?.ambiguities
+                          ?.find(a => a.field === field)?.candidates
+                          .map(c => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => handleFieldChange(field, c.id)}
+                              className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-red-300"
+                            >
+                              {c.label}
+                            </button>
+                          ))
+                        }
+                      </div>
+                    </div>
                   )}
                 </div>
               );
@@ -419,14 +722,20 @@ export default function ActionModal({
             <button
               type="submit"
               data-testid="action-submit"
-              disabled={isSubmitting}
-              className="btn-primary"
+              disabled={isSubmitting || isDisambiguationBlocking}
+              className={cn(
+                'btn-primary',
+                isDisambiguationBlocking && 'opacity-50 cursor-not-allowed'
+              )}
+              aria-disabled={isSubmitting || isDisambiguationBlocking}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Executing...
                 </>
+              ) : isDisambiguationBlocking ? (
+                'Select options above'
               ) : action.variant === 'SIGNED' ? (
                 <>
                   <PenLine className="w-4 h-4" />
