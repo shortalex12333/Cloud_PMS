@@ -21,29 +21,17 @@ from pathlib import Path
 # Configure logger
 logger = logging.getLogger(__name__)
 
-# Import handling for both direct execution and module import
-try:
-    from api.regex_production_data import load_manufacturers, load_equipment_terms
-    from api.entity_extraction_loader import (
-        get_equipment_gazetteer,
-        get_diagnostic_patterns,
-        calculate_weight as calculate_entity_weight,
-        CORE_BRANDS,
-        CORE_EQUIPMENT,
-        CORE_FUZZY_TERMS,  # Phase 2 Fix: Extended fuzzy matching
-        BRAND_ALIASES,     # Phase 2 (2026-02-03): Brand alias normalization
-    )
-except ModuleNotFoundError:
-    from regex_production_data import load_manufacturers, load_equipment_terms
-    from entity_extraction_loader import (
-        get_equipment_gazetteer,
-        get_diagnostic_patterns,
-        calculate_weight as calculate_entity_weight,
-        CORE_BRANDS,
-        CORE_EQUIPMENT,
-        CORE_FUZZY_TERMS,  # Phase 2 Fix: Extended fuzzy matching
-        BRAND_ALIASES,     # Phase 2 (2026-02-03): Brand alias normalization
-    )
+# Import from extraction package (moved files)
+from extraction.data.patterns import load_manufacturers, load_equipment_terms
+from extraction.loader import (
+    get_equipment_gazetteer,
+    get_diagnostic_patterns,
+    calculate_weight as calculate_entity_weight,
+    CORE_BRANDS,
+    CORE_EQUIPMENT,
+    CORE_FUZZY_TERMS,  # Phase 2 Fix: Extended fuzzy matching
+    BRAND_ALIASES,     # Phase 2 (2026-02-03): Brand alias normalization
+)
 
 # Fuzzy matching for brand misspellings (Fix #4 - 2026-02-02)
 try:

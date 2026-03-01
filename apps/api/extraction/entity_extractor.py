@@ -43,33 +43,15 @@ from dataclasses import dataclass  # Makes it easy to create data containers
 # =============================================================================
 # IMPORT PATTERN DATA - Load the 1,955 patterns for entity extraction
 # =============================================================================
-# We try to import from 'api.entity_extraction_loader' first (when running as part of API)
-# If that fails, we try 'entity_extraction_loader' (when running the file directly)
-# If both fail, we use fallback mode with limited patterns
+# Import from the extraction.loader module (moved from api.entity_extraction_loader)
 
-try:
-    # First try: Import as part of the API package
-    from api.entity_extraction_loader import (
-        get_equipment_gazetteer,    # Function to load brand/equipment lists
-        get_diagnostic_patterns,     # Function to load symptom/fault patterns
-        calculate_weight,            # Function to calculate entity importance
-        extract_entities_from_text,  # Alternative extraction function
-        PATTERNS_AVAILABLE           # Boolean: True if patterns loaded successfully
-    )
-except ImportError:
-    try:
-        # Second try: Import when running file directly (for testing)
-        from entity_extraction_loader import (
-            get_equipment_gazetteer,
-            get_diagnostic_patterns,
-            calculate_weight,
-            extract_entities_from_text,
-            PATTERNS_AVAILABLE
-        )
-    except ImportError:
-        # Last resort: No patterns available, will use basic fallback
-        PATTERNS_AVAILABLE = False
-        print("⚠️  Warning: entity_extraction_loader not found. Using fallback patterns.")
+from extraction.loader import (
+    get_equipment_gazetteer,    # Function to load brand/equipment lists
+    get_diagnostic_patterns,     # Function to load symptom/fault patterns
+    calculate_weight,            # Function to calculate entity importance
+    extract_entities_from_text,  # Alternative extraction function
+    PATTERNS_AVAILABLE           # Boolean: True if patterns loaded successfully
+)
 
 
 # =============================================================================
