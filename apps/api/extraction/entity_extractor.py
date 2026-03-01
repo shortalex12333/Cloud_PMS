@@ -1319,6 +1319,67 @@ def get_extractor() -> MaritimeEntityExtractor:
 
 
 # =============================================================================
+# BACKWARDS COMPATIBILITY ADAPTERS
+# =============================================================================
+# These adapters provide API compatibility with email_rag/entity_extractor.py
+# so that module can be deleted and imports redirected here.
+
+
+# Alias for backwards compatibility with email_rag code that imports EmailEntityExtractor
+EmailEntityExtractor = MaritimeEntityExtractor
+
+
+def extract_keywords_for_search(query: str) -> List[str]:
+    """
+    Extract keywords for hybrid search p_entity_keywords parameter.
+
+    This is a backwards-compatible adapter that wraps the MaritimeEntityExtractor
+    to provide the same interface as email_rag/entity_extractor.py.
+
+    Flattens all extracted entities into a single keyword list,
+    prioritizing equipment, models, and fault codes.
+
+    Args:
+        query: Search query text
+
+    Returns:
+        List of keywords for hybrid search
+    """
+    extractor = get_extractor()
+    entities = extractor.extract_entities(query)
+
+    # Priority order for keywords (matching email_rag behavior)
+    priority_types = [
+        'equipment', 'model', 'fault_code', 'brand',
+        'part', 'measurement', 'system',
+        'action', 'symptom', 'diagnostic'
+    ]
+
+    keywords = []
+    seen = set()
+
+    # Add entities in priority order
+    for entity_type in priority_types:
+        for entity in entities:
+            if entity.type == entity_type:
+                # Use the original value (not canonical) for search keywords
+                kw = entity.value.lower()
+                if kw not in seen:
+                    seen.add(kw)
+                    keywords.append(entity.value)
+
+    # Add remaining entity types not in priority list
+    for entity in entities:
+        if entity.type not in priority_types:
+            kw = entity.value.lower()
+            if kw not in seen:
+                seen.add(kw)
+                keywords.append(entity.value)
+
+    return keywords
+
+
+# =============================================================================
 # TEST CODE - Runs when file is executed directly
 # =============================================================================
 # Usage: python extraction/entity_extractor.py

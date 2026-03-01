@@ -780,7 +780,7 @@ async def get_message_focus(
 
         # If no extraction results, extract from preview_text now
         if not extracted_entities and message.get('preview_text'):
-            from email_rag.entity_extractor import EmailEntityExtractor
+            from extraction.entity_extractor import EmailEntityExtractor
             extractor = EmailEntityExtractor()
             full_text = f"{message.get('subject', '')}\n\n{message.get('preview_text', '')}"
             extracted_entities = extractor.extract(full_text)
