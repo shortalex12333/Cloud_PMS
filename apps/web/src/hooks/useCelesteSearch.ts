@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { getYachtId, getYachtSignature } from '@/lib/authHelpers';
 import { ensureFreshToken } from '@/lib/tokenRefresh';
 import type { SearchResult } from '@/types/search';
-import { getActionSuggestions, type ActionSuggestion } from '@/lib/actionClient';
+import { getActionSuggestions, type ActionSuggestion, prepareAction, type PrepareResponse, type PrefillField } from '@/lib/actionClient';
 
 // ============================================================================
 // IntentEnvelope Types - v1.3 Intent Abstraction
@@ -128,6 +128,10 @@ const RECENT_QUERIES_KEY = 'celeste_recent_queries';
 const MAX_RECENT_QUERIES = 5;
 const CACHE_TTL = 5 * 60 * 1000;  // 5 minutes
 
+// Prefill constants (v1.3)
+const PREPARE_DEBOUNCE_MS = 400;  // Within 350-500ms range per CONTEXT.md
+const PREPARE_CACHE_TTL = 30000;  // 30 second cache
+
 // F1 Architecture: L1/L2 Budget Enforcement
 const L1_TIMEOUT_MS = 3000;       // 3s timeout for primary search (includes network latency)
 const L2_TIMEOUT_MS = 5000;       // 5s timeout for fallback search
@@ -170,6 +174,218 @@ async function safeEnsureFreshToken(): Promise<string | null> {
     // Return null - search will proceed without auth (may fail with 401, but won't hang)
     return null;
   }
+}
+
+// ============================================================================
+// Cross-Lens Verb Routing - Ensure lens is determined by verb, not entity
+// ============================================================================
+
+/**
+ * Navigation verbs - indicate READ mode intent
+ * These verbs route to viewing/listing data
+ */
+const NAVIGATION_VERBS = ['show', 'list', 'view', 'find', 'display', 'get', 'search', 'see', 'browse'];
+
+/**
+ * Mutation verbs - indicate MUTATE mode intent
+ * These verbs route to creating/modifying data
+ */
+const MUTATION_VERBS = ['create', 'add', 'make', 'new', 'update', 'close', 'complete', 'delete', 'remove', 'assign', 'start', 'cancel', 'approve', 'reject', 'report', 'log'];
+
+/**
+ * Lens keyword patterns - ordered by specificity (more specific first)
+ * Used to detect the PRIMARY lens from query text
+ */
+const LENS_PATTERNS: Array<{ pattern: RegExp; lens: LensType; priority: number }> = [
+  // Work orders (highest specificity)
+  { pattern: /work\s*orders?/i, lens: 'work_order', priority: 100 },
+  { pattern: /\bwo\b/i, lens: 'work_order', priority: 100 },
+  { pattern: /maintenance\s*task/i, lens: 'work_order', priority: 95 },
+
+  // Faults
+  { pattern: /\bfaults?\b/i, lens: 'fault', priority: 90 },
+  { pattern: /\bdefects?\b/i, lens: 'fault', priority: 85 },
+
+  // Certificates
+  { pattern: /certificates?\b/i, lens: 'certificate', priority: 90 },
+  { pattern: /\bcerts?\b/i, lens: 'certificate', priority: 85 },
+
+  // Shopping list
+  { pattern: /shopping\s*list/i, lens: 'shopping_list', priority: 90 },
+  { pattern: /requisition/i, lens: 'shopping_list', priority: 85 },
+
+  // Receiving
+  { pattern: /receiving/i, lens: 'receiving', priority: 90 },
+  { pattern: /delivery/i, lens: 'receiving', priority: 80 },
+
+  // Documents
+  { pattern: /documents?\b/i, lens: 'document', priority: 85 },
+  { pattern: /manuals?\b/i, lens: 'document', priority: 80 },
+  { pattern: /\bfiles?\b/i, lens: 'document', priority: 75 },
+
+  // Parts/Inventory
+  { pattern: /\bparts?\b/i, lens: 'part', priority: 85 },
+  { pattern: /inventory/i, lens: 'part', priority: 85 },
+  { pattern: /\bstock\b/i, lens: 'part', priority: 80 },
+  { pattern: /spares?\b/i, lens: 'part', priority: 80 },
+
+  // Crew
+  { pattern: /\bcrew\b/i, lens: 'crew', priority: 85 },
+  { pattern: /\bprofile\b/i, lens: 'crew', priority: 75 },
+
+  // Equipment (lower priority - often used as context, not target)
+  { pattern: /equipment/i, lens: 'equipment', priority: 70 },
+  { pattern: /\bengines?\b/i, lens: 'equipment', priority: 65 },
+  { pattern: /\bgenerators?\b/i, lens: 'equipment', priority: 65 },
+  { pattern: /\bpumps?\b/i, lens: 'equipment', priority: 65 },
+
+  // Other lenses
+  { pattern: /handover/i, lens: 'handover', priority: 80 },
+  { pattern: /hours\s*of\s*rest/i, lens: 'hours_of_rest', priority: 80 },
+  { pattern: /\bhor\b/i, lens: 'hours_of_rest', priority: 75 },
+  { pattern: /\bemail/i, lens: 'email', priority: 80 },
+  { pattern: /warranty/i, lens: 'warranty', priority: 80 },
+];
+
+/**
+ * Equipment context patterns - detect equipment mentions that serve as CONTEXT (filter), not target lens
+ * Example: "show work orders for main engine" - "main engine" is context, not the target
+ */
+const EQUIPMENT_CONTEXT_PATTERNS: RegExp[] = [
+  /\bfor\s+(the\s+)?(main\s+)?engine/i,
+  /\bfor\s+(the\s+)?generator/i,
+  /\bfor\s+(the\s+)?pump/i,
+  /\bfor\s+[A-Z]{2,4}[-]?\d{1,4}/i,  // e.g., "for ME-001"
+  /\bon\s+(the\s+)?(main\s+)?engine/i,
+  /\bon\s+(the\s+)?generator/i,
+  /\brelated\s+to\s+/i,
+  /\bregarding\s+/i,
+];
+
+export interface VerbRoutingResult {
+  mode: IntentMode;
+  lens: LensType;
+  contextEntity: string | null;  // Equipment/entity mentioned as context (filter target)
+  verb: string | null;
+}
+
+/**
+ * Detect primary intent from query using verb-first routing
+ *
+ * RULE: The VERB determines the lens, not the entity mentioned
+ *
+ * Examples:
+ * - "show work orders for main engine" -> lens=work_order, filter by equipment
+ * - "show main engine" -> lens=equipment
+ * - "create work order for main engine" -> action=create, lens=work_order, context=equipment
+ */
+export function detectPrimaryIntent(query: string): VerbRoutingResult {
+  const lowerQuery = query.toLowerCase().trim();
+
+  // Step 1: Detect verb type (mutation vs navigation)
+  let detectedMode: IntentMode = 'READ';
+  let detectedVerb: string | null = null;
+
+  // Check mutation verbs first (they take precedence for mode detection)
+  for (const verb of MUTATION_VERBS) {
+    // Match verb at start or after common prefixes
+    const verbPattern = new RegExp(`^${verb}\\b|\\bplease\\s+${verb}\\b|\\bcan\\s+you\\s+${verb}\\b`, 'i');
+    if (verbPattern.test(lowerQuery) || lowerQuery.startsWith(verb)) {
+      detectedMode = 'MUTATE';
+      detectedVerb = verb;
+      break;
+    }
+  }
+
+  // If no mutation verb, check navigation verbs
+  if (!detectedVerb) {
+    for (const verb of NAVIGATION_VERBS) {
+      const verbPattern = new RegExp(`^${verb}\\b|\\bplease\\s+${verb}\\b|\\bcan\\s+you\\s+${verb}\\b`, 'i');
+      if (verbPattern.test(lowerQuery) || lowerQuery.startsWith(verb)) {
+        detectedMode = 'READ';
+        detectedVerb = verb;
+        break;
+      }
+    }
+  }
+
+  // Step 2: Detect lens from query - VERB determines PRIMARY target
+  // Find all lens matches and pick the one with highest priority that appears EARLIEST in query
+  let detectedLens: LensType = 'unknown';
+  let bestMatch: { lens: LensType; position: number; priority: number } | null = null;
+
+  for (const { pattern, lens, priority } of LENS_PATTERNS) {
+    const match = pattern.exec(lowerQuery);
+    if (match) {
+      const position = match.index;
+
+      // Skip equipment matches if they appear as context (after "for", "on", etc.)
+      if (lens === 'equipment') {
+        const isContext = EQUIPMENT_CONTEXT_PATTERNS.some(ctxPattern => ctxPattern.test(lowerQuery));
+        // If equipment is mentioned as context AND there's a higher-priority lens, skip equipment
+        if (isContext && bestMatch && bestMatch.priority > priority) {
+          continue;
+        }
+      }
+
+      // Prefer: higher priority, then earlier position
+      if (!bestMatch || priority > bestMatch.priority || (priority === bestMatch.priority && position < bestMatch.position)) {
+        bestMatch = { lens, position, priority };
+      }
+    }
+  }
+
+  if (bestMatch) {
+    detectedLens = bestMatch.lens;
+  }
+
+  // Step 3: Extract context entity (equipment mentioned as filter target)
+  let contextEntity: string | null = null;
+  for (const ctxPattern of EQUIPMENT_CONTEXT_PATTERNS) {
+    const ctxMatch = ctxPattern.exec(lowerQuery);
+    if (ctxMatch) {
+      // Extract the equipment name from the match
+      contextEntity = ctxMatch[0].replace(/^(for|on|related to|regarding)\s+(the\s+)?/i, '').trim();
+      break;
+    }
+  }
+
+  // Also check for equipment ID patterns (ME-001, GE-002, etc.)
+  const equipmentIdMatch = lowerQuery.match(/\b([A-Z]{2,4}[-]?\d{1,4})\b/i);
+  if (equipmentIdMatch && !contextEntity) {
+    contextEntity = equipmentIdMatch[1].toUpperCase();
+  }
+
+  return {
+    mode: detectedMode,
+    lens: detectedLens,
+    contextEntity,
+    verb: detectedVerb,
+  };
+}
+
+/**
+ * Get the lens-specific filter to apply when equipment is mentioned as context
+ * Maps lens type to the appropriate equipment filter field
+ */
+export function getLensEquipmentFilter(lens: LensType): string {
+  const filterMap: Record<LensType, string> = {
+    work_order: 'equipment_id',
+    fault: 'equipment_id',
+    part: 'equipment_id',
+    certificate: 'equipment_id',
+    equipment: 'id',  // Direct navigation
+    document: 'related_equipment_id',
+    shopping_list: 'equipment_id',
+    receiving: 'equipment_id',
+    crew: 'assigned_equipment',
+    handover: 'equipment_id',
+    hours_of_rest: 'crew_id',
+    email: 'related_equipment_id',
+    warranty: 'equipment_id',
+    unknown: 'equipment_id',
+  };
+  return filterMap[lens];
 }
 
 // Certificate action keywords - triggers action suggestions fetch
@@ -409,10 +625,27 @@ function hashQuery(query: string): string {
 }
 
 /**
- * Infer lens type from query content
- * Priority order matches domain detection logic
+ * Infer lens type from query content using verb-first routing
+ *
+ * IMPORTANT: This now uses detectPrimaryIntent() which ensures the lens is
+ * determined by the verb/action, not just the entity mentioned.
+ *
+ * Example:
+ * - "show work orders for main engine" -> lens=work_order (not equipment)
+ * - "show main engine" -> lens=equipment
+ *
+ * Priority order matches domain detection logic with verb-routing override
  */
 function inferLens(query: string): LensType {
+  // Use verb-first routing for proper lens detection
+  const { lens } = detectPrimaryIntent(query);
+
+  // If verb routing found a lens, use it
+  if (lens !== 'unknown') {
+    return lens;
+  }
+
+  // Fallback to legacy detection for edge cases
   const lowerQuery = query.toLowerCase().trim();
 
   // Check each domain in priority order
@@ -537,11 +770,17 @@ function inferReadiness(mode: IntentMode, action: IntentAction | null, entities:
  * DETERMINISM GUARANTEE: Same query + suggestions produces same envelope
  * (timestamp excluded from equality comparison)
  *
+ * VERB ROUTING: Uses detectPrimaryIntent() to ensure lens is determined by
+ * verb, not entity. Equipment mentioned after "for" becomes a filter, not the target.
+ *
  * @param query - User's search query
  * @param suggestions - Action suggestions from getActionSuggestions()
  * @returns IntentEnvelope with all fields populated
  */
 export function deriveIntentEnvelope(query: string, suggestions: ActionSuggestion[]): IntentEnvelope {
+  // Use verb-first routing for proper mode/lens detection
+  const verbRouting = detectPrimaryIntent(query);
+
   // Extract action from suggestions
   let action: IntentAction | null = null;
   if (suggestions.length > 0) {
@@ -550,16 +789,38 @@ export function deriveIntentEnvelope(query: string, suggestions: ActionSuggestio
       action = {
         action_id: best.action_id,
         confidence: best.match_score || 0.8, // Use match_score from backend
-        verb: best.action_id.split('_')[0], // Extract verb from action_id
+        verb: verbRouting.verb || best.action_id.split('_')[0], // Use detected verb or extract from action_id
         matched_text: query.substring(0, 20) // First 20 chars
       };
     }
   }
 
-  const lens = inferLens(query);
+  // Use verb routing lens (ensures "show work orders for engine" -> work_order, not equipment)
+  const lens = verbRouting.lens !== 'unknown' ? verbRouting.lens : inferLens(query);
+
+  // Extract filters, adding equipment context filter if detected
   const filters = extractFilters(query);
+
+  // If equipment is mentioned as context (not target), add it as a filter
+  if (verbRouting.contextEntity && lens !== 'equipment') {
+    const equipmentFilterField = getLensEquipmentFilter(lens);
+    // Add context entity as filter (will be resolved to actual ID by downstream)
+    filters.push({
+      field: equipmentFilterField,
+      value: verbRouting.contextEntity,
+      operator: 'eq'
+    });
+  }
+
   const entities = extractEntities(query, suggestions);
-  const mode = inferMode(query, action);
+
+  // Use verb routing mode, override with action detection if action found
+  let mode = verbRouting.mode;
+  if (action) {
+    // If we have an action suggestion, prefer the action-based mode detection
+    mode = inferMode(query, action);
+  }
+
   const readiness_state = inferReadiness(mode, action, entities);
 
   // Calculate overall confidence
@@ -607,6 +868,8 @@ interface SearchState {
   suggestions: SearchSuggestion[];
   actionSuggestions: ActionSuggestion[];
   intentEnvelope: IntentEnvelope | null;  // v1.3: Unified intent structure
+  prefillData: PrepareResponse | null;  // v1.3: Prefill from /prepare endpoint
+  isPreparing: boolean;  // Loading state for prefill
 }
 
 interface SearchSuggestion {
@@ -680,6 +943,25 @@ function addRecentQuery(query: string): void {
 
 // Result cache management
 const resultCache = new Map<string, CachedResult>();
+
+// Prefill cache management (v1.3)
+const prepareCache = new Map<string, { data: PrepareResponse; timestamp: number }>();
+
+function getPrepareKey(q: string, domain: string, yachtId: string): string {
+  return `${q}|${domain}|${yachtId}`;
+}
+
+function getCachedPrepare(key: string): PrepareResponse | null {
+  const cached = prepareCache.get(key);
+  if (cached && Date.now() - cached.timestamp < PREPARE_CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedPrepare(key: string, data: PrepareResponse): void {
+  prepareCache.set(key, { data, timestamp: Date.now() });
+}
 
 function getCachedResults(query: string): SearchResult[] | null {
   const cached = resultCache.get(query.toLowerCase());
@@ -1149,6 +1431,8 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
     suggestions: [],
     actionSuggestions: [],
     intentEnvelope: null,  // v1.3: Unified intent structure
+    prefillData: null,  // v1.3: Prefill from /prepare endpoint
+    isPreparing: false,  // Loading state for prefill
   });
 
   // Refs for debouncing and cancellation
@@ -1157,6 +1441,10 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
   const lastQueryTimeRef = useRef<number>(0);
   const lastKeystrokeRef = useRef<number>(0);
   const pendingQueryRef = useRef<string>('');
+
+  // Prefill refs (v1.3)
+  const prepareAbortRef = useRef<AbortController | null>(null);
+  const prepareTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Store objectTypes in a ref for stable access in callbacks
   const objectTypesRef = useRef<string[] | null>(objectTypes);
@@ -1226,7 +1514,69 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
+    // Cancel prefill requests too
+    if (prepareAbortRef.current) {
+      prepareAbortRef.current.abort();
+      prepareAbortRef.current = null;
+    }
+    if (prepareTimerRef.current) {
+      clearTimeout(prepareTimerRef.current);
+      prepareTimerRef.current = null;
+    }
   }, []);
+
+  /**
+   * Fetch prefill data with debounce and cancellation (v1.3)
+   */
+  const fetchPrefillData = useCallback(async (
+    query: string,
+    domain: string,
+    candidateActionIds: string[]
+  ) => {
+    if (!query.trim() || !yachtId) return;
+
+    // Build cache key
+    const cacheKey = getPrepareKey(query, domain, yachtId);
+
+    // Check cache first
+    const cached = getCachedPrepare(cacheKey);
+    if (cached) {
+      setState(prev => ({ ...prev, prefillData: cached, isPreparing: false }));
+      return;
+    }
+
+    // Cancel any in-flight request
+    if (prepareAbortRef.current) {
+      prepareAbortRef.current.abort();
+    }
+    prepareAbortRef.current = new AbortController();
+
+    setState(prev => ({ ...prev, isPreparing: true }));
+
+    try {
+      const response = await prepareAction({
+        q: query,
+        domain,
+        candidate_action_ids: candidateActionIds,
+        context: { yacht_id: yachtId, user_role: 'crew' },
+        hint_entities: {},
+        client: {
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          now_iso: new Date().toISOString(),
+        },
+      }, prepareAbortRef.current.signal);
+
+      setCachedPrepare(cacheKey, response);
+      setState(prev => ({ ...prev, prefillData: response, isPreparing: false }));
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Cancelled - don't update state
+        return;
+      }
+      console.warn('[useCelesteSearch] Prefill failed:', error);
+      setState(prev => ({ ...prev, prefillData: null, isPreparing: false }));
+    }
+  }, [yachtId]);
 
   /**
    * Fetch action suggestions if query has action intent (cert, WO, fault, shopping list, documents, receiving, crew)
@@ -1291,6 +1641,20 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
         actionSuggestions: response.actions,
         intentEnvelope: envelope,  // v1.3: MUTATE/MIXED mode envelope
       }));
+
+      // Trigger debounced prefill call if we have action suggestions
+      if (response.actions.length > 0) {
+        // Clear any pending prefill timer
+        if (prepareTimerRef.current) {
+          clearTimeout(prepareTimerRef.current);
+        }
+
+        // Debounce prefill call
+        prepareTimerRef.current = setTimeout(() => {
+          const candidateIds = response.actions.slice(0, 3).map(a => a.action_id);
+          fetchPrefillData(query, domain, candidateIds);
+        }, PREPARE_DEBOUNCE_MS);
+      }
     } catch (error) {
       console.warn('[useCelesteSearch] Failed to fetch action suggestions:', error);
       // Don't block search on action suggestion failure - derive READ mode envelope
@@ -1502,6 +1866,8 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
       suggestions: [],
       actionSuggestions: [],
       intentEnvelope: null,  // v1.3: Clear envelope on clear
+      prefillData: null,  // v1.3: Clear prefill on clear
+      isPreparing: false,  // v1.3: Clear prefill loading state
     });
   }, [cancelCurrentRequest, clearResultMap]);
 
@@ -1549,6 +1915,8 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
     suggestions: state.suggestions,
     actionSuggestions: state.actionSuggestions,
     intentEnvelope: state.intentEnvelope,  // v1.3: Unified intent structure
+    prefillData: state.prefillData,  // v1.3: Prefill from /prepare endpoint
+    isPreparing: state.isPreparing,  // v1.3: Loading state for prefill
 
     // Actions
     handleQueryChange,
