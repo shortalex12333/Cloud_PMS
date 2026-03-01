@@ -63,12 +63,67 @@ Usage:
 from typing import Dict, List, Any, Optional
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from common.field_metadata import FieldMetadata, LookupResult
 from common.lookup_functions import lookup_entity
+from common.date_parser import parse_relative_date
+from common.temporal_parser import parse_temporal_phrase
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# PRIORITY SYNONYM MAPPING
+# =============================================================================
+
+PRIORITY_SYNONYMS = {
+    "critical": "EMERGENCY",
+    "urgent": "HIGH",
+    "high": "HIGH",
+    "asap": "HIGH",
+    "medium": "MEDIUM",
+    "normal": "MEDIUM",
+    "low": "LOW",
+    "minor": "LOW",
+}
+
+
+def map_priority(raw_priority: str) -> tuple[Optional[str], float]:
+    """
+    Map priority synonyms to ActionPriority enum values.
+
+    Args:
+        raw_priority: Raw priority string from NLP
+
+    Returns:
+        Tuple of (mapped_value, confidence)
+        - Exact match: (mapped, 0.95)
+        - Fuzzy match: (mapped, 0.85)
+        - No match: (None, 0.0)
+
+    Example:
+        >>> map_priority("urgent")
+        ("HIGH", 0.95)
+        >>> map_priority("  URGENT  ")
+        ("HIGH", 0.85)
+        >>> map_priority("unknown")
+        (None, 0.0)
+    """
+    if not raw_priority:
+        return (None, 0.0)
+
+    # Exact match (case-sensitive)
+    if raw_priority in PRIORITY_SYNONYMS:
+        return (PRIORITY_SYNONYMS[raw_priority], 0.95)
+
+    # Fuzzy match (lowercase + strip)
+    raw_clean = raw_priority.strip().lower()
+    if raw_clean in PRIORITY_SYNONYMS:
+        return (PRIORITY_SYNONYMS[raw_clean], 0.85)
+
+    # No match
+    return (None, 0.0)
 
 
 # =============================================================================
@@ -191,6 +246,62 @@ def apply_value_map(
             return mapped_value
 
     return value
+
+
+def apply_date_parsing(
+    value: Any,
+    base_date: Optional[datetime] = None
+) -> Optional[str]:
+    """
+    Parse natural language date expressions and return ISO format string.
+
+    Supports patterns like:
+    - "tomorrow" -> next day
+    - "next week" -> Monday of next week
+    - "in 3 days" -> 3 days from now
+    - "next Monday" -> next occurrence of Monday
+    - "end of month" -> last day of current month
+    - "urgent" / "asap" -> today
+
+    Args:
+        value: Natural language date expression or existing date value
+        base_date: Optional base date for calculations (default: UTC now)
+
+    Returns:
+        ISO format date string (YYYY-MM-DD) or None if not parseable
+
+    Example:
+        >>> apply_date_parsing("tomorrow")
+        "2024-03-16"  # If today is 2024-03-15
+        >>> apply_date_parsing("next week")
+        "2024-03-18"  # Monday of next week
+        >>> apply_date_parsing("not a date")
+        None
+    """
+    if value is None:
+        return None
+
+    value_str = str(value).strip()
+
+    # If already in ISO format (YYYY-MM-DD), return as-is
+    if len(value_str) == 10 and value_str[4] == '-' and value_str[7] == '-':
+        try:
+            datetime.strptime(value_str, "%Y-%m-%d")
+            return value_str
+        except ValueError:
+            pass
+
+    # Use UTC if no base_date provided
+    if base_date is None:
+        base_date = datetime.now(timezone.utc)
+
+    # Try to parse as relative date
+    parsed_date = parse_relative_date(value_str, base_date)
+
+    if parsed_date is not None:
+        return parsed_date.isoformat()
+
+    return None
 
 
 # =============================================================================
@@ -352,6 +463,13 @@ async def build_mutation_preview(
                     if metadata.value_map:
                         field_value = apply_value_map(field_value, metadata.value_map)
 
+                    # Apply date parsing for date fields
+                    if metadata.field_type == "date" and field_value is not None:
+                        parsed_date = apply_date_parsing(field_value)
+                        if parsed_date is not None:
+                            field_value = parsed_date
+                            logger.debug(f"[Prefill] Parsed date for {field_name}: {field_value}")
+
                 else:
                     # Use default if entity not found
                     field_value = metadata.default
@@ -392,6 +510,13 @@ async def build_mutation_preview(
                     # Apply value map if specified
                     if metadata.value_map:
                         field_value = apply_value_map(field_value, metadata.value_map)
+
+                    # Apply date parsing for date fields (before lookup)
+                    if metadata.field_type == "date" and field_value is not None:
+                        parsed_date = apply_date_parsing(field_value)
+                        if parsed_date is not None:
+                            field_value = parsed_date
+                            logger.debug(f"[Prefill] Parsed date for {field_name}: {field_value}")
 
                     # Perform yacht-scoped lookup if required
                     if metadata.lookup_required:
@@ -520,11 +645,287 @@ def validate_mutation_preview(
     }
 
 
+# =============================================================================
+# PREPARE RESPONSE BUILDER (for /v1/actions/prepare endpoint)
+# =============================================================================
+
+async def build_prepare_response(
+    q: str,
+    domain: str,
+    candidate_action_ids: List[str],
+    context: Dict[str, Any],  # yacht_id, user_role
+    hint_entities: Dict[str, Any],
+    client: Dict[str, str],  # timezone, now_iso
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Build /prepare response for prefill preview with confidence per field.
+
+    This is the main entry point for the /v1/actions/prepare endpoint.
+    It integrates:
+    - Action selection from candidates
+    - Entity extraction (from hint_entities)
+    - Temporal parsing
+    - Priority mapping
+    - Entity resolution via yacht-scoped lookups
+
+    Args:
+        q: Natural language query
+        domain: Domain filter (e.g., "work_orders")
+        candidate_action_ids: List of candidate action IDs from action detector
+        context: Dict with yacht_id, user_role
+        hint_entities: Pre-extracted entities from NLP pipeline
+        client: Dict with timezone, now_iso for temporal parsing
+        supabase_client: Supabase client for lookups
+
+    Returns:
+        Dict with:
+            action_id: Selected action ID
+            match_score: Confidence in action selection
+            ready_to_commit: bool
+            prefill: Dict[field_name -> {value, confidence, source}]
+            missing_required_fields: List[str]
+            ambiguities: List[{field, candidates}]
+            errors: List[{error_code, message, field}]
+
+    Example response:
+        {
+            "action_id": "create_work_order",
+            "match_score": 0.95,
+            "ready_to_commit": False,
+            "prefill": {
+                "equipment_id": {"value": "uuid", "confidence": 0.92, "source": "entity_resolver"},
+                "priority": {"value": "HIGH", "confidence": 0.95, "source": "keyword_map"},
+                "scheduled_date": {"value": "2026-03-08", "confidence": 0.88, "source": "temporal"},
+            },
+            "missing_required_fields": ["description"],
+            "ambiguities": [],
+            "errors": []
+        }
+    """
+    errors = []
+    ambiguities = []
+    prefill = {}
+    missing_required_fields = []
+
+    # Import action registry to get action definition
+    try:
+        from action_router.registry import get_action, search_actions
+    except ImportError:
+        logger.error("[Prepare] Failed to import action registry")
+        return {
+            "action_id": None,
+            "match_score": 0.0,
+            "ready_to_commit": False,
+            "prefill": {},
+            "missing_required_fields": [],
+            "ambiguities": [],
+            "errors": [{
+                "error_code": "REGISTRY_IMPORT_ERROR",
+                "message": "Failed to import action registry",
+                "field": None
+            }]
+        }
+
+    # =========================================================================
+    # STEP 1: Select best matching action from candidates
+    # =========================================================================
+    action_id = None
+    match_score = 0.0
+
+    if not candidate_action_ids:
+        errors.append({
+            "error_code": "NO_MATCHING_ACTION",
+            "message": "No candidate actions provided",
+            "field": None
+        })
+    else:
+        # Use first candidate for now (in production, use search_actions with q)
+        action_id = candidate_action_ids[0]
+        match_score = 0.95  # Simplified - production should calculate from search
+
+        # Validate action exists
+        try:
+            action_def = get_action(action_id)
+        except KeyError:
+            errors.append({
+                "error_code": "INVALID_ACTION",
+                "message": f"Action '{action_id}' not found in registry",
+                "field": None
+            })
+            action_id = None
+
+    if not action_id:
+        return {
+            "action_id": None,
+            "match_score": 0.0,
+            "ready_to_commit": False,
+            "prefill": {},
+            "missing_required_fields": [],
+            "ambiguities": [],
+            "errors": errors
+        }
+
+    # =========================================================================
+    # STEP 2: Get action's field metadata
+    # =========================================================================
+    action_def = get_action(action_id)
+    if not action_def.field_metadata:
+        # No field metadata - return empty prefill
+        return {
+            "action_id": action_id,
+            "match_score": match_score,
+            "ready_to_commit": False,
+            "prefill": {},
+            "missing_required_fields": action_def.required_fields or [],
+            "ambiguities": [],
+            "errors": []
+        }
+
+    # Convert registry FieldMetadata to prefill FieldMetadata format
+    from action_router.router import convert_registry_field_metadata_to_prefill
+    field_metadata_dict = convert_registry_field_metadata_to_prefill(action_def.field_metadata)
+
+    # =========================================================================
+    # STEP 3: Build mutation preview using existing engine
+    # =========================================================================
+    yacht_id = context.get("yacht_id")
+    user_id = context.get("user_id")
+
+    preview_result = await build_mutation_preview(
+        query_text=q,
+        extracted_entities=hint_entities or {},
+        field_metadata=field_metadata_dict,
+        yacht_id=yacht_id,
+        supabase_client=supabase_client,
+        user_id=user_id,
+        context=context,
+    )
+
+    mutation_preview = preview_result.get("mutation_preview", {})
+    warnings = preview_result.get("warnings", [])
+    dropdown_options = preview_result.get("dropdown_options", {})
+
+    # =========================================================================
+    # STEP 4: Enhance with temporal parsing for date fields
+    # =========================================================================
+    for field_name, metadata in field_metadata_dict.items():
+        if metadata.field_type == "date":
+            # Check if entity was extracted for this field
+            entity_value = hint_entities.get(metadata.auto_populate_from) if metadata.auto_populate_from else None
+
+            if entity_value and field_name not in mutation_preview:
+                # Parse temporal phrase
+                temporal_result = parse_temporal_phrase(
+                    entity_value,
+                    client.get("timezone", "UTC"),
+                    client.get("now_iso", datetime.now(timezone.utc).isoformat())
+                )
+
+                if temporal_result.value:
+                    prefill[field_name] = {
+                        "value": temporal_result.value,
+                        "confidence": temporal_result.confidence,
+                        "source": "temporal"
+                    }
+
+    # =========================================================================
+    # STEP 5: Enhance with priority mapping
+    # =========================================================================
+    # Check if priority field exists
+    if "priority" in field_metadata_dict:
+        raw_priority = hint_entities.get("priority")
+        if raw_priority and "priority" not in mutation_preview:
+            mapped_priority, confidence = map_priority(raw_priority)
+            if mapped_priority:
+                prefill["priority"] = {
+                    "value": mapped_priority,
+                    "confidence": confidence,
+                    "source": "keyword_map"
+                }
+
+    # =========================================================================
+    # STEP 6: Convert mutation_preview to prefill format with confidence
+    # =========================================================================
+    for field_name, field_value in mutation_preview.items():
+        if field_name not in prefill:
+            # Determine source based on field metadata
+            metadata = field_metadata_dict.get(field_name)
+            if metadata:
+                if metadata.lookup_required:
+                    source = "entity_resolver"
+                    confidence = 0.92
+                elif metadata.compose_template:
+                    source = "template"
+                    confidence = 0.88
+                elif metadata.classification == "CONTEXT":
+                    source = "context"
+                    confidence = 1.0
+                elif metadata.classification == "BACKEND_AUTO":
+                    source = "backend_auto"
+                    confidence = 1.0
+                else:
+                    source = "extracted"
+                    confidence = 0.85
+            else:
+                source = "unknown"
+                confidence = 0.80
+
+            prefill[field_name] = {
+                "value": field_value,
+                "confidence": confidence,
+                "source": source
+            }
+
+    # =========================================================================
+    # STEP 7: Build ambiguities from dropdown_options
+    # =========================================================================
+    for field_name, options in dropdown_options.items():
+        ambiguities.append({
+            "field": field_name,
+            "candidates": [
+                {
+                    "id": opt.get("id", ""),
+                    "label": opt.get("name", "") or opt.get("label", ""),
+                    "confidence": 0.5  # Equal confidence for ambiguous candidates
+                }
+                for opt in options
+            ]
+        })
+
+    # =========================================================================
+    # STEP 8: Identify missing required fields
+    # =========================================================================
+    missing_required_fields = preview_result.get("missing_required", [])
+
+    # =========================================================================
+    # STEP 9: Determine ready_to_commit
+    # =========================================================================
+    ready_to_commit = (
+        len(missing_required_fields) == 0 and
+        len(ambiguities) == 0
+    )
+
+    return {
+        "action_id": action_id,
+        "match_score": match_score,
+        "ready_to_commit": ready_to_commit,
+        "prefill": prefill,
+        "missing_required_fields": missing_required_fields,
+        "ambiguities": ambiguities,
+        "errors": errors
+    }
+
+
 __all__ = [
     "build_mutation_preview",
+    "build_prepare_response",
     "validate_mutation_preview",
     "extract_entity_value",
     "apply_compose_template",
     "apply_value_map",
+    "apply_date_parsing",
     "generate_backend_auto_value",
+    "map_priority",
+    "PRIORITY_SYNONYMS",
 ]
