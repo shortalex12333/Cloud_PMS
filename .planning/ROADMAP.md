@@ -481,7 +481,10 @@ Plans:
 3. Same query produces identical IntentEnvelope structure across repeated searches (deterministic output verified)
 4. IntentEnvelope includes readiness_state field derived from Action Detector + Entity Extractor outputs
 
-**Plans:** TBD
+**Plans:** 1 plan
+
+Plans:
+- [ ] 15-01-PLAN.md — Define IntentEnvelope type, implement deriveIntentEnvelope function, integrate with search state
 
 ---
 
@@ -564,7 +567,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Intent Envelope | 0/? | Not started | - |
+| 15. Intent Envelope | 0/1 | Planning complete | - |
 | 16. Prefill Integration | 0/? | Not started | - |
 | 17. Readiness States | 0/? | Not started | - |
 | 18. Route & Disambiguation | 0/? | Not started | - |
@@ -574,3 +577,4 @@ Plans:
 
 *Created: 2026-02-17*
 *Updated: 2026-03-01 — v1.3 Actionable UX Unification roadmap added (phases 15-19)*
+*Updated: 2026-03-01 — Phase 15 plan created (15-01-PLAN.md)*
