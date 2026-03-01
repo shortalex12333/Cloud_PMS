@@ -392,6 +392,211 @@ function detectCrewActionIntent(query: string): boolean {
   return CREW_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
 }
 
+// ============================================================================
+// IntentEnvelope Derivation - Deterministic Intent Extraction
+// ============================================================================
+
+/**
+ * Deterministic hash function - djb2 algorithm
+ * Produces consistent output for same input, no crypto dependencies
+ */
+function hashQuery(query: string): string {
+  let hash = 5381;
+  for (let i = 0; i < query.length; i++) {
+    hash = ((hash << 5) + hash) ^ query.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+/**
+ * Infer lens type from query content
+ * Priority order matches domain detection logic
+ */
+function inferLens(query: string): LensType {
+  const lowerQuery = query.toLowerCase().trim();
+
+  // Check each domain in priority order
+  if (detectWorkOrderActionIntent(query) || lowerQuery.includes('work order') || lowerQuery.includes('wo ')) return 'work_order';
+  if (detectFaultActionIntent(query) || lowerQuery.includes('fault')) return 'fault';
+  if (detectCertActionIntent(query) || lowerQuery.includes('certificate') || lowerQuery.includes('cert')) return 'certificate';
+  if (detectShoppingListActionIntent(query) || lowerQuery.includes('shopping')) return 'shopping_list';
+  if (detectReceivingActionIntent(query) || lowerQuery.includes('receiving')) return 'receiving';
+  if (detectDocumentActionIntent(query) || lowerQuery.includes('document') || lowerQuery.includes('manual')) return 'document';
+  if (detectPartActionIntent(query) || lowerQuery.includes('part') || lowerQuery.includes('inventory') || lowerQuery.includes('stock')) return 'part';
+  if (detectCrewActionIntent(query) || lowerQuery.includes('crew') || lowerQuery.includes('profile')) return 'crew';
+  if (lowerQuery.includes('equipment') || lowerQuery.includes('engine') || lowerQuery.includes('generator') || lowerQuery.includes('pump')) return 'equipment';
+  if (lowerQuery.includes('handover')) return 'handover';
+  if (lowerQuery.includes('hours of rest') || lowerQuery.includes('hor ')) return 'hours_of_rest';
+  if (lowerQuery.includes('email')) return 'email';
+  if (lowerQuery.includes('warranty')) return 'warranty';
+
+  return 'unknown';
+}
+
+/**
+ * Extract filters from query for READ mode navigation
+ * Detects status, priority patterns
+ */
+function extractFilters(query: string): IntentFilter[] {
+  const filters: IntentFilter[] = [];
+  const lowerQuery = query.toLowerCase();
+
+  // Status filters
+  const statusPatterns: Record<string, string> = {
+    'open': 'open', 'pending': 'pending', 'closed': 'closed',
+    'active': 'active', 'completed': 'completed', 'in progress': 'in_progress'
+  };
+  for (const [pattern, value] of Object.entries(statusPatterns)) {
+    if (lowerQuery.includes(pattern)) {
+      filters.push({ field: 'status', value, operator: 'eq' });
+      break; // Only one status filter
+    }
+  }
+
+  // Priority filters
+  const priorityPatterns: Record<string, string> = {
+    'critical': 'critical', 'urgent': 'high', 'high': 'high',
+    'medium': 'medium', 'low': 'low'
+  };
+  for (const [pattern, value] of Object.entries(priorityPatterns)) {
+    if (lowerQuery.includes(pattern)) {
+      filters.push({ field: 'priority', value, operator: 'eq' });
+      break;
+    }
+  }
+
+  return filters;
+}
+
+/**
+ * Extract entities from query and action suggestions
+ * Includes equipment patterns extracted from query text
+ */
+function extractEntities(query: string, suggestions: ActionSuggestion[]): ExtractedEntity[] {
+  const entities: ExtractedEntity[] = [];
+
+  // Extract equipment mentions (simple pattern matching)
+  const equipmentPattern = /\b(ME\d+|GE\d+|AE\d+|[A-Z]{2,4}[-]?\d{1,4})\b/gi;
+  const matches = query.match(equipmentPattern) || [];
+  for (const match of matches) {
+    entities.push({
+      type: 'equipment',
+      value: match,
+      canonical: match.toUpperCase(),
+      confidence: 0.85
+    });
+  }
+
+  // Note: ActionSuggestion from backend doesn't include entities field
+  // Entity extraction happens via query pattern matching above
+  // Future: integrate with backend entity extractor for richer extraction
+
+  return entities;
+}
+
+/**
+ * Infer mode from query and detected action
+ * READ: No action detected (navigation/search)
+ * MUTATE: Action detected (create, update, delete)
+ * MIXED: Both read and action intent present
+ */
+function inferMode(query: string, action: IntentAction | null): IntentMode {
+  // If we detected an action verb, it's MUTATE
+  if (action) {
+    // Check if also has READ intent (e.g., "show and update...")
+    const readVerbs = ['show', 'list', 'view', 'display', 'find', 'search', 'get'];
+    const lowerQuery = query.toLowerCase();
+    const hasReadIntent = readVerbs.some(v => lowerQuery.startsWith(v));
+    return hasReadIntent ? 'MIXED' : 'MUTATE';
+  }
+  return 'READ';
+}
+
+/**
+ * Infer readiness state based on mode, action, and entities
+ * READY: All required fields present
+ * NEEDS_INPUT: Missing entities or low confidence
+ * BLOCKED: Cannot proceed (reserved for auth/permission issues)
+ */
+function inferReadiness(mode: IntentMode, action: IntentAction | null, entities: ExtractedEntity[]): ReadinessState {
+  // READ mode is always READY (just navigation)
+  if (mode === 'READ') return 'READY';
+
+  // MUTATE requires action confidence >= 0.8 and at least one entity
+  if (action && action.confidence >= 0.8 && entities.length > 0) {
+    return 'READY';
+  }
+
+  // Missing entities or low confidence
+  return 'NEEDS_INPUT';
+}
+
+/**
+ * Derive IntentEnvelope from query and action suggestions
+ *
+ * DETERMINISM GUARANTEE: Same query + suggestions produces same envelope
+ * (timestamp excluded from equality comparison)
+ *
+ * @param query - User's search query
+ * @param suggestions - Action suggestions from getActionSuggestions()
+ * @returns IntentEnvelope with all fields populated
+ */
+export function deriveIntentEnvelope(query: string, suggestions: ActionSuggestion[]): IntentEnvelope {
+  // Extract action from suggestions
+  let action: IntentAction | null = null;
+  if (suggestions.length > 0) {
+    const best = suggestions[0]; // Suggestions are pre-sorted by match_score
+    if (best.action_id) {
+      action = {
+        action_id: best.action_id,
+        confidence: best.match_score || 0.8, // Use match_score from backend
+        verb: best.action_id.split('_')[0], // Extract verb from action_id
+        matched_text: query.substring(0, 20) // First 20 chars
+      };
+    }
+  }
+
+  const lens = inferLens(query);
+  const filters = extractFilters(query);
+  const entities = extractEntities(query, suggestions);
+  const mode = inferMode(query, action);
+  const readiness_state = inferReadiness(mode, action, entities);
+
+  // Calculate overall confidence
+  const confidence = action
+    ? action.confidence
+    : (filters.length > 0 ? 0.85 : 0.7);
+
+  return {
+    query,
+    query_hash: hashQuery(query),
+    timestamp: Date.now(),
+    mode,
+    lens,
+    filters,
+    action,
+    entities,
+    readiness_state,
+    confidence,
+    deterministic: true
+  };
+}
+
+/**
+ * Verify two envelopes are deterministically equivalent
+ * (ignores timestamp, compares query_hash and derived fields)
+ */
+export function verifyEnvelopeDeterminism(a: IntentEnvelope, b: IntentEnvelope): boolean {
+  return (
+    a.query_hash === b.query_hash &&
+    a.mode === b.mode &&
+    a.lens === b.lens &&
+    a.filters.length === b.filters.length &&
+    a.entities.length === b.entities.length &&
+    a.readiness_state === b.readiness_state
+  );
+}
+
 // Types
 interface SearchState {
   query: string;
