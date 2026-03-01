@@ -11,10 +11,12 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
-| Phase | Not started (defining requirements) |
+| Phase | Phase 15 (Intent Envelope) |
 | Plan | — |
-| Status | Defining requirements |
-| Last activity | 2026-03-01 — Milestone v1.3 started |
+| Status | Ready to plan |
+| Last activity | 2026-03-01 — v1.3 roadmap created |
+
+**Progress:** [░░░░░░░░░░] 0/5 phases complete
 
 ---
 
@@ -24,7 +26,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 **Core value:** Unify NLP intent into deterministic READ navigation and MUTATE actions with prefill preview.
 
-**Current focus:** IntentEnvelope → Prefill Integration → Readiness States → E2E Testing
+**Current focus:** IntentEnvelope → Prefill Integration → Readiness States → Route & Disambiguation → Agent Deployment
 
 ---
 
@@ -40,15 +42,13 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 ---
 
-## Milestone v1.1 Summary (Complete)
+## Performance Metrics
 
-| # | Phase | Goal | Requirements | Status |
-|---|-------|------|--------------|--------|
-| A | Baseline | Run truth sets against current production | SRCH-01 | ✓ Complete |
-| B | Deploy | Push clean codebase to main | SRCH-02 | ✓ Complete |
-| C | Validate | Run truth sets against new production | SRCH-03, SRCH-04 | ✓ Complete |
-| D | Compare | Diff baseline vs post-deploy | SRCH-04, SRCH-05 | ✓ Complete |
-| E | Iterate | Investigate root causes of 96.38% failure rate | ITER-01, ITER-02, ITER-03, ITER-04 | ✓ Complete |
+| Metric | Target | Current | Status |
+|--------|--------|---------|--------|
+| Requirement coverage | 22/22 | 22/22 mapped | ✓ |
+| Phase dependency clarity | 100% | 100% | ✓ |
+| Success criteria per phase | 2-5 | 4-4-4-6-4 | ✓ |
 
 ---
 
@@ -71,6 +71,10 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | 96.38% failure rate is validation artifact, not search failure | Reported metrics are meaningless due to truth set generation error | 2026-02-20 |
 | v1.3 MUST start with truth set regeneration using real production IDs | Cannot optimize search until accurate baseline metrics established | 2026-02-20 |
 | Realistic v1.3 target: 60-70% Recall@3 (not 90% in single milestone) | Multi-milestone path required: v1.3 (70%) → v1.3 (85%) → v1.4 (90%) | 2026-02-20 |
+| Phase numbering starts at 15 for v1.3 | Continues from v1.0 final phase (14) per milestone convention | 2026-03-01 |
+| 5 phases for v1.3 (not arbitrary) | Derived from requirement categories: INTENT, PREFILL, READY, ROUTE+DISAMB, AGENT | 2026-03-01 |
+| Modify existing files only (no new files) | User directive: useCelesteSearch.ts, SuggestedActions.tsx, ActionModal.tsx, prefill_engine.py | 2026-03-01 |
+| Use existing Action Detector + Entity Extractor | No duplicate NLP systems - leverage proven modules | 2026-03-01 |
 
 ---
 
@@ -90,6 +94,20 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - E2E tests passing
 - Ledger triggers verified
 
+### From v1.1 Milestone (F1 Search Pipeline Hardening)
+- Phases A-E complete (17 requirements)
+- Baseline metrics captured
+- 25 commits deployed via PR #365
+- Post-deploy validation complete
+- Root cause analysis: truth sets invalid (synthetic IDs)
+- Search pipeline confirmed working (24.7% Recall@3 with valid IDs)
+- 96.38% failure rate was validation artifact, not search failure
+
+### From v1.2 Milestone (Search Snippet Enhancement)
+- 5 requirements complete (SNIP-01 through SNIP-05)
+- Search snippets with bold highlighting deployed
+- Full verification complete
+
 ### Search Infrastructure
 - 50+ search functions exist in Supabase
 - `f1_search_fusion` (26 args), `f1_search_cards` (7 args) confirmed
@@ -97,24 +115,18 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - Production codebase updated with 25 commits via PR #365 (merged 2026-02-20T03:02:28Z)
 - Both Vercel apps deployed successfully (celesteos-product, cloud-pms)
 
-### Truth Sets Location
-- `/Volumes/Backup/CELESTE/` contains:
-  - certificate.csv + truthset_certificate.md/jsonl
-  - document.csv + truthset_document.md/jsonl
-  - fault.csv + truthset_fault.md/jsonl
-  - inventory.csv + truthset_inventory.md/jsonl
-  - parts.csv + truthset_parts.md/jsonl
-  - receiving.csv + truthset_receiving.md/jsonl
-  - shopping_list.csv + truthset_shopping_list.md/jsonl
-  - work_order_note.csv + truthset_work_order_note.md/jsonl
-  - work_order.csv + truthset_work_order.md/jsonl
+### v1.3 Key Files to Modify
+- `apps/web/src/hooks/useCelesteSearch.ts` — IntentEnvelope type + derivation logic
+- `apps/web/src/components/SpotlightSearch/SuggestedActions.tsx` — Readiness indicators
+- `apps/web/src/components/ActionModal.tsx` — Prefill display + disambiguation UI
+- `supabase/functions/backend_core/actions/prefill_engine.py` — /prepare endpoint
+- `supabase/functions/backend_core/actions/action_router/router.py` — Route handler
 
-### Testing Protocol
-1. Load truth set JSONL
-2. For each query → call search endpoint
-3. Check if expected IDs in top 3 results
-4. Calculate: Recall@3, MRR, failure list
-5. Record to `/test/` directory
+### Quality Bar for v1.3
+- Deterministic output: same query → same IntentEnvelope
+- Yacht-isolated: all entity lookups scoped by yacht_id
+- Role-safe: RLS + role gating on all mutations
+- E2E tested: 300+ tests covering suggestion → execution → DB verification
 
 ---
 
@@ -151,14 +163,30 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
   - Created 836-line comprehensive analysis with 3-phase v1.3 roadmap
   - Verdict: 96.38% failure is validation artifact, not search failure. Must regenerate truth sets.
 
+### 2026-03-01 (Session 3)
+- **v1.3 roadmap created:** 5 phases (15-19), 22 requirements
+- **Requirement coverage:** 100% (all 22 v1.3 requirements mapped)
+- **Phase structure derived from requirement categories:**
+  - Phase 15: Intent Envelope (INTENT-01..03)
+  - Phase 16: Prefill Integration (PREFILL-01..05)
+  - Phase 17: Readiness States (READY-01..04)
+  - Phase 18: Route & Disambiguation (ROUTE-01..03, DISAMB-01..03)
+  - Phase 19: Agent Deployment (AGENT-01..04)
+- **Success criteria:** 4-4-4-6-4 observable behaviors per phase
+- **Dependencies identified:** Linear flow 15→16→17→18→19
+- **Files written:** ROADMAP.md (appended v1.3 section), STATE.md (updated), REQUIREMENTS.md traceability preserved
+
 ---
 
 ## Next Single Action
 
-**Start Phase 15: Intent Envelope**
+**Plan Phase 15: Intent Envelope**
+
+Use `/gsd:plan-phase 15` to create execution plan for:
 1. Define IntentEnvelope TypeScript type in useCelesteSearch.ts
 2. Derive envelope from Action Detector + Entity Extractor
 3. Ensure deterministic output: same query → same envelope
+4. Add readiness_state field to envelope
 
 ---
 
@@ -168,3 +196,6 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 2. **Single canonical contracts** — ActionSuggestion conforms to: type, lens, confidence, route, query_params, action_id, prefill_preview, readiness
 3. **Determinism first** — same query → same structured output
 4. **No duplicate inference systems** — use existing Action Detector + Entity Extractor
+5. **100% yacht isolation** — all entity lookups scoped by yacht_id
+6. **Explicit role gating** — RLS + backend checks on all mutations
+7. **Surface uncertainty** — never silently assume, always show ambiguity to user

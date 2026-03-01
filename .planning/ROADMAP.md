@@ -447,5 +447,130 @@ Plans:
 
 ---
 
+# MILESTONE v1.3 — Actionable UX Unification
+
+**Milestone:** v1.3 — Actionable UX Unification
+**Phases:** 5 (15-19)
+**Requirements:** 22
+
+---
+
+## v1.3 Phases
+
+- [ ] **Phase 15: Intent Envelope** - Create IntentEnvelope abstraction (READ | MUTATE | MIXED)
+- [ ] **Phase 16: Prefill Integration** - Build /v1/actions/prepare endpoint with entity resolution
+- [ ] **Phase 17: Readiness States** - Implement READY/NEEDS_INPUT/BLOCKED classification
+- [ ] **Phase 18: Route & Disambiguation** - Fragmented URLs + uncertainty surfacing UX
+- [ ] **Phase 19: Agent Deployment** - 24 agents across 4 waves (Lens Matrix → NLP Variants → Backend → E2E)
+
+---
+
+## Phase Details
+
+### Phase 15: Intent Envelope
+
+**Goal:** Create IntentEnvelope abstraction that unifies READ and MUTATE intent with deterministic derivation from existing NLP modules.
+
+**Depends on:** Nothing (first phase of v1.3)
+
+**Requirements:** INTENT-01, INTENT-02, INTENT-03
+
+**Success Criteria** (what must be TRUE):
+1. User types "show open work orders" and IntentEnvelope captures mode: READ, lens: work_order, filters: {status: "open"}
+2. User types "create fault on ME1" and IntentEnvelope captures mode: MUTATE, action_id: "create_fault", entities: {equipment: "ME1"}
+3. Same query produces identical IntentEnvelope structure across repeated searches (deterministic output verified)
+4. IntentEnvelope includes readiness_state field derived from Action Detector + Entity Extractor outputs
+
+**Plans:** TBD
+
+---
+
+### Phase 16: Prefill Integration
+
+**Goal:** Build /v1/actions/prepare endpoint that accepts NLP outputs and returns prefilled form previews with entity resolution and confidence scoring.
+
+**Depends on:** Phase 15 (IntentEnvelope must capture entities)
+
+**Requirements:** PREFILL-01, PREFILL-02, PREFILL-03, PREFILL-04, PREFILL-05
+
+**Success Criteria** (what must be TRUE):
+1. User query "report critical fault on ME1 tomorrow" triggers /prepare and returns prefill_preview with equipment_id resolved, severity: "critical", scheduled_date: "+1 day ISO"
+2. Equipment name "ME1" successfully resolves to UUID via yacht-scoped lookup against production pms_equipment
+3. Priority synonym "urgent" maps to ActionPriority.HIGH enum value in prefill response
+4. Temporal phrase "next Tuesday" parsed to actual ISO date based on current date
+5. Response includes missing_fields: [] when all required fields resolved, or list of field names when incomplete
+
+**Plans:** TBD
+
+---
+
+### Phase 17: Readiness States
+
+**Goal:** Implement readiness classification (READY/NEEDS_INPUT/BLOCKED) with visual indicators so users know if an action can execute immediately or requires disambiguation.
+
+**Depends on:** Phase 16 (prefill response must include confidence + missing_fields)
+
+**Requirements:** READY-01, READY-02, READY-03, READY-04
+
+**Success Criteria** (what must be TRUE):
+1. Suggested action shows green checkmark when all required_fields resolved with confidence ≥ 0.8
+2. Suggested action shows amber dot when any required field missing or confidence < 0.8
+3. Suggested action shows lock icon when user role (crew) attempts Captain-only action (role gating blocks)
+4. User can distinguish READY actions from NEEDS_INPUT actions at a glance without clicking modal
+
+**Plans:** TBD
+
+---
+
+### Phase 18: Route & Disambiguation
+
+**Goal:** Generate canonical segment-based URLs for READ navigation and surface all NLP uncertainty explicitly in the ActionModal for user confirmation.
+
+**Depends on:** Phase 17 (readiness states drive disambiguation UX)
+
+**Requirements:** ROUTE-01, ROUTE-02, ROUTE-03, DISAMB-01, DISAMB-02, DISAMB-03
+
+**Success Criteria** (what must be TRUE):
+1. User query "show open work orders" generates navigation to /work-orders/status/open (not /work-orders?status=open)
+2. User query "show inventory in box-3d" generates navigation to /inventory/location/box-3d
+3. Filter chips in SpotlightSearch reflect canonical route segments visually
+4. Ambiguous equipment entity ("ME" matches ME1, ME2) renders dropdown in ActionModal with "Did you mean: ME1 / ME2?"
+5. Uncertain date parsing ("next week" → low confidence) highlights scheduled_date field with warning indicator
+6. No silent assumptions made - all low-confidence prefills surface in modal for user confirmation before execution
+
+**Plans:** TBD
+
+---
+
+### Phase 19: Agent Deployment
+
+**Goal:** Execute 24-agent deployment across 4 waves to analyze lenses, generate truth sets, implement backend logic, and create comprehensive E2E test coverage.
+
+**Depends on:** Phase 18 (READ/MUTATE routing and disambiguation UX must exist before E2E testing)
+
+**Requirements:** AGENT-01, AGENT-02, AGENT-03, AGENT-04
+
+**Success Criteria** (what must be TRUE):
+1. Wave 1 complete: 6 Lens Matrix agents produce lens_matrix.json with READ filters + MUTATE required_fields for all lenses
+2. Wave 2 complete: 6 NLP Variant agents produce intent_truth_set.json with 100 query variants per lens (600 total)
+3. Wave 3 complete: 6 Backend Integration agents implement /prepare endpoint, entity mappings, readiness classification, role gating per lens
+4. Wave 4 complete: 6 E2E Test agents create 50+ Playwright tests per lens (300+ total) covering suggestion → modal → execution → DB verification
+
+**Plans:** TBD
+
+---
+
+## v1.3 Progress Table
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 15. Intent Envelope | 0/? | Not started | - |
+| 16. Prefill Integration | 0/? | Not started | - |
+| 17. Readiness States | 0/? | Not started | - |
+| 18. Route & Disambiguation | 0/? | Not started | - |
+| 19. Agent Deployment | 0/? | Not started | - |
+
+---
+
 *Created: 2026-02-17*
-*Updated: 2026-02-19 — v1.1 Search Pipeline Hardening added, Phase A planned*
+*Updated: 2026-03-01 — v1.3 Actionable UX Unification roadmap added (phases 15-19)*

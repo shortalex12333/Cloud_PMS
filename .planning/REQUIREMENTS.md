@@ -319,5 +319,104 @@ Requirements for search pipeline validation and deployment.
 - Pending: 0
 
 ---
-*Requirements defined: 2026-02-17 (v1.0), 2026-02-19 (v1.1), 2026-02-26 (v1.2)*
-*Last updated: 2026-02-26 — v1.2 snippet enhancement requirements added*
+
+# v1.3 Requirements — Actionable UX Unification
+
+**Defined:** 2026-03-01
+**Core Value:** Unify NLP intent into deterministic READ navigation and MUTATE actions with prefill preview.
+
+---
+
+## v1.3 Requirements
+
+Requirements for Actionable UX Unification. Each maps to roadmap phases 15-19.
+
+### Intent Envelope (INTENT)
+
+- [ ] **INTENT-01**: IntentEnvelope type captures query, lens, mode (READ|MUTATE|MIXED), filters, actions, entities, readiness_state
+- [ ] **INTENT-02**: Envelope derived from Action Detector (Module A) + Entity Extractor (Module B) + existing filter inference
+- [ ] **INTENT-03**: Same query produces same structured output — deterministic, no probabilistic variance
+
+### Prefill Integration (PREFILL)
+
+- [ ] **PREFILL-01**: `/v1/actions/prepare` endpoint accepts action_id, query, extracted_entities and returns prefill_preview
+- [ ] **PREFILL-02**: Response includes prefill_preview (Dict), missing_fields (List), confidence (float)
+- [ ] **PREFILL-03**: Equipment names resolved to UUIDs via yacht-scoped lookups against production data
+- [ ] **PREFILL-04**: Priority synonyms mapped to ActionPriority enum (critical → EMERGENCY, urgent → HIGH)
+- [ ] **PREFILL-05**: Temporal phrases parsed to ISO dates ("next week" → actual date, "tomorrow" → +1 day)
+
+### Readiness States (READY)
+
+- [ ] **READY-01**: READY state computed when all required_fields resolved with confidence ≥ 0.8
+- [ ] **READY-02**: NEEDS_INPUT state when any required field missing or confidence < 0.8
+- [ ] **READY-03**: BLOCKED state when user role or RLS policy denies action execution
+- [ ] **READY-04**: Visual indicators in SuggestedActions: green checkmark (READY), amber dot (NEEDS_INPUT), lock icon (BLOCKED)
+
+### Fragmented Routes (ROUTE)
+
+- [ ] **ROUTE-01**: READ suggestions generate canonical segment-based URLs (not query params for filters)
+- [ ] **ROUTE-02**: URL patterns like `/work-orders/status/open`, `/inventory/location/box-3d`, `/faults/severity/critical`
+- [ ] **ROUTE-03**: Filter chips in SpotlightSearch reflect canonical route segments
+
+### Disambiguation UX (DISAMB)
+
+- [ ] **DISAMB-01**: Ambiguous entity resolution shows dropdown in ActionModal ("Did you mean: ME1 / ME2?")
+- [ ] **DISAMB-02**: Uncertain date parsing highlights scheduled_date field with warning indicator
+- [ ] **DISAMB-03**: No silent assumptions — all uncertainty surfaces to user for confirmation
+
+### Agent Deployment (AGENT)
+
+- [ ] **AGENT-01**: Wave 1 — 6 Lens Matrix agents analyze lenses, produce lens_matrix.json with READ filters + MUTATE required_fields
+- [ ] **AGENT-02**: Wave 2 — 6 NLP Variant agents generate 100 query variants per lens → intent_truth_set.json (600 total)
+- [ ] **AGENT-03**: Wave 3 — 6 Backend Integration agents implement /prepare, entity mappings, readiness classification, role gating
+- [ ] **AGENT-04**: Wave 4 — 6 E2E Test agents create 50+ Playwright tests per lens (300+ total) covering suggestion → modal → execution → DB verification
+
+---
+
+## v1.3 Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| New inference systems | Use existing Action Detector + Entity Extractor — no duplicate logic |
+| Client-side regex override | Backend entity extraction is authoritative source |
+| Hidden auto-mutations | All actions require explicit user confirmation |
+| RAG/LLM-based intent | Deterministic pattern matching only — no probabilistic models |
+| New file creation | Modify existing: useCelesteSearch.ts, SuggestedActions.tsx, ActionModal.tsx, prefill_engine.py |
+
+---
+
+## v1.3 Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| INTENT-01 | Phase 15 | Pending |
+| INTENT-02 | Phase 15 | Pending |
+| INTENT-03 | Phase 15 | Pending |
+| PREFILL-01 | Phase 16 | Pending |
+| PREFILL-02 | Phase 16 | Pending |
+| PREFILL-03 | Phase 16 | Pending |
+| PREFILL-04 | Phase 16 | Pending |
+| PREFILL-05 | Phase 16 | Pending |
+| READY-01 | Phase 17 | Pending |
+| READY-02 | Phase 17 | Pending |
+| READY-03 | Phase 17 | Pending |
+| READY-04 | Phase 17 | Pending |
+| ROUTE-01 | Phase 18 | Pending |
+| ROUTE-02 | Phase 18 | Pending |
+| ROUTE-03 | Phase 18 | Pending |
+| DISAMB-01 | Phase 18 | Pending |
+| DISAMB-02 | Phase 18 | Pending |
+| DISAMB-03 | Phase 18 | Pending |
+| AGENT-01 | Phase 19 | Pending |
+| AGENT-02 | Phase 19 | Pending |
+| AGENT-03 | Phase 19 | Pending |
+| AGENT-04 | Phase 19 | Pending |
+
+**v1.3 Coverage:**
+- v1.3 requirements: 22 total
+- Mapped to phases: 22
+- Unmapped: 0 ✓
+
+---
+*Requirements defined: 2026-02-17 (v1.0), 2026-02-19 (v1.1), 2026-02-26 (v1.2), 2026-03-01 (v1.3)*
+*Last updated: 2026-03-01 — v1.3 Actionable UX Unification requirements added*
