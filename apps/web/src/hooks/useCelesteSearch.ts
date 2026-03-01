@@ -606,6 +606,7 @@ interface SearchState {
   error: string | null;
   suggestions: SearchSuggestion[];
   actionSuggestions: ActionSuggestion[];
+  intentEnvelope: IntentEnvelope | null;  // v1.3: Unified intent structure
 }
 
 interface SearchSuggestion {
@@ -1147,6 +1148,7 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
     error: null,
     suggestions: [],
     actionSuggestions: [],
+    intentEnvelope: null,  // v1.3: Unified intent structure
   });
 
   // Refs for debouncing and cancellation
@@ -1240,8 +1242,13 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
     const wantsCrew = detectCrewActionIntent(query);
 
     if (!wantsCert && !wantsWO && !wantsFault && !wantsShoppingList && !wantsDocument && !wantsReceiving && !wantsPart && !wantsCrew) {
-      // Clear action suggestions if no intent
-      setState(prev => ({ ...prev, actionSuggestions: [] }));
+      // Derive envelope for READ mode (no actions detected)
+      const envelope = deriveIntentEnvelope(query, []);
+      setState(prev => ({
+        ...prev,
+        actionSuggestions: [],
+        intentEnvelope: envelope,  // v1.3: READ mode envelope
+      }));
       return;
     }
 
@@ -1270,14 +1277,29 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
       const response = await getActionSuggestions(query, domain);
       console.log('[useCelesteSearch] 📋 Action suggestions received:', response.actions.length);
 
+      // Derive envelope from query + action suggestions
+      const envelope = deriveIntentEnvelope(query, response.actions);
+      console.log('[useCelesteSearch] 📦 IntentEnvelope derived:', {
+        mode: envelope.mode,
+        lens: envelope.lens,
+        readiness: envelope.readiness_state,
+        query_hash: envelope.query_hash,
+      });
+
       setState(prev => ({
         ...prev,
         actionSuggestions: response.actions,
+        intentEnvelope: envelope,  // v1.3: MUTATE/MIXED mode envelope
       }));
     } catch (error) {
       console.warn('[useCelesteSearch] Failed to fetch action suggestions:', error);
-      // Don't block search on action suggestion failure
-      setState(prev => ({ ...prev, actionSuggestions: [] }));
+      // Don't block search on action suggestion failure - derive READ mode envelope
+      const envelope = deriveIntentEnvelope(query, []);
+      setState(prev => ({
+        ...prev,
+        actionSuggestions: [],
+        intentEnvelope: envelope,  // v1.3: Fallback READ mode envelope
+      }));
     }
   }, []);
 
@@ -1479,6 +1501,7 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
       error: null,
       suggestions: [],
       actionSuggestions: [],
+      intentEnvelope: null,  // v1.3: Clear envelope on clear
     });
   }, [cancelCurrentRequest, clearResultMap]);
 
@@ -1525,6 +1548,7 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
     error: state.error,
     suggestions: state.suggestions,
     actionSuggestions: state.actionSuggestions,
+    intentEnvelope: state.intentEnvelope,  // v1.3: Unified intent structure
 
     // Actions
     handleQueryChange,
