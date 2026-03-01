@@ -367,7 +367,7 @@ def prepare_query_for_search(query: str) -> Dict[str, Any]:
     - keywords: Entity keywords from free text
     - match_reasons: Human-readable filter descriptions
     """
-    from email_rag.entity_extractor import extract_keywords_for_search
+    from extraction.entity_extractor import extract_keywords_for_search
 
     parsed = parse_search_query(query)
 
