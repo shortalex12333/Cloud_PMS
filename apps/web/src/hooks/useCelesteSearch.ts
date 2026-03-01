@@ -16,7 +16,111 @@ import { ensureFreshToken } from '@/lib/tokenRefresh';
 import type { SearchResult } from '@/types/search';
 import { getActionSuggestions, type ActionSuggestion } from '@/lib/actionClient';
 
+// ============================================================================
+// IntentEnvelope Types - v1.3 Intent Abstraction
+// ============================================================================
+
+/**
+ * Intent mode - derived from action presence
+ * READ: Navigation/filtering queries (show, list, view)
+ * MUTATE: Action queries (create, update, delete)
+ * MIXED: Combined read + mutate intent (show and update...)
+ */
+export type IntentMode = 'READ' | 'MUTATE' | 'MIXED';
+
+/**
+ * Readiness state - derived from action detection + entity extraction completeness
+ * READY: All required fields present, can execute immediately
+ * NEEDS_INPUT: Missing required entities or low confidence
+ * BLOCKED: Cannot proceed (auth, permissions, invalid state)
+ */
+export type ReadinessState = 'READY' | 'NEEDS_INPUT' | 'BLOCKED';
+
+/**
+ * Lens type - corresponds to CelesteOS domain lenses
+ */
+export type LensType =
+  | 'work_order'
+  | 'fault'
+  | 'equipment'
+  | 'part'
+  | 'certificate'
+  | 'handover'
+  | 'hours_of_rest'
+  | 'shopping_list'
+  | 'receiving'
+  | 'document'
+  | 'crew'
+  | 'email'
+  | 'warranty'
+  | 'unknown';
+
+/**
+ * Entity extracted from query
+ */
+export interface ExtractedEntity {
+  type: string;           // equipment, priority, temporal, location, part, symptom, etc.
+  value: string;          // raw value from query
+  canonical: string;      // normalized form
+  confidence: number;     // extraction confidence 0-1
+}
+
+/**
+ * Filter for READ mode navigation
+ */
+export interface IntentFilter {
+  field: string;          // e.g., 'status', 'priority', 'location'
+  value: string;          // e.g., 'open', 'critical', 'engine_room'
+  operator: 'eq' | 'contains' | 'gt' | 'lt' | 'in';
+}
+
+/**
+ * Action for MUTATE mode
+ */
+export interface IntentAction {
+  action_id: string;      // e.g., 'create_fault', 'close_work_order'
+  confidence: number;     // action detection confidence 0-1
+  verb: string;           // trigger verb: 'create', 'close', etc.
+  matched_text: string;   // exact text that matched pattern
+}
+
+/**
+ * The unified intent envelope - canonical data structure for user intent
+ *
+ * Purpose: Capture user intent in a predictable, testable format enabling
+ * downstream consumers (prefill, routing, disambiguation) to operate on
+ * structured intent rather than raw query strings.
+ *
+ * Determinism: Same query MUST produce same envelope (excluding timestamp)
+ */
+export interface IntentEnvelope {
+  // Core identification
+  query: string;                    // Original query string
+  query_hash: string;               // Hash for determinism verification
+  timestamp: number;                // Unix timestamp for ordering
+
+  // Intent classification
+  mode: IntentMode;                 // READ | MUTATE | MIXED
+  lens: LensType;                   // Target lens for navigation/action
+
+  // READ mode fields
+  filters: IntentFilter[];          // Extracted filters for navigation
+
+  // MUTATE mode fields
+  action: IntentAction | null;      // Detected action (if mode is MUTATE/MIXED)
+
+  // Shared fields
+  entities: ExtractedEntity[];      // All extracted entities
+  readiness_state: ReadinessState;  // READY | NEEDS_INPUT | BLOCKED
+
+  // Metadata
+  confidence: number;               // Overall envelope confidence
+  deterministic: boolean;           // Always true - flag for downstream verification
+}
+
+// ============================================================================
 // Constants
+// ============================================================================
 const FAST_TYPING_DEBOUNCE = 140; // ms - user typing quickly
 const SLOW_TYPING_DEBOUNCE = 80;  // ms - user typing slowly
 const MIN_QUERY_INTERVAL = 100;   // ms - minimum between requests
