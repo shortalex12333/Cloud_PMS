@@ -457,7 +457,7 @@ Plans:
 
 ## v1.3 Phases
 
-- [ ] **Phase 15: Intent Envelope** - Create IntentEnvelope abstraction (READ | MUTATE | MIXED)
+- [x] **Phase 15: Intent Envelope** - Create IntentEnvelope abstraction (READ | MUTATE | MIXED) (completed 2026-03-01)
 - [ ] **Phase 16: Prefill Integration** - Build /v1/actions/prepare endpoint with entity resolution
 - [ ] **Phase 17: Readiness States** - Implement READY/NEEDS_INPUT/BLOCKED classification
 - [ ] **Phase 18: Route & Disambiguation** - Fragmented URLs + uncertainty surfacing UX
@@ -481,7 +481,7 @@ Plans:
 3. Same query produces identical IntentEnvelope structure across repeated searches (deterministic output verified)
 4. IntentEnvelope includes readiness_state field derived from Action Detector + Entity Extractor outputs
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 15-01-PLAN.md — Define IntentEnvelope type, implement deriveIntentEnvelope function, integrate with search state
@@ -567,7 +567,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Intent Envelope | 0/1 | Planning complete | - |
+| 15. Intent Envelope | 0/1 | Complete    | 2026-03-01 |
 | 16. Prefill Integration | 0/? | Not started | - |
 | 17. Readiness States | 0/? | Not started | - |
 | 18. Route & Disambiguation | 0/? | Not started | - |
