@@ -2,7 +2,7 @@
 
 > **This file tracks decisions, blockers, and position across sessions.**
 >
-> Last Updated: 2026-02-20
+> Last Updated: 2026-03-01
 
 ---
 
@@ -10,25 +10,37 @@
 
 | Field | Value |
 |-------|-------|
-| Milestone | v1.1 — F1 Search Pipeline Hardening |
-| Phase | E-iterate-on-regressions |
-| Plan | 01 (complete) |
-| Status | Milestone v1.1 complete — Truth set regeneration required for v1.2 |
-| Last activity | 2026-02-20 — Root cause analysis complete: Truth sets invalid, search pipeline functional |
+| Milestone | v1.3 — Actionable UX Unification |
+| Phase | Not started (defining requirements) |
+| Plan | — |
+| Status | Defining requirements |
+| Last activity | 2026-03-01 — Milestone v1.3 started |
 
 ---
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-02-19)
+See: `.planning/PROJECT.md` (updated 2026-03-01)
 
-**Core value:** Validate search pipeline with deterministic truth sets before and after deployment.
+**Core value:** Unify NLP intent into deterministic READ navigation and MUTATE actions with prefill preview.
 
-**Current focus:** Baseline → Deploy → Validate cycle
+**Current focus:** IntentEnvelope → Prefill Integration → Readiness States → E2E Testing
 
 ---
 
-## Milestone v1.1 Summary
+## Milestone v1.3 Summary
+
+| # | Phase | Goal | Requirements | Status |
+|---|-------|------|--------------|--------|
+| 15 | Intent Envelope | Create IntentEnvelope abstraction | INTENT-01..03 | ○ Pending |
+| 16 | Prefill Integration | Build /v1/actions/prepare endpoint | PREFILL-01..05 | ○ Pending |
+| 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ○ Pending |
+| 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ○ Pending |
+| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ○ Pending |
+
+---
+
+## Milestone v1.1 Summary (Complete)
 
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
@@ -57,8 +69,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-19)
 | Truth sets are fundamentally invalid (synthetic inventory_item IDs) | All entity types mapped to inventory_items, not actual entity tables | 2026-02-20 |
 | Search pipeline IS working (24.7% Recall@3 for parts with valid IDs) | Proves search functionality when truth sets have real entity IDs | 2026-02-20 |
 | 96.38% failure rate is validation artifact, not search failure | Reported metrics are meaningless due to truth set generation error | 2026-02-20 |
-| v1.2 MUST start with truth set regeneration using real production IDs | Cannot optimize search until accurate baseline metrics established | 2026-02-20 |
-| Realistic v1.2 target: 60-70% Recall@3 (not 90% in single milestone) | Multi-milestone path required: v1.2 (70%) → v1.3 (85%) → v1.4 (90%) | 2026-02-20 |
+| v1.3 MUST start with truth set regeneration using real production IDs | Cannot optimize search until accurate baseline metrics established | 2026-02-20 |
+| Realistic v1.3 target: 60-70% Recall@3 (not 90% in single milestone) | Multi-milestone path required: v1.3 (70%) → v1.3 (85%) → v1.4 (90%) | 2026-02-20 |
 
 ---
 
@@ -136,15 +148,23 @@ See: `.planning/PROJECT.md` (updated 2026-02-19)
   - Identified critical truth set error: all entities mapped to inventory_items with synthetic IDs
   - Validated search IS working: 24.7% Recall@3 for parts with valid expected_ids
   - Documented evidence: 0% hits for 7/9 entity types due to invalid truth sets
-  - Created 836-line comprehensive analysis with 3-phase v1.2 roadmap
+  - Created 836-line comprehensive analysis with 3-phase v1.3 roadmap
   - Verdict: 96.38% failure is validation artifact, not search failure. Must regenerate truth sets.
 
 ---
 
 ## Next Single Action
 
-**Regenerate truth sets with real production entity IDs before starting v1.2:**
-1. Query production database for actual entity IDs by type (certificates, documents, faults, work_orders, etc.)
-2. Update truth set generator to use real entity IDs from correct tables
-3. Re-run validation harness to establish accurate Recall@3 baseline
-4. Plan v1.2 search improvements based on real metrics
+**Start Phase 15: Intent Envelope**
+1. Define IntentEnvelope TypeScript type in useCelesteSearch.ts
+2. Derive envelope from Action Detector + Entity Extractor
+3. Ensure deterministic output: same query → same envelope
+
+---
+
+## v1.3 Guardrails (Non-Negotiable)
+
+1. **No new random files** — modify existing: useCelesteSearch.ts, SuggestedActions.tsx, ActionModal.tsx, prefill_engine.py
+2. **Single canonical contracts** — ActionSuggestion conforms to: type, lens, confidence, route, query_params, action_id, prefill_preview, readiness
+3. **Determinism first** — same query → same structured output
+4. **No duplicate inference systems** — use existing Action Detector + Entity Extractor

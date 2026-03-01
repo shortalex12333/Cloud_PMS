@@ -4,16 +4,17 @@
 
 ---
 
-## Current Milestone: v1.1 — F1 Search Pipeline Hardening
+## Current Milestone: v1.3 — Actionable UX Unification
 
-**Goal:** Deploy clean codebase to production and validate search pipeline with deterministic truth sets.
+**Goal:** Unify READ + MUTATE intent into a holistic NLP → Deterministic Action system with prefill preview, readiness states, and fragmented route leverage.
 
 **Target deliverables:**
-- Baseline metrics from current production (pre-deploy)
-- Clean codebase deployed (18+ commits including AbortError fix)
-- Post-deploy validation with 2,700 truth set queries
-- Recall@3, MRR metrics recorded in `/test/`
-- Regression report if metrics degrade
+- IntentEnvelope abstraction in SpotlightSearch (READ | MUTATE | MIXED)
+- `/v1/actions/prepare` endpoint for prefill preview
+- Readiness states (READY, NEEDS_INPUT, BLOCKED) with visual indicators
+- Canonical fragmented URLs for READ navigation
+- Disambiguation UX for ambiguous entities
+- 24 agent deployment across 4 waves (Lens Matrix, NLP Variants, Backend Integration, E2E Tests)
 
 ---
 
@@ -59,13 +60,41 @@
 
 ---
 
-## Active (v1.1)
+## Active (v1.3)
 
-- [ ] **SRCH-01**: Baseline metrics recorded before deployment
-- [ ] **SRCH-02**: Clean codebase deployed to production
-- [ ] **SRCH-03**: Post-deploy validation with truth sets
-- [ ] **SRCH-04**: Recall@3 ≥ 90% on truth set queries
-- [ ] **SRCH-05**: No regression in search response time
+### Intent Envelope
+- [ ] **INTENT-01**: IntentEnvelope type captures query, lens, mode, filters, actions, entities, readiness
+- [ ] **INTENT-02**: Envelope derived from Action Detector + Entity Extractor + filter inference
+- [ ] **INTENT-03**: Deterministic: same query → same structured output
+
+### Prefill Integration
+- [ ] **PREFILL-01**: `/v1/actions/prepare` endpoint accepts action_id, query, extracted_entities
+- [ ] **PREFILL-02**: Returns prefill_preview, missing_fields, confidence
+- [ ] **PREFILL-03**: Resolves equipment names → IDs via yacht-scoped lookups
+- [ ] **PREFILL-04**: Maps priority synonyms → enum values
+- [ ] **PREFILL-05**: Parses temporal phrases → ISO dates
+
+### Readiness States
+- [ ] **READY-01**: READY state when all required_fields resolved confidently
+- [ ] **READY-02**: NEEDS_INPUT state when fields missing or ambiguous
+- [ ] **READY-03**: BLOCKED state when role/RLS denies
+- [ ] **READY-04**: Visual indicators: green check (READY), amber dot (NEEDS_INPUT), lock (BLOCKED)
+
+### Fragmented Routes
+- [ ] **ROUTE-01**: READ suggestions generate canonical URLs (segments, not query params)
+- [ ] **ROUTE-02**: URLs like `/work-orders/status/open`, `/inventory/location/box-3d`
+- [ ] **ROUTE-03**: Filter chips in UI reflect canonical route segments
+
+### Disambiguation UX
+- [ ] **DISAMB-01**: Ambiguous entities render dropdown in modal ("Did you mean: ME1 / ME2?")
+- [ ] **DISAMB-02**: Uncertain date parsing highlights scheduled date field
+- [ ] **DISAMB-03**: Never silently assume — always surface uncertainty
+
+### Agent Deployment
+- [ ] **AGENT-01**: Wave 1 — 6 Lens Matrix agents produce lens_matrix.json
+- [ ] **AGENT-02**: Wave 2 — 6 NLP Variant agents produce intent_truth_set.json (100 variants/lens)
+- [ ] **AGENT-03**: Wave 3 — 6 Backend Integration agents implement /prepare, mappings, role gating
+- [ ] **AGENT-04**: Wave 4 — 6 E2E Test agents with 50+ tests per lens via Playwright
 
 ---
 
@@ -73,9 +102,10 @@
 
 | Feature | Reason |
 |---------|--------|
-| New search features | Hardening only, no new functionality |
-| UI changes | Infrastructure focus |
-| Additional truth sets | 9 CSVs sufficient for v1.1 |
+| New inference systems | Use existing Action Detector + Entity Extractor |
+| Client-side regex override | Backend entity extraction is authoritative |
+| Hidden auto-mutations | All actions require explicit user confirmation |
+| New duplicate files | Modify existing: useCelesteSearch.ts, SuggestedActions.tsx, ActionModal.tsx, prefill_engine.py |
 
 ---
 
@@ -96,4 +126,4 @@
 | Deploy before optimize | Fix is in local code, needs deployment | — Pending |
 
 ---
-*Last updated: 2026-02-19 — Milestone v1.1 started*
+*Last updated: 2026-03-01 — Milestone v1.3 Actionable UX Unification started*
