@@ -484,7 +484,7 @@ Plans:
 **Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 15-01-PLAN.md — Define IntentEnvelope type, implement deriveIntentEnvelope function, integrate with search state
+- [x] 15-01-PLAN.md — Define IntentEnvelope type, implement deriveIntentEnvelope function, integrate with search state
 
 ---
 
@@ -503,7 +503,11 @@ Plans:
 4. Temporal phrase "next Tuesday" parsed to actual ISO date based on current date
 5. Response includes missing_fields: [] when all required fields resolved, or list of field names when incomplete
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Create /v1/actions/prepare endpoint with temporal parsing and priority mapping
+- [ ] 16-02-PLAN.md — Frontend integration: prepareAction() in useCelesteSearch + ActionModal prefill initialization
 
 ---
 
@@ -567,8 +571,8 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Intent Envelope | 0/1 | Complete    | 2026-03-01 |
-| 16. Prefill Integration | 0/? | Not started | - |
+| 15. Intent Envelope | 1/1 | Complete | 2026-03-01 |
+| 16. Prefill Integration | 0/2 | Planned | - |
 | 17. Readiness States | 0/? | Not started | - |
 | 18. Route & Disambiguation | 0/? | Not started | - |
 | 19. Agent Deployment | 0/? | Not started | - |
@@ -578,3 +582,4 @@ Plans:
 *Created: 2026-02-17*
 *Updated: 2026-03-01 — v1.3 Actionable UX Unification roadmap added (phases 15-19)*
 *Updated: 2026-03-01 — Phase 15 plan created (15-01-PLAN.md)*
+*Updated: 2026-03-01 — Phase 16 plans created (16-01-PLAN.md, 16-02-PLAN.md)*
