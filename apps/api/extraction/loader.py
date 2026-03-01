@@ -8,7 +8,7 @@ PURPOSE: Load and provide access to the 1,955 pre-bundled patterns for entity ex
 WHY BUNDLED DATA?
 - Original version loaded patterns from JSON files on disk
 - Render deployment doesn't have access to local files
-- Bundled data is embedded in Python code (regex_production_data.py)
+- Bundled data is embedded in Python code (extraction/data/patterns.py)
 - This ensures the patterns work everywhere
 
 WHAT THIS FILE PROVIDES:
@@ -43,13 +43,11 @@ from typing import Dict, Set, List, Tuple, Optional, Any  # Type hints for clari
 # =============================================================================
 # IMPORT BUNDLED PATTERN DATA
 # =============================================================================
-# The actual pattern data is stored in regex_production_data.py
+# The actual pattern data is stored in extraction/data/patterns.py
 # This file contains 1,955 patterns with 62,987 terms
-# We try to import it, falling back gracefully if not available
 
 try:
-    # First attempt: Import as part of the api package (normal Render usage)
-    from api.regex_production_data import (
+    from extraction.data.patterns import (
         DIAGNOSTIC_PATTERNS,        # Dict of symptom/fault/action patterns
         EQUIPMENT_PATTERNS,         # Dict of brand/equipment patterns
         STATS,                      # Statistics about the patterns
@@ -60,27 +58,14 @@ try:
     )
     PATTERNS_AVAILABLE = True  # Flag: patterns loaded successfully
 except ImportError:
-    try:
-        # Second attempt: Import directly (for testing/development)
-        from regex_production_data import (
-            DIAGNOSTIC_PATTERNS,
-            EQUIPMENT_PATTERNS,
-            STATS,
-            extract_diagnostic_entities,
-            extract_equipment_entities,
-            extract_all_entities,
-            get_compiled_regex
-        )
-        PATTERNS_AVAILABLE = True
-    except ImportError:
-        # Last resort: No patterns available
-        # The system will still work but with limited pattern matching
-        PATTERNS_AVAILABLE = False
-        print("⚠️  Warning: regex_production_data not found. Pattern matching disabled.")
-        # Create empty placeholders so the code doesn't crash
-        DIAGNOSTIC_PATTERNS = {}
-        EQUIPMENT_PATTERNS = {}
-        STATS = {"total_patterns": 0, "total_terms": 0}
+    # Last resort: No patterns available
+    # The system will still work but with limited pattern matching
+    PATTERNS_AVAILABLE = False
+    print("Warning: extraction.data.patterns not found. Pattern matching disabled.")
+    # Create empty placeholders so the code doesn't crash
+    DIAGNOSTIC_PATTERNS = {}
+    EQUIPMENT_PATTERNS = {}
+    STATS = {"total_patterns": 0, "total_terms": 0}
 
 
 # =============================================================================
@@ -2861,7 +2846,7 @@ def get_pattern_metadata(domain: str, subdomain: str, group: str) -> Dict:
         Dict with source info
     """
     return {
-        'source_file': 'regex_production_data',  # Where patterns came from
+        'source_file': 'extraction.data.patterns',  # Where patterns came from
         'domain': domain,                         # Category
         'subdomain': subdomain,                   # Subcategory
         'group': group                            # Pattern group number
@@ -3070,7 +3055,7 @@ def extract_entities_from_text(text: str) -> Dict[str, Any]:
                 result['gazetteer_matches'].append(entity)  # Legacy compatibility
 
     # =========================================================================
-    # 3. BUNDLED EXTRACTORS (from regex_production_data.py)
+    # 3. BUNDLED EXTRACTORS (from extraction.data.patterns)
     # =========================================================================
     bundled_results = extract_all_entities(text)
     for eq in bundled_results.get('equipment', []):
