@@ -57,7 +57,7 @@ from utils.cache_keys import (
     normalize_query,
     hash_query,
 )
-from services.rate_limit import (
+from services.search_rate_limiter import (
     get_rate_limiter,
     get_concurrency_gate,
     ConcurrencySlot,
