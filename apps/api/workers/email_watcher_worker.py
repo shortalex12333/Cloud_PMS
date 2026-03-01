@@ -32,7 +32,7 @@ from integrations.graph_client import (
     release_refresh_lock
 )
 from services.email_sync_service import EmailSyncService
-from services.rate_limiter import MicrosoftRateLimiter
+from services.graph_api_rate_limiter import MicrosoftRateLimiter
 
 # Configure logging
 logging.basicConfig(

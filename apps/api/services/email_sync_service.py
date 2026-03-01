@@ -11,7 +11,7 @@ import hashlib
 import logging
 import httpx
 
-from .rate_limiter import MicrosoftRateLimiter
+from .graph_api_rate_limiter import MicrosoftRateLimiter
 from .linking_ladder import LinkingLadder
 from .email_embedding_service import EmailEmbeddingUpdater
 
