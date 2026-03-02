@@ -520,12 +520,16 @@ Plans:
 **Requirements:** READY-01, READY-02, READY-03, READY-04
 
 **Success Criteria** (what must be TRUE):
-1. Suggested action shows green checkmark when all required_fields resolved with confidence ≥ 0.8
+1. Suggested action shows green checkmark when all required_fields resolved with confidence >= 0.8
 2. Suggested action shows amber dot when any required field missing or confidence < 0.8
 3. Suggested action shows lock icon when user role (crew) attempts Captain-only action (role gating blocks)
 4. User can distinguish READY actions from NEEDS_INPUT actions at a glance without clicking modal
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — Backend role gating + frontend readiness derivation (READY-01, READY-02, READY-03)
+- [ ] 17-02-PLAN.md — Visual indicators in SuggestedActions (READY-04)
 
 ---
 
@@ -542,7 +546,7 @@ Plans:
 2. User query "show inventory in box-3d" generates navigation to /inventory/location/box-3d
 3. Filter chips in SpotlightSearch reflect canonical route segments visually
 4. Ambiguous equipment entity ("ME" matches ME1, ME2) renders dropdown in ActionModal with "Did you mean: ME1 / ME2?"
-5. Uncertain date parsing ("next week" → low confidence) highlights scheduled_date field with warning indicator
+5. Uncertain date parsing ("next week" -> low confidence) highlights scheduled_date field with warning indicator
 6. No silent assumptions made - all low-confidence prefills surface in modal for user confirmation before execution
 
 **Plans:** TBD
@@ -561,7 +565,7 @@ Plans:
 1. Wave 1 complete: 6 Lens Matrix agents produce lens_matrix.json with READ filters + MUTATE required_fields for all lenses
 2. Wave 2 complete: 6 NLP Variant agents produce intent_truth_set.json with 100 query variants per lens (600 total)
 3. Wave 3 complete: 6 Backend Integration agents implement /prepare endpoint, entity mappings, readiness classification, role gating per lens
-4. Wave 4 complete: 6 E2E Test agents create 50+ Playwright tests per lens (300+ total) covering suggestion → modal → execution → DB verification
+4. Wave 4 complete: 6 E2E Test agents create 50+ Playwright tests per lens (300+ total) covering suggestion -> modal -> execution -> DB verification
 
 **Plans:** TBD
 
@@ -573,7 +577,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 15. Intent Envelope | 1/1 | Complete | 2026-03-01 |
 | 16. Prefill Integration | 2/2 | Complete | 2026-03-01 |
-| 17. Readiness States | 0/? | Not started | - |
+| 17. Readiness States | 0/2 | Planning complete | - |
 | 18. Route & Disambiguation | 0/? | Not started | - |
 | 19. Agent Deployment | 0/? | Not started | - |
 
@@ -583,3 +587,4 @@ Plans:
 *Updated: 2026-03-01 — v1.3 Actionable UX Unification roadmap added (phases 15-19)*
 *Updated: 2026-03-01 — Phase 15 plan created (15-01-PLAN.md)*
 *Updated: 2026-03-01 — Phase 16 plans created (16-01-PLAN.md, 16-02-PLAN.md)*
+*Updated: 2026-03-01 — Phase 17 plans created (17-01-PLAN.md, 17-02-PLAN.md)*
