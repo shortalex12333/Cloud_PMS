@@ -575,12 +575,18 @@ Plans:
 **Requirements:** AGENT-01, AGENT-02, AGENT-03, AGENT-04
 
 **Success Criteria** (what must be TRUE):
-1. Wave 1 complete: 6 Lens Matrix agents produce lens_matrix.json with READ filters + MUTATE required_fields for all lenses
-2. Wave 2 complete: 6 NLP Variant agents produce intent_truth_set.json with 100 query variants per lens (600 total)
-3. Wave 3 complete: 6 Backend Integration agents implement /prepare endpoint, entity mappings, readiness classification, role gating per lens
-4. Wave 4 complete: 6 E2E Test agents create 50+ Playwright tests per lens (300+ total) covering suggestion -> modal -> execution -> DB verification
+1. Wave 1 complete: 12 Lens Matrix agents produce lens_matrix.json with READ filters + MUTATE required_fields for all lenses
+2. Wave 2 complete: 12 NLP Variant agents produce intent_truth_set.jsonl with 100 query variants per lens (1,200 total)
+3. Wave 3 complete: 12 Backend Integration agents implement /prepare endpoint, entity mappings, readiness classification, role gating per lens
+4. Wave 4 complete: 12 E2E Test agents create 50+ Playwright tests per lens (600+ total) covering suggestion -> modal -> execution -> DB verification
 
-**Plans:** TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 19-01-PLAN.md — Wave 1: Lens Matrix Analysis (12 agents)
+- [ ] 19-02-PLAN.md — Wave 2: NLP Variant Generation (12 agents, 1,200 queries)
+- [ ] 19-03-PLAN.md — Wave 3: Backend Integration (/prepare endpoint per lens)
+- [ ] 19-04-PLAN.md — Wave 4: E2E Test Coverage (300+ Playwright tests)
 
 ---
 
@@ -591,8 +597,8 @@ Plans:
 | 15. Intent Envelope | 1/1 | Complete | 2026-03-01 |
 | 16. Prefill Integration | 2/2 | Complete | 2026-03-01 |
 | 17. Readiness States | 2/2 | Complete | 2026-03-02 |
-| 18. Route & Disambiguation | 2/2 | Complete    | 2026-03-02 |
-| 19. Agent Deployment | 0/? | Not started | - |
+| 18. Route & Disambiguation | 2/2 | Complete | 2026-03-02 |
+| 19. Agent Deployment | 0/4 | Not started | - |
 
 ---
 
@@ -602,3 +608,4 @@ Plans:
 *Updated: 2026-03-01 — Phase 16 plans created (16-01-PLAN.md, 16-02-PLAN.md)*
 *Updated: 2026-03-01 — Phase 17 plans created (17-01-PLAN.md, 17-02-PLAN.md)*
 *Updated: 2026-03-02 — Phase 18 plans created (18-01-PLAN.md, 18-02-PLAN.md)*
+*Updated: 2026-03-02 — Phase 19 plans created (19-01-PLAN.md through 19-04-PLAN.md)*
