@@ -1,0 +1,63 @@
+{
+  "lens": "part",
+  "read_filters": {
+    "stock_status": ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK", "OVERSTOCKED", "ON_ORDER"],
+    "category": null,
+    "manufacturer": null,
+    "location": null,
+    "equipment_id": null,
+    "reorder_needed": {"field": "reorder_needed", "type": "boolean"}
+  },
+  "mutate_actions": {
+    "consume_part": {
+      "action_id": "consume_part",
+      "required_fields": ["part_id", "quantity", "work_order_id"],
+      "optional_fields": ["consumption_notes", "location"],
+      "role_restricted": [],
+      "idempotency_enforced": true,
+      "error_codes": {
+        "INSUFFICIENT_STOCK": 409
+      }
+    },
+    "receive_part": {
+      "action_id": "receive_part",
+      "required_fields": ["part_id", "quantity", "supplier_id"],
+      "optional_fields": ["receiving_id", "location", "batch_number", "expiry_date"],
+      "role_restricted": [],
+      "idempotency_enforced": true
+    },
+    "transfer_part": {
+      "action_id": "transfer_part",
+      "required_fields": ["part_id", "quantity", "from_location", "to_location"],
+      "optional_fields": ["transfer_notes"],
+      "role_restricted": []
+    },
+    "adjust_stock_quantity": {
+      "action_id": "adjust_stock_quantity",
+      "required_fields": ["part_id", "new_quantity", "adjustment_reason"],
+      "optional_fields": ["adjustment_notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_signature": true
+    },
+    "write_off_part": {
+      "action_id": "write_off_part",
+      "required_fields": ["part_id", "quantity", "write_off_reason"],
+      "optional_fields": ["photo_storage_path"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_signature": true
+    },
+    "add_to_shopping_list": {
+      "action_id": "add_to_shopping_list",
+      "required_fields": ["part_id", "quantity_requested"],
+      "optional_fields": ["urgency", "required_by_date", "notes"],
+      "role_restricted": []
+    },
+    "order_part": {
+      "action_id": "order_part",
+      "required_fields": ["part_id", "quantity", "supplier_id"],
+      "optional_fields": ["expected_delivery", "purchase_order_reference"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_confirmation": true
+    }
+  }
+}

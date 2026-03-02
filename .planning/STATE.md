@@ -12,11 +12,11 @@
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
 | Phase | Phase 19 (Agent Deployment) |
-| Plan | 00 |
-| Status | Phase 18 complete, ready for Phase 19 |
-| Last activity | 2026-03-02 — Phase 18 complete (canonical routes + disambiguation UX), Phase 19 pending |
+| Plan | 01 |
+| Status | Phase 19 Plan 01 complete (Lens Matrix Analysis) |
+| Last activity | 2026-03-02 — Phase 19-01 complete (12 lens matrices + aggregated lens_matrix.json) |
 
-**Progress:** [████████████████] 80% (4/5 phases complete)
+**Progress:** [████████████████████] 84% (4/5 phases complete, 1/4 plans in Phase 19)
 
 ---
 
@@ -39,7 +39,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | 16.1 | Mount /prepare | Fix GAP-001: endpoint returns 404 | GAP-001 | ✓ Complete |
 | 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ✓ Complete |
 | 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ✓ Complete |
-| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ○ Pending |
+| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ◐ In Progress (Plan 01 complete) |
 
 ---
 
@@ -57,6 +57,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | Phase 17 P01 | 213s | 3 tasks | 3 files |
 | Phase 18 P01 | 241 | 3 tasks | 3 files |
 | Phase 18 P02 | 290 | 3 tasks | 2 files |
+| Phase 19 P01 | 275s | 3 tasks | 13 files |
 
 ## Decisions Made
 
@@ -88,6 +89,8 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | Role gating uses get_action to retrieve allowed_roles | Check against ACTION_REGISTRY for role blocking | 2026-03-02 |
 | 0.8 confidence threshold for READY state | Per READY-01, READY-02 requirements | 2026-03-02 |
 | Renamed duplicate PrepareResponse to WorkOrderPrepareResponse | Avoid TypeScript interface conflict in actionClient.ts | 2026-03-02 |
+| Direct lens analysis instead of spawning external agents | More efficient - executor already had codebase context loaded | 2026-03-02 |
+| JSON structure includes role_restricted arrays for all actions | Consistency for downstream NLP variant agents | 2026-03-02 |
 
 ---
 - [Phase 16]: "next week" maps to Monday of NEXT week (not just next Monday occurrence)
@@ -98,6 +101,8 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - [Phase 18]: URL normalization: lowercase, hyphens for spaces, alphanumeric only
 - [Phase 18-02]: Confidence threshold 0.85 separates auto-fill from confirm-required states
 - [Phase 18-02]: AmbiguityDropdown and DateWarning components for no-silent-assumptions UX
+- [Phase 19-01]: 12 lens matrices created with 81 MUTATE actions and 67 READ filters documented
+- [Phase 19-01]: lens_matrix.json aggregates all lenses for Wave 2 NLP variant agents
 
 ## Blockers
 
@@ -210,14 +215,14 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 ## Next Single Action
 
-**Plan Phase 18: Route & Disambiguation**
+**Continue Phase 19: NLP Variant Agents (Wave 2)**
 
-Phase 17 complete (all readiness indicators implemented). Next:
-- Plan Phase 18 for fragmented URLs and disambiguation UX
-- Generate canonical route segments for READ navigation
-- Implement disambiguation UI for ambiguous entities and low confidence fields
+Phase 19 Plan 01 complete (Lens Matrix Analysis). Next:
+- Execute Plan 19-02: Deploy NLP Variant Agents
+- Use lens_matrix.json as input for query generation
+- Generate test variants for each lens + filter combination
 
-Command: `/gsd:plan-phase 18`
+Command: `/gsd:execute-phase 19-02`
 
 ---
 

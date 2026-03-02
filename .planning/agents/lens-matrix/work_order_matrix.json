@@ -1,0 +1,92 @@
+{
+  "lens": "work_order",
+  "read_filters": {
+    "status": ["draft", "open", "in_progress", "pending_parts", "completed", "closed", "cancelled"],
+    "priority": ["routine", "urgent", "emergency"],
+    "type": ["planned", "unplanned", "corrective", "preventive"],
+    "equipment_id": null,
+    "assigned_to": null,
+    "due_date": {"field": "due_date", "type": "date"},
+    "created_at": {"field": "created_at", "type": "datetime"}
+  },
+  "mutate_actions": {
+    "create_work_order": {
+      "action_id": "create_work_order",
+      "required_fields": ["title", "equipment_id", "priority", "type"],
+      "optional_fields": ["description", "scheduled_date", "due_date", "assigned_to"],
+      "role_restricted": [],
+      "requires_signature": true,
+      "confirmation_message": "Create new work order for this equipment?"
+    },
+    "create_work_order_from_fault": {
+      "action_id": "create_work_order_from_fault",
+      "required_fields": ["fault_id", "title", "equipment_id", "priority"],
+      "optional_fields": ["description", "scheduled_date"],
+      "role_restricted": [],
+      "requires_signature": true
+    },
+    "update_work_order": {
+      "action_id": "update_work_order",
+      "required_fields": ["work_order_id"],
+      "optional_fields": ["title", "description", "priority", "status", "due_date", "assigned_to"],
+      "role_restricted": []
+    },
+    "add_note_to_work_order": {
+      "action_id": "add_note_to_work_order",
+      "required_fields": ["work_order_id", "note_text"],
+      "optional_fields": [],
+      "role_restricted": []
+    },
+    "add_part_to_work_order": {
+      "action_id": "add_part_to_work_order",
+      "required_fields": ["work_order_id", "part_id", "quantity"],
+      "optional_fields": ["notes"],
+      "role_restricted": []
+    },
+    "mark_work_order_complete": {
+      "action_id": "mark_work_order_complete",
+      "required_fields": ["work_order_id", "resolution"],
+      "optional_fields": ["completion_notes"],
+      "role_restricted": [],
+      "requires_signature": true
+    },
+    "assign_work_order": {
+      "action_id": "assign_work_order",
+      "required_fields": ["work_order_id", "assigned_to"],
+      "optional_fields": ["assignment_notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_confirmation": true
+    },
+    "close_work_order": {
+      "action_id": "close_work_order",
+      "required_fields": ["work_order_id"],
+      "optional_fields": ["close_notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_confirmation": true
+    },
+    "schedule_work_order": {
+      "action_id": "schedule_work_order",
+      "required_fields": ["work_order_id", "scheduled_date"],
+      "optional_fields": ["scheduled_time"],
+      "role_restricted": []
+    },
+    "set_priority_on_work_order": {
+      "action_id": "set_priority_on_work_order",
+      "required_fields": ["work_order_id", "priority"],
+      "optional_fields": [],
+      "role_restricted": []
+    },
+    "attach_photo_to_work_order": {
+      "action_id": "attach_photo_to_work_order",
+      "required_fields": ["work_order_id", "photo_storage_path"],
+      "optional_fields": ["caption"],
+      "role_restricted": []
+    },
+    "attach_document_to_work_order": {
+      "action_id": "attach_document_to_work_order",
+      "required_fields": ["work_order_id", "document_id"],
+      "optional_fields": ["notes"],
+      "role_restricted": []
+    }
+  }
+}

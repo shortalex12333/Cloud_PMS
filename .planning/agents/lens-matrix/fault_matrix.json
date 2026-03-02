@@ -1,0 +1,72 @@
+{
+  "lens": "fault",
+  "read_filters": {
+    "status": ["open", "investigating", "work_ordered", "resolved", "closed", "false_alarm"],
+    "severity": ["cosmetic", "minor", "major", "critical", "safety"],
+    "equipment_id": null,
+    "reported_by": null,
+    "reported_at": {"field": "reported_at", "type": "datetime"},
+    "location": null
+  },
+  "mutate_actions": {
+    "report_fault": {
+      "action_id": "report_fault",
+      "required_fields": ["title", "equipment_id", "severity"],
+      "optional_fields": ["description", "fault_code", "photo_storage_path"],
+      "role_restricted": [],
+      "severity_mapping": {
+        "low": "cosmetic",
+        "medium": "minor",
+        "high": "major"
+      }
+    },
+    "acknowledge_fault": {
+      "action_id": "acknowledge_fault",
+      "required_fields": ["fault_id"],
+      "optional_fields": ["acknowledgment_notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "close_fault": {
+      "action_id": "close_fault",
+      "required_fields": ["fault_id", "resolution"],
+      "optional_fields": ["resolution_notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "update_fault": {
+      "action_id": "update_fault",
+      "required_fields": ["fault_id"],
+      "optional_fields": ["title", "description", "severity", "status"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "add_fault_photo": {
+      "action_id": "add_fault_photo",
+      "required_fields": ["fault_id", "photo_storage_path"],
+      "optional_fields": ["caption"],
+      "role_restricted": []
+    },
+    "add_fault_note": {
+      "action_id": "add_fault_note",
+      "required_fields": ["fault_id", "note_text"],
+      "optional_fields": [],
+      "role_restricted": []
+    },
+    "diagnose_fault": {
+      "action_id": "diagnose_fault",
+      "required_fields": ["fault_id", "diagnosis"],
+      "optional_fields": ["recommended_parts", "recommended_action"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "reopen_fault": {
+      "action_id": "reopen_fault",
+      "required_fields": ["fault_id"],
+      "optional_fields": ["reopen_reason"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "mark_fault_false_alarm": {
+      "action_id": "mark_fault_false_alarm",
+      "required_fields": ["fault_id"],
+      "optional_fields": ["false_alarm_reason"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    }
+  }
+}

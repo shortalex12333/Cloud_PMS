@@ -1,0 +1,50 @@
+{
+  "lens": "equipment",
+  "read_filters": {
+    "status": ["operational", "out_of_service", "maintenance", "decommissioned"],
+    "category": null,
+    "location": null,
+    "manufacturer": null,
+    "install_date": {"field": "install_date", "type": "date"},
+    "last_service_date": {"field": "last_service_date", "type": "date"},
+    "risk_score": {"field": "risk_score", "type": "numeric", "range": [0, 1]}
+  },
+  "mutate_actions": {
+    "update_equipment": {
+      "action_id": "update_equipment",
+      "required_fields": ["equipment_id"],
+      "optional_fields": ["name", "model", "manufacturer", "serial_number", "location", "notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "set_equipment_status": {
+      "action_id": "set_equipment_status",
+      "required_fields": ["equipment_id", "status"],
+      "optional_fields": ["status_reason", "work_order_id"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "status_flow": {
+        "operational": ["out_of_service", "maintenance"],
+        "out_of_service": ["operational", "maintenance", "decommissioned"],
+        "maintenance": ["operational", "out_of_service"],
+        "decommissioned": []
+      }
+    },
+    "link_document_to_equipment": {
+      "action_id": "link_document_to_equipment",
+      "required_fields": ["equipment_id", "document_id"],
+      "optional_fields": ["link_type", "notes"],
+      "role_restricted": []
+    },
+    "update_running_hours": {
+      "action_id": "update_running_hours",
+      "required_fields": ["equipment_id", "running_hours"],
+      "optional_fields": ["recorded_at"],
+      "role_restricted": []
+    },
+    "log_contractor_work": {
+      "action_id": "log_contractor_work",
+      "required_fields": ["equipment_id", "contractor_name", "work_description"],
+      "optional_fields": ["work_date", "invoice_reference"],
+      "role_restricted": []
+    }
+  }
+}

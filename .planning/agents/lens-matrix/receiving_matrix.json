@@ -1,0 +1,68 @@
+{
+  "lens": "receiving",
+  "read_filters": {
+    "status": ["draft", "pending_review", "accepted", "rejected"],
+    "supplier_id": null,
+    "created_at": {"field": "created_at", "type": "datetime"},
+    "received_at": {"field": "received_at", "type": "datetime"},
+    "has_discrepancies": {"field": "has_discrepancies", "type": "boolean"}
+  },
+  "mutate_actions": {
+    "create_receiving": {
+      "action_id": "create_receiving",
+      "required_fields": ["supplier_id"],
+      "optional_fields": ["expected_items", "purchase_order_id", "notes"],
+      "role_restricted": []
+    },
+    "attach_receiving_image_with_comment": {
+      "action_id": "attach_receiving_image_with_comment",
+      "required_fields": ["receiving_id", "image_storage_path"],
+      "optional_fields": ["comment", "image_type"],
+      "role_restricted": []
+    },
+    "extract_receiving_candidates": {
+      "action_id": "extract_receiving_candidates",
+      "required_fields": ["receiving_id", "image_id"],
+      "optional_fields": [],
+      "role_restricted": [],
+      "advisory_only": true
+    },
+    "update_receiving_fields": {
+      "action_id": "update_receiving_fields",
+      "required_fields": ["receiving_id"],
+      "optional_fields": ["supplier_id", "notes", "received_date"],
+      "role_restricted": []
+    },
+    "add_receiving_item": {
+      "action_id": "add_receiving_item",
+      "required_fields": ["receiving_id", "part_id", "quantity_received"],
+      "optional_fields": ["condition", "location", "batch_number", "expiry_date", "notes"],
+      "role_restricted": []
+    },
+    "adjust_receiving_item": {
+      "action_id": "adjust_receiving_item",
+      "required_fields": ["receiving_item_id", "quantity_received"],
+      "optional_fields": ["adjustment_reason", "condition"],
+      "role_restricted": []
+    },
+    "link_invoice_document": {
+      "action_id": "link_invoice_document",
+      "required_fields": ["receiving_id", "document_id"],
+      "optional_fields": ["invoice_number", "invoice_date"],
+      "role_restricted": []
+    },
+    "accept_receiving": {
+      "action_id": "accept_receiving",
+      "required_fields": ["receiving_id"],
+      "optional_fields": ["acceptance_notes"],
+      "role_restricted": [],
+      "requires_signature": true
+    },
+    "reject_receiving": {
+      "action_id": "reject_receiving",
+      "required_fields": ["receiving_id", "rejection_reason"],
+      "optional_fields": ["rejection_notes"],
+      "role_restricted": []
+    }
+  }
+}

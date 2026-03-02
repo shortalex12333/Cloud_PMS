@@ -1,0 +1,42 @@
+{
+  "lens": "inventory",
+  "read_filters": {
+    "stock_status": ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK", "OVERSTOCKED", "ON_ORDER"],
+    "location": null,
+    "category": null,
+    "reorder_needed": {"field": "reorder_needed", "type": "boolean"},
+    "last_counted_at": {"field": "last_counted_at", "type": "datetime"}
+  },
+  "mutate_actions": {
+    "log_part_usage": {
+      "action_id": "log_part_usage",
+      "required_fields": ["part_id", "quantity", "work_order_id"],
+      "optional_fields": ["usage_notes"],
+      "role_restricted": []
+    },
+    "update_stock_level": {
+      "action_id": "update_stock_level",
+      "required_fields": ["part_id", "quantity_change", "reason"],
+      "optional_fields": ["reference_id", "notes"],
+      "role_restricted": []
+    },
+    "create_purchase_request": {
+      "action_id": "create_purchase_request",
+      "required_fields": ["part_id", "quantity_requested"],
+      "optional_fields": ["urgency", "required_by_date", "notes", "preferred_supplier"],
+      "role_restricted": []
+    },
+    "reserve_part": {
+      "action_id": "reserve_part",
+      "required_fields": ["part_id", "quantity", "work_order_id"],
+      "optional_fields": ["reservation_notes"],
+      "role_restricted": []
+    },
+    "count_inventory": {
+      "action_id": "count_inventory",
+      "required_fields": ["part_id", "counted_quantity"],
+      "optional_fields": ["count_notes", "discrepancy_reason"],
+      "role_restricted": []
+    }
+  }
+}

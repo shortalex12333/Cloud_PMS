@@ -1,0 +1,50 @@
+{
+  "lens": "warranty",
+  "read_filters": {
+    "status": ["active", "expired", "claimed", "voided"],
+    "equipment_id": null,
+    "part_id": null,
+    "expiry_date": {"field": "expiry_date", "type": "date"},
+    "is_expiring_soon": {"field": "is_expiring_soon", "type": "boolean"},
+    "supplier": null
+  },
+  "mutate_actions": {
+    "create_warranty": {
+      "action_id": "create_warranty",
+      "required_fields": ["equipment_id", "start_date", "end_date", "supplier"],
+      "optional_fields": ["warranty_number", "coverage_details", "document_id", "notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "update_warranty": {
+      "action_id": "update_warranty",
+      "required_fields": ["warranty_id"],
+      "optional_fields": ["end_date", "coverage_details", "notes", "status"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "claim_warranty": {
+      "action_id": "claim_warranty",
+      "required_fields": ["warranty_id", "claim_description", "fault_id"],
+      "optional_fields": ["claim_reference", "supporting_documents"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "void_warranty": {
+      "action_id": "void_warranty",
+      "required_fields": ["warranty_id", "void_reason"],
+      "optional_fields": ["void_notes"],
+      "role_restricted": ["manager"],
+      "requires_confirmation": true
+    },
+    "link_document_to_warranty": {
+      "action_id": "link_document_to_warranty",
+      "required_fields": ["warranty_id", "document_id"],
+      "optional_fields": ["link_notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "extend_warranty": {
+      "action_id": "extend_warranty",
+      "required_fields": ["warranty_id", "new_end_date"],
+      "optional_fields": ["extension_notes", "extension_reference"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    }
+  }
+}

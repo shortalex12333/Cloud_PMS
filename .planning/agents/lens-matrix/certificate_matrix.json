@@ -1,0 +1,69 @@
+{
+  "lens": "certificate",
+  "read_filters": {
+    "status": ["draft", "active", "superseded", "expired", "revoked"],
+    "certificate_type": null,
+    "vessel_or_crew": ["vessel", "crew"],
+    "expiry_date": {"field": "expiry_date", "type": "date"},
+    "is_expiring_soon": {"field": "is_expiring_soon", "type": "boolean"},
+    "is_expired": {"field": "is_expired", "type": "boolean"}
+  },
+  "vessel_certificate_types": ["ISM", "ISPS", "SOLAS", "MLC", "CLASS", "FLAG", "SEC", "SRC", "SCC", "LOAD_LINE", "TONNAGE", "MARPOL", "IOPP"],
+  "crew_certificate_types": ["STCW", "ENG1", "COC", "GMDSS", "BST", "PSC", "AFF", "MEDICAL_CARE"],
+  "mutate_actions": {
+    "create_vessel_certificate": {
+      "action_id": "create_vessel_certificate",
+      "required_fields": ["certificate_type", "issue_date", "expiry_date", "issuing_authority"],
+      "optional_fields": ["certificate_number", "document_id", "notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_confirmation": true
+    },
+    "create_crew_certificate": {
+      "action_id": "create_crew_certificate",
+      "required_fields": ["certificate_type", "crew_member_id", "issue_date", "expiry_date", "issuing_authority"],
+      "optional_fields": ["certificate_number", "document_id", "notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_confirmation": true
+    },
+    "update_certificate": {
+      "action_id": "update_certificate",
+      "required_fields": ["certificate_id"],
+      "optional_fields": ["expiry_date", "notes", "status"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "link_document_to_certificate": {
+      "action_id": "link_document_to_certificate",
+      "required_fields": ["certificate_id", "document_id"],
+      "optional_fields": ["link_notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "supersede_certificate": {
+      "action_id": "supersede_certificate",
+      "required_fields": ["certificate_id", "new_certificate_id"],
+      "optional_fields": ["supersede_notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_signature": true
+    },
+    "delete_certificate": {
+      "action_id": "delete_certificate",
+      "required_fields": ["certificate_id", "delete_reason"],
+      "optional_fields": [],
+      "role_restricted": ["manager"],
+      "requires_confirmation": true
+    },
+    "upload_certificate_document": {
+      "action_id": "upload_certificate_document",
+      "required_fields": ["certificate_id", "document_storage_path"],
+      "optional_fields": ["document_description"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_confirmation": true
+    },
+    "update_certificate_metadata": {
+      "action_id": "update_certificate_metadata",
+      "required_fields": ["certificate_id"],
+      "optional_fields": ["issuing_authority", "certificate_number", "notes"],
+      "role_restricted": ["chief_engineer", "captain", "manager"],
+      "requires_confirmation": true
+    }
+  }
+}

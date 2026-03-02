@@ -1,0 +1,66 @@
+{
+  "lens": "hours_of_rest",
+  "read_filters": {
+    "user_id": null,
+    "record_date": {"field": "record_date", "type": "date"},
+    "start_date": {"field": "record_date", "type": "date"},
+    "end_date": {"field": "record_date", "type": "date"},
+    "is_daily_compliant": {"field": "is_daily_compliant", "type": "boolean"},
+    "is_weekly_compliant": {"field": "is_weekly_compliant", "type": "boolean"},
+    "warning_status": ["active", "acknowledged", "dismissed"]
+  },
+  "compliance_standards": ["ILO MLC 2006", "STCW Convention"],
+  "mutate_actions": {
+    "log_hours_of_rest": {
+      "action_id": "log_hours_of_rest",
+      "required_fields": ["record_date", "rest_periods"],
+      "optional_fields": ["notes"],
+      "role_restricted": [],
+      "requires_confirmation": true
+    },
+    "upsert_hours_of_rest": {
+      "action_id": "upsert_hours_of_rest",
+      "required_fields": ["user_id", "record_date", "rest_periods"],
+      "optional_fields": ["total_rest_hours", "total_work_hours", "notes"],
+      "role_restricted": []
+    },
+    "create_monthly_signoff": {
+      "action_id": "create_monthly_signoff",
+      "required_fields": ["user_id", "month", "year"],
+      "optional_fields": [],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "sign_monthly_signoff": {
+      "action_id": "sign_monthly_signoff",
+      "required_fields": ["signoff_id", "signature_type"],
+      "optional_fields": ["signature_notes"],
+      "role_restricted": [],
+      "requires_signature": true,
+      "signature_types": ["crew", "hod", "captain"]
+    },
+    "create_crew_template": {
+      "action_id": "create_crew_template",
+      "required_fields": ["template_name", "rest_periods"],
+      "optional_fields": ["description"],
+      "role_restricted": []
+    },
+    "apply_crew_template": {
+      "action_id": "apply_crew_template",
+      "required_fields": ["template_id", "start_date", "end_date"],
+      "optional_fields": ["user_id"],
+      "role_restricted": []
+    },
+    "acknowledge_warning": {
+      "action_id": "acknowledge_warning",
+      "required_fields": ["warning_id"],
+      "optional_fields": ["acknowledgment_notes"],
+      "role_restricted": []
+    },
+    "dismiss_warning": {
+      "action_id": "dismiss_warning",
+      "required_fields": ["warning_id", "dismissal_reason"],
+      "optional_fields": [],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    }
+  }
+}

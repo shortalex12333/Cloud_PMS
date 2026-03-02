@@ -1,0 +1,65 @@
+{
+  "lens": "shopping_list",
+  "read_filters": {
+    "status": ["candidate", "under_review", "approved", "ordered", "partially_fulfilled", "fulfilled", "installed", "rejected"],
+    "source_type": ["inventory_low", "inventory_oos", "work_order_usage", "receiving_missing", "receiving_damaged", "manual_add"],
+    "urgency": ["low", "normal", "high", "critical"],
+    "created_at": {"field": "created_at", "type": "datetime"},
+    "required_by_date": {"field": "required_by_date", "type": "date"},
+    "part_id": null
+  },
+  "status_flow": {
+    "candidate": ["under_review", "approved"],
+    "under_review": ["approved", "rejected"],
+    "approved": ["ordered"],
+    "ordered": ["partially_fulfilled", "fulfilled"],
+    "partially_fulfilled": ["fulfilled"],
+    "fulfilled": ["installed"],
+    "installed": [],
+    "rejected": []
+  },
+  "mutate_actions": {
+    "create_shopping_list_item": {
+      "action_id": "create_shopping_list_item",
+      "required_fields": ["part_name", "quantity_requested", "source_type"],
+      "optional_fields": ["part_id", "part_number", "manufacturer", "unit", "preferred_supplier", "estimated_unit_price", "urgency", "required_by_date", "source_work_order_id", "source_receiving_id", "source_notes"],
+      "role_restricted": []
+    },
+    "approve_shopping_list_item": {
+      "action_id": "approve_shopping_list_item",
+      "required_fields": ["item_id"],
+      "optional_fields": ["approval_notes", "approved_quantity"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "reject_shopping_list_item": {
+      "action_id": "reject_shopping_list_item",
+      "required_fields": ["item_id", "rejection_reason"],
+      "optional_fields": [],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "promote_candidate_to_part": {
+      "action_id": "promote_candidate_to_part",
+      "required_fields": ["item_id", "part_category", "min_quantity"],
+      "optional_fields": ["part_number", "manufacturer", "location", "unit"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "update_shopping_list_item": {
+      "action_id": "update_shopping_list_item",
+      "required_fields": ["item_id"],
+      "optional_fields": ["quantity_requested", "urgency", "required_by_date", "notes"],
+      "role_restricted": []
+    },
+    "mark_item_ordered": {
+      "action_id": "mark_item_ordered",
+      "required_fields": ["item_id", "purchase_order_id"],
+      "optional_fields": ["expected_delivery"],
+      "role_restricted": ["chief_engineer", "captain", "manager"]
+    },
+    "mark_item_received": {
+      "action_id": "mark_item_received",
+      "required_fields": ["item_id", "quantity_received"],
+      "optional_fields": ["receiving_notes", "receiving_id"],
+      "role_restricted": []
+    }
+  }
+}

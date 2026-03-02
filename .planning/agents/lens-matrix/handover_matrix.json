@@ -1,0 +1,56 @@
+{
+  "lens": "handover",
+  "read_filters": {
+    "category": ["ongoing_fault", "work_in_progress", "equipment_status", "important_info", "general"],
+    "priority": ["low", "normal", "high"],
+    "created_at": {"field": "created_at", "type": "datetime"},
+    "author": null,
+    "entity_type": ["fault", "work_order", "equipment", "part", "document"]
+  },
+  "mutate_actions": {
+    "add_to_handover": {
+      "action_id": "add_to_handover",
+      "required_fields": ["title", "summary_text", "category"],
+      "optional_fields": ["entity_type", "entity_id", "priority", "equipment_name", "location"],
+      "role_restricted": [],
+      "entity_category_mapping": {
+        "fault": "ongoing_fault",
+        "work_order": "work_in_progress",
+        "document": "important_info",
+        "equipment": "equipment_status",
+        "part": "general"
+      }
+    },
+    "edit_handover_item": {
+      "action_id": "edit_handover_item",
+      "required_fields": ["handover_item_id"],
+      "optional_fields": ["title", "summary_text", "category", "priority"],
+      "role_restricted": []
+    },
+    "attach_document_to_handover": {
+      "action_id": "attach_document_to_handover",
+      "required_fields": ["handover_item_id", "document_id"],
+      "optional_fields": ["attachment_notes"],
+      "role_restricted": []
+    },
+    "export_handover": {
+      "action_id": "export_handover",
+      "required_fields": ["export_format"],
+      "optional_fields": ["date_range_start", "date_range_end", "categories"],
+      "role_restricted": [],
+      "requires_confirmation": true
+    },
+    "regenerate_handover_summary": {
+      "action_id": "regenerate_handover_summary",
+      "required_fields": ["handover_export_id"],
+      "optional_fields": [],
+      "role_restricted": []
+    },
+    "edit_handover_section": {
+      "action_id": "edit_handover_section",
+      "required_fields": ["handover_export_id", "section_key"],
+      "optional_fields": ["section_content"],
+      "role_restricted": []
+    }
+  }
+}
