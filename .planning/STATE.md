@@ -2,7 +2,7 @@
 
 > **This file tracks decisions, blockers, and position across sessions.**
 >
-> Last Updated: 2026-03-01
+> Last Updated: 2026-03-02
 
 ---
 
@@ -12,11 +12,11 @@
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
 | Phase | Phase 17 (Readiness States) |
-| Plan | — |
-| Status | Ready for planning |
-| Last activity | 2026-03-01 — Phase 16 complete (2/2 plans) |
+| Plan | 01 |
+| Status | Plan 17-01 complete |
+| Last activity | 2026-03-02 — Phase 17 Plan 01 complete (1/? plans) |
 
-**Progress:** [██████████] 40% (2/5 phases complete)
+**Progress:** [████████████] 50% (2.5/5 phases complete)
 
 ---
 
@@ -36,7 +36,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 |---|-------|------|--------------|--------|
 | 15 | Intent Envelope | Create IntentEnvelope abstraction | INTENT-01..03 | ✓ Complete |
 | 16 | Prefill Integration | Build /v1/actions/prepare endpoint | PREFILL-01..05 | ✓ Complete |
-| 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ○ Pending |
+| 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ◐ In Progress (1/? plans) |
 | 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ○ Pending |
 | 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ○ Pending |
 
@@ -53,6 +53,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 ---
 | Phase 16 P01 | 305s | 3 tasks | 5 files |
 | Phase 16 P02 | 240s | 3 tasks | 3 files |
+| Phase 17 P01 | 213s | 3 tasks | 3 files |
 
 ## Decisions Made
 
@@ -81,10 +82,15 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | IntentMode: READ/MUTATE/MIXED | Three states covers all intent combinations | 2026-03-01 |
 | READY threshold: confidence >= 0.8 + entity present | Prevents premature READY state for mutations | 2026-03-01 |
 | ActionSuggestion.match_score -> IntentAction.confidence | Mapping backend score to envelope confidence | 2026-03-01 |
+| Role gating uses get_action to retrieve allowed_roles | Check against ACTION_REGISTRY for role blocking | 2026-03-02 |
+| 0.8 confidence threshold for READY state | Per READY-01, READY-02 requirements | 2026-03-02 |
+| Renamed duplicate PrepareResponse to WorkOrderPrepareResponse | Avoid TypeScript interface conflict in actionClient.ts | 2026-03-02 |
 
 ---
 - [Phase 16]: "next week" maps to Monday of NEXT week (not just next Monday occurrence)
 - [Phase 16]: Separate /prepare endpoint (not polluting /list semantics)
+- [Phase 17]: role_blocked field in PrepareResponse for BLOCKED state detection
+- [Phase 17]: deriveReadinessFromPrefill function for client-side readiness derivation
 
 ## Blockers
 
@@ -194,13 +200,12 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 ## Next Single Action
 
-**Plan Phase 17: Readiness States**
+**Continue Phase 17: Readiness States**
 
-Use `/gsd:plan-phase 17` to create execution plan for:
-1. Add readiness classification (READY/NEEDS_INPUT/BLOCKED)
-2. Implement visual indicators (green check / amber dot / lock icon)
-3. Derive readiness from prefill confidence + missing_fields + role gating
-4. Integrate with SuggestedActions.tsx for at-a-glance distinction
+Plan 17-01 complete (readiness derivation logic). Next:
+- Visual indicators in SuggestedActions.tsx (green check / amber dot / lock icon)
+- Integration testing of READY/NEEDS_INPUT/BLOCKED states
+- E2E tests for readiness state transitions
 
 ---
 
