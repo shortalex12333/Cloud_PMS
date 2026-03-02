@@ -1,0 +1,100 @@
+{"query": "show inventory status", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display all inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list inventory in stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "IN_STOCK"}], "expected_action_id": null}
+{"query": "find low stock inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "LOW_STOCK"}], "expected_action_id": null}
+{"query": "get out of stock items", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "OUT_OF_STOCK"}], "expected_action_id": null}
+{"query": "view overstocked inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "OVERSTOCKED"}], "expected_action_id": null}
+{"query": "show items on order", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "ON_ORDER"}], "expected_action_id": null}
+{"query": "inventory in engine room store", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "engine_room_store"}], "expected_action_id": null}
+{"query": "display inventory in main store", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "main_store"}], "expected_action_id": null}
+{"query": "list items in deck store", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "deck_store"}], "expected_action_id": null}
+{"query": "find inventory by category filters", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "filter"}], "expected_action_id": null}
+{"query": "show electrical inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "electrical"}], "expected_action_id": null}
+{"query": "get mechanical parts inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "mechanical"}], "expected_action_id": null}
+{"query": "view safety equipment inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "safety"}], "expected_action_id": null}
+{"query": "items needing reorder", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "reorder_needed", "value": true}], "expected_action_id": null}
+{"query": "show inventory below minimum", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "reorder_needed", "value": true}], "expected_action_id": null}
+{"query": "display items requiring restock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "reorder_needed", "value": true}], "expected_action_id": null}
+{"query": "inventory not counted recently", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "last_counted_at", "value": "over_30_days"}], "expected_action_id": null}
+{"query": "show items counted this week", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "last_counted_at", "value": "this_week"}], "expected_action_id": null}
+{"query": "list uncounted inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "last_counted_at", "value": null}], "expected_action_id": null}
+{"query": "find inventory counted last month", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "last_counted_at", "value": "last_month"}], "expected_action_id": null}
+{"query": "get critical stock items", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "criticality", "value": "critical"}], "expected_action_id": null}
+{"query": "view consumables inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "consumable"}], "expected_action_id": null}
+{"query": "show lubricants stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "lubricant"}], "expected_action_id": null}
+{"query": "inventory with zero quantity", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "OUT_OF_STOCK"}], "expected_action_id": null}
+{"query": "display fuel system inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "fuel_system"}], "expected_action_id": null}
+{"query": "list hydraulic stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "hydraulic"}], "expected_action_id": null}
+{"query": "find deck equipment inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "deck"}], "expected_action_id": null}
+{"query": "get navigation equipment stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "navigation"}], "expected_action_id": null}
+{"query": "view galley inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "galley"}], "expected_action_id": null}
+{"query": "show paint supplies stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "paint"}], "expected_action_id": null}
+{"query": "inventory summary", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display stock levels", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list all stores", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show warehouse inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "find slow moving inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "turnover", "value": "slow"}], "expected_action_id": null}
+{"query": "get fast moving stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "turnover", "value": "fast"}], "expected_action_id": null}
+{"query": "view expired inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "expiry_status", "value": "expired"}], "expected_action_id": null}
+{"query": "items expiring soon", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "expiry_status", "value": "expiring_soon"}], "expected_action_id": null}
+{"query": "show inventory value by location", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display stock movement history", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list reserved inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "is_reserved", "value": true}], "expected_action_id": null}
+{"query": "find available stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "is_reserved", "value": false}], "expected_action_id": null}
+{"query": "get inventory with pending orders", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "ON_ORDER"}], "expected_action_id": null}
+{"query": "view welding supplies stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "welding"}], "expected_action_id": null}
+{"query": "show cleaning supplies inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "cleaning"}], "expected_action_id": null}
+{"query": "inventory by part number", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "find items in cold storage", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "cold_storage"}], "expected_action_id": null}
+{"query": "list bonded store inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "bonded_store"}], "expected_action_id": null}
+{"query": "show PPE inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "ppe"}], "expected_action_id": null}
+{"query": "log part usage", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_part_usage"}
+{"query": "record usage of 3 filters for WO-123", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_part_usage", "expected_entities": [{"type": "quantity", "value": 3}, {"type": "part", "value": "filter"}, {"type": "work_order", "value": "WO-123"}]}
+{"query": "track part consumption", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_part_usage"}
+{"query": "document part used on work order", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_part_usage"}
+{"query": "enter usage record", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_part_usage"}
+{"query": "update stock level", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level"}
+{"query": "adjust inventory quantity", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level"}
+{"query": "increase stock by 10", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level", "expected_entities": [{"type": "quantity", "value": 10}]}
+{"query": "decrease inventory level", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level"}
+{"query": "correct stock count", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level"}
+{"query": "create purchase request", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_purchase_request"}
+{"query": "request 20 gaskets", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_purchase_request", "expected_entities": [{"type": "quantity", "value": 20}, {"type": "part", "value": "gasket"}]}
+{"query": "submit purchase requisition", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_purchase_request"}
+{"query": "raise purchase request for bearings", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_purchase_request", "expected_entities": [{"type": "part", "value": "bearing"}]}
+{"query": "initiate procurement request", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_purchase_request"}
+{"query": "reserve part for work order", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reserve_part"}
+{"query": "reserve 5 seals for WO-456", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reserve_part", "expected_entities": [{"type": "quantity", "value": 5}, {"type": "part", "value": "seal"}, {"type": "work_order", "value": "WO-456"}]}
+{"query": "allocate parts to job", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reserve_part"}
+{"query": "hold stock for maintenance", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reserve_part"}
+{"query": "reserve inventory for upcoming work", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reserve_part"}
+{"query": "count inventory", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "count_inventory"}
+{"query": "perform stock count for oil filters", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "count_inventory", "expected_entities": [{"type": "part", "value": "oil_filter"}]}
+{"query": "record physical inventory count", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "count_inventory"}
+{"query": "enter cycle count", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "count_inventory"}
+{"query": "submit inventory count of 25 belts", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "count_inventory", "expected_entities": [{"type": "quantity", "value": 25}, {"type": "part", "value": "belt"}]}
+{"query": "log 2 impellers used on WO-789", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_part_usage", "expected_entities": [{"type": "quantity", "value": 2}, {"type": "part", "value": "impeller"}, {"type": "work_order", "value": "WO-789"}]}
+{"query": "record consumption of lubricant", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_part_usage", "expected_entities": [{"type": "part", "value": "lubricant"}]}
+{"query": "document material usage", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_part_usage"}
+{"query": "track consumable usage", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_part_usage"}
+{"query": "enter stock adjustment reason", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level"}
+{"query": "modify inventory balance", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level"}
+{"query": "create urgent purchase request", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_purchase_request"}
+{"query": "request critical spares urgently", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_purchase_request"}
+{"query": "book parts for scheduled maintenance", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reserve_part"}
+{"query": "earmark inventory for dry dock", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reserve_part"}
+{"query": "perform annual stock count", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "count_inventory"}
+{"query": "complete inventory audit", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "count_inventory"}
+{"query": "verify stock quantity", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "count_inventory"}
+{"query": "reconcile inventory discrepancy", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level"}
+{"query": "set new stock minimum level", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level"}
+{"query": "request replenishment for safety items", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_purchase_request"}
+{"query": "hold spare parts for inspection", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reserve_part"}
+{"query": "document stock take results", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "count_inventory"}
+{"query": "show inventory for ME1 spare parts", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "ME1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "list turbocharger spares in stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "turbocharger"}, {"field": "stock_status", "value": "IN_STOCK"}], "expected_action_id": null}
+{"query": "find bearing inventory levels", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "part_type", "value": "bearing"}], "expected_action_id": null}
+{"query": "get DG1 spare parts inventory", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "DG1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "DG1"}]}
+{"query": "view steering gear parts stock", "expected_lens": "inventory", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "steering_gear"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "create inventory adjustment entry", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_stock_level"}
+{"query": "reserve critical spares for voyage", "expected_lens": "inventory", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reserve_part"}

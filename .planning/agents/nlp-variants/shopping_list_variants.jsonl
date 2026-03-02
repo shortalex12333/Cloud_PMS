@@ -1,0 +1,100 @@
+{"query": "show shopping list", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display purchase requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list candidate items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "candidate"}], "expected_action_id": null}
+{"query": "find items under review", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "under_review"}], "expected_action_id": null}
+{"query": "get approved items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "approved"}], "expected_action_id": null}
+{"query": "view ordered items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "ordered"}], "expected_action_id": null}
+{"query": "show partially fulfilled items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "partially_fulfilled"}], "expected_action_id": null}
+{"query": "display fulfilled items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "fulfilled"}], "expected_action_id": null}
+{"query": "list installed items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "installed"}], "expected_action_id": null}
+{"query": "find rejected items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "rejected"}], "expected_action_id": null}
+{"query": "get items from low inventory", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "source_type", "value": "inventory_low"}], "expected_action_id": null}
+{"query": "view out of stock requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "source_type", "value": "inventory_oos"}], "expected_action_id": null}
+{"query": "show items from work order usage", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "source_type", "value": "work_order_usage"}], "expected_action_id": null}
+{"query": "display items from receiving issues", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "source_type", "value": "receiving_missing"}], "expected_action_id": null}
+{"query": "list manually added items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "source_type", "value": "manual_add"}], "expected_action_id": null}
+{"query": "find critical urgency items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "urgency", "value": "critical"}], "expected_action_id": null}
+{"query": "get high priority requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "urgency", "value": "high"}], "expected_action_id": null}
+{"query": "view normal urgency items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "urgency", "value": "normal"}], "expected_action_id": null}
+{"query": "show low priority requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "urgency", "value": "low"}], "expected_action_id": null}
+{"query": "display urgent shopping list items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "urgency", "value": "critical"}], "expected_action_id": null}
+{"query": "list items created this week", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "this_week"}], "expected_action_id": null}
+{"query": "find requests from last month", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "last_month"}], "expected_action_id": null}
+{"query": "get items needed by next port", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "required_by_date", "value": "next_port"}], "expected_action_id": null}
+{"query": "view items required this month", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "required_by_date", "value": "this_month"}], "expected_action_id": null}
+{"query": "show overdue requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "required_by_date", "value": "overdue"}], "expected_action_id": null}
+{"query": "display shopping list for oil filters", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "part_id", "value": "oil_filter"}], "expected_action_id": null, "expected_entities": [{"type": "part", "value": "oil_filter"}]}
+{"query": "list requests for bearings", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "part_id", "value": "bearing"}], "expected_action_id": null, "expected_entities": [{"type": "part", "value": "bearing"}]}
+{"query": "find gasket requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "part_id", "value": "gasket"}], "expected_action_id": null, "expected_entities": [{"type": "part", "value": "gasket"}]}
+{"query": "get shopping list summary", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "view pending approvals", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "under_review"}], "expected_action_id": null}
+{"query": "show requisition list", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display procurement requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list items awaiting order", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "approved"}], "expected_action_id": null}
+{"query": "find items ready to order", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "approved"}], "expected_action_id": null}
+{"query": "get damaged item requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "source_type", "value": "receiving_damaged"}], "expected_action_id": null}
+{"query": "view all purchase items", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show items by status", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display recent shopping list entries", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "recent"}], "expected_action_id": null}
+{"query": "list my purchase requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "requested_by", "value": "current_user"}], "expected_action_id": null}
+{"query": "find items pending delivery", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "ordered"}], "expected_action_id": null}
+{"query": "get shopping list by urgency", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "view items needing approval", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "candidate"}], "expected_action_id": null}
+{"query": "show engine parts requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "engine"}], "expected_action_id": null}
+{"query": "display electrical items on list", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "electrical"}], "expected_action_id": null}
+{"query": "list safety equipment requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "safety"}], "expected_action_id": null}
+{"query": "find navigation equipment requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "navigation"}], "expected_action_id": null}
+{"query": "get consumables on shopping list", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "consumable"}], "expected_action_id": null}
+{"query": "view shopping list value", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show items with estimated prices", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "has_price", "value": true}], "expected_action_id": null}
+{"query": "create shopping list item", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_shopping_list_item"}
+{"query": "add item to shopping list", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_shopping_list_item"}
+{"query": "add 10 oil filters to shopping list", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_shopping_list_item", "expected_entities": [{"type": "quantity", "value": 10}, {"type": "part", "value": "oil_filter"}]}
+{"query": "request purchase of bearings", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_shopping_list_item", "expected_entities": [{"type": "part", "value": "bearing"}]}
+{"query": "create urgent purchase request", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_shopping_list_item"}
+{"query": "approve shopping list item", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "approve_shopping_list_item"}
+{"query": "approve purchase request", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "approve_shopping_list_item"}
+{"query": "accept item for ordering", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "approve_shopping_list_item"}
+{"query": "authorize shopping list item", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "approve_shopping_list_item"}
+{"query": "confirm purchase request", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "approve_shopping_list_item"}
+{"query": "reject shopping list item", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_shopping_list_item"}
+{"query": "decline purchase request", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_shopping_list_item"}
+{"query": "deny item request", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_shopping_list_item"}
+{"query": "reject requisition with reason", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_shopping_list_item"}
+{"query": "turn down purchase request", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_shopping_list_item"}
+{"query": "promote candidate to part", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "promote_candidate_to_part"}
+{"query": "convert request to inventory part", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "promote_candidate_to_part"}
+{"query": "add candidate as new part", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "promote_candidate_to_part"}
+{"query": "create part from shopping list item", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "promote_candidate_to_part"}
+{"query": "register candidate in inventory", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "promote_candidate_to_part"}
+{"query": "update shopping list item", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_shopping_list_item"}
+{"query": "modify purchase request quantity", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_shopping_list_item"}
+{"query": "change item urgency to critical", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_shopping_list_item"}
+{"query": "edit required by date", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_shopping_list_item"}
+{"query": "update request notes", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_shopping_list_item"}
+{"query": "mark item as ordered", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_ordered"}
+{"query": "set item to ordered status", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_ordered"}
+{"query": "record purchase order for item", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_ordered"}
+{"query": "link PO to shopping list item", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_ordered"}
+{"query": "confirm item ordered", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_ordered"}
+{"query": "mark item as received", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_received"}
+{"query": "record item delivery", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_received"}
+{"query": "confirm receipt of ordered item", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_received"}
+{"query": "set item to received", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_received"}
+{"query": "book item received quantity", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_received"}
+{"query": "add urgent gaskets to shopping list", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_shopping_list_item", "expected_entities": [{"type": "part", "value": "gasket"}]}
+{"query": "request 5 seals for work order", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_shopping_list_item", "expected_entities": [{"type": "quantity", "value": 5}, {"type": "part", "value": "seal"}]}
+{"query": "approve all pending requests", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "approve_shopping_list_item"}
+{"query": "reject duplicate request", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_shopping_list_item"}
+{"query": "convert filter to tracked part", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "promote_candidate_to_part"}
+{"query": "increase requested quantity to 20", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_shopping_list_item", "expected_entities": [{"type": "quantity", "value": 20}]}
+{"query": "order item from preferred supplier", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_ordered"}
+{"query": "receive partial shipment of parts", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_item_received"}
+{"query": "create requisition for dry dock parts", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_shopping_list_item"}
+{"query": "approve high priority items", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "approve_shopping_list_item"}
+{"query": "show shopping list for engine spares", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "engine"}], "expected_action_id": null}
+{"query": "list items with preferred supplier Caterpillar", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "preferred_supplier", "value": "Caterpillar"}], "expected_action_id": null}
+{"query": "find requests for next port call", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "required_by_date", "value": "next_port"}], "expected_action_id": null}
+{"query": "get hydraulic parts requests", "expected_lens": "shopping_list", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "hydraulic"}], "expected_action_id": null}
+{"query": "add impeller to purchase list", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_shopping_list_item", "expected_entities": [{"type": "part", "value": "impeller"}]}
+{"query": "reject request due to budget constraints", "expected_lens": "shopping_list", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_shopping_list_item"}

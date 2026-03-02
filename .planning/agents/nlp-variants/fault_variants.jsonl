@@ -1,0 +1,100 @@
+{"query": "show open faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "open"}], "expected_action_id": null}
+{"query": "display all fault reports", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list critical faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "critical"}], "expected_action_id": null}
+{"query": "find safety faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "safety"}], "expected_action_id": null}
+{"query": "get major faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "major"}], "expected_action_id": null}
+{"query": "view minor faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "minor"}], "expected_action_id": null}
+{"query": "show me cosmetic faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "cosmetic"}], "expected_action_id": null}
+{"query": "faults under investigation", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "investigating"}], "expected_action_id": null}
+{"query": "display faults with work orders", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "work_ordered"}], "expected_action_id": null}
+{"query": "list resolved faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "resolved"}], "expected_action_id": null}
+{"query": "show closed faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "closed"}], "expected_action_id": null}
+{"query": "find false alarm faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "false_alarm"}], "expected_action_id": null}
+{"query": "get faults on ME1", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "ME1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "view faults on main engine", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "main_engine"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "main_engine"}]}
+{"query": "faults for diesel generator", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "diesel_generator"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "diesel_generator"}]}
+{"query": "show faults reported by John", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "reported_by", "value": "John"}], "expected_action_id": null, "expected_entities": [{"type": "person", "value": "John"}]}
+{"query": "display faults reported this week", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "reported_at", "value": "this_week"}], "expected_action_id": null}
+{"query": "list faults from last month", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "reported_at", "value": "last_month"}], "expected_action_id": null}
+{"query": "faults in engine room", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "engine_room"}], "expected_action_id": null}
+{"query": "find faults on bridge", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "bridge"}], "expected_action_id": null}
+{"query": "show faults in galley", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "galley"}], "expected_action_id": null}
+{"query": "get open critical faults on DG1", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "open"}, {"field": "severity", "value": "critical"}, {"field": "equipment_id", "value": "DG1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "DG1"}]}
+{"query": "view safety faults this month", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "safety"}, {"field": "reported_at", "value": "this_month"}], "expected_action_id": null}
+{"query": "list all unresolved faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "open"}], "expected_action_id": null}
+{"query": "show me recent faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "reported_at", "value": "recent"}], "expected_action_id": null}
+{"query": "faults reported today", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "reported_at", "value": "today"}], "expected_action_id": null}
+{"query": "display investigating faults on steering gear", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "investigating"}, {"field": "equipment_id", "value": "steering_gear"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "find faults awaiting work order", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "open"}], "expected_action_id": null}
+{"query": "get high severity faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "major"}], "expected_action_id": null}
+{"query": "show faults needing attention", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "open"}], "expected_action_id": null}
+{"query": "view active faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "open"}], "expected_action_id": null}
+{"query": "list faults on bilge pump", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "bilge_pump"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "bilge_pump"}]}
+{"query": "faults for air conditioning unit", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "air_conditioning"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "air_conditioning"}]}
+{"query": "display faults with photos", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "has_photos", "value": true}], "expected_action_id": null}
+{"query": "show faults by severity critical", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "critical"}], "expected_action_id": null}
+{"query": "get faults reported yesterday", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "reported_at", "value": "yesterday"}], "expected_action_id": null}
+{"query": "find all deck faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "deck"}], "expected_action_id": null}
+{"query": "view faults in accommodation", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "accommodation"}], "expected_action_id": null}
+{"query": "list open faults sorted by severity", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "open"}], "expected_action_id": null}
+{"query": "show faults I reported", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "reported_by", "value": "current_user"}], "expected_action_id": null}
+{"query": "faults pending diagnosis", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "investigating"}], "expected_action_id": null}
+{"query": "get equipment faults from this year", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "reported_at", "value": "this_year"}], "expected_action_id": null}
+{"query": "display recurring faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "is_recurring", "value": true}], "expected_action_id": null}
+{"query": "show faults on auxiliary equipment", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "equipment_category", "value": "auxiliary"}], "expected_action_id": null}
+{"query": "find safety critical faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "safety"}], "expected_action_id": null}
+{"query": "list faults with work orders pending", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "work_ordered"}], "expected_action_id": null}
+{"query": "view historical faults on propulsion", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "equipment_category", "value": "propulsion"}, {"field": "status", "value": "closed"}], "expected_action_id": null}
+{"query": "get faults requiring immediate action", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "critical"}, {"field": "status", "value": "open"}], "expected_action_id": null}
+{"query": "show all electrical faults", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "electrical"}], "expected_action_id": null}
+{"query": "faults in crew quarters", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "crew_quarters"}], "expected_action_id": null}
+{"query": "report a new fault", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault"}
+{"query": "create fault report for ME1", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "log a fault on diesel generator", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault", "expected_entities": [{"type": "equipment", "value": "diesel_generator"}]}
+{"query": "add new fault for steering gear", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault", "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "report critical fault on main engine", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault", "expected_entities": [{"type": "equipment", "value": "main_engine"}]}
+{"query": "submit fault report with photo", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault"}
+{"query": "acknowledge fault F-123", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "acknowledge_fault", "expected_entities": [{"type": "fault", "value": "F-123"}]}
+{"query": "accept fault report", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "acknowledge_fault"}
+{"query": "confirm fault on bilge pump", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "acknowledge_fault", "expected_entities": [{"type": "equipment", "value": "bilge_pump"}]}
+{"query": "close fault F-456", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "close_fault", "expected_entities": [{"type": "fault", "value": "F-456"}]}
+{"query": "resolve fault report", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "close_fault"}
+{"query": "mark fault as resolved with notes", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "close_fault"}
+{"query": "close the fault on air conditioning", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "close_fault", "expected_entities": [{"type": "equipment", "value": "air_conditioning"}]}
+{"query": "update fault F-789", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_fault", "expected_entities": [{"type": "fault", "value": "F-789"}]}
+{"query": "edit fault description", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_fault"}
+{"query": "modify fault severity to major", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_fault"}
+{"query": "change fault status to investigating", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_fault"}
+{"query": "add photo to fault report", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_fault_photo"}
+{"query": "attach image to fault F-101", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_fault_photo", "expected_entities": [{"type": "fault", "value": "F-101"}]}
+{"query": "upload photo evidence for fault", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_fault_photo"}
+{"query": "add note to fault report", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_fault_note"}
+{"query": "add comment on fault F-202", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_fault_note", "expected_entities": [{"type": "fault", "value": "F-202"}]}
+{"query": "append observation to fault", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_fault_note"}
+{"query": "diagnose fault F-303", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "diagnose_fault", "expected_entities": [{"type": "fault", "value": "F-303"}]}
+{"query": "provide diagnosis for fault", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "diagnose_fault"}
+{"query": "add root cause analysis to fault", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "diagnose_fault"}
+{"query": "document fault diagnosis with recommended parts", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "diagnose_fault"}
+{"query": "reopen fault F-404", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reopen_fault", "expected_entities": [{"type": "fault", "value": "F-404"}]}
+{"query": "reopen closed fault", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reopen_fault"}
+{"query": "bring back fault report for review", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reopen_fault"}
+{"query": "mark fault as false alarm", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_fault_false_alarm"}
+{"query": "set F-505 as false alarm", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_fault_false_alarm", "expected_entities": [{"type": "fault", "value": "F-505"}]}
+{"query": "dismiss fault as not real", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_fault_false_alarm"}
+{"query": "flag fault report as erroneous", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_fault_false_alarm"}
+{"query": "report major fault on DG2", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault", "expected_entities": [{"type": "equipment", "value": "DG2"}]}
+{"query": "create safety fault for fire system", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault", "expected_entities": [{"type": "equipment", "value": "fire_system"}]}
+{"query": "log minor cosmetic fault", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault"}
+{"query": "submit fault with location engine room", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault"}
+{"query": "record fault observation", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault"}
+{"query": "enter new equipment fault", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "report_fault"}
+{"query": "update fault with diagnosis and recommendation", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "diagnose_fault"}
+{"query": "finalize fault investigation", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "close_fault"}
+{"query": "complete fault resolution", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "close_fault"}
+{"query": "escalate fault severity to critical", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_fault"}
+{"query": "downgrade fault to cosmetic", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_fault"}
+{"query": "capture fault evidence photo", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_fault_photo"}
+{"query": "document fault with multiple images", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_fault_photo"}
+{"query": "write up fault analysis notes", "expected_lens": "fault", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_fault_note"}
+{"query": "show faults awaiting diagnosis", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "investigating"}], "expected_action_id": null}
+{"query": "list faults by type safety", "expected_lens": "fault", "expected_mode": "READ", "expected_filters": [{"field": "severity", "value": "safety"}], "expected_action_id": null}

@@ -1,0 +1,100 @@
+{"query": "show all emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "all"}], "expected_action_id": null}
+{"query": "display linked emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "linked"}], "expected_action_id": null}
+{"query": "list unlinked emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "unlinked"}], "expected_action_id": null}
+{"query": "find emails with attachments", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "has_attachments", "value": true}], "expected_action_id": null}
+{"query": "get unread emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "is_read", "value": false}], "expected_action_id": null}
+{"query": "view read emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "is_read", "value": true}], "expected_action_id": null}
+{"query": "show emails from today", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "received_at", "value": "today"}], "expected_action_id": null}
+{"query": "display emails from this week", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "received_at", "value": "this_week"}], "expected_action_id": null}
+{"query": "list emails from last month", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "received_at", "value": "last_month"}], "expected_action_id": null}
+{"query": "find emails received yesterday", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "received_at", "value": "yesterday"}], "expected_action_id": null}
+{"query": "search emails for supplier", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "supplier"}], "expected_action_id": null}
+{"query": "find emails about spare parts", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "spare parts"}], "expected_action_id": null}
+{"query": "search for warranty emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "warranty"}], "expected_action_id": null}
+{"query": "find emails mentioning ME1", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "ME1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "search emails for invoice", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "invoice"}], "expected_action_id": null}
+{"query": "get email thread", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "thread_id", "operator": "!=", "value": null}], "expected_action_id": null}
+{"query": "view email conversation", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show email thread history", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display recent emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "received_at", "value": "recent"}], "expected_action_id": null}
+{"query": "list inbox", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "find emails from Caterpillar", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "Caterpillar"}], "expected_action_id": null}
+{"query": "search emails for MAN Marine", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "MAN Marine"}], "expected_action_id": null}
+{"query": "get emails about delivery", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "delivery"}], "expected_action_id": null}
+{"query": "view emails regarding inspection", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "inspection"}], "expected_action_id": null}
+{"query": "show emails about certificates", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "certificates"}], "expected_action_id": null}
+{"query": "display emails linked to work orders", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "linked"}], "expected_action_id": null}
+{"query": "list emails linked to equipment", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "linked"}], "expected_action_id": null}
+{"query": "find emails linked to faults", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "linked"}], "expected_action_id": null}
+{"query": "get emails linked to parts", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "linked"}], "expected_action_id": null}
+{"query": "view emails linked to handover", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "linked"}], "expected_action_id": null}
+{"query": "show emails without links", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "unlinked"}], "expected_action_id": null}
+{"query": "display emails needing action", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "unlinked"}, {"field": "is_read", "value": false}], "expected_action_id": null}
+{"query": "list emails with PDF attachments", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "has_attachments", "value": true}], "expected_action_id": null}
+{"query": "find emails with images", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "has_attachments", "value": true}], "expected_action_id": null}
+{"query": "get email summary", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "view email statistics", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show important emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "is_important", "value": true}], "expected_action_id": null}
+{"query": "display flagged emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "is_flagged", "value": true}], "expected_action_id": null}
+{"query": "list starred emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "is_starred", "value": true}], "expected_action_id": null}
+{"query": "find emails about purchase order", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "purchase order"}], "expected_action_id": null}
+{"query": "search for quotation emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "quotation"}], "expected_action_id": null}
+{"query": "get emails about maintenance", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "maintenance"}], "expected_action_id": null}
+{"query": "view emails from class society", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "class society"}], "expected_action_id": null}
+{"query": "show emails regarding dry dock", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "dry dock"}], "expected_action_id": null}
+{"query": "display emails from port agent", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "port agent"}], "expected_action_id": null}
+{"query": "find emails about shipment", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "shipment"}], "expected_action_id": null}
+{"query": "get archived emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "is_archived", "value": true}], "expected_action_id": null}
+{"query": "view emails from this month", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "received_at", "value": "this_month"}], "expected_action_id": null}
+{"query": "show all unprocessed emails", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "filter_state", "value": "unlinked"}, {"field": "is_read", "value": false}], "expected_action_id": null}
+{"query": "link email to work order", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_email_to_entity"}
+{"query": "connect email to equipment ME1", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_email_to_entity", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "link email thread to fault", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_email_to_entity"}
+{"query": "associate email with part", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_email_to_entity"}
+{"query": "connect email to handover", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_email_to_entity"}
+{"query": "unlink email from entity", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "unlink_email_from_entity"}
+{"query": "remove email link", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "unlink_email_from_entity"}
+{"query": "disconnect email from work order", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "unlink_email_from_entity"}
+{"query": "delete email association", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "unlink_email_from_entity"}
+{"query": "break email link to equipment", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "unlink_email_from_entity"}
+{"query": "create work order from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_work_order_from_email"}
+{"query": "convert email to work order", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_work_order_from_email"}
+{"query": "make WO from this email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_work_order_from_email"}
+{"query": "generate work order from email thread", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_work_order_from_email"}
+{"query": "turn email into work order", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_work_order_from_email"}
+{"query": "create fault from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_fault_from_email"}
+{"query": "convert email to fault report", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_fault_from_email"}
+{"query": "make fault from this email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_fault_from_email"}
+{"query": "generate fault report from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_fault_from_email"}
+{"query": "turn email into fault", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_fault_from_email"}
+{"query": "mark thread as read", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_thread_read"}
+{"query": "mark email read", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_thread_read"}
+{"query": "set email as read", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_thread_read"}
+{"query": "mark all emails read", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_thread_read"}
+{"query": "read this email thread", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_thread_read"}
+{"query": "archive email thread", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "archive_thread"}
+{"query": "archive this email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "archive_thread"}
+{"query": "move email to archive", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "archive_thread"}
+{"query": "archive processed emails", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "archive_thread"}
+{"query": "file email away", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "archive_thread"}
+{"query": "download email attachment", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "download_attachment"}
+{"query": "save attachment from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "download_attachment"}
+{"query": "get attachment from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "download_attachment"}
+{"query": "download PDF from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "download_attachment"}
+{"query": "save email file attachment", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "download_attachment"}
+{"query": "link supplier email to WO-123", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_email_to_entity", "expected_entities": [{"type": "work_order", "value": "WO-123"}]}
+{"query": "connect invoice email to receiving", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_email_to_entity"}
+{"query": "create urgent work order from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_work_order_from_email"}
+{"query": "report critical fault from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_fault_from_email"}
+{"query": "archive old email threads", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "archive_thread"}
+{"query": "download warranty document from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "download_attachment"}
+{"query": "associate email with diesel generator", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_email_to_entity", "expected_entities": [{"type": "equipment", "value": "diesel_generator"}]}
+{"query": "mark processed email as read", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "mark_thread_read"}
+{"query": "save invoice attachment", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "download_attachment"}
+{"query": "create maintenance WO from email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_work_order_from_email"}
+{"query": "search emails for class survey", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "class survey"}], "expected_action_id": null}
+{"query": "find emails about spares", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "spares"}], "expected_action_id": null}
+{"query": "get emails from technical manager", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "technical manager"}], "expected_action_id": null}
+{"query": "view emails regarding audit", "expected_lens": "email", "expected_mode": "READ", "expected_filters": [{"field": "search_query", "value": "audit"}], "expected_action_id": null}
+{"query": "link email to steering gear fault", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_email_to_entity", "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "create urgent fault from vendor email", "expected_lens": "email", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_fault_from_email"}

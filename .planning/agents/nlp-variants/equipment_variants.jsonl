@@ -1,0 +1,100 @@
+{"query": "show all equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display operational equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "operational"}], "expected_action_id": null}
+{"query": "list equipment out of service", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "out_of_service"}], "expected_action_id": null}
+{"query": "find equipment under maintenance", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "maintenance"}], "expected_action_id": null}
+{"query": "get decommissioned equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "decommissioned"}], "expected_action_id": null}
+{"query": "view main engines", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "main_engine"}], "expected_action_id": null}
+{"query": "show me diesel generators", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "diesel_generator"}], "expected_action_id": null}
+{"query": "equipment in engine room", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "engine_room"}], "expected_action_id": null}
+{"query": "display equipment on bridge", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "bridge"}], "expected_action_id": null}
+{"query": "list equipment from Caterpillar", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "manufacturer", "value": "Caterpillar"}], "expected_action_id": null}
+{"query": "show equipment by manufacturer MAN", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "manufacturer", "value": "MAN"}], "expected_action_id": null}
+{"query": "find equipment installed last year", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "install_date", "value": "last_year"}], "expected_action_id": null}
+{"query": "get equipment serviced this month", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "last_service_date", "value": "this_month"}], "expected_action_id": null}
+{"query": "view high risk equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "risk_score", "value": "high"}], "expected_action_id": null}
+{"query": "show equipment with risk score above 0.8", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "risk_score", "operator": ">", "value": 0.8}], "expected_action_id": null}
+{"query": "list critical equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "criticality", "value": "critical"}], "expected_action_id": null}
+{"query": "equipment needing service", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "service_due", "value": true}], "expected_action_id": null}
+{"query": "display propulsion equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "propulsion"}], "expected_action_id": null}
+{"query": "find auxiliary equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "auxiliary"}], "expected_action_id": null}
+{"query": "show navigation equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "navigation"}], "expected_action_id": null}
+{"query": "get HVAC equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "hvac"}], "expected_action_id": null}
+{"query": "view safety equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "safety"}], "expected_action_id": null}
+{"query": "list deck equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "deck"}], "expected_action_id": null}
+{"query": "show electrical equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "electrical"}], "expected_action_id": null}
+{"query": "equipment ME1", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "ME1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "details for diesel generator 1", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "DG1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "DG1"}]}
+{"query": "get information on steering gear", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "steering_gear"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "view bilge pump details", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "bilge_pump"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "bilge_pump"}]}
+{"query": "show equipment installed before 2020", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "install_date", "operator": "<", "value": "2020-01-01"}], "expected_action_id": null}
+{"query": "find equipment not serviced in 6 months", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "last_service_date", "value": "over_6_months"}], "expected_action_id": null}
+{"query": "list operational diesel generators", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "operational"}, {"field": "category", "value": "diesel_generator"}], "expected_action_id": null}
+{"query": "show out of service pumps", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "out_of_service"}, {"field": "category", "value": "pump"}], "expected_action_id": null}
+{"query": "equipment by Wartsila operational", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "manufacturer", "value": "Wartsila"}, {"field": "status", "value": "operational"}], "expected_action_id": null}
+{"query": "display fire safety equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "fire_safety"}], "expected_action_id": null}
+{"query": "get communication equipment on bridge", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "communication"}, {"field": "location", "value": "bridge"}], "expected_action_id": null}
+{"query": "view equipment with high running hours", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "running_hours", "value": "high"}], "expected_action_id": null}
+{"query": "list equipment due for inspection", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "inspection_due", "value": true}], "expected_action_id": null}
+{"query": "show equipment in galley", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "galley"}], "expected_action_id": null}
+{"query": "find equipment in accommodation", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "accommodation"}], "expected_action_id": null}
+{"query": "equipment inventory", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display all pumps", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "pump"}], "expected_action_id": null}
+{"query": "show compressors", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "compressor"}], "expected_action_id": null}
+{"query": "list boilers", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "boiler"}], "expected_action_id": null}
+{"query": "view tank level equipment", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "tank"}], "expected_action_id": null}
+{"query": "get water maker details", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "water_maker"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "water_maker"}]}
+{"query": "show equipment maintenance history ME1", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "ME1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "equipment with open work orders", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "has_open_wo", "value": true}], "expected_action_id": null}
+{"query": "find equipment with active faults", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "has_active_faults", "value": true}], "expected_action_id": null}
+{"query": "list equipment by category", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show anchor windlass", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "anchor_windlass"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "anchor_windlass"}]}
+{"query": "update equipment ME1", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_equipment", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "edit equipment details for DG1", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_equipment", "expected_entities": [{"type": "equipment", "value": "DG1"}]}
+{"query": "modify equipment information", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_equipment"}
+{"query": "change equipment location to engine room", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_equipment"}
+{"query": "update equipment serial number", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_equipment"}
+{"query": "set equipment status to out of service", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status"}
+{"query": "mark ME1 as under maintenance", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "change equipment status to operational", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status"}
+{"query": "decommission equipment", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status"}
+{"query": "put diesel generator back in service", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status", "expected_entities": [{"type": "equipment", "value": "diesel_generator"}]}
+{"query": "link document to equipment", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_equipment"}
+{"query": "attach manual to ME1", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_equipment", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "add service manual to equipment", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_equipment"}
+{"query": "connect drawing to steering gear", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_equipment", "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "update running hours on equipment", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_running_hours"}
+{"query": "log running hours for ME1", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_running_hours", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "record 5000 hours on diesel generator", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_running_hours", "expected_entities": [{"type": "equipment", "value": "diesel_generator"}, {"type": "hours", "value": 5000}]}
+{"query": "set running hours to 12000", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_running_hours", "expected_entities": [{"type": "hours", "value": 12000}]}
+{"query": "log contractor work on equipment", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work"}
+{"query": "record contractor service on ME1", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "add contractor work entry for DG2", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work", "expected_entities": [{"type": "equipment", "value": "DG2"}]}
+{"query": "log service by ABC Marine", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work", "expected_entities": [{"type": "contractor", "value": "ABC Marine"}]}
+{"query": "record external technician work", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work"}
+{"query": "update bilge pump status to maintenance", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status", "expected_entities": [{"type": "equipment", "value": "bilge_pump"}]}
+{"query": "mark steering gear operational", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status", "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "change ME2 to out of service", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status", "expected_entities": [{"type": "equipment", "value": "ME2"}]}
+{"query": "update equipment model number", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_equipment"}
+{"query": "edit equipment manufacturer", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_equipment"}
+{"query": "modify equipment notes", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_equipment"}
+{"query": "attach technical specifications to equipment", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_equipment"}
+{"query": "link parts list to compressor", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_equipment", "expected_entities": [{"type": "equipment", "value": "compressor"}]}
+{"query": "update hour meter reading", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_running_hours"}
+{"query": "enter new running hours value", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_running_hours"}
+{"query": "document third party service", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work"}
+{"query": "add external service record", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work"}
+{"query": "record vendor maintenance visit", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work"}
+{"query": "retire equipment from service", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status"}
+{"query": "return equipment to operational status", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status"}
+{"query": "take equipment offline for repair", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status"}
+{"query": "bring equipment back online", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status"}
+{"query": "associate certificate with equipment", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_equipment"}
+{"query": "connect inspection report to pump", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_equipment", "expected_entities": [{"type": "equipment", "value": "pump"}]}
+{"query": "log meter reading for auxiliary boiler", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_running_hours", "expected_entities": [{"type": "equipment", "value": "auxiliary_boiler"}]}
+{"query": "enter contractor invoice reference", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work"}
+{"query": "update service history for water maker", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_contractor_work", "expected_entities": [{"type": "equipment", "value": "water_maker"}]}
+{"query": "show equipment maintenance due", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "maintenance_due", "value": true}], "expected_action_id": null}
+{"query": "display equipment service schedule", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list equipment with warranty", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [{"field": "has_warranty", "value": true}], "expected_action_id": null}
+{"query": "find equipment by serial number", "expected_lens": "equipment", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "set equipment status to operational after repair", "expected_lens": "equipment", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "set_equipment_status"}

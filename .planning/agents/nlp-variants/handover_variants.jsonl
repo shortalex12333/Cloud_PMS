@@ -1,0 +1,100 @@
+{"query": "show handover notes", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display all handover items", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list ongoing faults in handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "ongoing_fault"}], "expected_action_id": null}
+{"query": "find work in progress items", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "work_in_progress"}], "expected_action_id": null}
+{"query": "get equipment status notes", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "equipment_status"}], "expected_action_id": null}
+{"query": "view important info in handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "important_info"}], "expected_action_id": null}
+{"query": "show general handover notes", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "general"}], "expected_action_id": null}
+{"query": "handover items with high priority", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "priority", "value": "high"}], "expected_action_id": null}
+{"query": "display normal priority handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "priority", "value": "normal"}], "expected_action_id": null}
+{"query": "list low priority items", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "priority", "value": "low"}], "expected_action_id": null}
+{"query": "find handover from this week", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "this_week"}], "expected_action_id": null}
+{"query": "get handover notes from today", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "today"}], "expected_action_id": null}
+{"query": "view yesterday's handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "yesterday"}], "expected_action_id": null}
+{"query": "show handover from last watch", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "last_watch"}], "expected_action_id": null}
+{"query": "handover items by John", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "author", "value": "John"}], "expected_action_id": null, "expected_entities": [{"type": "person", "value": "John"}]}
+{"query": "display handover from chief engineer", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "author", "value": "chief_engineer"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "chief_engineer"}]}
+{"query": "list handover related to faults", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "entity_type", "value": "fault"}], "expected_action_id": null}
+{"query": "find handover about work orders", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "entity_type", "value": "work_order"}], "expected_action_id": null}
+{"query": "get handover for equipment", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "entity_type", "value": "equipment"}], "expected_action_id": null}
+{"query": "view handover notes about parts", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "entity_type", "value": "part"}], "expected_action_id": null}
+{"query": "show document related handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "entity_type", "value": "document"}], "expected_action_id": null}
+{"query": "handover for ME1", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "equipment_name", "value": "ME1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "display handover about diesel generator", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "equipment_name", "value": "diesel_generator"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "diesel_generator"}]}
+{"query": "list handover notes for steering gear", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "equipment_name", "value": "steering_gear"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "find handover in engine room", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "engine_room"}], "expected_action_id": null}
+{"query": "get handover for bridge", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "bridge"}], "expected_action_id": null}
+{"query": "view handover notes from deck", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "deck"}], "expected_action_id": null}
+{"query": "show current handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "current"}], "expected_action_id": null}
+{"query": "handover summary", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display active handover items", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "active"}], "expected_action_id": null}
+{"query": "list recent handover entries", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "recent"}], "expected_action_id": null}
+{"query": "find urgent handover items", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "priority", "value": "high"}], "expected_action_id": null}
+{"query": "get critical handover notes", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "priority", "value": "high"}], "expected_action_id": null}
+{"query": "view morning handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "shift", "value": "morning"}], "expected_action_id": null}
+{"query": "show night watch handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "shift", "value": "night"}], "expected_action_id": null}
+{"query": "handover notes for my department", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "department", "value": "current_user_department"}], "expected_action_id": null}
+{"query": "display engineering handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "department", "value": "engineering"}], "expected_action_id": null}
+{"query": "list deck department handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "department", "value": "deck"}], "expected_action_id": null}
+{"query": "find handover with attachments", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "has_attachments", "value": true}], "expected_action_id": null}
+{"query": "get handover entries from last month", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "last_month"}], "expected_action_id": null}
+{"query": "view archived handover", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "archived"}], "expected_action_id": null}
+{"query": "show handover about bilge pump", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "equipment_name", "value": "bilge_pump"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "bilge_pump"}]}
+{"query": "handover related to air conditioning", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "equipment_name", "value": "air_conditioning"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "air_conditioning"}]}
+{"query": "display handover notes needing follow up", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "needs_followup", "value": true}], "expected_action_id": null}
+{"query": "list pending handover items", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "pending"}], "expected_action_id": null}
+{"query": "find completed handover tasks", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "completed"}], "expected_action_id": null}
+{"query": "get handover about safety issues", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "safety"}], "expected_action_id": null}
+{"query": "view handover notes from captain", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "author", "value": "captain"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "captain"}]}
+{"query": "show all handover for this voyage", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "voyage", "value": "current"}], "expected_action_id": null}
+{"query": "add to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "create handover note", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "add fault to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "add work order to handover notes", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "create equipment status handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "add important info to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "add note about ME1 to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "create high priority handover item", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "add general note to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "record handover information", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "edit handover item", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_item"}
+{"query": "update handover note", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_item"}
+{"query": "modify handover entry", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_item"}
+{"query": "change handover priority to high", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_item"}
+{"query": "update handover category", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_item"}
+{"query": "attach document to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_document_to_handover"}
+{"query": "add photo to handover note", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_document_to_handover"}
+{"query": "link file to handover item", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_document_to_handover"}
+{"query": "attach report to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_document_to_handover"}
+{"query": "add evidence to handover entry", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_document_to_handover"}
+{"query": "export handover report", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "export_handover"}
+{"query": "generate handover PDF", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "export_handover"}
+{"query": "export handover as document", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "export_handover"}
+{"query": "create handover export", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "export_handover"}
+{"query": "print handover notes", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "export_handover"}
+{"query": "regenerate handover summary", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "regenerate_handover_summary"}
+{"query": "refresh handover export", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "regenerate_handover_summary"}
+{"query": "update handover summary", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "regenerate_handover_summary"}
+{"query": "recreate handover document", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "regenerate_handover_summary"}
+{"query": "rebuild handover report", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "regenerate_handover_summary"}
+{"query": "edit handover section", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_section"}
+{"query": "modify handover export section", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_section"}
+{"query": "update section in handover report", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_section"}
+{"query": "change content in handover section", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_section"}
+{"query": "revise handover export text", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_section"}
+{"query": "add ongoing fault note to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "create work in progress handover entry", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "record diesel generator issue in handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover", "expected_entities": [{"type": "equipment", "value": "diesel_generator"}]}
+{"query": "update handover with new information", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_item"}
+{"query": "append details to existing handover note", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_item"}
+{"query": "attach inspection report to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_document_to_handover"}
+{"query": "export today's handover as PDF", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "export_handover"}
+{"query": "generate weekly handover report", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "export_handover"}
+{"query": "recompile handover document with updates", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "regenerate_handover_summary"}
+{"query": "edit faults section in handover export", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "edit_handover_section"}
+{"query": "show handover notes about safety", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "safety"}], "expected_action_id": null}
+{"query": "display handover from second engineer", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "author", "value": "second_engineer"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "second_engineer"}]}
+{"query": "list handover entries requiring action", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "needs_action", "value": true}], "expected_action_id": null}
+{"query": "find handover about compressor issues", "expected_lens": "handover", "expected_mode": "READ", "expected_filters": [{"field": "equipment_name", "value": "compressor"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "compressor"}]}
+{"query": "add safety note to handover", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}
+{"query": "create handover entry for watch relief", "expected_lens": "handover", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_handover"}

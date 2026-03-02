@@ -1,0 +1,100 @@
+{"query": "show all certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display active certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "active"}], "expected_action_id": null}
+{"query": "list expired certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "expired"}], "expected_action_id": null}
+{"query": "find draft certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "draft"}], "expected_action_id": null}
+{"query": "get superseded certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "superseded"}], "expected_action_id": null}
+{"query": "view revoked certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "revoked"}], "expected_action_id": null}
+{"query": "show vessel certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "vessel_or_crew", "value": "vessel"}], "expected_action_id": null}
+{"query": "display crew certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "vessel_or_crew", "value": "crew"}], "expected_action_id": null}
+{"query": "list ISM certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "ISM"}], "expected_action_id": null}
+{"query": "find ISPS certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "ISPS"}], "expected_action_id": null}
+{"query": "get SOLAS certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "SOLAS"}], "expected_action_id": null}
+{"query": "view MLC certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "MLC"}], "expected_action_id": null}
+{"query": "show class certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "CLASS"}], "expected_action_id": null}
+{"query": "display flag state certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "FLAG"}], "expected_action_id": null}
+{"query": "list load line certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "LOAD_LINE"}], "expected_action_id": null}
+{"query": "find MARPOL certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "MARPOL"}], "expected_action_id": null}
+{"query": "get IOPP certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "IOPP"}], "expected_action_id": null}
+{"query": "view tonnage certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "TONNAGE"}], "expected_action_id": null}
+{"query": "show STCW certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "STCW"}], "expected_action_id": null}
+{"query": "display ENG1 certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "ENG1"}], "expected_action_id": null}
+{"query": "list COC certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "COC"}], "expected_action_id": null}
+{"query": "find GMDSS certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "GMDSS"}], "expected_action_id": null}
+{"query": "get BST certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "BST"}], "expected_action_id": null}
+{"query": "view medical care certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "MEDICAL_CARE"}], "expected_action_id": null}
+{"query": "certificates expiring this month", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "expiry_date", "value": "this_month"}], "expected_action_id": null}
+{"query": "show certificates expiring soon", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "is_expiring_soon", "value": true}], "expected_action_id": null}
+{"query": "display already expired certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "is_expired", "value": true}], "expected_action_id": null}
+{"query": "find certificates due for renewal", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "is_expiring_soon", "value": true}], "expected_action_id": null}
+{"query": "get certificates expiring in 90 days", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "expiry_date", "value": "next_90_days"}], "expected_action_id": null}
+{"query": "view certificates expiring next month", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "expiry_date", "value": "next_month"}], "expected_action_id": null}
+{"query": "certificates for John Smith", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "crew_member_name", "value": "John Smith"}], "expected_action_id": null, "expected_entities": [{"type": "person", "value": "John Smith"}]}
+{"query": "show all certificates for chief engineer", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "role", "value": "chief_engineer"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "chief_engineer"}]}
+{"query": "list safety certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "safety"}], "expected_action_id": null}
+{"query": "display security certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "SEC"}], "expected_action_id": null}
+{"query": "find radio certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "SRC"}], "expected_action_id": null}
+{"query": "get statutory certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "statutory"}], "expected_action_id": null}
+{"query": "view training certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "training"}], "expected_action_id": null}
+{"query": "show competency certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "competency"}], "expected_action_id": null}
+{"query": "certificates overview", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "certificate compliance status", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list valid certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "active"}], "expected_action_id": null}
+{"query": "find PSC certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "PSC"}], "expected_action_id": null}
+{"query": "get AFF certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "AFF"}], "expected_action_id": null}
+{"query": "view ship safety construction certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "SCC"}], "expected_action_id": null}
+{"query": "show certificates issued this year", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "issue_date", "value": "this_year"}], "expected_action_id": null}
+{"query": "certificates by issuing authority Lloyd's", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "issuing_authority", "value": "Lloyd's"}], "expected_action_id": null}
+{"query": "display certificates needing attention", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "is_expiring_soon", "value": true}], "expected_action_id": null}
+{"query": "find certificates with documents attached", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "has_document", "value": true}], "expected_action_id": null}
+{"query": "list certificates missing documents", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "has_document", "value": false}], "expected_action_id": null}
+{"query": "get captain's certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "role", "value": "captain"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "captain"}]}
+{"query": "create new vessel certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_vessel_certificate"}
+{"query": "add ISM certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_vessel_certificate"}
+{"query": "create SOLAS certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_vessel_certificate"}
+{"query": "add new class certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_vessel_certificate"}
+{"query": "register MARPOL certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_vessel_certificate"}
+{"query": "create new crew certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_certificate"}
+{"query": "add STCW certificate for John", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_certificate", "expected_entities": [{"type": "person", "value": "John"}]}
+{"query": "create COC certificate for engineer", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_certificate", "expected_entities": [{"type": "role", "value": "engineer"}]}
+{"query": "add BST training certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_certificate"}
+{"query": "register medical certificate for crew member", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_certificate"}
+{"query": "update certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate"}
+{"query": "modify certificate expiry date", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate"}
+{"query": "edit certificate notes", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate"}
+{"query": "change certificate status to active", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate"}
+{"query": "extend certificate validity", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate"}
+{"query": "link document to certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_certificate"}
+{"query": "attach scan to ISM certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_certificate"}
+{"query": "add PDF to certificate record", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_certificate"}
+{"query": "connect supporting document", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_certificate"}
+{"query": "upload certificate document", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upload_certificate_document"}
+{"query": "supersede certificate with new one", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "supersede_certificate"}
+{"query": "replace expired certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "supersede_certificate"}
+{"query": "mark certificate as superseded", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "supersede_certificate"}
+{"query": "renew certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "supersede_certificate"}
+{"query": "delete certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "delete_certificate"}
+{"query": "remove incorrect certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "delete_certificate"}
+{"query": "delete duplicate certificate entry", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "delete_certificate"}
+{"query": "upload certificate scan", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upload_certificate_document"}
+{"query": "attach certificate image", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upload_certificate_document"}
+{"query": "add scanned certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upload_certificate_document"}
+{"query": "update certificate metadata", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate_metadata"}
+{"query": "change certificate number", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate_metadata"}
+{"query": "edit issuing authority", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate_metadata"}
+{"query": "update certificate reference", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate_metadata"}
+{"query": "add load line certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_vessel_certificate"}
+{"query": "create safety equipment certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_vessel_certificate"}
+{"query": "register GMDSS certificate for radio officer", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_certificate", "expected_entities": [{"type": "role", "value": "radio_officer"}]}
+{"query": "add ENG1 medical for deckhand", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_certificate", "expected_entities": [{"type": "role", "value": "deckhand"}]}
+{"query": "update ISM certificate expiry to next year", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate"}
+{"query": "link endorsement to COC", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_certificate"}
+{"query": "supersede old class certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "supersede_certificate"}
+{"query": "archive expired certificates", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_certificate"}
+{"query": "record certificate renewal", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "supersede_certificate"}
+{"query": "upload renewed certificate document", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upload_certificate_document"}
+{"query": "show SRC certificates", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "certificate_type", "value": "SRC"}], "expected_action_id": null}
+{"query": "display certificates for bosun", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "role", "value": "bosun"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "bosun"}]}
+{"query": "find certificates expiring in 30 days", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "expiry_date", "value": "next_30_days"}], "expected_action_id": null}
+{"query": "get certificates for 2nd engineer", "expected_lens": "certificate", "expected_mode": "READ", "expected_filters": [{"field": "role", "value": "second_engineer"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "second_engineer"}]}
+{"query": "create certificate for firefighting training", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_certificate"}
+{"query": "register survival craft certificate", "expected_lens": "certificate", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_certificate"}

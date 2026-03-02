@@ -1,0 +1,100 @@
+{"query": "show all warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display active warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "active"}], "expected_action_id": null}
+{"query": "list expired warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "expired"}], "expected_action_id": null}
+{"query": "find claimed warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "claimed"}], "expected_action_id": null}
+{"query": "get voided warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "voided"}], "expected_action_id": null}
+{"query": "view warranties for ME1", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "ME1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "show warranties on diesel generator", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "diesel_generator"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "diesel_generator"}]}
+{"query": "display warranties for steering gear", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "steering_gear"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "list warranties by equipment", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "find part warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "part_id", "operator": "!=", "value": null}], "expected_action_id": null}
+{"query": "get warranty for oil filter", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "part_id", "value": "oil_filter"}], "expected_action_id": null, "expected_entities": [{"type": "part", "value": "oil_filter"}]}
+{"query": "view warranties expiring soon", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "is_expiring_soon", "value": true}], "expected_action_id": null}
+{"query": "show warranties expiring this month", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "expiry_date", "value": "this_month"}], "expected_action_id": null}
+{"query": "display warranties expiring in 90 days", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "expiry_date", "value": "next_90_days"}], "expected_action_id": null}
+{"query": "list warranties due for renewal", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "is_expiring_soon", "value": true}], "expected_action_id": null}
+{"query": "find warranties from Caterpillar", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "supplier", "value": "Caterpillar"}], "expected_action_id": null}
+{"query": "get warranties by supplier MAN", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "supplier", "value": "MAN"}], "expected_action_id": null}
+{"query": "view warranties from Wartsila", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "supplier", "value": "Wartsila"}], "expected_action_id": null}
+{"query": "show warranties by vendor", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display manufacturer warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list valid warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "active"}], "expected_action_id": null}
+{"query": "find warranties with claims", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "claimed"}], "expected_action_id": null}
+{"query": "get warranty coverage details", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "view warranty summary", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show warranty status overview", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display warranties for main engine", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "main_engine"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "main_engine"}]}
+{"query": "list warranties on propulsion equipment", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_category", "value": "propulsion"}], "expected_action_id": null}
+{"query": "find warranties for auxiliary equipment", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_category", "value": "auxiliary"}], "expected_action_id": null}
+{"query": "get navigation equipment warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_category", "value": "navigation"}], "expected_action_id": null}
+{"query": "view safety equipment warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_category", "value": "safety"}], "expected_action_id": null}
+{"query": "show warranty documents", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "has_document", "value": true}], "expected_action_id": null}
+{"query": "display warranties missing documents", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "has_document", "value": false}], "expected_action_id": null}
+{"query": "list recently expired warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "expired"}, {"field": "expiry_date", "value": "recent"}], "expected_action_id": null}
+{"query": "find warranty for bilge pump", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "bilge_pump"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "bilge_pump"}]}
+{"query": "get warranty on compressor", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "compressor"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "compressor"}]}
+{"query": "view warranty for air conditioning", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "air_conditioning"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "air_conditioning"}]}
+{"query": "show extended warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "is_extended", "value": true}], "expected_action_id": null}
+{"query": "display original warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "is_extended", "value": false}], "expected_action_id": null}
+{"query": "list warranties by expiry date", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "find warranties starting this year", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "start_date", "value": "this_year"}], "expected_action_id": null}
+{"query": "get warranty history for DG1", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "DG1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "DG1"}]}
+{"query": "view all active equipment warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "active"}, {"field": "equipment_id", "operator": "!=", "value": null}], "expected_action_id": null}
+{"query": "show warranty claims pending", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "claim_status", "value": "pending"}], "expected_action_id": null}
+{"query": "display warranties needing attention", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "is_expiring_soon", "value": true}], "expected_action_id": null}
+{"query": "list warranties for turbocharger", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "turbocharger"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "turbocharger"}]}
+{"query": "find warranty expiring next month", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "expiry_date", "value": "next_month"}], "expected_action_id": null}
+{"query": "get warranty for water maker", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "water_maker"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "water_maker"}]}
+{"query": "view warranties with pending claims", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "has_pending_claim", "value": true}], "expected_action_id": null}
+{"query": "show warranty compliance status", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "create new warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty"}
+{"query": "add warranty for ME1", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "register warranty for diesel generator", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty", "expected_entities": [{"type": "equipment", "value": "diesel_generator"}]}
+{"query": "create equipment warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty"}
+{"query": "add new warranty from Caterpillar", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty", "expected_entities": [{"type": "supplier", "value": "Caterpillar"}]}
+{"query": "update warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_warranty"}
+{"query": "modify warranty details", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_warranty"}
+{"query": "edit warranty end date", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_warranty"}
+{"query": "change warranty coverage", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_warranty"}
+{"query": "update warranty notes", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_warranty"}
+{"query": "claim warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "claim_warranty"}
+{"query": "submit warranty claim for ME1", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "claim_warranty", "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "file warranty claim", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "claim_warranty"}
+{"query": "make warranty claim for fault F-123", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "claim_warranty", "expected_entities": [{"type": "fault", "value": "F-123"}]}
+{"query": "initiate warranty claim process", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "claim_warranty"}
+{"query": "void warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "void_warranty"}
+{"query": "cancel warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "void_warranty"}
+{"query": "invalidate warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "void_warranty"}
+{"query": "void warranty due to modification", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "void_warranty"}
+{"query": "mark warranty as void", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "void_warranty"}
+{"query": "link document to warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_warranty"}
+{"query": "attach warranty certificate", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_warranty"}
+{"query": "add warranty document", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_warranty"}
+{"query": "connect warranty terms document", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_warranty"}
+{"query": "upload warranty paperwork", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_warranty"}
+{"query": "extend warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extend_warranty"}
+{"query": "renew warranty for another year", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extend_warranty"}
+{"query": "extend warranty end date", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extend_warranty"}
+{"query": "add warranty extension", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extend_warranty"}
+{"query": "prolong warranty period", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extend_warranty"}
+{"query": "register 2-year warranty for new pump", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty", "expected_entities": [{"type": "equipment", "value": "pump"}, {"type": "duration", "value": "2_years"}]}
+{"query": "create warranty from MAN for turbocharger", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty", "expected_entities": [{"type": "supplier", "value": "MAN"}, {"type": "equipment", "value": "turbocharger"}]}
+{"query": "update warranty coverage details", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_warranty"}
+{"query": "file claim against warranty for failed bearing", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "claim_warranty", "expected_entities": [{"type": "part", "value": "bearing"}]}
+{"query": "void expired warranty record", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "void_warranty"}
+{"query": "attach purchase order to warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_warranty"}
+{"query": "extend generator warranty to December", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extend_warranty", "expected_entities": [{"type": "equipment", "value": "generator"}, {"type": "date", "value": "December"}]}
+{"query": "add 5-year extended warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty", "expected_entities": [{"type": "duration", "value": "5_years"}]}
+{"query": "update warranty status to claimed", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "claim_warranty"}
+{"query": "record warranty claim outcome", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_warranty"}
+{"query": "show warranty for boiler", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "boiler"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "boiler"}]}
+{"query": "list pump warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_category", "value": "pump"}], "expected_action_id": null}
+{"query": "find electrical equipment warranties", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_category", "value": "electrical"}], "expected_action_id": null}
+{"query": "get warranty for anchor windlass", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "anchor_windlass"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "anchor_windlass"}]}
+{"query": "view warranty claims history", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "has_claims", "value": true}], "expected_action_id": null}
+{"query": "display warranty for fire system", "expected_lens": "warranty", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "fire_system"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "fire_system"}]}
+{"query": "create warranty for new equipment", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty"}
+{"query": "register 3-year warranty from supplier", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_warranty", "expected_entities": [{"type": "duration", "value": "3_years"}]}
+{"query": "claim warranty for defective part", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "claim_warranty"}
+{"query": "link service contract to warranty", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_document_to_warranty"}
+{"query": "extend warranty coverage by 12 months", "expected_lens": "warranty", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extend_warranty", "expected_entities": [{"type": "duration", "value": "12_months"}]}

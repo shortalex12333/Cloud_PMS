@@ -1,0 +1,100 @@
+{"query": "show hours of rest", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display rest hours records", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list my hours of rest", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "user_id", "value": "current_user"}], "expected_action_id": null}
+{"query": "find rest hours for John", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "user_id", "value": "John"}], "expected_action_id": null, "expected_entities": [{"type": "person", "value": "John"}]}
+{"query": "get hours of rest for today", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "record_date", "value": "today"}], "expected_action_id": null}
+{"query": "view rest hours from yesterday", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "record_date", "value": "yesterday"}], "expected_action_id": null}
+{"query": "show hours of rest this week", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "start_date", "value": "this_week_start"}, {"field": "end_date", "value": "this_week_end"}], "expected_action_id": null}
+{"query": "display rest records from last week", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "start_date", "value": "last_week_start"}, {"field": "end_date", "value": "last_week_end"}], "expected_action_id": null}
+{"query": "list hours of rest for this month", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "start_date", "value": "this_month_start"}, {"field": "end_date", "value": "this_month_end"}], "expected_action_id": null}
+{"query": "find non-compliant rest hours", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "is_daily_compliant", "value": false}], "expected_action_id": null}
+{"query": "get daily non-compliant records", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "is_daily_compliant", "value": false}], "expected_action_id": null}
+{"query": "view weekly non-compliant rest", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "is_weekly_compliant", "value": false}], "expected_action_id": null}
+{"query": "show compliant rest hours", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "is_daily_compliant", "value": true}], "expected_action_id": null}
+{"query": "display weekly compliant records", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "is_weekly_compliant", "value": true}], "expected_action_id": null}
+{"query": "list active warnings", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "warning_status", "value": "active"}], "expected_action_id": null}
+{"query": "find acknowledged warnings", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "warning_status", "value": "acknowledged"}], "expected_action_id": null}
+{"query": "get dismissed warnings", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "warning_status", "value": "dismissed"}], "expected_action_id": null}
+{"query": "view hours of rest for chief engineer", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "user_id", "value": "chief_engineer"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "chief_engineer"}]}
+{"query": "show rest hours for deck crew", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "department", "value": "deck"}], "expected_action_id": null}
+{"query": "display engineering department rest hours", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "department", "value": "engineering"}], "expected_action_id": null}
+{"query": "list rest records for March", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "start_date", "value": "2026-03-01"}, {"field": "end_date", "value": "2026-03-31"}], "expected_action_id": null}
+{"query": "find rest hours between dates", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "get MLC compliance status", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "view STCW compliance", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show rest hour violations", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "is_daily_compliant", "value": false}], "expected_action_id": null}
+{"query": "display crew rest compliance", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list all rest records", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "find rest hours needing review", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "needs_review", "value": true}], "expected_action_id": null}
+{"query": "get unsigned rest records", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "is_signed", "value": false}], "expected_action_id": null}
+{"query": "view signed rest hours", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "is_signed", "value": true}], "expected_action_id": null}
+{"query": "show hours of rest summary", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display rest hour statistics", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list rest periods for yesterday", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "record_date", "value": "yesterday"}], "expected_action_id": null}
+{"query": "find insufficient rest days", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "is_daily_compliant", "value": false}], "expected_action_id": null}
+{"query": "get rest hours report", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "view monthly rest summary", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "start_date", "value": "this_month_start"}, {"field": "end_date", "value": "this_month_end"}], "expected_action_id": null}
+{"query": "show crew member compliance", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display rest records with warnings", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "warning_status", "value": "active"}], "expected_action_id": null}
+{"query": "list rest hours for captain", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "user_id", "value": "captain"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "captain"}]}
+{"query": "find rest records from last month", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "start_date", "value": "last_month_start"}, {"field": "end_date", "value": "last_month_end"}], "expected_action_id": null}
+{"query": "get today's crew rest status", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "record_date", "value": "today"}], "expected_action_id": null}
+{"query": "view rest hours by date range", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show recent rest hour entries", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "record_date", "value": "recent"}], "expected_action_id": null}
+{"query": "display all compliance warnings", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "warning_status", "value": "active"}], "expected_action_id": null}
+{"query": "list awaiting signoff records", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "awaiting_signoff", "value": true}], "expected_action_id": null}
+{"query": "find rest hours for all crew", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "get historical rest records", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "view rest compliance dashboard", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show my rest hours this week", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "user_id", "value": "current_user"}, {"field": "start_date", "value": "this_week_start"}, {"field": "end_date", "value": "this_week_end"}], "expected_action_id": null}
+{"query": "log hours of rest", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_hours_of_rest"}
+{"query": "record my rest hours for today", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_hours_of_rest"}
+{"query": "enter rest periods", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_hours_of_rest"}
+{"query": "submit hours of rest", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_hours_of_rest"}
+{"query": "add rest record for yesterday", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_hours_of_rest"}
+{"query": "update hours of rest", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upsert_hours_of_rest"}
+{"query": "modify rest record", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upsert_hours_of_rest"}
+{"query": "edit rest hours entry", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upsert_hours_of_rest"}
+{"query": "correct rest period data", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upsert_hours_of_rest"}
+{"query": "change rest hours record", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upsert_hours_of_rest"}
+{"query": "create monthly signoff", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_monthly_signoff"}
+{"query": "generate monthly rest signoff", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_monthly_signoff"}
+{"query": "prepare signoff for March", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_monthly_signoff"}
+{"query": "initiate monthly review", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_monthly_signoff"}
+{"query": "start signoff process", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_monthly_signoff"}
+{"query": "sign monthly signoff", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "sign_monthly_signoff"}
+{"query": "approve rest hours signoff", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "sign_monthly_signoff"}
+{"query": "add crew signature to signoff", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "sign_monthly_signoff"}
+{"query": "sign as HOD", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "sign_monthly_signoff"}
+{"query": "captain sign monthly signoff", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "sign_monthly_signoff"}
+{"query": "create crew rest template", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_template"}
+{"query": "add new rest schedule template", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_template"}
+{"query": "create standard watch template", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_template"}
+{"query": "define rest period template", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_template"}
+{"query": "save rest pattern as template", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_template"}
+{"query": "apply crew template", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "apply_crew_template"}
+{"query": "use rest template for this week", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "apply_crew_template"}
+{"query": "apply standard watch pattern", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "apply_crew_template"}
+{"query": "set rest schedule from template", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "apply_crew_template"}
+{"query": "assign template to crew member", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "apply_crew_template"}
+{"query": "acknowledge warning", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "acknowledge_warning"}
+{"query": "accept rest hour warning", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "acknowledge_warning"}
+{"query": "confirm compliance warning", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "acknowledge_warning"}
+{"query": "acknowledge violation alert", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "acknowledge_warning"}
+{"query": "note warning reviewed", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "acknowledge_warning"}
+{"query": "dismiss warning", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "dismiss_warning"}
+{"query": "close rest hour warning", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "dismiss_warning"}
+{"query": "dismiss compliance alert", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "dismiss_warning"}
+{"query": "clear false warning", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "dismiss_warning"}
+{"query": "remove erroneous warning", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "dismiss_warning"}
+{"query": "record 8 hours rest for today", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_hours_of_rest", "expected_entities": [{"type": "hours", "value": 8}]}
+{"query": "log night watch rest periods", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "log_hours_of_rest"}
+{"query": "update yesterday's rest entry", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "upsert_hours_of_rest"}
+{"query": "create February signoff for John", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_monthly_signoff", "expected_entities": [{"type": "person", "value": "John"}, {"type": "month", "value": "February"}]}
+{"query": "sign off my rest hours for this month", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "sign_monthly_signoff"}
+{"query": "create 4-on-8-off watch template", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_crew_template"}
+{"query": "apply day worker template to crew", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "apply_crew_template"}
+{"query": "acknowledge all active warnings", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "acknowledge_warning"}
+{"query": "dismiss warning due to emergency operations", "expected_lens": "hours_of_rest", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "dismiss_warning"}
+{"query": "show rest hours for bosun", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "user_id", "value": "bosun"}], "expected_action_id": null, "expected_entities": [{"type": "role", "value": "bosun"}]}
+{"query": "display rest compliance for navigation watch", "expected_lens": "hours_of_rest", "expected_mode": "READ", "expected_filters": [{"field": "watch_type", "value": "navigation"}], "expected_action_id": null}

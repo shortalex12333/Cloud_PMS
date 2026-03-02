@@ -1,0 +1,100 @@
+{"query": "show all receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display receiving records", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "list draft receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "draft"}], "expected_action_id": null}
+{"query": "find receivings pending review", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "pending_review"}], "expected_action_id": null}
+{"query": "get accepted receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "accepted"}], "expected_action_id": null}
+{"query": "view rejected receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "rejected"}], "expected_action_id": null}
+{"query": "show receivings from supplier", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "supplier_id", "operator": "!=", "value": null}], "expected_action_id": null}
+{"query": "display receivings from Caterpillar", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "supplier_id", "value": "Caterpillar"}], "expected_action_id": null}
+{"query": "list receivings from MAN", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "supplier_id", "value": "MAN"}], "expected_action_id": null}
+{"query": "find receivings by vendor", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "get receivings created today", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "today"}], "expected_action_id": null}
+{"query": "view receivings from this week", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "this_week"}], "expected_action_id": null}
+{"query": "show receivings from last month", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "last_month"}], "expected_action_id": null}
+{"query": "display recent receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "created_at", "value": "recent"}], "expected_action_id": null}
+{"query": "list receivings received yesterday", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "received_at", "value": "yesterday"}], "expected_action_id": null}
+{"query": "find receivings with discrepancies", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_discrepancies", "value": true}], "expected_action_id": null}
+{"query": "get receivings with issues", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_discrepancies", "value": true}], "expected_action_id": null}
+{"query": "view problem receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_discrepancies", "value": true}], "expected_action_id": null}
+{"query": "show receivings without discrepancies", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_discrepancies", "value": false}], "expected_action_id": null}
+{"query": "display clean receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_discrepancies", "value": false}], "expected_action_id": null}
+{"query": "list receivings awaiting acceptance", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "pending_review"}], "expected_action_id": null}
+{"query": "find incomplete receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "draft"}], "expected_action_id": null}
+{"query": "get receiving summary", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "view receiving statistics", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "show receiving history", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display deliveries this month", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "received_at", "value": "this_month"}], "expected_action_id": null}
+{"query": "list spare parts deliveries", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "spare_parts"}], "expected_action_id": null}
+{"query": "find consumables receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "consumables"}], "expected_action_id": null}
+{"query": "get equipment deliveries", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "equipment"}], "expected_action_id": null}
+{"query": "view receiving by supplier Wartsila", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "supplier_id", "value": "Wartsila"}], "expected_action_id": null}
+{"query": "show receivings with photos", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_photos", "value": true}], "expected_action_id": null}
+{"query": "display documented receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_documents", "value": true}], "expected_action_id": null}
+{"query": "list receivings with invoices", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_invoice", "value": true}], "expected_action_id": null}
+{"query": "find receivings missing invoices", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_invoice", "value": false}], "expected_action_id": null}
+{"query": "get receivings by date", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "view receivings linked to PO", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_po", "value": true}], "expected_action_id": null}
+{"query": "show receivings without PO", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_po", "value": false}], "expected_action_id": null}
+{"query": "display damaged goods receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_damaged_items", "value": true}], "expected_action_id": null}
+{"query": "list short shipments", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_discrepancies", "value": true}], "expected_action_id": null}
+{"query": "find over-delivered receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "has_discrepancies", "value": true}], "expected_action_id": null}
+{"query": "get receivings needing review", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "status", "value": "pending_review"}], "expected_action_id": null}
+{"query": "view port call deliveries", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "delivery_type", "value": "port_call"}], "expected_action_id": null}
+{"query": "show agent deliveries", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "delivery_type", "value": "agent"}], "expected_action_id": null}
+{"query": "display courier receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "delivery_type", "value": "courier"}], "expected_action_id": null}
+{"query": "list my created receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "created_by", "value": "current_user"}], "expected_action_id": null}
+{"query": "find receivings by item", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "get oil filter deliveries", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "contains_part", "value": "oil_filter"}], "expected_action_id": null, "expected_entities": [{"type": "part", "value": "oil_filter"}]}
+{"query": "view bearing receivings", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "contains_part", "value": "bearing"}], "expected_action_id": null, "expected_entities": [{"type": "part", "value": "bearing"}]}
+{"query": "show receivings for engine parts", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "engine"}], "expected_action_id": null}
+{"query": "display receivings at current port", "expected_lens": "receiving", "expected_mode": "READ", "expected_filters": [{"field": "delivery_location", "value": "current_port"}], "expected_action_id": null}
+{"query": "create new receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_receiving"}
+{"query": "start receiving from Caterpillar", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_receiving", "expected_entities": [{"type": "supplier", "value": "Caterpillar"}]}
+{"query": "begin receiving for delivery", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_receiving"}
+{"query": "create receiving for MAN shipment", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_receiving", "expected_entities": [{"type": "supplier", "value": "MAN"}]}
+{"query": "new receiving record", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_receiving"}
+{"query": "attach photo to receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_receiving_image_with_comment"}
+{"query": "add image to receiving with comment", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_receiving_image_with_comment"}
+{"query": "upload receiving photo", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_receiving_image_with_comment"}
+{"query": "add delivery photo", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_receiving_image_with_comment"}
+{"query": "attach damage photo to receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_receiving_image_with_comment"}
+{"query": "extract candidates from image", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extract_receiving_candidates"}
+{"query": "scan packing list image", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extract_receiving_candidates"}
+{"query": "read items from photo", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extract_receiving_candidates"}
+{"query": "extract parts from receiving image", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extract_receiving_candidates"}
+{"query": "parse receiving document image", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extract_receiving_candidates"}
+{"query": "update receiving fields", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_receiving_fields"}
+{"query": "edit receiving supplier", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_receiving_fields"}
+{"query": "modify receiving notes", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_receiving_fields"}
+{"query": "change receiving date", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_receiving_fields"}
+{"query": "update receiving details", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_receiving_fields"}
+{"query": "add item to receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_receiving_item"}
+{"query": "add part to receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_receiving_item"}
+{"query": "receive 5 oil filters", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_receiving_item", "expected_entities": [{"type": "quantity", "value": 5}, {"type": "part", "value": "oil_filter"}]}
+{"query": "add 10 bearings to receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_receiving_item", "expected_entities": [{"type": "quantity", "value": 10}, {"type": "part", "value": "bearing"}]}
+{"query": "include gaskets in receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_receiving_item", "expected_entities": [{"type": "part", "value": "gasket"}]}
+{"query": "adjust receiving item quantity", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_receiving_item"}
+{"query": "correct receiving quantity", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_receiving_item"}
+{"query": "modify received quantity", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_receiving_item"}
+{"query": "change item condition to damaged", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_receiving_item"}
+{"query": "update receiving item", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_receiving_item"}
+{"query": "link invoice to receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_invoice_document"}
+{"query": "attach invoice document", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_invoice_document"}
+{"query": "add invoice to receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_invoice_document"}
+{"query": "connect invoice to delivery", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_invoice_document"}
+{"query": "upload supplier invoice", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "link_invoice_document"}
+{"query": "accept receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "accept_receiving"}
+{"query": "complete receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "accept_receiving"}
+{"query": "finalize receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "accept_receiving"}
+{"query": "sign off on receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "accept_receiving"}
+{"query": "approve receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "accept_receiving"}
+{"query": "reject receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_receiving"}
+{"query": "reject damaged delivery", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_receiving"}
+{"query": "decline receiving due to wrong items", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_receiving"}
+{"query": "reject short shipment", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_receiving"}
+{"query": "return receiving to supplier", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "reject_receiving"}
+{"query": "create receiving for Wartsila delivery", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "create_receiving", "expected_entities": [{"type": "supplier", "value": "Wartsila"}]}
+{"query": "document receiving with photos", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "attach_receiving_image_with_comment"}
+{"query": "scan packing slip for items", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "extract_receiving_candidates"}
+{"query": "update supplier on receiving", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "update_receiving_fields"}
+{"query": "add seals to delivery record", "expected_lens": "receiving", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_receiving_item", "expected_entities": [{"type": "part", "value": "seal"}]}

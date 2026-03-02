@@ -1,0 +1,100 @@
+{"query": "show all parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display parts in stock", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "IN_STOCK"}], "expected_action_id": null}
+{"query": "list low stock parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "LOW_STOCK"}], "expected_action_id": null}
+{"query": "find parts out of stock", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "OUT_OF_STOCK"}], "expected_action_id": null}
+{"query": "get overstocked parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "OVERSTOCKED"}], "expected_action_id": null}
+{"query": "view parts on order", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "ON_ORDER"}], "expected_action_id": null}
+{"query": "show me oil filters", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "filter"}], "expected_action_id": null}
+{"query": "parts by category gaskets", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "gasket"}], "expected_action_id": null}
+{"query": "display electrical parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "electrical"}], "expected_action_id": null}
+{"query": "list bearing parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "bearing"}], "expected_action_id": null}
+{"query": "show pump components", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "pump_component"}], "expected_action_id": null}
+{"query": "parts from manufacturer Caterpillar", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "manufacturer", "value": "Caterpillar"}], "expected_action_id": null}
+{"query": "get parts by manufacturer MAN", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "manufacturer", "value": "MAN"}], "expected_action_id": null}
+{"query": "find parts in engine room store", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "engine_room_store"}], "expected_action_id": null}
+{"query": "view parts in main store", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "main_store"}], "expected_action_id": null}
+{"query": "parts for ME1", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "ME1"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "ME1"}]}
+{"query": "show spare parts for diesel generator", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "diesel_generator"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "diesel_generator"}]}
+{"query": "list parts needing reorder", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "reorder_needed", "value": true}], "expected_action_id": null}
+{"query": "parts below minimum stock", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "reorder_needed", "value": true}], "expected_action_id": null}
+{"query": "display critical spare parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "criticality", "value": "critical"}], "expected_action_id": null}
+{"query": "find parts for steering gear", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "steering_gear"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "steering_gear"}]}
+{"query": "show seals and o-rings", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "seal"}], "expected_action_id": null}
+{"query": "get fuel system parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "fuel_system"}], "expected_action_id": null}
+{"query": "view hydraulic parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "hydraulic"}], "expected_action_id": null}
+{"query": "list engine parts low stock", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "engine"}, {"field": "stock_status", "value": "LOW_STOCK"}], "expected_action_id": null}
+{"query": "show all belts and hoses", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "belt_hose"}], "expected_action_id": null}
+{"query": "parts inventory", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "display spare impellers", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "name", "value": "impeller"}], "expected_action_id": null}
+{"query": "find injector parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "name", "value": "injector"}], "expected_action_id": null}
+{"query": "get piston ring sets", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "name", "value": "piston_ring"}], "expected_action_id": null}
+{"query": "view cylinder liner spares", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "name", "value": "cylinder_liner"}], "expected_action_id": null}
+{"query": "show turbocharger parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "turbocharger"}], "expected_action_id": null}
+{"query": "parts with stock quantity zero", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "OUT_OF_STOCK"}], "expected_action_id": null}
+{"query": "list consumable parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "consumable"}], "expected_action_id": null}
+{"query": "display safety equipment parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "safety"}], "expected_action_id": null}
+{"query": "find navigation equipment parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "navigation"}], "expected_action_id": null}
+{"query": "show parts expiring soon", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "expiry_date", "value": "expiring_soon"}], "expected_action_id": null}
+{"query": "get parts in deck store", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "location", "value": "deck_store"}], "expected_action_id": null}
+{"query": "view parts for bilge pump", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "bilge_pump"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "bilge_pump"}]}
+{"query": "parts for air conditioning unit", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "air_conditioning"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "air_conditioning"}]}
+{"query": "show fasteners inventory", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "fastener"}], "expected_action_id": null}
+{"query": "list valve parts", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "valve"}], "expected_action_id": null}
+{"query": "display pipe fittings", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "pipe_fitting"}], "expected_action_id": null}
+{"query": "find lubricants in stock", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "lubricant"}, {"field": "stock_status", "value": "IN_STOCK"}], "expected_action_id": null}
+{"query": "get paint and coating supplies", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "paint"}], "expected_action_id": null}
+{"query": "view welding consumables", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "welding"}], "expected_action_id": null}
+{"query": "parts with pending orders", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "stock_status", "value": "ON_ORDER"}], "expected_action_id": null}
+{"query": "show replacement parts for compressor", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "equipment_id", "value": "compressor"}], "expected_action_id": null, "expected_entities": [{"type": "equipment", "value": "compressor"}]}
+{"query": "list parts by part number", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [], "expected_action_id": null}
+{"query": "find part PN-12345", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "part_number", "value": "PN-12345"}], "expected_action_id": null, "expected_entities": [{"type": "part_number", "value": "PN-12345"}]}
+{"query": "consume part from stock", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "consume_part"}
+{"query": "use 3 oil filters from inventory", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "consume_part", "expected_entities": [{"type": "quantity", "value": 3}, {"type": "part", "value": "oil_filter"}]}
+{"query": "issue parts to work order", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "consume_part"}
+{"query": "draw 2 gaskets for WO-123", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "consume_part", "expected_entities": [{"type": "quantity", "value": 2}, {"type": "part", "value": "gasket"}, {"type": "work_order", "value": "WO-123"}]}
+{"query": "deduct part from stock", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "consume_part"}
+{"query": "receive parts into stock", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "receive_part"}
+{"query": "add 10 bearings to inventory", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "receive_part", "expected_entities": [{"type": "quantity", "value": 10}, {"type": "part", "value": "bearing"}]}
+{"query": "book parts into store", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "receive_part"}
+{"query": "receive delivery from supplier", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "receive_part"}
+{"query": "add received parts to stock", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "receive_part"}
+{"query": "transfer part between locations", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "transfer_part"}
+{"query": "move parts from main store to engine room", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "transfer_part"}
+{"query": "relocate 5 filters to deck store", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "transfer_part", "expected_entities": [{"type": "quantity", "value": 5}, {"type": "part", "value": "filter"}, {"type": "location", "value": "deck_store"}]}
+{"query": "transfer stock between warehouses", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "transfer_part"}
+{"query": "move parts to different location", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "transfer_part"}
+{"query": "adjust stock quantity", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_stock_quantity"}
+{"query": "correct stock count for oil filters", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_stock_quantity", "expected_entities": [{"type": "part", "value": "oil_filter"}]}
+{"query": "update inventory quantity", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_stock_quantity"}
+{"query": "set new stock level for bearings", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_stock_quantity", "expected_entities": [{"type": "part", "value": "bearing"}]}
+{"query": "reconcile stock after count", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_stock_quantity"}
+{"query": "write off damaged part", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "write_off_part"}
+{"query": "scrap 2 expired gaskets", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "write_off_part", "expected_entities": [{"type": "quantity", "value": 2}, {"type": "part", "value": "gasket"}]}
+{"query": "dispose of obsolete parts", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "write_off_part"}
+{"query": "write off defective stock", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "write_off_part"}
+{"query": "remove damaged parts from inventory", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "write_off_part"}
+{"query": "add part to shopping list", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_shopping_list"}
+{"query": "request 5 oil filters", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_shopping_list", "expected_entities": [{"type": "quantity", "value": 5}, {"type": "part", "value": "oil_filter"}]}
+{"query": "add bearings to purchase list", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_shopping_list", "expected_entities": [{"type": "part", "value": "bearing"}]}
+{"query": "request urgent restock of gaskets", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_shopping_list", "expected_entities": [{"type": "part", "value": "gasket"}]}
+{"query": "put part on requisition list", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_shopping_list"}
+{"query": "order new parts", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "order_part"}
+{"query": "place order for 10 seals", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "order_part", "expected_entities": [{"type": "quantity", "value": 10}, {"type": "part", "value": "seal"}]}
+{"query": "order part from supplier", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "order_part"}
+{"query": "purchase replacement filters", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "order_part", "expected_entities": [{"type": "part", "value": "filter"}]}
+{"query": "submit order for spare parts", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "order_part"}
+{"query": "consume 1 impeller for WO-456", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "consume_part", "expected_entities": [{"type": "quantity", "value": 1}, {"type": "part", "value": "impeller"}, {"type": "work_order", "value": "WO-456"}]}
+{"query": "book out bearing set", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "consume_part", "expected_entities": [{"type": "part", "value": "bearing_set"}]}
+{"query": "receive shipment of engine parts", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "receive_part"}
+{"query": "add incoming stock to inventory", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "receive_part"}
+{"query": "record parts delivery", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "receive_part"}
+{"query": "move spare parts to cold storage", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "transfer_part", "expected_entities": [{"type": "location", "value": "cold_storage"}]}
+{"query": "relocate inventory to new store", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "transfer_part"}
+{"query": "fix inventory discrepancy", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_stock_quantity"}
+{"query": "update stock after physical count", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "adjust_stock_quantity"}
+{"query": "write off expired consumables", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "write_off_part"}
+{"query": "scrap corroded fittings", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "write_off_part", "expected_entities": [{"type": "part", "value": "fitting"}]}
+{"query": "add critical spare to shopping list urgently", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_shopping_list"}
+{"query": "request turbine blades for next port", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "add_to_shopping_list", "expected_entities": [{"type": "part", "value": "turbine_blade"}]}
+{"query": "order piston rings from MAN", "expected_lens": "part", "expected_mode": "MUTATE", "expected_filters": [], "expected_action_id": "order_part", "expected_entities": [{"type": "part", "value": "piston_ring"}, {"type": "supplier", "value": "MAN"}]}
+{"query": "show pump parts inventory", "expected_lens": "part", "expected_mode": "READ", "expected_filters": [{"field": "category", "value": "pump_component"}], "expected_action_id": null}
