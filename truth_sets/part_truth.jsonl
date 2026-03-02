@@ -1,0 +1,25 @@
+{"entity_id": "633f0abc-1335-431e-b069-193bf126555a", "display_name": "QF_TEST_PART_LOWSTOCK_2", "status": null, "lens": "part", "category": "Electrical", "quantity_on_hand": 1}
+{"entity_id": "5f380e03-e85d-40c7-9265-f13adfe42fbb", "display_name": "QF_TEST_PART_OUTOFSTOCK_2", "status": null, "lens": "part", "category": "Consumables", "quantity_on_hand": 0}
+{"entity_id": "e12e9111-b7e3-4411-83b2-1384c1e5584a", "display_name": "QF_TEST_PART_LOWSTOCK_1", "status": null, "lens": "part", "category": "Filters", "quantity_on_hand": 2}
+{"entity_id": "9b0fddc3-138e-4f44-8690-6b3338d18391", "display_name": "QF_TEST_PART_OUTOFSTOCK_1", "status": null, "lens": "part", "category": "Mechanical", "quantity_on_hand": 0}
+{"entity_id": "466dafe9-b7ab-4e8e-9e0d-c488af0a44d5", "display_name": "Double Promote Test 1770825853902", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "1b76e921-94c8-4a69-8966-8bfd97b66b44", "display_name": "Double Promote Test 1770822849115", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "5806d863-4e1d-4bf1-943f-97e688d3939c", "display_name": "Double Promote Test 1770822690641", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "877c8f36-dd20-42d2-95f2-7ad469073b90", "display_name": "Double Promote Test 1770819243942", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "90da958c-e84c-48df-a148-c35e7c53255c", "display_name": "Double Promote Test 1770770010760", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "80f1a14d-458e-4365-8213-14c70e5ff924", "display_name": "Part for Filter", "status": null, "lens": "part", "manufacturer": "Filter", "quantity_on_hand": 1}
+{"entity_id": "2f452e3b-bf3e-464e-82d5-7d0bc849e6c0", "display_name": "Raw Water Pump Seal Kit", "status": null, "lens": "part", "manufacturer": "Grundfos", "category": "Engine Room", "quantity_on_hand": 4}
+{"entity_id": "f7f3fdfa-814f-470c-9fd1-f161c8184c6a", "display_name": "Double Promote Test 1770765253371", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "d30aa964-d865-4922-948d-15a5ec2cb483", "display_name": "Double Promote Test 1770765175249", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "f7913ad1-6832-4169-b816-4538c8b7a417", "display_name": "Fuel Filter Generator", "status": null, "lens": "part", "manufacturer": "Fleetguard", "category": "Engine Room", "quantity_on_hand": 5}
+{"entity_id": "84dfa9ed-5bcf-4581-98fe-8d23b9c8b272", "display_name": "Double Promote Test 1770765102905", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "e49cb9a7-b916-4a16-a9f3-fd947f3fba1c", "display_name": "Double Promote Test 1770764901598", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "fe8158a4-d468-486e-a034-62ec6122cf3b", "display_name": "Double Promote Test 1770764571301", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "5dd34337-c4c4-41dd-9c6b-adf84af349a8", "display_name": "Teak Seam Compound (1L)", "status": null, "lens": "part", "manufacturer": "Muir", "category": "Safety", "quantity_on_hand": 4}
+{"entity_id": "e7aa7f14-7ecb-4eb0-9ea1-f3a3f2b26eca", "display_name": "Validation Test 1770682932695", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "8051c1cb-fadd-4742-87cf-1da2a09ed2c2", "display_name": "Promote Test Part 1770678366579", "status": null, "lens": "part", "quantity_on_hand": 0}
+{"entity_id": "a1bb9b29-8fa4-4888-9018-53201eb5a36c", "display_name": "Test Fuel Filter", "status": null, "lens": "part", "quantity_on_hand": 4}
+{"entity_id": "955b1437-bea2-474b-b28d-65f00543f05b", "display_name": "Quick Test Part 1769623110", "status": null, "lens": "part", "quantity_on_hand": 2}
+{"entity_id": "4e0d8c48-41a1-4bb7-aeea-81d48ab9ca58", "display_name": "HOD Test Part 1769623536", "status": null, "lens": "part", "quantity_on_hand": 1}
+{"entity_id": "6d6cd16d-ed94-4c0a-b05e-e56aa2e36a9c", "display_name": "Staging Test Part 1769623531", "status": null, "lens": "part", "quantity_on_hand": 1}
+{"entity_id": "444cca9d-f804-4ca4-a84f-646250c61fc5", "display_name": "Item to Reject 1769622654", "status": null, "lens": "part", "quantity_on_hand": 5}

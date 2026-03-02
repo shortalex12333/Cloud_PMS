@@ -132,6 +132,10 @@ const CACHE_TTL = 5 * 60 * 1000;  // 5 minutes
 const PREPARE_DEBOUNCE_MS = 400;  // Within 350-500ms range per CONTEXT.md
 const PREPARE_CACHE_TTL = 30000;  // 30 second cache
 
+// PHASE D: Confidence-based fallback routing
+// When confidence is below this threshold, skip action rendering and use search results only
+const CONFIDENCE_THRESHOLD = 0.7;
+
 // F1 Architecture: L1/L2 Budget Enforcement
 const L1_TIMEOUT_MS = 3000;       // 3s timeout for primary search (includes network latency)
 const L2_TIMEOUT_MS = 5000;       // 5s timeout for fallback search
@@ -2138,6 +2142,17 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
     }
   }, [state.query, executeSearch]);
 
+  // PHASE D: Confidence-based fallback routing
+  // Determine if action buttons should render based on confidence threshold
+  const shouldRenderActions = state.intentEnvelope !== null &&
+    state.intentEnvelope.confidence >= CONFIDENCE_THRESHOLD &&
+    state.actionSuggestions.length > 0;
+
+  // Log when confidence-based fallback triggers
+  if (state.intentEnvelope && state.intentEnvelope.confidence < CONFIDENCE_THRESHOLD && state.actionSuggestions.length > 0) {
+    console.log('[useCelesteSearch] Low confidence:', state.intentEnvelope.confidence.toFixed(2), '- falling back to search results only');
+  }
+
   return {
     // State
     query: state.query,
@@ -2146,14 +2161,17 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
     isLoading: state.isLoading,
     error: state.error,
     suggestions: state.suggestions,
-    actionSuggestions: state.actionSuggestions,
+    // PHASE D: Only expose actionSuggestions if shouldRenderActions is true
+    actionSuggestions: shouldRenderActions ? state.actionSuggestions : [],
     intentEnvelope: state.intentEnvelope,  // v1.3: Unified intent structure
     prefillData: state.prefillData,  // v1.3: Prefill from /prepare endpoint
     isPreparing: state.isPreparing,  // v1.3: Loading state for prefill
     userRole: state.userRole,  // v1.3: For role gating in UI
+    // PHASE D: Expose shouldRenderActions for UI components
+    shouldRenderActions,
     // v1.3: Derive readiness states for all actions (for SuggestedActions component)
     deriveReadinessStates: () => deriveReadinessStatesForActions(
-      state.actionSuggestions,
+      shouldRenderActions ? state.actionSuggestions : [],
       state.prefillData,
       state.userRole
     ),

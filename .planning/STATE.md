@@ -10,13 +10,16 @@
 
 | Field | Value |
 |-------|-------|
-| Milestone | v1.3 — Actionable UX Unification |
-| Phase | Phase 19 (Agent Deployment) |
-| Plan | 04 |
-| Status | Phase 19 Plan 04 complete (E2E Test Coverage) |
-| Last activity | 2026-03-02 — Phase 19-04 complete (614 E2E tests across 12 lenses) |
+| Milestone | v1.2 — Search Pipeline Truth Hardening |
+| Phase | Phases A-E (Parallel Execution) |
+| Plan | One-shot |
+| Status | Executing — Agents spawned for A, B, D |
+| Last activity | 2026-03-02 — v1.2 execution started |
 
-**Progress:** [████████████████████] 95% (4/5 phases complete, 4/4 plans in Phase 19)
+**Progress:** [████░░░░░░░░░░░░░░░░] 20% (3/5 phases in progress)
+
+### Previous Milestone
+v1.3 — Actionable UX Unification: ✓ COMPLETE (Phases 15-19)
 
 ---
 
@@ -228,22 +231,25 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 ## Next Single Action
 
-**Milestone v1.3 Complete — All Phases Done**
+**Milestone v1.2 In Progress — Search Pipeline Truth Hardening**
 
-Phase 19 (Agent Deployment) is complete with all 4 waves:
-- Wave 1: 12 lens matrices with 81 MUTATE actions + 67 READ filters
-- Wave 2: 1,200 NLP query variants (100 per lens)
-- Wave 3: 12 resolve_*_entities functions + prepare_action dispatcher
-- Wave 4: 614 E2E Playwright tests (307 READ + 307 MUTATE)
+Parallel execution of 5 phases:
+- Phase A: Regenerate truth sets with real production IDs (agent running)
+- Phase B: Classify 1,200 queries into difficulty tiers (agent running)
+- Phase C: Validate button rendering across tiers (pending)
+- Phase D: Add confidence-based fallback routing (agent running)
+- Phase E: Measure final Recall@3 with real data (pending — depends on A, B)
 
-v1.3 deliverables:
+Goal: Fix the 96.38% "failure rate" that was actually a validation artifact from synthetic IDs.
+
+### Completed Milestones
+
+**v1.3 — Actionable UX Unification** ✓ COMPLETE
 - IntentEnvelope type + derivation logic
 - /v1/actions/prepare endpoint
 - READY/NEEDS_INPUT/BLOCKED readiness states
 - Fragmented URL routes + disambiguation UX
-- Comprehensive E2E test coverage
-
-Next: Run `npx playwright test test/e2e/*-intent.spec.ts` to execute all 614 tests
+- 614 E2E Playwright tests
 
 ---
 

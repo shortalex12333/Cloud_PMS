@@ -1,0 +1,105 @@
+{
+  "timestamp": "2026-03-02T19:14:19.899092",
+  "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+  "sample_size": 25,
+  "lenses": {
+    "work_order": {
+      "count": 25,
+      "table": "pms_work_orders",
+      "warnings": [],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/work_order_truth.jsonl"
+    },
+    "fault": {
+      "count": 25,
+      "table": "pms_faults",
+      "warnings": [],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/fault_truth.jsonl"
+    },
+    "equipment": {
+      "count": 25,
+      "table": "equipment",
+      "warnings": [],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/equipment_truth.jsonl"
+    },
+    "part": {
+      "count": 25,
+      "table": "pms_parts",
+      "warnings": [],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/part_truth.jsonl"
+    },
+    "inventory": {
+      "count": 25,
+      "table": "pms_inventory_stock",
+      "warnings": [
+        "No display columns found in ['id', 'yacht_id', 'part_id', 'location', 'quantity', 'min_quantity', 'max_quantity', 'reorder_quantity', 'last_counted_at', 'metadata']..."
+      ],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/inventory_truth.jsonl"
+    },
+    "certificate": {
+      "count": 18,
+      "table": "pms_certificates",
+      "warnings": [],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/certificate_truth.jsonl"
+    },
+    "handover": {
+      "count": 25,
+      "table": "handover_items",
+      "warnings": [
+        "No display columns found in ['id', 'yacht_id', 'handover_id', 'entity_id', 'entity_type', 'section', 'summary', 'priority', 'status', 'acknowledged_by']..."
+      ],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/handover_truth.jsonl"
+    },
+    "hours_of_rest": {
+      "count": 25,
+      "table": "pms_hours_of_rest",
+      "warnings": [
+        "No display columns found in ['id', 'yacht_id', 'user_id', 'record_date', 'rest_periods', 'total_rest_hours', 'total_work_hours', 'is_daily_compliant', 'daily_compliance_notes', 'weekly_rest_hours']..."
+      ],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/hours_of_rest_truth.jsonl"
+    },
+    "warranty": {
+      "count": 0,
+      "table": "pms_warranty_claims",
+      "warnings": [],
+      "file": null
+    },
+    "shopping_list": {
+      "count": 25,
+      "table": "pms_shopping_list_items",
+      "warnings": [],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/shopping_list_truth.jsonl"
+    },
+    "email": {
+      "count": 25,
+      "table": "email_threads",
+      "warnings": [
+        "Primary table 'emails' not found, using fallback 'email_threads'",
+        "No display columns found in ['id', 'yacht_id', 'provider_conversation_id', 'latest_subject', 'message_count', 'has_attachments', 'participant_hashes', 'source', 'first_message_at', 'last_activity_at']..."
+      ],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/email_truth.jsonl"
+    },
+    "receiving": {
+      "count": 25,
+      "table": "pms_receiving",
+      "warnings": [],
+      "file": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/truth_sets/receiving_truth.jsonl"
+    }
+  },
+  "tables_found": [
+    "pms_work_orders",
+    "pms_faults",
+    "equipment",
+    "pms_parts",
+    "pms_inventory_stock",
+    "pms_certificates",
+    "handover_items",
+    "pms_hours_of_rest",
+    "pms_shopping_list_items",
+    "email_threads",
+    "pms_receiving"
+  ],
+  "tables_missing": [
+    "pms_warranty_claims"
+  ],
+  "total_entities": 268
+}
