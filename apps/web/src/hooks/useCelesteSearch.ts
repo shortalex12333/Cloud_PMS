@@ -193,6 +193,33 @@ const NAVIGATION_VERBS = ['show', 'list', 'view', 'find', 'display', 'get', 'sea
 const MUTATION_VERBS = ['create', 'add', 'make', 'new', 'update', 'close', 'complete', 'delete', 'remove', 'assign', 'start', 'cancel', 'approve', 'reject', 'report', 'log'];
 
 /**
+ * Lens to base route mapping
+ * Maps LensType to the base path for canonical routes
+ */
+const LENS_ROUTE_MAP: Record<LensType, string> = {
+  work_order: '/work-orders',
+  fault: '/faults',
+  equipment: '/equipment',
+  part: '/inventory',
+  certificate: '/certificates',
+  handover: '/handover',
+  hours_of_rest: '/hours-of-rest',
+  shopping_list: '/shopping-list',
+  receiving: '/receiving',
+  document: '/documents',
+  crew: '/crew',
+  email: '/email',
+  warranty: '/warranty',
+  unknown: '/search',
+};
+
+/**
+ * Filter field to route segment mapping
+ * Defines which filters become route segments vs query params
+ */
+const SEGMENT_FILTERS = ['status', 'priority', 'location', 'type', 'category'];
+
+/**
  * Lens keyword patterns - ordered by specificity (more specific first)
  * Used to detect the PRIMARY lens from query text
  */
@@ -940,6 +967,102 @@ export function verifyEnvelopeDeterminism(a: IntentEnvelope, b: IntentEnvelope):
     a.entities.length === b.entities.length &&
     a.readiness_state === b.readiness_state
   );
+}
+
+/**
+ * Generate canonical segment-based URL from IntentEnvelope
+ *
+ * Converts READ intent into navigation-friendly routes:
+ * - "show open work orders" -> /work-orders/status/open
+ * - "show inventory in box-3d" -> /inventory/location/box-3d
+ * - "show critical faults" -> /faults/priority/critical
+ *
+ * RULE: Segment filters (status, priority, location, type, category) become
+ * path segments. Other filters become query params.
+ *
+ * @param envelope - IntentEnvelope with mode, lens, and filters
+ * @returns Canonical route string
+ *
+ * @example
+ * generateCanonicalRoute({
+ *   mode: 'READ',
+ *   lens: 'work_order',
+ *   filters: [{ field: 'status', value: 'open', operator: 'eq' }],
+ *   ...
+ * }) // Returns: '/work-orders/status/open'
+ */
+export function generateCanonicalRoute(envelope: IntentEnvelope): string {
+  // For non-READ modes, return empty (handled by action modal)
+  if (envelope.mode !== 'READ') {
+    return '';
+  }
+
+  // Get base route for lens
+  const basePath = LENS_ROUTE_MAP[envelope.lens] || '/search';
+
+  // Separate filters into segments vs query params
+  const segmentFilters: IntentFilter[] = [];
+  const queryFilters: IntentFilter[] = [];
+
+  for (const filter of envelope.filters) {
+    if (SEGMENT_FILTERS.includes(filter.field)) {
+      segmentFilters.push(filter);
+    } else {
+      queryFilters.push(filter);
+    }
+  }
+
+  // Build segment path
+  // Format: /base-path/field/value/field/value
+  let path = basePath;
+  for (const filter of segmentFilters) {
+    // Normalize value for URL (lowercase, hyphenate spaces)
+    const normalizedValue = filter.value
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+    path += `/${filter.field}/${normalizedValue}`;
+  }
+
+  // Build query string for non-segment filters
+  if (queryFilters.length > 0) {
+    const params = new URLSearchParams();
+    for (const filter of queryFilters) {
+      params.set(filter.field, filter.value);
+    }
+    path += `?${params.toString()}`;
+  }
+
+  return path;
+}
+
+/**
+ * Parse canonical route segments into IntentFilters
+ * Used when user navigates directly to a route URL
+ *
+ * @param pathname - Route pathname (e.g., '/work-orders/status/open')
+ * @returns Array of IntentFilters parsed from segments
+ */
+export function parseRouteToFilters(pathname: string): IntentFilter[] {
+  const filters: IntentFilter[] = [];
+  const segments = pathname.split('/').filter(Boolean);
+
+  // Skip base path segment (e.g., 'work-orders')
+  // Process pairs: [field, value, field, value, ...]
+  for (let i = 1; i < segments.length - 1; i += 2) {
+    const field = segments[i];
+    const value = segments[i + 1];
+
+    if (SEGMENT_FILTERS.includes(field) && value) {
+      filters.push({
+        field,
+        value: value.replace(/-/g, '_'), // Restore underscores from hyphens
+        operator: 'eq',
+      });
+    }
+  }
+
+  return filters;
 }
 
 // Types
@@ -2034,6 +2157,8 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
       state.prefillData,
       state.userRole
     ),
+    // v1.3: Canonical route for READ navigation
+    canonicalRoute: state.intentEnvelope ? generateCanonicalRoute(state.intentEnvelope) : '',
 
     // Actions
     handleQueryChange,
