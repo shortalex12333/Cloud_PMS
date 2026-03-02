@@ -11,12 +11,12 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
-| Phase | Phase 18 (Route & Disambiguation) |
+| Phase | Phase 19 (Agent Deployment) |
 | Plan | 00 |
-| Status | Phase 17 complete, ready for Phase 18 |
-| Last activity | 2026-03-02 — Phase 17 complete (readiness indicators), Phase 18 pending |
+| Status | Phase 18 complete, ready for Phase 19 |
+| Last activity | 2026-03-02 — Phase 18 complete (canonical routes + disambiguation UX), Phase 19 pending |
 
-**Progress:** [██████████] 100%
+**Progress:** [████████████████] 80% (4/5 phases complete)
 
 ---
 
@@ -38,7 +38,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | 16 | Prefill Integration | Build /v1/actions/prepare endpoint | PREFILL-01..05 | ✓ Complete |
 | 16.1 | Mount /prepare | Fix GAP-001: endpoint returns 404 | GAP-001 | ✓ Complete |
 | 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ✓ Complete |
-| 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ○ Pending |
+| 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ✓ Complete |
 | 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ○ Pending |
 
 ---

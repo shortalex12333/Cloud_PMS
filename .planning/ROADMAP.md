@@ -460,7 +460,7 @@ Plans:
 - [x] **Phase 15: Intent Envelope** - Create IntentEnvelope abstraction (READ | MUTATE | MIXED) (completed 2026-03-01)
 - [x] **Phase 16: Prefill Integration** - Build /v1/actions/prepare endpoint with entity resolution (completed 2026-03-01)
 - [x] **Phase 17: Readiness States** - Implement READY/NEEDS_INPUT/BLOCKED classification (completed 2026-03-02)
-- [ ] **Phase 18: Route & Disambiguation** - Fragmented URLs + uncertainty surfacing UX
+- [x] **Phase 18: Route & Disambiguation** - Fragmented URLs + uncertainty surfacing UX (completed 2026-03-02)
 - [ ] **Phase 19: Agent Deployment** - 24 agents across 4 waves (Lens Matrix → NLP Variants → Backend → E2E)
 
 ---
@@ -558,11 +558,11 @@ Plans:
 5. Uncertain date parsing ("next week" -> low confidence) highlights scheduled_date field with warning indicator
 6. No silent assumptions made - all low-confidence prefills surface in modal for user confirmation before execution
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 18-01-PLAN.md — Canonical route generation + filter chips (ROUTE-01, ROUTE-02, ROUTE-03)
-- [ ] 18-02-PLAN.md — Disambiguation UI: AmbiguityDropdown + DateWarning (DISAMB-01, DISAMB-02, DISAMB-03)
+- [x] 18-01-PLAN.md — Canonical route generation + filter chips (ROUTE-01, ROUTE-02, ROUTE-03)
+- [x] 18-02-PLAN.md — Disambiguation UI: AmbiguityDropdown + DateWarning (DISAMB-01, DISAMB-02, DISAMB-03)
 
 ---
 
@@ -591,7 +591,7 @@ Plans:
 | 15. Intent Envelope | 1/1 | Complete | 2026-03-01 |
 | 16. Prefill Integration | 2/2 | Complete | 2026-03-01 |
 | 17. Readiness States | 2/2 | Complete | 2026-03-02 |
-| 18. Route & Disambiguation | 0/2 | Planned | - |
+| 18. Route & Disambiguation | 2/2 | Complete    | 2026-03-02 |
 | 19. Agent Deployment | 0/? | Not started | - |
 
 ---
