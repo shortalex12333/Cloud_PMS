@@ -575,6 +575,8 @@ export interface PrepareResponse {
   missing_required_fields: string[];
   ambiguities: Ambiguity[];
   errors: Array<{ error_code: string; message: string; field?: string }>;
+  role_blocked?: boolean;  // True if user role not in allowed_roles
+  blocked_reason?: string; // Human-readable reason when blocked
 }
 
 /**
@@ -661,9 +663,10 @@ export interface MutationPreview {
 }
 
 /**
- * PrepareResponse from two-phase mutation
+ * WorkOrderPrepareResponse from legacy two-phase mutation
+ * @deprecated Use PrepareResponse from /v1/actions/prepare endpoint
  */
-export interface PrepareResponse {
+export interface WorkOrderPrepareResponse {
   success: boolean;
   mutation_preview?: MutationPreview;
   error?: string;
@@ -699,7 +702,7 @@ export async function prepareWorkOrderCreate(
     query_text?: string;
     extracted_entities?: string[];
   }
-): Promise<PrepareResponse> {
+): Promise<WorkOrderPrepareResponse> {
   const {
     data: { session },
     error: sessionError,
