@@ -12,11 +12,11 @@
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
 | Phase | Phase 19 (Agent Deployment) |
-| Plan | 01 |
-| Status | Phase 19 Plan 01 complete (Lens Matrix Analysis) |
-| Last activity | 2026-03-02 — Phase 19-01 complete (12 lens matrices + aggregated lens_matrix.json) |
+| Plan | 02 |
+| Status | Phase 19 Plan 02 complete (NLP Variant Generation) |
+| Last activity | 2026-03-02 — Phase 19-02 complete (1,200 query variants in 12 lens files + aggregated truth set) |
 
-**Progress:** [████████████████████] 84% (4/5 phases complete, 1/4 plans in Phase 19)
+**Progress:** [████████████████████] 88% (4/5 phases complete, 2/4 plans in Phase 19)
 
 ---
 
@@ -39,7 +39,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | 16.1 | Mount /prepare | Fix GAP-001: endpoint returns 404 | GAP-001 | ✓ Complete |
 | 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ✓ Complete |
 | 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ✓ Complete |
-| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ◐ In Progress (Plan 01 complete) |
+| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ◐ In Progress (Plan 02 complete) |
 
 ---
 
@@ -58,6 +58,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | Phase 18 P01 | 241 | 3 tasks | 3 files |
 | Phase 18 P02 | 290 | 3 tasks | 2 files |
 | Phase 19 P01 | 275s | 3 tasks | 13 files |
+| Phase 19 P02 | 842s | 3 tasks | 13 files |
 
 ## Decisions Made
 
@@ -91,6 +92,8 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | Renamed duplicate PrepareResponse to WorkOrderPrepareResponse | Avoid TypeScript interface conflict in actionClient.ts | 2026-03-02 |
 | Direct lens analysis instead of spawning external agents | More efficient - executor already had codebase context loaded | 2026-03-02 |
 | JSON structure includes role_restricted arrays for all actions | Consistency for downstream NLP variant agents | 2026-03-02 |
+| Generated 100 queries per lens for consistent coverage | Equal distribution enables fair accuracy comparison | 2026-03-02 |
+| Maintained ~50/50 READ/MUTATE balance per lens | Ensures both modes are adequately tested | 2026-03-02 |
 
 ---
 - [Phase 16]: "next week" maps to Monday of NEXT week (not just next Monday occurrence)
@@ -103,6 +106,8 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - [Phase 18-02]: AmbiguityDropdown and DateWarning components for no-silent-assumptions UX
 - [Phase 19-01]: 12 lens matrices created with 81 MUTATE actions and 67 READ filters documented
 - [Phase 19-01]: lens_matrix.json aggregates all lenses for Wave 2 NLP variant agents
+- [Phase 19-02]: Generated 1,200 query variants (100 per lens, ~50 READ / ~50 MUTATE each)
+- [Phase 19-02]: intent_truth_set.jsonl aggregates all variants for intent classifier evaluation
 
 ## Blockers
 
@@ -215,14 +220,14 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 ## Next Single Action
 
-**Continue Phase 19: NLP Variant Agents (Wave 2)**
+**Continue Phase 19: Intent Classifier Evaluation (Wave 3)**
 
-Phase 19 Plan 01 complete (Lens Matrix Analysis). Next:
-- Execute Plan 19-02: Deploy NLP Variant Agents
-- Use lens_matrix.json as input for query generation
-- Generate test variants for each lens + filter combination
+Phase 19 Plan 02 complete (NLP Variant Generation). Next:
+- Execute Plan 19-03: Intent Classifier Evaluation
+- Use intent_truth_set.jsonl as test input
+- Run classifier against 1,200 queries and measure accuracy
 
-Command: `/gsd:execute-phase 19-02`
+Command: `/gsd:execute-phase 19-03`
 
 ---
 
