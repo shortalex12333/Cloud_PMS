@@ -765,6 +765,55 @@ function inferReadiness(mode: IntentMode, action: IntentAction | null, entities:
 }
 
 /**
+ * Derive readiness state from PrepareResponse
+ *
+ * READY: All required fields resolved with confidence >= 0.8 AND not role blocked
+ * NEEDS_INPUT: Missing required fields OR any field confidence < 0.8
+ * BLOCKED: role_blocked is true (user role not in allowed_roles)
+ *
+ * Per READY-01, READY-02, READY-03 requirements.
+ */
+export function deriveReadinessFromPrefill(
+  prefillData: PrepareResponse | null,
+  actionSuggestion?: ActionSuggestion
+): ReadinessState {
+  // No prefill data yet - use basic detection
+  if (!prefillData) {
+    return 'NEEDS_INPUT';
+  }
+
+  // BLOCKED: Role gating blocks execution (READY-03)
+  if (prefillData.role_blocked) {
+    return 'BLOCKED';
+  }
+
+  // Check if all required fields are resolved with high confidence
+  const READY_CONFIDENCE_THRESHOLD = 0.8; // Per READY-01, READY-02
+
+  // NEEDS_INPUT: Missing required fields (READY-02)
+  if (prefillData.missing_required_fields && prefillData.missing_required_fields.length > 0) {
+    return 'NEEDS_INPUT';
+  }
+
+  // Check confidence of all prefilled fields
+  const prefillFields = prefillData.prefill || {};
+  for (const [fieldName, field] of Object.entries(prefillFields) as [string, PrefillField][]) {
+    // NEEDS_INPUT: Any field with confidence < 0.8 (READY-02)
+    if (field.confidence < READY_CONFIDENCE_THRESHOLD) {
+      return 'NEEDS_INPUT';
+    }
+  }
+
+  // Check for ambiguities requiring disambiguation
+  if (prefillData.ambiguities && prefillData.ambiguities.length > 0) {
+    return 'NEEDS_INPUT';
+  }
+
+  // READY: All conditions met (READY-01)
+  return 'READY';
+}
+
+/**
  * Derive IntentEnvelope from query and action suggestions
  *
  * DETERMINISM GUARANTEE: Same query + suggestions produces same envelope
@@ -1567,7 +1616,20 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
       }, prepareAbortRef.current.signal);
 
       setCachedPrepare(cacheKey, response);
-      setState(prev => ({ ...prev, prefillData: response, isPreparing: false }));
+
+      // Derive readiness from prefill response
+      const readiness = deriveReadinessFromPrefill(response);
+
+      setState(prev => ({
+        ...prev,
+        prefillData: response,
+        isPreparing: false,
+        // Update intentEnvelope with derived readiness
+        intentEnvelope: prev.intentEnvelope ? {
+          ...prev.intentEnvelope,
+          readiness_state: readiness
+        } : prev.intentEnvelope
+      }));
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         // Cancelled - don't update state
@@ -1636,9 +1698,14 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
         query_hash: envelope.query_hash,
       });
 
+      // C2 Invariant: Action suggestions must never spam.
+      // Defense-in-depth: limit to 3 even if backend returns more.
+      const MAX_ACTION_SUGGESTIONS = 3;
+      const limitedActions = response.actions.slice(0, MAX_ACTION_SUGGESTIONS);
+
       setState(prev => ({
         ...prev,
-        actionSuggestions: response.actions,
+        actionSuggestions: limitedActions,
         intentEnvelope: envelope,  // v1.3: MUTATE/MIXED mode envelope
       }));
 
