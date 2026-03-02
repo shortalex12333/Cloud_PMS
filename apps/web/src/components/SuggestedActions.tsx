@@ -7,11 +7,68 @@
  * All actions, labels, and fields come from the backend - no UI authority.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { PenLine, Check, Circle, Lock } from 'lucide-react';
+import { PenLine, Check, Circle, Lock, X } from 'lucide-react';
 import type { ActionSuggestion } from '@/lib/actionClient';
+import type { IntentFilter } from '@/hooks/useCelesteSearch';
 import ActionModal from '@/components/actions/ActionModal';
+
+/**
+ * FilterChips Component
+ *
+ * Displays route segments as visual filter chips.
+ * Each chip represents a filter that affects the current view.
+ *
+ * Example: For route /work-orders/status/open
+ * Renders: [status: open] chip
+ */
+interface FilterChipsProps {
+  filters: IntentFilter[];
+  onRemove?: (filter: IntentFilter) => void;
+  className?: string;
+}
+
+function FilterChips({ filters, onRemove, className }: FilterChipsProps) {
+  if (!filters || filters.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex flex-wrap gap-1.5 px-4 py-1.5',
+        className
+      )}
+      data-testid="filter-chips"
+    >
+      {filters.map((filter, idx) => (
+        <span
+          key={`${filter.field}-${filter.value}-${idx}`}
+          className={cn(
+            'inline-flex items-center gap-1 px-2 py-0.5 rounded-md',
+            'typo-meta',
+            'bg-celeste-accent/10 text-celeste-accent border border-celeste-accent/20'
+          )}
+          data-testid={`filter-chip-${filter.field}`}
+        >
+          <span className="text-txt-secondary">{filter.field}:</span>
+          <span className="font-medium">{filter.value}</span>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={() => onRemove(filter)}
+              className="ml-0.5 hover:text-txt-primary transition-colors"
+              aria-label={`Remove ${filter.field} filter`}
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 interface SuggestedActionsProps {
   actions: ActionSuggestion[];
@@ -22,6 +79,11 @@ interface SuggestedActionsProps {
   readinessStates?: Record<string, 'READY' | 'NEEDS_INPUT' | 'BLOCKED'>;
   // NEW: Prefill data for deriving readiness
   prefillData?: Record<string, any> | null;
+  // NEW: Filter chips for READ navigation
+  filters?: IntentFilter[];
+  canonicalRoute?: string;
+  onFilterRemove?: (filter: IntentFilter) => void;
+  onNavigate?: (route: string) => void;
 }
 
 /**
@@ -69,12 +131,19 @@ export default function SuggestedActions({
   className,
   readinessStates = {},
   prefillData,
+  filters = [],
+  canonicalRoute,
+  onFilterRemove,
+  onNavigate,
 }: SuggestedActionsProps) {
   const [selectedAction, setSelectedAction] = useState<ActionSuggestion | null>(null);
 
-  if (!actions || actions.length === 0) {
-    return null;
-  }
+  // Navigation handler for READ mode
+  const handleNavigate = useCallback(() => {
+    if (canonicalRoute && onNavigate) {
+      onNavigate(canonicalRoute);
+    }
+  }, [canonicalRoute, onNavigate]);
 
   const handleActionClick = (action: ActionSuggestion) => {
     setSelectedAction(action);
@@ -91,17 +160,46 @@ export default function SuggestedActions({
 
   return (
     <>
-      <div
-        className={cn(
-          'flex flex-wrap gap-2 px-4 py-2 border-b border-surface-border/30',
-          className
-        )}
-        data-testid="suggested-actions"
-      >
-        <span className="typo-meta text-txt-secondary self-center mr-1">
-          Actions:
-        </span>
-        {actions.map((action) => {
+      {/* Filter Chips for READ navigation */}
+      {filters.length > 0 && (
+        <FilterChips
+          filters={filters}
+          onRemove={onFilterRemove}
+          className="border-b border-surface-border/30"
+        />
+      )}
+
+      {/* Navigate button for READ mode with filters */}
+      {canonicalRoute && filters.length > 0 && onNavigate && (
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-surface-border/30">
+          <button
+            onClick={handleNavigate}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
+              'typo-meta font-medium',
+              'bg-brand-interactive/20 text-brand-interactive border border-brand-interactive/30',
+              'hover:bg-brand-interactive/30 transition-colors'
+            )}
+            data-testid="navigate-btn"
+          >
+            Navigate to {canonicalRoute.split('?')[0]}
+          </button>
+        </div>
+      )}
+
+      {/* Existing actions rendering */}
+      {actions && actions.length > 0 && (
+        <div
+          className={cn(
+            'flex flex-wrap gap-2 px-4 py-2 border-b border-surface-border/30',
+            className
+          )}
+          data-testid="suggested-actions"
+        >
+          <span className="typo-meta text-txt-secondary self-center mr-1">
+            Actions:
+          </span>
+          {actions.map((action) => {
           const readiness = readinessStates[action.action_id];
           const isBlocked = readiness === 'BLOCKED';
 
@@ -140,7 +238,8 @@ export default function SuggestedActions({
             </button>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {/* Action Modal */}
       {selectedAction && (
