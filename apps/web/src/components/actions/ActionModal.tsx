@@ -207,6 +207,75 @@ function AmbiguityDropdown({
   );
 }
 
+/**
+ * DateWarning Component
+ *
+ * Highlights date fields with low confidence from temporal parsing.
+ * Per DISAMB-02: "next week" -> low confidence shows warning indicator.
+ *
+ * Threshold: confidence < 0.85 shows warning
+ */
+interface DateWarningProps {
+  fieldName: string;
+  originalPhrase?: string;
+  parsedValue: string;
+  confidence: number;
+  onConfirm: () => void;
+  onEdit: () => void;
+}
+
+function DateWarning({
+  fieldName,
+  originalPhrase,
+  parsedValue,
+  confidence,
+  onConfirm,
+  onEdit,
+}: DateWarningProps) {
+  const isLowConfidence = confidence < 0.85;
+
+  if (!isLowConfidence) {
+    return null;
+  }
+
+  return (
+    <div
+      className="mt-1.5 p-2 bg-amber-500/10 rounded border border-amber-500/30"
+      data-testid={`date-warning-${fieldName}`}
+    >
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="typo-meta text-amber-400">
+            Uncertain date parsing ({Math.round(confidence * 100)}% confidence)
+          </p>
+          {originalPhrase && (
+            <p className="typo-meta text-txt-secondary mt-0.5">
+              "{originalPhrase}" interpreted as <span className="font-medium text-celeste-text-title">{parsedValue}</span>
+            </p>
+          )}
+          <div className="flex gap-2 mt-2">
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="px-2 py-1 typo-meta bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded transition-colors"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="px-2 py-1 typo-meta bg-surface-base hover:bg-surface-hover text-txt-secondary rounded border border-surface-border transition-colors"
+            >
+              Edit
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ActionModal({
   action,
   yachtId,
@@ -249,6 +318,9 @@ export default function ActionModal({
 
   // Auto-generate idempotency key on mount (stable per modal instance)
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+
+  // Track which date fields user has confirmed
+  const [confirmedDates, setConfirmedDates] = useState<Set<string>>(new Set());
 
   // Update formData when prefillData changes (v1.3)
   useEffect(() => {
@@ -721,6 +793,27 @@ export default function ActionModal({
                   >
                     {renderInput()}
                   </ConfidenceField>
+
+                  {/* Date warning for low confidence temporal parsing - DISAMB-02 */}
+                  {fieldType === 'date' &&
+                    prefillData?.prefill?.[field]?.confidence != null &&
+                    prefillData.prefill[field].confidence < 0.85 &&
+                    !confirmedDates.has(field) && (
+                      <DateWarning
+                        fieldName={field}
+                        originalPhrase={prefillData.prefill[field].source === 'temporal'
+                          ? extractedEntities?.temporal || extractedEntities?.scheduled_date
+                          : undefined}
+                        parsedValue={formData[field] || ''}
+                        confidence={prefillData.prefill[field].confidence}
+                        onConfirm={() => setConfirmedDates(prev => new Set(prev).add(field))}
+                        onEdit={() => {
+                          // Focus the date input for editing
+                          const input = document.getElementById(field);
+                          if (input) input.focus();
+                        }}
+                      />
+                    )}
 
                 </div>
               );
