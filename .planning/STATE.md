@@ -12,11 +12,11 @@
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
 | Phase | Phase 19 (Agent Deployment) |
-| Plan | 02 |
-| Status | Phase 19 Plan 02 complete (NLP Variant Generation) |
-| Last activity | 2026-03-02 — Phase 19-02 complete (1,200 query variants in 12 lens files + aggregated truth set) |
+| Plan | 03 |
+| Status | Phase 19 Plan 03 complete (Backend Integration) |
+| Last activity | 2026-03-02 — Phase 19-03 complete (12 lens entity resolvers + prepare_action function) |
 
-**Progress:** [████████████████████] 88% (4/5 phases complete, 2/4 plans in Phase 19)
+**Progress:** [████████████████████] 90% (4/5 phases complete, 3/4 plans in Phase 19)
 
 ---
 
@@ -39,7 +39,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | 16.1 | Mount /prepare | Fix GAP-001: endpoint returns 404 | GAP-001 | ✓ Complete |
 | 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ✓ Complete |
 | 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ✓ Complete |
-| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ◐ In Progress (Plan 02 complete) |
+| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ◐ In Progress (Plan 03 complete) |
 
 ---
 
@@ -59,6 +59,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | Phase 18 P02 | 290 | 3 tasks | 2 files |
 | Phase 19 P01 | 275s | 3 tasks | 13 files |
 | Phase 19 P02 | 842s | 3 tasks | 13 files |
+| Phase 19 P03 | 317s | 2 tasks | 2 files |
 
 ## Decisions Made
 
@@ -108,6 +109,9 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - [Phase 19-01]: lens_matrix.json aggregates all lenses for Wave 2 NLP variant agents
 - [Phase 19-02]: Generated 1,200 query variants (100 per lens, ~50 READ / ~50 MUTATE each)
 - [Phase 19-02]: intent_truth_set.jsonl aggregates all variants for intent classifier evaluation
+- [Phase 19-03]: 12 resolve_*_entities functions added to centralized prefill_engine.py
+- [Phase 19-03]: Generic prepare_action function dispatches to lens-specific resolvers
+- [Phase 19-03]: All entity resolution enforces yacht_id scoping (security)
 
 ## Blockers
 
@@ -220,14 +224,15 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 ## Next Single Action
 
-**Continue Phase 19: Intent Classifier Evaluation (Wave 3)**
+**Continue Phase 19: Intent Classifier Evaluation (Wave 4)**
 
-Phase 19 Plan 02 complete (NLP Variant Generation). Next:
-- Execute Plan 19-03: Intent Classifier Evaluation
+Phase 19 Plan 03 complete (Backend Integration). Next:
+- Execute Plan 19-04: Intent Classifier Evaluation
 - Use intent_truth_set.jsonl as test input
 - Run classifier against 1,200 queries and measure accuracy
+- Compare detected intents against ground truth labels
 
-Command: `/gsd:execute-phase 19-03`
+Command: `/gsd:execute-phase 19-04`
 
 ---
 
