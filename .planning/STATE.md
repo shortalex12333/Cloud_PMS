@@ -11,12 +11,12 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
-| Phase | Phase 17 (Readiness States) |
-| Plan | 01 |
-| Status | Plan 17-01 complete |
-| Last activity | 2026-03-02 — Phase 17 Plan 01 complete (1/? plans) |
+| Phase | Phase 18 (Route & Disambiguation) |
+| Plan | 00 |
+| Status | Phase 17 complete, ready for Phase 18 |
+| Last activity | 2026-03-02 — Phase 17 complete (readiness indicators), Phase 18 pending |
 
-**Progress:** [████████████] 50% (2.5/5 phases complete)
+**Progress:** [██████████] 98%
 
 ---
 
@@ -36,7 +36,8 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 |---|-------|------|--------------|--------|
 | 15 | Intent Envelope | Create IntentEnvelope abstraction | INTENT-01..03 | ✓ Complete |
 | 16 | Prefill Integration | Build /v1/actions/prepare endpoint | PREFILL-01..05 | ✓ Complete |
-| 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ◐ In Progress (1/? plans) |
+| 16.1 | Mount /prepare | Fix GAP-001: endpoint returns 404 | GAP-001 | ✓ Complete |
+| 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ✓ Complete |
 | 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ○ Pending |
 | 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ○ Pending |
 
@@ -54,6 +55,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | Phase 16 P01 | 305s | 3 tasks | 5 files |
 | Phase 16 P02 | 240s | 3 tasks | 3 files |
 | Phase 17 P01 | 213s | 3 tasks | 3 files |
+| Phase 18 P01 | 241 | 3 tasks | 3 files |
 
 ## Decisions Made
 
@@ -91,6 +93,8 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - [Phase 16]: Separate /prepare endpoint (not polluting /list semantics)
 - [Phase 17]: role_blocked field in PrepareResponse for BLOCKED state detection
 - [Phase 17]: deriveReadinessFromPrefill function for client-side readiness derivation
+- [Phase 18]: Segment filters (status, priority, location, type, category) become path segments, not query params
+- [Phase 18]: URL normalization: lowercase, hyphens for spaces, alphanumeric only
 
 ## Blockers
 
@@ -141,6 +145,9 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - Yacht-isolated: all entity lookups scoped by yacht_id
 - Role-safe: RLS + role gating on all mutations
 - E2E tested: 300+ tests covering suggestion → execution → DB verification
+
+### Roadmap Evolution
+- Phase 16.1 inserted after Phase 16: Mount /prepare endpoint in pipeline_service (URGENT)
 
 ---
 
@@ -200,12 +207,14 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 ## Next Single Action
 
-**Continue Phase 17: Readiness States**
+**Plan Phase 18: Route & Disambiguation**
 
-Plan 17-01 complete (readiness derivation logic). Next:
-- Visual indicators in SuggestedActions.tsx (green check / amber dot / lock icon)
-- Integration testing of READY/NEEDS_INPUT/BLOCKED states
-- E2E tests for readiness state transitions
+Phase 17 complete (all readiness indicators implemented). Next:
+- Plan Phase 18 for fragmented URLs and disambiguation UX
+- Generate canonical route segments for READ navigation
+- Implement disambiguation UI for ambiguous entities and low confidence fields
+
+Command: `/gsd:plan-phase 18`
 
 ---
 
