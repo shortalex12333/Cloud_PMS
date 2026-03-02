@@ -89,6 +89,19 @@ PRIORITY_SYNONYMS = {
 }
 
 
+# =============================================================================
+# AMBIGUITY DETECTION THRESHOLDS (DISAMB-03)
+# =============================================================================
+
+# Confidence thresholds for auto-fill behavior
+AUTO_FILL_THRESHOLD = 0.85    # >= 0.85: auto-fill silently
+CONFIRM_THRESHOLD = 0.65      # 0.65-0.84: auto-fill with confirm badge
+AMBIGUOUS_THRESHOLD = 0.65    # < 0.65: require user disambiguation
+
+# Maximum candidates to return for ambiguous lookups
+MAX_AMBIGUITY_CANDIDATES = 5
+
+
 def map_priority(raw_priority: str) -> tuple[Optional[str], float]:
     """
     Map priority synonyms to ActionPriority enum values.
@@ -124,6 +137,90 @@ def map_priority(raw_priority: str) -> tuple[Optional[str], float]:
 
     # No match
     return (None, 0.0)
+
+
+def detect_ambiguity(
+    lookup_result: LookupResult,
+    entity_value: str,
+    field_name: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Detect if a lookup result is ambiguous and requires user disambiguation.
+
+    Per DISAMB-03: Never silently assume - surface all uncertainty.
+
+    Ambiguity criteria:
+    1. Multiple matches found (count > 1)
+    2. Single match with low confidence (confidence < 0.65)
+    3. Partial string match (e.g., "ME" matches "ME1", "ME2")
+
+    Args:
+        lookup_result: Result from lookup_entity()
+        entity_value: Original entity value from NLP
+        field_name: Name of the field being populated
+
+    Returns:
+        Ambiguity dict if ambiguous, None otherwise:
+        {
+            "field": field_name,
+            "original_value": entity_value,
+            "candidates": [{"id": ..., "label": ..., "confidence": ...}]
+        }
+    """
+    # Not ambiguous: single confident match
+    if lookup_result.count == 1 and lookup_result.confidence >= CONFIRM_THRESHOLD:
+        return None
+
+    # Not ambiguous: no matches (different error - missing, not ambiguous)
+    if lookup_result.count == 0:
+        return None
+
+    # Ambiguous: multiple matches
+    if lookup_result.count > 1:
+        candidates = []
+        for option in lookup_result.options[:MAX_AMBIGUITY_CANDIDATES]:
+            candidates.append({
+                "id": option.get("id", option.get("value", "")),
+                "label": option.get("name", option.get("label", "")),
+                "confidence": 0.5,  # Equal confidence for ambiguous candidates
+                "metadata": {
+                    k: v for k, v in option.items()
+                    if k not in ["id", "value", "name", "label"]
+                }
+            })
+
+        logger.info(
+            f"[Ambiguity] Field '{field_name}': '{entity_value}' matched "
+            f"{lookup_result.count} candidates"
+        )
+
+        return {
+            "field": field_name,
+            "original_value": entity_value,
+            "candidates": candidates
+        }
+
+    # Ambiguous: single match but low confidence
+    if lookup_result.count == 1 and lookup_result.confidence < CONFIRM_THRESHOLD:
+        # Still return as ambiguity so user can confirm
+        candidates = [{
+            "id": lookup_result.value,
+            "label": lookup_result.options[0].get("name", str(lookup_result.value)) if lookup_result.options else str(lookup_result.value),
+            "confidence": lookup_result.confidence
+        }]
+
+        logger.info(
+            f"[Ambiguity] Field '{field_name}': low confidence match "
+            f"({lookup_result.confidence:.2f}) for '{entity_value}'"
+        )
+
+        return {
+            "field": field_name,
+            "original_value": entity_value,
+            "candidates": candidates
+        }
+
+    return None
 
 
 # =============================================================================
@@ -543,18 +640,21 @@ async def build_mutation_preview(
                             warnings.append(f"No match found for {field_name}: '{entity_value}'")
                             field_value = None
 
-                        elif lookup_result.count == 1:
-                            # Single match - use UUID
-                            field_value = lookup_result.value
-                            logger.info(f"[Prefill] {field_name} resolved to {field_value}")
-
                         else:
-                            # Multiple matches - add dropdown options
-                            warnings.append(
-                                f"Ambiguous {field_name}: '{entity_value}' matched {lookup_result.count} items"
-                            )
-                            dropdown_options[field_name] = lookup_result.options
-                            field_value = None
+                            # Check for ambiguity (DISAMB-03)
+                            ambiguity = detect_ambiguity(lookup_result, entity_value, field_name)
+
+                            if ambiguity:
+                                # Ambiguous result - add to dropdown options
+                                warnings.append(
+                                    f"Ambiguous {field_name}: '{entity_value}' matched {lookup_result.count} items"
+                                )
+                                dropdown_options[field_name] = lookup_result.options
+                                field_value = None
+                            else:
+                                # Single confident match - use UUID
+                                field_value = lookup_result.value
+                                logger.info(f"[Prefill] {field_name} resolved to {field_value}")
 
                 else:
                     # Entity not extracted - use default
@@ -849,11 +949,13 @@ async def build_prepare_response(
     # =========================================================================
     for field_name, field_value in mutation_preview.items():
         if field_name not in prefill:
-            # Determine source based on field metadata
+            # Determine confidence based on lookup result and field metadata
             metadata = field_metadata_dict.get(field_name)
             if metadata:
                 if metadata.lookup_required:
+                    # Lookup-based fields: use actual lookup confidence if available
                     source = "entity_resolver"
+                    # Default high confidence for successful lookups
                     confidence = 0.92
                 elif metadata.compose_template:
                     source = "template"
@@ -870,6 +972,12 @@ async def build_prepare_response(
             else:
                 source = "unknown"
                 confidence = 0.80
+
+            # DISAMB-03: Surface uncertainty - if value is None but we have candidates,
+            # it's an ambiguity, not a clean prefill
+            if field_value is None and field_name in dropdown_options:
+                # Don't add to prefill - it's in ambiguities instead
+                continue
 
             prefill[field_name] = {
                 "value": field_value,
