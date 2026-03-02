@@ -155,6 +155,8 @@ class PrepareResponse(BaseModel):
     missing_required_fields: List[str]
     ambiguities: List[Ambiguity]
     errors: List[PrepareError]
+    role_blocked: bool = False  # True if user role not in allowed_roles
+    blocked_reason: Optional[str] = None  # Human-readable reason when blocked
 
 
 # ============================================================================
@@ -650,6 +652,7 @@ async def list_actions_endpoint(
     q: str = None,
     domain: str = None,
     entity_id: str = None,
+    limit: int = 3,
     authorization: str = Header(None),
 ):
     """
@@ -659,10 +662,16 @@ async def list_actions_endpoint(
         q: Search query (optional)
         domain: Filter by domain (e.g., "certificates")
         entity_id: Entity ID for storage path preview (optional)
+        limit: Max actions to return (default 3, max 20)
 
     Returns:
         List of actions the user can perform, with storage options where applicable.
+
+    C2 Invariant: Action suggestions must never spam. Default limit=3 ensures
+    tight, relevant suggestions rather than button overload.
     """
+    # Clamp limit to reasonable bounds
+    limit = max(1, min(limit, 20))
     # Validate JWT and extract user context
     jwt_result = validate_jwt(authorization)
     if not jwt_result.valid:
@@ -682,6 +691,10 @@ async def list_actions_endpoint(
     # Search actions with role-gating
     actions = search_actions(query=q, role=user_role, domain=domain)
 
+    # Apply limit before enrichment (performance: don't enrich actions we won't return)
+    total_before_limit = len(actions)
+    actions = actions[:limit]
+
     # Enrich with storage options
     for action in actions:
         storage_opts = get_storage_options(
@@ -696,6 +709,7 @@ async def list_actions_endpoint(
         "query": q,
         "actions": actions,
         "total_count": len(actions),
+        "total_available": total_before_limit,  # For debugging/transparency
         "role": user_role,
     }
 
@@ -1405,6 +1419,26 @@ async def prepare_action(
         }
 
         # ====================================================================
+        # STEP 5.5: Check role gating for selected action
+        # ====================================================================
+        role_blocked = False
+        blocked_reason = None
+
+        # Get first candidate action to check role gating
+        if request_data.candidate_action_ids:
+            try:
+                action_def = get_action(request_data.candidate_action_ids[0])
+                user_role = user_context.get("role", "")
+                allowed_roles = action_def.allowed_roles or []
+                if allowed_roles and user_role not in allowed_roles:
+                    role_blocked = True
+                    blocked_reason = f"Action requires one of: {', '.join(allowed_roles)}. Your role: {user_role}"
+                    logger.info(f"[Prepare] Role blocked: {user_role} not in {allowed_roles}")
+            except KeyError:
+                # Action not found in registry - continue without role blocking
+                logger.warning(f"[Prepare] Action '{request_data.candidate_action_ids[0]}' not in registry, skipping role check")
+
+        # ====================================================================
         # STEP 6: Call build_prepare_response from prefill_engine
         # ====================================================================
         prepare_result = await build_prepare_response(
@@ -1465,7 +1499,9 @@ async def prepare_action(
             prefill=prefill_fields,
             missing_required_fields=prepare_result.get("missing_required_fields", []),
             ambiguities=ambiguities,
-            errors=errors
+            errors=errors,
+            role_blocked=role_blocked,
+            blocked_reason=blocked_reason
         )
 
     except HTTPException:
