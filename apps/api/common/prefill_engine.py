@@ -1025,6 +1025,1263 @@ async def build_prepare_response(
     }
 
 
+# =============================================================================
+# LENS-SPECIFIC ENTITY RESOLUTION FUNCTIONS
+# =============================================================================
+# SECURITY: All SELECT queries MUST have WHERE yacht_id = $1
+# No cross-yacht data access is permitted.
+
+
+async def resolve_work_order_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for work_order lens actions.
+
+    Resolves:
+    - equipment: equipment_id from pms_equipment
+    - work_order: work_order_id from pms_work_orders
+    - fault: fault_id from pms_faults
+    - user: assigned_to from auth_users_profiles
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve equipment
+    if "equipment" in extracted_entities or "equipment_name" in extracted_entities:
+        equipment_value = extracted_entities.get("equipment") or extracted_entities.get("equipment_name")
+        if equipment_value:
+            try:
+                result = supabase_client.table("pms_equipment").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{equipment_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["equipment_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["equipment_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_work_order_entities] Equipment lookup failed: {e}")
+
+    # Resolve work order
+    if "work_order" in extracted_entities or "work_order_id" in extracted_entities or "wo_number" in extracted_entities:
+        wo_value = extracted_entities.get("work_order") or extracted_entities.get("work_order_id") or extracted_entities.get("wo_number")
+        if wo_value:
+            try:
+                # Try by number first
+                result = supabase_client.table("pms_work_orders").select(
+                    "id, number, title"
+                ).eq("yacht_id", yacht_id).or_(f"number.ilike.%{wo_value}%,title.ilike.%{wo_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["work_order_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["work_order_candidates"] = [
+                        {"id": str(r["id"]), "number": r.get("number"), "title": r.get("title")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_work_order_entities] Work order lookup failed: {e}")
+
+    # Resolve fault
+    if "fault" in extracted_entities or "fault_id" in extracted_entities:
+        fault_value = extracted_entities.get("fault") or extracted_entities.get("fault_id")
+        if fault_value:
+            try:
+                result = supabase_client.table("pms_faults").select(
+                    "id, title, fault_code"
+                ).eq("yacht_id", yacht_id).or_(f"title.ilike.%{fault_value}%,fault_code.ilike.%{fault_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["fault_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["fault_candidates"] = [
+                        {"id": str(r["id"]), "title": r.get("title"), "fault_code": r.get("fault_code")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_work_order_entities] Fault lookup failed: {e}")
+
+    # Resolve assigned_to (user)
+    if "assigned_to" in extracted_entities or "assignee" in extracted_entities:
+        user_value = extracted_entities.get("assigned_to") or extracted_entities.get("assignee")
+        if user_value:
+            try:
+                result = supabase_client.table("auth_users_profiles").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{user_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["assigned_to"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["assigned_to_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_work_order_entities] User lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_fault_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for fault lens actions.
+
+    Resolves:
+    - equipment: equipment_id from pms_equipment
+    - fault: fault_id from pms_faults
+    - part: part_id from pms_parts (for recommended_parts)
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve equipment
+    if "equipment" in extracted_entities or "equipment_name" in extracted_entities:
+        equipment_value = extracted_entities.get("equipment") or extracted_entities.get("equipment_name")
+        if equipment_value:
+            try:
+                result = supabase_client.table("pms_equipment").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{equipment_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["equipment_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["equipment_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_fault_entities] Equipment lookup failed: {e}")
+
+    # Resolve fault
+    if "fault" in extracted_entities or "fault_id" in extracted_entities:
+        fault_value = extracted_entities.get("fault") or extracted_entities.get("fault_id")
+        if fault_value:
+            try:
+                result = supabase_client.table("pms_faults").select(
+                    "id, title, fault_code"
+                ).eq("yacht_id", yacht_id).or_(f"title.ilike.%{fault_value}%,fault_code.ilike.%{fault_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["fault_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["fault_candidates"] = [
+                        {"id": str(r["id"]), "title": r.get("title"), "fault_code": r.get("fault_code")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_fault_entities] Fault lookup failed: {e}")
+
+    # Resolve part (for recommended_parts)
+    if "part" in extracted_entities or "part_name" in extracted_entities:
+        part_value = extracted_entities.get("part") or extracted_entities.get("part_name")
+        if part_value:
+            try:
+                result = supabase_client.table("pms_parts").select(
+                    "id, name, part_number"
+                ).eq("yacht_id", yacht_id).or_(f"name.ilike.%{part_value}%,part_number.ilike.%{part_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["part_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["part_candidates"] = [
+                        {"id": str(r["id"]), "name": r.get("name"), "part_number": r.get("part_number")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_fault_entities] Part lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_equipment_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for equipment lens actions.
+
+    Resolves:
+    - equipment: equipment_id from pms_equipment
+    - document: document_id from pms_documents
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve equipment
+    if "equipment" in extracted_entities or "equipment_name" in extracted_entities or "equipment_id" in extracted_entities:
+        equipment_value = extracted_entities.get("equipment") or extracted_entities.get("equipment_name") or extracted_entities.get("equipment_id")
+        if equipment_value:
+            try:
+                result = supabase_client.table("pms_equipment").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{equipment_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["equipment_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["equipment_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_equipment_entities] Equipment lookup failed: {e}")
+
+    # Resolve document
+    if "document" in extracted_entities or "document_name" in extracted_entities:
+        doc_value = extracted_entities.get("document") or extracted_entities.get("document_name")
+        if doc_value:
+            try:
+                result = supabase_client.table("pms_documents").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{doc_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["document_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["document_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_equipment_entities] Document lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_part_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for part lens actions.
+
+    Resolves:
+    - part: part_id from pms_parts
+    - work_order: work_order_id from pms_work_orders
+    - supplier: supplier_id from pms_suppliers
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve part
+    if "part" in extracted_entities or "part_name" in extracted_entities or "part_number" in extracted_entities:
+        part_value = extracted_entities.get("part") or extracted_entities.get("part_name") or extracted_entities.get("part_number")
+        if part_value:
+            try:
+                result = supabase_client.table("pms_parts").select(
+                    "id, name, part_number"
+                ).eq("yacht_id", yacht_id).or_(f"name.ilike.%{part_value}%,part_number.ilike.%{part_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["part_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["part_candidates"] = [
+                        {"id": str(r["id"]), "name": r.get("name"), "part_number": r.get("part_number")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_part_entities] Part lookup failed: {e}")
+
+    # Resolve work order
+    if "work_order" in extracted_entities or "work_order_id" in extracted_entities:
+        wo_value = extracted_entities.get("work_order") or extracted_entities.get("work_order_id")
+        if wo_value:
+            try:
+                result = supabase_client.table("pms_work_orders").select(
+                    "id, number, title"
+                ).eq("yacht_id", yacht_id).or_(f"number.ilike.%{wo_value}%,title.ilike.%{wo_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["work_order_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["work_order_candidates"] = [
+                        {"id": str(r["id"]), "number": r.get("number"), "title": r.get("title")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_part_entities] Work order lookup failed: {e}")
+
+    # Resolve supplier
+    if "supplier" in extracted_entities or "supplier_name" in extracted_entities:
+        supplier_value = extracted_entities.get("supplier") or extracted_entities.get("supplier_name")
+        if supplier_value:
+            try:
+                result = supabase_client.table("pms_suppliers").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{supplier_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["supplier_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["supplier_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_part_entities] Supplier lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_inventory_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for inventory lens actions.
+
+    Resolves:
+    - part: part_id from pms_parts
+    - work_order: work_order_id from pms_work_orders
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve part
+    if "part" in extracted_entities or "part_name" in extracted_entities or "part_number" in extracted_entities:
+        part_value = extracted_entities.get("part") or extracted_entities.get("part_name") or extracted_entities.get("part_number")
+        if part_value:
+            try:
+                result = supabase_client.table("pms_parts").select(
+                    "id, name, part_number"
+                ).eq("yacht_id", yacht_id).or_(f"name.ilike.%{part_value}%,part_number.ilike.%{part_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["part_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["part_candidates"] = [
+                        {"id": str(r["id"]), "name": r.get("name"), "part_number": r.get("part_number")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_inventory_entities] Part lookup failed: {e}")
+
+    # Resolve work order
+    if "work_order" in extracted_entities or "work_order_id" in extracted_entities:
+        wo_value = extracted_entities.get("work_order") or extracted_entities.get("work_order_id")
+        if wo_value:
+            try:
+                result = supabase_client.table("pms_work_orders").select(
+                    "id, number, title"
+                ).eq("yacht_id", yacht_id).or_(f"number.ilike.%{wo_value}%,title.ilike.%{wo_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["work_order_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["work_order_candidates"] = [
+                        {"id": str(r["id"]), "number": r.get("number"), "title": r.get("title")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_inventory_entities] Work order lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_certificate_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for certificate lens actions.
+
+    Resolves:
+    - certificate: certificate_id from pms_certificates
+    - crew_member: crew_member_id from auth_users_profiles
+    - document: document_id from pms_documents
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve certificate
+    if "certificate" in extracted_entities or "certificate_id" in extracted_entities:
+        cert_value = extracted_entities.get("certificate") or extracted_entities.get("certificate_id")
+        if cert_value:
+            try:
+                result = supabase_client.table("pms_certificates").select(
+                    "id, certificate_type, certificate_number"
+                ).eq("yacht_id", yacht_id).or_(f"certificate_type.ilike.%{cert_value}%,certificate_number.ilike.%{cert_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["certificate_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["certificate_candidates"] = [
+                        {"id": str(r["id"]), "certificate_type": r.get("certificate_type"), "certificate_number": r.get("certificate_number")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_certificate_entities] Certificate lookup failed: {e}")
+
+    # Resolve crew member
+    if "crew_member" in extracted_entities or "crew_member_name" in extracted_entities:
+        crew_value = extracted_entities.get("crew_member") or extracted_entities.get("crew_member_name")
+        if crew_value:
+            try:
+                result = supabase_client.table("auth_users_profiles").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{crew_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["crew_member_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["crew_member_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_certificate_entities] Crew member lookup failed: {e}")
+
+    # Resolve document
+    if "document" in extracted_entities or "document_name" in extracted_entities:
+        doc_value = extracted_entities.get("document") or extracted_entities.get("document_name")
+        if doc_value:
+            try:
+                result = supabase_client.table("pms_documents").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{doc_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["document_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["document_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_certificate_entities] Document lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_handover_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for handover lens actions.
+
+    Resolves:
+    - handover_item: handover_item_id from pms_handover_items
+    - equipment: equipment_id from pms_equipment
+    - document: document_id from pms_documents
+    - fault: fault_id from pms_faults
+    - work_order: work_order_id from pms_work_orders
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve handover item
+    if "handover_item" in extracted_entities or "handover_item_id" in extracted_entities:
+        item_value = extracted_entities.get("handover_item") or extracted_entities.get("handover_item_id")
+        if item_value:
+            try:
+                result = supabase_client.table("pms_handover_items").select(
+                    "id, title"
+                ).eq("yacht_id", yacht_id).ilike("title", f"%{item_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["handover_item_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["handover_item_candidates"] = [
+                        {"id": str(r["id"]), "title": r.get("title")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_handover_entities] Handover item lookup failed: {e}")
+
+    # Resolve equipment
+    if "equipment" in extracted_entities or "equipment_name" in extracted_entities:
+        equipment_value = extracted_entities.get("equipment") or extracted_entities.get("equipment_name")
+        if equipment_value:
+            try:
+                result = supabase_client.table("pms_equipment").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{equipment_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["equipment_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["equipment_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_handover_entities] Equipment lookup failed: {e}")
+
+    # Resolve document
+    if "document" in extracted_entities or "document_name" in extracted_entities:
+        doc_value = extracted_entities.get("document") or extracted_entities.get("document_name")
+        if doc_value:
+            try:
+                result = supabase_client.table("pms_documents").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{doc_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["document_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["document_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_handover_entities] Document lookup failed: {e}")
+
+    # Resolve fault (for entity_type=fault)
+    if "fault" in extracted_entities or "fault_id" in extracted_entities:
+        fault_value = extracted_entities.get("fault") or extracted_entities.get("fault_id")
+        if fault_value:
+            try:
+                result = supabase_client.table("pms_faults").select(
+                    "id, title"
+                ).eq("yacht_id", yacht_id).ilike("title", f"%{fault_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["fault_id"] = str(result.data[0]["id"])
+                    resolved["entity_id"] = str(result.data[0]["id"])
+                    resolved["entity_type"] = "fault"
+                elif result.data and len(result.data) > 1:
+                    resolved["fault_candidates"] = [
+                        {"id": str(r["id"]), "title": r.get("title")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_handover_entities] Fault lookup failed: {e}")
+
+    # Resolve work order (for entity_type=work_order)
+    if "work_order" in extracted_entities or "work_order_id" in extracted_entities:
+        wo_value = extracted_entities.get("work_order") or extracted_entities.get("work_order_id")
+        if wo_value:
+            try:
+                result = supabase_client.table("pms_work_orders").select(
+                    "id, number, title"
+                ).eq("yacht_id", yacht_id).or_(f"number.ilike.%{wo_value}%,title.ilike.%{wo_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["work_order_id"] = str(result.data[0]["id"])
+                    resolved["entity_id"] = str(result.data[0]["id"])
+                    resolved["entity_type"] = "work_order"
+                elif result.data and len(result.data) > 1:
+                    resolved["work_order_candidates"] = [
+                        {"id": str(r["id"]), "number": r.get("number"), "title": r.get("title")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_handover_entities] Work order lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_hours_of_rest_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for hours_of_rest lens actions.
+
+    Resolves:
+    - user: user_id from auth_users_profiles
+    - signoff: signoff_id from pms_hor_monthly_signoffs
+    - template: template_id from pms_hor_templates
+    - warning: warning_id from pms_hor_warnings
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve user
+    if "user" in extracted_entities or "user_name" in extracted_entities or "crew_member" in extracted_entities:
+        user_value = extracted_entities.get("user") or extracted_entities.get("user_name") or extracted_entities.get("crew_member")
+        if user_value:
+            try:
+                result = supabase_client.table("auth_users_profiles").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{user_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["user_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["user_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_hours_of_rest_entities] User lookup failed: {e}")
+
+    # Resolve signoff
+    if "signoff" in extracted_entities or "signoff_id" in extracted_entities:
+        signoff_value = extracted_entities.get("signoff") or extracted_entities.get("signoff_id")
+        if signoff_value:
+            try:
+                result = supabase_client.table("pms_hor_monthly_signoffs").select(
+                    "id, month, year"
+                ).eq("yacht_id", yacht_id).limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["signoff_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["signoff_candidates"] = [
+                        {"id": str(r["id"]), "month": r.get("month"), "year": r.get("year")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_hours_of_rest_entities] Signoff lookup failed: {e}")
+
+    # Resolve template
+    if "template" in extracted_entities or "template_name" in extracted_entities:
+        template_value = extracted_entities.get("template") or extracted_entities.get("template_name")
+        if template_value:
+            try:
+                result = supabase_client.table("pms_hor_templates").select(
+                    "id, template_name"
+                ).eq("yacht_id", yacht_id).ilike("template_name", f"%{template_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["template_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["template_candidates"] = [
+                        {"id": str(r["id"]), "template_name": r.get("template_name")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_hours_of_rest_entities] Template lookup failed: {e}")
+
+    # Resolve warning
+    if "warning" in extracted_entities or "warning_id" in extracted_entities:
+        warning_value = extracted_entities.get("warning") or extracted_entities.get("warning_id")
+        if warning_value:
+            try:
+                result = supabase_client.table("pms_hor_warnings").select(
+                    "id, warning_type"
+                ).eq("yacht_id", yacht_id).limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["warning_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["warning_candidates"] = [
+                        {"id": str(r["id"]), "warning_type": r.get("warning_type")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_hours_of_rest_entities] Warning lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_warranty_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for warranty lens actions.
+
+    Resolves:
+    - warranty: warranty_id from pms_warranties
+    - equipment: equipment_id from pms_equipment
+    - supplier: supplier from pms_suppliers
+    - fault: fault_id from pms_faults (for claims)
+    - document: document_id from pms_documents
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve warranty
+    if "warranty" in extracted_entities or "warranty_id" in extracted_entities:
+        warranty_value = extracted_entities.get("warranty") or extracted_entities.get("warranty_id")
+        if warranty_value:
+            try:
+                result = supabase_client.table("pms_warranties").select(
+                    "id, warranty_number, equipment_id"
+                ).eq("yacht_id", yacht_id).ilike("warranty_number", f"%{warranty_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["warranty_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["warranty_candidates"] = [
+                        {"id": str(r["id"]), "warranty_number": r.get("warranty_number")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_warranty_entities] Warranty lookup failed: {e}")
+
+    # Resolve equipment
+    if "equipment" in extracted_entities or "equipment_name" in extracted_entities:
+        equipment_value = extracted_entities.get("equipment") or extracted_entities.get("equipment_name")
+        if equipment_value:
+            try:
+                result = supabase_client.table("pms_equipment").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{equipment_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["equipment_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["equipment_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_warranty_entities] Equipment lookup failed: {e}")
+
+    # Resolve supplier
+    if "supplier" in extracted_entities or "supplier_name" in extracted_entities:
+        supplier_value = extracted_entities.get("supplier") or extracted_entities.get("supplier_name")
+        if supplier_value:
+            try:
+                result = supabase_client.table("pms_suppliers").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{supplier_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["supplier_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["supplier_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_warranty_entities] Supplier lookup failed: {e}")
+
+    # Resolve fault (for warranty claims)
+    if "fault" in extracted_entities or "fault_id" in extracted_entities:
+        fault_value = extracted_entities.get("fault") or extracted_entities.get("fault_id")
+        if fault_value:
+            try:
+                result = supabase_client.table("pms_faults").select(
+                    "id, title"
+                ).eq("yacht_id", yacht_id).ilike("title", f"%{fault_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["fault_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["fault_candidates"] = [
+                        {"id": str(r["id"]), "title": r.get("title")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_warranty_entities] Fault lookup failed: {e}")
+
+    # Resolve document
+    if "document" in extracted_entities or "document_name" in extracted_entities:
+        doc_value = extracted_entities.get("document") or extracted_entities.get("document_name")
+        if doc_value:
+            try:
+                result = supabase_client.table("pms_documents").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{doc_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["document_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["document_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_warranty_entities] Document lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_shopping_list_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for shopping_list lens actions.
+
+    Resolves:
+    - shopping_list_item: item_id from pms_shopping_list
+    - part: part_id from pms_parts
+    - purchase_order: purchase_order_id from pms_purchase_orders
+    - receiving: receiving_id from pms_receiving
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve shopping list item
+    if "item" in extracted_entities or "item_id" in extracted_entities or "shopping_list_item" in extracted_entities:
+        item_value = extracted_entities.get("item") or extracted_entities.get("item_id") or extracted_entities.get("shopping_list_item")
+        if item_value:
+            try:
+                result = supabase_client.table("pms_shopping_list").select(
+                    "id, part_name"
+                ).eq("yacht_id", yacht_id).ilike("part_name", f"%{item_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["item_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["item_candidates"] = [
+                        {"id": str(r["id"]), "part_name": r.get("part_name")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_shopping_list_entities] Item lookup failed: {e}")
+
+    # Resolve part
+    if "part" in extracted_entities or "part_name" in extracted_entities or "part_number" in extracted_entities:
+        part_value = extracted_entities.get("part") or extracted_entities.get("part_name") or extracted_entities.get("part_number")
+        if part_value:
+            try:
+                result = supabase_client.table("pms_parts").select(
+                    "id, name, part_number"
+                ).eq("yacht_id", yacht_id).or_(f"name.ilike.%{part_value}%,part_number.ilike.%{part_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["part_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["part_candidates"] = [
+                        {"id": str(r["id"]), "name": r.get("name"), "part_number": r.get("part_number")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_shopping_list_entities] Part lookup failed: {e}")
+
+    # Resolve purchase order
+    if "purchase_order" in extracted_entities or "purchase_order_id" in extracted_entities or "po_number" in extracted_entities:
+        po_value = extracted_entities.get("purchase_order") or extracted_entities.get("purchase_order_id") or extracted_entities.get("po_number")
+        if po_value:
+            try:
+                result = supabase_client.table("pms_purchase_orders").select(
+                    "id, po_number"
+                ).eq("yacht_id", yacht_id).ilike("po_number", f"%{po_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["purchase_order_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["purchase_order_candidates"] = [
+                        {"id": str(r["id"]), "po_number": r.get("po_number")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_shopping_list_entities] Purchase order lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_email_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for email lens actions.
+
+    Resolves:
+    - thread: thread_id from pms_email_threads
+    - entity: entity_id for linking (work_order, equipment, fault, part, handover)
+    - work_order, equipment, fault, part entities
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve email thread
+    if "thread" in extracted_entities or "thread_id" in extracted_entities:
+        thread_value = extracted_entities.get("thread") or extracted_entities.get("thread_id")
+        if thread_value:
+            try:
+                result = supabase_client.table("pms_email_threads").select(
+                    "id, subject"
+                ).eq("yacht_id", yacht_id).ilike("subject", f"%{thread_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["thread_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["thread_candidates"] = [
+                        {"id": str(r["id"]), "subject": r.get("subject")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_email_entities] Thread lookup failed: {e}")
+
+    # Resolve equipment (for create_work_order_from_email, create_fault_from_email)
+    if "equipment" in extracted_entities or "equipment_name" in extracted_entities:
+        equipment_value = extracted_entities.get("equipment") or extracted_entities.get("equipment_name")
+        if equipment_value:
+            try:
+                result = supabase_client.table("pms_equipment").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{equipment_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["equipment_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["equipment_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_email_entities] Equipment lookup failed: {e}")
+
+    # Resolve work order (for link_email_to_entity)
+    if "work_order" in extracted_entities or "work_order_id" in extracted_entities:
+        wo_value = extracted_entities.get("work_order") or extracted_entities.get("work_order_id")
+        if wo_value:
+            try:
+                result = supabase_client.table("pms_work_orders").select(
+                    "id, number, title"
+                ).eq("yacht_id", yacht_id).or_(f"number.ilike.%{wo_value}%,title.ilike.%{wo_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["entity_id"] = str(result.data[0]["id"])
+                    resolved["entity_type"] = "work_order"
+                elif result.data and len(result.data) > 1:
+                    resolved["work_order_candidates"] = [
+                        {"id": str(r["id"]), "number": r.get("number"), "title": r.get("title")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_email_entities] Work order lookup failed: {e}")
+
+    # Resolve fault (for link_email_to_entity)
+    if "fault" in extracted_entities or "fault_id" in extracted_entities:
+        fault_value = extracted_entities.get("fault") or extracted_entities.get("fault_id")
+        if fault_value:
+            try:
+                result = supabase_client.table("pms_faults").select(
+                    "id, title"
+                ).eq("yacht_id", yacht_id).ilike("title", f"%{fault_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["entity_id"] = str(result.data[0]["id"])
+                    resolved["entity_type"] = "fault"
+                elif result.data and len(result.data) > 1:
+                    resolved["fault_candidates"] = [
+                        {"id": str(r["id"]), "title": r.get("title")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_email_entities] Fault lookup failed: {e}")
+
+    return resolved
+
+
+async def resolve_receiving_entities(
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Resolve entities for receiving lens actions.
+
+    Resolves:
+    - receiving: receiving_id from pms_receiving
+    - receiving_item: receiving_item_id from pms_receiving_items
+    - supplier: supplier_id from pms_suppliers
+    - part: part_id from pms_parts
+    - document: document_id from pms_documents
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolved = {}
+
+    # Resolve receiving
+    if "receiving" in extracted_entities or "receiving_id" in extracted_entities:
+        receiving_value = extracted_entities.get("receiving") or extracted_entities.get("receiving_id")
+        if receiving_value:
+            try:
+                result = supabase_client.table("pms_receiving").select(
+                    "id, created_at"
+                ).eq("yacht_id", yacht_id).limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["receiving_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["receiving_candidates"] = [
+                        {"id": str(r["id"]), "created_at": r.get("created_at")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_receiving_entities] Receiving lookup failed: {e}")
+
+    # Resolve receiving item
+    if "receiving_item" in extracted_entities or "receiving_item_id" in extracted_entities:
+        item_value = extracted_entities.get("receiving_item") or extracted_entities.get("receiving_item_id")
+        if item_value:
+            try:
+                result = supabase_client.table("pms_receiving_items").select(
+                    "id, part_id"
+                ).eq("yacht_id", yacht_id).limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["receiving_item_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["receiving_item_candidates"] = [
+                        {"id": str(r["id"]), "part_id": r.get("part_id")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_receiving_entities] Receiving item lookup failed: {e}")
+
+    # Resolve supplier
+    if "supplier" in extracted_entities or "supplier_name" in extracted_entities:
+        supplier_value = extracted_entities.get("supplier") or extracted_entities.get("supplier_name")
+        if supplier_value:
+            try:
+                result = supabase_client.table("pms_suppliers").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{supplier_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["supplier_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["supplier_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_receiving_entities] Supplier lookup failed: {e}")
+
+    # Resolve part
+    if "part" in extracted_entities or "part_name" in extracted_entities or "part_number" in extracted_entities:
+        part_value = extracted_entities.get("part") or extracted_entities.get("part_name") or extracted_entities.get("part_number")
+        if part_value:
+            try:
+                result = supabase_client.table("pms_parts").select(
+                    "id, name, part_number"
+                ).eq("yacht_id", yacht_id).or_(f"name.ilike.%{part_value}%,part_number.ilike.%{part_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["part_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["part_candidates"] = [
+                        {"id": str(r["id"]), "name": r.get("name"), "part_number": r.get("part_number")} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_receiving_entities] Part lookup failed: {e}")
+
+    # Resolve document
+    if "document" in extracted_entities or "document_name" in extracted_entities:
+        doc_value = extracted_entities.get("document") or extracted_entities.get("document_name")
+        if doc_value:
+            try:
+                result = supabase_client.table("pms_documents").select(
+                    "id, name"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{doc_value}%").limit(5).execute()
+                if result.data and len(result.data) == 1:
+                    resolved["document_id"] = str(result.data[0]["id"])
+                elif result.data and len(result.data) > 1:
+                    resolved["document_candidates"] = [
+                        {"id": str(r["id"]), "name": r["name"]} for r in result.data
+                    ]
+            except Exception as e:
+                logger.warning(f"[resolve_receiving_entities] Document lookup failed: {e}")
+
+    return resolved
+
+
+# Lens resolver dispatch table
+LENS_ENTITY_RESOLVERS = {
+    "work_order": resolve_work_order_entities,
+    "fault": resolve_fault_entities,
+    "equipment": resolve_equipment_entities,
+    "part": resolve_part_entities,
+    "inventory": resolve_inventory_entities,
+    "certificate": resolve_certificate_entities,
+    "handover": resolve_handover_entities,
+    "hours_of_rest": resolve_hours_of_rest_entities,
+    "warranty": resolve_warranty_entities,
+    "shopping_list": resolve_shopping_list_entities,
+    "email": resolve_email_entities,
+    "receiving": resolve_receiving_entities,
+}
+
+
+async def resolve_entities_for_lens(
+    lens: str,
+    yacht_id: str,
+    extracted_entities: Dict[str, Any],
+    supabase_client,
+) -> Dict[str, Any]:
+    """
+    Dispatch entity resolution to lens-specific resolver.
+
+    Args:
+        lens: The lens name (work_order, fault, equipment, etc.)
+        yacht_id: Yacht UUID for RLS enforcement
+        extracted_entities: Dict of entities extracted from NLP
+        supabase_client: Supabase client for database queries
+
+    Returns:
+        Dict of resolved entity IDs and any ambiguity candidates
+
+    SECURITY: All queries filtered by yacht_id.
+    """
+    resolver = LENS_ENTITY_RESOLVERS.get(lens)
+    if not resolver:
+        logger.warning(f"[resolve_entities_for_lens] No resolver for lens: {lens}")
+        return {}
+
+    return await resolver(yacht_id, extracted_entities, supabase_client)
+
+
+# =============================================================================
+# GENERIC PREPARE ACTION FUNCTION
+# =============================================================================
+
+
+async def prepare_action(
+    lens: str,
+    action_id: str,
+    query_text: str,
+    extracted_entities: Dict[str, Any],
+    yacht_id: str,
+    user_id: str,
+    user_role: str,
+    supabase_client,
+    action_registry: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Generic prepare function for any lens action.
+
+    Combines:
+    1. Lens-specific entity resolution (resolve_*_entities)
+    2. Action field metadata from registry
+    3. Mutation preview generation
+    4. Role checking
+
+    Args:
+        lens: The lens name (work_order, fault, etc.)
+        action_id: The action ID (create_work_order, report_fault, etc.)
+        query_text: Original NLP query
+        extracted_entities: Dict of entities extracted from NLP
+        yacht_id: Yacht UUID for RLS enforcement
+        user_id: User UUID
+        user_role: User's role for role gating
+        supabase_client: Supabase client for database queries
+        action_registry: Optional action registry dict (for testing)
+
+    Returns:
+        PrepareResponse dict:
+        {
+            "action_id": str,
+            "lens": str,
+            "ready_to_commit": bool,
+            "prefill": {field: {value, confidence, source}},
+            "resolved_entities": {entity_id: uuid},
+            "missing_required_fields": [str],
+            "ambiguities": [{field, candidates}],
+            "role_blocked": bool,
+            "errors": [{error_code, message, field}]
+        }
+
+    SECURITY: All entity lookups filtered by yacht_id.
+    """
+    errors = []
+    ambiguities = []
+    prefill = {}
+    missing_required_fields = []
+    resolved_entities = {}
+    role_blocked = False
+
+    # =========================================================================
+    # STEP 1: Resolve entities using lens-specific resolver
+    # =========================================================================
+    try:
+        resolved_entities = await resolve_entities_for_lens(
+            lens=lens,
+            yacht_id=yacht_id,
+            extracted_entities=extracted_entities,
+            supabase_client=supabase_client,
+        )
+
+        # Extract ambiguities from resolved entities (any *_candidates fields)
+        for key, value in list(resolved_entities.items()):
+            if key.endswith("_candidates"):
+                field_name = key.replace("_candidates", "_id")
+                ambiguities.append({
+                    "field": field_name,
+                    "candidates": value
+                })
+                del resolved_entities[key]
+
+    except Exception as e:
+        logger.error(f"[prepare_action] Entity resolution failed for {lens}/{action_id}: {e}")
+        errors.append({
+            "error_code": "ENTITY_RESOLUTION_ERROR",
+            "message": f"Failed to resolve entities: {str(e)}",
+            "field": None
+        })
+
+    # =========================================================================
+    # STEP 2: Get action metadata from registry (if available)
+    # =========================================================================
+    action_def = None
+    required_fields = []
+    optional_fields = []
+    role_restricted = []
+
+    if action_registry:
+        action_def = action_registry.get(action_id)
+    else:
+        # Try to import from action_router.registry
+        try:
+            from action_router.registry import get_action
+            action_def = get_action(action_id)
+        except (ImportError, KeyError) as e:
+            logger.warning(f"[prepare_action] Could not get action definition for {action_id}: {e}")
+
+    if action_def:
+        # Extract field requirements from action definition
+        if hasattr(action_def, 'required_fields'):
+            required_fields = action_def.required_fields or []
+        elif isinstance(action_def, dict):
+            required_fields = action_def.get('required_fields', [])
+
+        if hasattr(action_def, 'optional_fields'):
+            optional_fields = action_def.optional_fields or []
+        elif isinstance(action_def, dict):
+            optional_fields = action_def.get('optional_fields', [])
+
+        if hasattr(action_def, 'allowed_roles'):
+            role_restricted = action_def.allowed_roles or []
+        elif isinstance(action_def, dict):
+            role_restricted = action_def.get('role_restricted', [])
+
+    # =========================================================================
+    # STEP 3: Check role gating
+    # =========================================================================
+    if role_restricted and user_role not in role_restricted:
+        role_blocked = True
+
+    # =========================================================================
+    # STEP 4: Build prefill from resolved entities and extracted entities
+    # =========================================================================
+    # Add resolved entities to prefill
+    for field_name, field_value in resolved_entities.items():
+        if field_value is not None:
+            prefill[field_name] = {
+                "value": field_value,
+                "confidence": 0.92,  # High confidence for resolved entities
+                "source": "entity_resolver"
+            }
+
+    # Add extracted entities that weren't resolved (direct values)
+    for entity_type, entity_value in extracted_entities.items():
+        # Map entity type to field name
+        field_name = entity_type
+        if entity_type in ["equipment", "equipment_name"]:
+            field_name = "equipment_id"
+        elif entity_type == "fault":
+            field_name = "fault_id"
+        elif entity_type == "work_order":
+            field_name = "work_order_id"
+        elif entity_type in ["part", "part_name"]:
+            field_name = "part_id"
+        elif entity_type == "supplier":
+            field_name = "supplier_id"
+
+        # Only add if not already in prefill (resolved takes precedence)
+        if field_name not in prefill and entity_value:
+            # Check if it's a UUID (already resolved) or needs resolution
+            if isinstance(entity_value, str) and len(entity_value) == 36 and "-" in entity_value:
+                prefill[field_name] = {
+                    "value": entity_value,
+                    "confidence": 0.95,
+                    "source": "extracted_uuid"
+                }
+            else:
+                # Add as extracted value (might need user confirmation)
+                prefill[entity_type] = {
+                    "value": entity_value,
+                    "confidence": 0.80,
+                    "source": "nlp_extracted"
+                }
+
+    # Apply priority mapping if priority extracted
+    if "priority" in extracted_entities or "priority_indicator" in extracted_entities:
+        raw_priority = extracted_entities.get("priority") or extracted_entities.get("priority_indicator")
+        if raw_priority:
+            mapped_priority, confidence = map_priority(raw_priority)
+            if mapped_priority:
+                prefill["priority"] = {
+                    "value": mapped_priority,
+                    "confidence": confidence,
+                    "source": "keyword_map"
+                }
+
+    # =========================================================================
+    # STEP 5: Identify missing required fields
+    # =========================================================================
+    for field in required_fields:
+        if field not in prefill and field not in resolved_entities:
+            # Check if it's an _id field that might be in resolved entities without _id suffix
+            base_field = field.replace("_id", "")
+            if base_field not in prefill:
+                missing_required_fields.append(field)
+
+    # =========================================================================
+    # STEP 6: Determine readiness
+    # =========================================================================
+    ready_to_commit = (
+        len(missing_required_fields) == 0 and
+        len(ambiguities) == 0 and
+        not role_blocked and
+        len(errors) == 0
+    )
+
+    return {
+        "action_id": action_id,
+        "lens": lens,
+        "ready_to_commit": ready_to_commit,
+        "prefill": prefill,
+        "resolved_entities": resolved_entities,
+        "missing_required_fields": missing_required_fields,
+        "ambiguities": ambiguities,
+        "role_blocked": role_blocked,
+        "errors": errors,
+        "extracted_entities": extracted_entities,  # For debugging
+        "query_text": query_text,  # For debugging
+    }
+
+
 __all__ = [
     "build_mutation_preview",
     "build_prepare_response",
@@ -1036,4 +2293,21 @@ __all__ = [
     "generate_backend_auto_value",
     "map_priority",
     "PRIORITY_SYNONYMS",
+    # Lens-specific entity resolvers
+    "resolve_work_order_entities",
+    "resolve_fault_entities",
+    "resolve_equipment_entities",
+    "resolve_part_entities",
+    "resolve_inventory_entities",
+    "resolve_certificate_entities",
+    "resolve_handover_entities",
+    "resolve_hours_of_rest_entities",
+    "resolve_warranty_entities",
+    "resolve_shopping_list_entities",
+    "resolve_email_entities",
+    "resolve_receiving_entities",
+    "resolve_entities_for_lens",
+    "LENS_ENTITY_RESOLVERS",
+    # Generic prepare function
+    "prepare_action",
 ]
