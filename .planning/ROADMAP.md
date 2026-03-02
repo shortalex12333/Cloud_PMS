@@ -458,7 +458,7 @@ Plans:
 ## v1.3 Phases
 
 - [x] **Phase 15: Intent Envelope** - Create IntentEnvelope abstraction (READ | MUTATE | MIXED) (completed 2026-03-01)
-- [ ] **Phase 16: Prefill Integration** - Build /v1/actions/prepare endpoint with entity resolution
+- [x] **Phase 16: Prefill Integration** - Build /v1/actions/prepare endpoint with entity resolution (completed 2026-03-01)
 - [ ] **Phase 17: Readiness States** - Implement READY/NEEDS_INPUT/BLOCKED classification
 - [ ] **Phase 18: Route & Disambiguation** - Fragmented URLs + uncertainty surfacing UX
 - [ ] **Phase 19: Agent Deployment** - 24 agents across 4 waves (Lens Matrix → NLP Variants → Backend → E2E)
@@ -503,11 +503,11 @@ Plans:
 4. Temporal phrase "next Tuesday" parsed to actual ISO date based on current date
 5. Response includes missing_fields: [] when all required fields resolved, or list of field names when incomplete
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 16-01-PLAN.md — Create /v1/actions/prepare endpoint with temporal parsing and priority mapping
-- [ ] 16-02-PLAN.md — Frontend integration: prepareAction() in useCelesteSearch + ActionModal prefill initialization
+- [x] 16-01-PLAN.md — Create /v1/actions/prepare endpoint with temporal parsing and priority mapping
+- [x] 16-02-PLAN.md — Frontend integration: prepareAction() in useCelesteSearch + ActionModal prefill initialization
 
 ---
 
@@ -572,7 +572,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 15. Intent Envelope | 1/1 | Complete | 2026-03-01 |
-| 16. Prefill Integration | 0/2 | Planned | - |
+| 16. Prefill Integration | 2/2 | Complete | 2026-03-01 |
 | 17. Readiness States | 0/? | Not started | - |
 | 18. Route & Disambiguation | 0/? | Not started | - |
 | 19. Agent Deployment | 0/? | Not started | - |

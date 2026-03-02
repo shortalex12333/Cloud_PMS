@@ -11,12 +11,12 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
-| Phase | Phase 16 (Prefill Integration) |
-| Plan | 01 (complete) |
-| Status | Ready for Plan 02 |
-| Last activity | 2026-03-01 — Phase 16 Plan 01 complete |
+| Phase | Phase 17 (Readiness States) |
+| Plan | — |
+| Status | Ready for planning |
+| Last activity | 2026-03-01 — Phase 16 complete (2/2 plans) |
 
-**Progress:** [██████████] 98%
+**Progress:** [██████████] 40% (2/5 phases complete)
 
 ---
 
@@ -35,7 +35,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
 | 15 | Intent Envelope | Create IntentEnvelope abstraction | INTENT-01..03 | ✓ Complete |
-| 16 | Prefill Integration | Build /v1/actions/prepare endpoint | PREFILL-01..05 | ⚙️ In Progress (1/2 plans) |
+| 16 | Prefill Integration | Build /v1/actions/prepare endpoint | PREFILL-01..05 | ✓ Complete |
 | 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ○ Pending |
 | 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ○ Pending |
 | 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ○ Pending |
@@ -51,7 +51,8 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | Success criteria per phase | 2-5 | 4-4-4-6-4 | ✓ |
 
 ---
-| Phase 16 P01 | 305 | 3 tasks | 5 files |
+| Phase 16 P01 | 305s | 3 tasks | 5 files |
+| Phase 16 P02 | 240s | 3 tasks | 3 files |
 
 ## Decisions Made
 
@@ -193,13 +194,13 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 ## Next Single Action
 
-**Plan Phase 16: Prefill Integration**
+**Plan Phase 17: Readiness States**
 
-Use `/gsd:plan-phase 16` to create execution plan for:
-1. Build /v1/actions/prepare endpoint in prefill_engine.py
-2. Accept IntentEnvelope and return MutationPreview
-3. Integrate with existing Action Detector + Entity Extractor
-4. Call /prepare from SuggestedActions.tsx on action selection
+Use `/gsd:plan-phase 17` to create execution plan for:
+1. Add readiness classification (READY/NEEDS_INPUT/BLOCKED)
+2. Implement visual indicators (green check / amber dot / lock icon)
+3. Derive readiness from prefill confidence + missing_fields + role gating
+4. Integrate with SuggestedActions.tsx for at-a-glance distinction
 
 ---
 
