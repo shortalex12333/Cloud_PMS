@@ -459,7 +459,7 @@ Plans:
 
 - [x] **Phase 15: Intent Envelope** - Create IntentEnvelope abstraction (READ | MUTATE | MIXED) (completed 2026-03-01)
 - [x] **Phase 16: Prefill Integration** - Build /v1/actions/prepare endpoint with entity resolution (completed 2026-03-01)
-- [ ] **Phase 17: Readiness States** - Implement READY/NEEDS_INPUT/BLOCKED classification
+- [x] **Phase 17: Readiness States** - Implement READY/NEEDS_INPUT/BLOCKED classification (completed 2026-03-02)
 - [ ] **Phase 18: Route & Disambiguation** - Fragmented URLs + uncertainty surfacing UX
 - [ ] **Phase 19: Agent Deployment** - 24 agents across 4 waves (Lens Matrix → NLP Variants → Backend → E2E)
 
@@ -511,6 +511,15 @@ Plans:
 
 ---
 
+### Phase 16.1: Mount /prepare endpoint in pipeline_service (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 16.1 to break down)
+
 ### Phase 17: Readiness States
 
 **Goal:** Implement readiness classification (READY/NEEDS_INPUT/BLOCKED) with visual indicators so users know if an action can execute immediately or requires disambiguation.
@@ -525,11 +534,11 @@ Plans:
 3. Suggested action shows lock icon when user role (crew) attempts Captain-only action (role gating blocks)
 4. User can distinguish READY actions from NEEDS_INPUT actions at a glance without clicking modal
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 17-01-PLAN.md — Backend role gating + frontend readiness derivation (READY-01, READY-02, READY-03)
-- [ ] 17-02-PLAN.md — Visual indicators in SuggestedActions (READY-04)
+- [x] 17-01-PLAN.md — Backend role gating + frontend readiness derivation (READY-01, READY-02, READY-03)
+- [x] 17-02-PLAN.md — Visual indicators in SuggestedActions (READY-04)
 
 ---
 
@@ -549,7 +558,11 @@ Plans:
 5. Uncertain date parsing ("next week" -> low confidence) highlights scheduled_date field with warning indicator
 6. No silent assumptions made - all low-confidence prefills surface in modal for user confirmation before execution
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — Canonical route generation + filter chips (ROUTE-01, ROUTE-02, ROUTE-03)
+- [ ] 18-02-PLAN.md — Disambiguation UI: AmbiguityDropdown + DateWarning (DISAMB-01, DISAMB-02, DISAMB-03)
 
 ---
 
@@ -577,8 +590,8 @@ Plans:
 |-------|----------------|--------|-----------|
 | 15. Intent Envelope | 1/1 | Complete | 2026-03-01 |
 | 16. Prefill Integration | 2/2 | Complete | 2026-03-01 |
-| 17. Readiness States | 0/2 | Planning complete | - |
-| 18. Route & Disambiguation | 0/? | Not started | - |
+| 17. Readiness States | 2/2 | Complete | 2026-03-02 |
+| 18. Route & Disambiguation | 0/2 | Planned | - |
 | 19. Agent Deployment | 0/? | Not started | - |
 
 ---
@@ -588,3 +601,4 @@ Plans:
 *Updated: 2026-03-01 — Phase 15 plan created (15-01-PLAN.md)*
 *Updated: 2026-03-01 — Phase 16 plans created (16-01-PLAN.md, 16-02-PLAN.md)*
 *Updated: 2026-03-01 — Phase 17 plans created (17-01-PLAN.md, 17-02-PLAN.md)*
+*Updated: 2026-03-02 — Phase 18 plans created (18-01-PLAN.md, 18-02-PLAN.md)*
