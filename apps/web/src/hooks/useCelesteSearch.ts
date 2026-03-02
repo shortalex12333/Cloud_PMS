@@ -814,6 +814,41 @@ export function deriveReadinessFromPrefill(
 }
 
 /**
+ * Derive readiness states for all action suggestions
+ *
+ * Returns a map of action_id -> ReadinessState for UI consumption.
+ * Used by SuggestedActions to show visual indicators.
+ */
+export function deriveReadinessStatesForActions(
+  actionSuggestions: ActionSuggestion[],
+  prefillData: PrepareResponse | null,
+  userRole: string | null
+): Record<string, ReadinessState> {
+  const states: Record<string, ReadinessState> = {};
+
+  for (const action of actionSuggestions) {
+    // Check role gating first (BLOCKED state)
+    if (action.allowed_roles && action.allowed_roles.length > 0 && userRole) {
+      if (!action.allowed_roles.includes(userRole)) {
+        states[action.action_id] = 'BLOCKED';
+        continue;
+      }
+    }
+
+    // If we have prefill data for this specific action, use it
+    if (prefillData && prefillData.action_id === action.action_id) {
+      states[action.action_id] = deriveReadinessFromPrefill(prefillData, action);
+    } else {
+      // No prefill data yet - default to NEEDS_INPUT until we know more
+      // This matches the conservative approach (assume input needed)
+      states[action.action_id] = 'NEEDS_INPUT';
+    }
+  }
+
+  return states;
+}
+
+/**
  * Derive IntentEnvelope from query and action suggestions
  *
  * DETERMINISM GUARANTEE: Same query + suggestions produces same envelope
@@ -919,6 +954,7 @@ interface SearchState {
   intentEnvelope: IntentEnvelope | null;  // v1.3: Unified intent structure
   prefillData: PrepareResponse | null;  // v1.3: Prefill from /prepare endpoint
   isPreparing: boolean;  // Loading state for prefill
+  userRole: string | null;  // v1.3: For role gating checks in readiness derivation
 }
 
 interface SearchSuggestion {
@@ -1482,6 +1518,7 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
     intentEnvelope: null,  // v1.3: Unified intent structure
     prefillData: null,  // v1.3: Prefill from /prepare endpoint
     isPreparing: false,  // Loading state for prefill
+    userRole: null,  // v1.3: For role gating checks
   });
 
   // Refs for debouncing and cancellation
@@ -1703,10 +1740,15 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
       const MAX_ACTION_SUGGESTIONS = 3;
       const limitedActions = response.actions.slice(0, MAX_ACTION_SUGGESTIONS);
 
+      // Get user role from Supabase session for role gating
+      const { data: { session } } = await supabase.auth.getSession();
+      const userRole = session?.user?.user_metadata?.role || 'crew';
+
       setState(prev => ({
         ...prev,
         actionSuggestions: limitedActions,
         intentEnvelope: envelope,  // v1.3: MUTATE/MIXED mode envelope
+        userRole: userRole,  // v1.3: Store user role for role gating
       }));
 
       // Trigger debounced prefill call if we have action suggestions
@@ -1935,6 +1977,7 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
       intentEnvelope: null,  // v1.3: Clear envelope on clear
       prefillData: null,  // v1.3: Clear prefill on clear
       isPreparing: false,  // v1.3: Clear prefill loading state
+      userRole: null,  // v1.3: Clear user role on clear
     });
   }, [cancelCurrentRequest, clearResultMap]);
 
@@ -1984,6 +2027,13 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
     intentEnvelope: state.intentEnvelope,  // v1.3: Unified intent structure
     prefillData: state.prefillData,  // v1.3: Prefill from /prepare endpoint
     isPreparing: state.isPreparing,  // v1.3: Loading state for prefill
+    userRole: state.userRole,  // v1.3: For role gating in UI
+    // v1.3: Derive readiness states for all actions (for SuggestedActions component)
+    deriveReadinessStates: () => deriveReadinessStatesForActions(
+      state.actionSuggestions,
+      state.prefillData,
+      state.userRole
+    ),
 
     // Actions
     handleQueryChange,
