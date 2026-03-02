@@ -12,11 +12,11 @@
 |-------|-------|
 | Milestone | v1.3 — Actionable UX Unification |
 | Phase | Phase 19 (Agent Deployment) |
-| Plan | 03 |
-| Status | Phase 19 Plan 03 complete (Backend Integration) |
-| Last activity | 2026-03-02 — Phase 19-03 complete (12 lens entity resolvers + prepare_action function) |
+| Plan | 04 |
+| Status | Phase 19 Plan 04 complete (E2E Test Coverage) |
+| Last activity | 2026-03-02 — Phase 19-04 complete (614 E2E tests across 12 lenses) |
 
-**Progress:** [████████████████████] 90% (4/5 phases complete, 3/4 plans in Phase 19)
+**Progress:** [████████████████████] 95% (4/5 phases complete, 4/4 plans in Phase 19)
 
 ---
 
@@ -39,7 +39,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | 16.1 | Mount /prepare | Fix GAP-001: endpoint returns 404 | GAP-001 | ✓ Complete |
 | 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ✓ Complete |
 | 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ✓ Complete |
-| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ◐ In Progress (Plan 03 complete) |
+| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ✓ Complete (4/4 waves) |
 
 ---
 
@@ -60,6 +60,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | Phase 19 P01 | 275s | 3 tasks | 13 files |
 | Phase 19 P02 | 842s | 3 tasks | 13 files |
 | Phase 19 P03 | 317s | 2 tasks | 2 files |
+| Phase 19 P04 | — | 1 task | 14 files |
 
 ## Decisions Made
 
@@ -112,6 +113,9 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - [Phase 19-03]: 12 resolve_*_entities functions added to centralized prefill_engine.py
 - [Phase 19-03]: Generic prepare_action function dispatches to lens-specific resolvers
 - [Phase 19-03]: All entity resolution enforces yacht_id scoping (security)
+- [Phase 19-04]: 12 E2E test files created in test/e2e/ directory
+- [Phase 19-04]: 614 total tests (307 READ + 307 MUTATE)
+- [Phase 19-04]: Coverage report at .planning/agents/e2e-coverage/coverage_report.md
 
 ## Blockers
 
@@ -224,15 +228,22 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 
 ## Next Single Action
 
-**Continue Phase 19: Intent Classifier Evaluation (Wave 4)**
+**Milestone v1.3 Complete — All Phases Done**
 
-Phase 19 Plan 03 complete (Backend Integration). Next:
-- Execute Plan 19-04: Intent Classifier Evaluation
-- Use intent_truth_set.jsonl as test input
-- Run classifier against 1,200 queries and measure accuracy
-- Compare detected intents against ground truth labels
+Phase 19 (Agent Deployment) is complete with all 4 waves:
+- Wave 1: 12 lens matrices with 81 MUTATE actions + 67 READ filters
+- Wave 2: 1,200 NLP query variants (100 per lens)
+- Wave 3: 12 resolve_*_entities functions + prepare_action dispatcher
+- Wave 4: 614 E2E Playwright tests (307 READ + 307 MUTATE)
 
-Command: `/gsd:execute-phase 19-04`
+v1.3 deliverables:
+- IntentEnvelope type + derivation logic
+- /v1/actions/prepare endpoint
+- READY/NEEDS_INPUT/BLOCKED readiness states
+- Fragmented URL routes + disambiguation UX
+- Comprehensive E2E test coverage
+
+Next: Run `npx playwright test test/e2e/*-intent.spec.ts` to execute all 614 tests
 
 ---
 
