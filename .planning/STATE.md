@@ -16,7 +16,7 @@
 | Status | Phase 17 complete, ready for Phase 18 |
 | Last activity | 2026-03-02 — Phase 17 complete (readiness indicators), Phase 18 pending |
 
-**Progress:** [██████████] 98%
+**Progress:** [██████████] 100%
 
 ---
 
@@ -56,6 +56,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 | Phase 16 P02 | 240s | 3 tasks | 3 files |
 | Phase 17 P01 | 213s | 3 tasks | 3 files |
 | Phase 18 P01 | 241 | 3 tasks | 3 files |
+| Phase 18 P02 | 290 | 3 tasks | 2 files |
 
 ## Decisions Made
 
@@ -95,6 +96,8 @@ See: `.planning/PROJECT.md` (updated 2026-03-01)
 - [Phase 17]: deriveReadinessFromPrefill function for client-side readiness derivation
 - [Phase 18]: Segment filters (status, priority, location, type, category) become path segments, not query params
 - [Phase 18]: URL normalization: lowercase, hyphens for spaces, alphanumeric only
+- [Phase 18-02]: Confidence threshold 0.85 separates auto-fill from confirm-required states
+- [Phase 18-02]: AmbiguityDropdown and DateWarning components for no-silent-assumptions UX
 
 ## Blockers
 
