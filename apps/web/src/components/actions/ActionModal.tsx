@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { X, Loader2, FolderOpen, AlertTriangle, PenLine, Info } from 'lucide-react';
+import { X, Loader2, FolderOpen, AlertTriangle, PenLine, Info, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   executeAction,
@@ -80,6 +80,132 @@ const SOURCE_TYPE_OPTIONS = [
   { value: 'receiving_missing', label: 'Receiving Missing' },
   { value: 'receiving_damaged', label: 'Receiving Damaged' },
 ];
+
+/**
+ * AmbiguityDropdown Component
+ *
+ * Renders "Did you mean: X / Y?" dropdown for ambiguous entity resolution.
+ * Used when NLP matches multiple candidates with similar confidence.
+ *
+ * Per DISAMB-01: Shows dropdown in ActionModal for ambiguous equipment entities.
+ */
+interface AmbiguityDropdownProps {
+  fieldName: string;
+  fieldLabel: string;
+  candidates: Array<{
+    id: string;
+    label: string;
+    confidence?: number;
+    metadata?: Record<string, unknown>;
+  }>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  required?: boolean;
+}
+
+function AmbiguityDropdown({
+  fieldName,
+  fieldLabel,
+  candidates,
+  selectedId,
+  onSelect,
+  required = false,
+}: AmbiguityDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedCandidate = candidates.find(c => c.id === selectedId);
+
+  return (
+    <div className="space-y-1.5" data-testid={`ambiguity-${fieldName}`}>
+      <label className="flex items-center gap-2 typo-meta font-medium text-txt-secondary">
+        {fieldLabel}
+        {required && <span className="text-red-400">*</span>}
+      </label>
+
+      {/* Did you mean prompt */}
+      <div className="p-2 bg-amber-500/10 rounded border border-amber-500/30">
+        <div className="flex items-center gap-2 typo-meta text-amber-400 mb-2">
+          <AlertTriangle className="w-4 h-4" />
+          Did you mean:
+        </div>
+
+        {/* Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsOpen(!isOpen)}
+            className={cn(
+              'w-full flex items-center justify-between px-3 py-2 rounded-md',
+              'bg-surface-base border',
+              selectedId ? 'border-amber-500/50' : 'border-red-500/50',
+              'typo-body text-left',
+              'focus:outline-none focus:ring-2 focus:ring-amber-500/30'
+            )}
+            aria-expanded={isOpen}
+            aria-haspopup="listbox"
+          >
+            <span className={selectedCandidate ? 'text-celeste-text-title' : 'text-txt-tertiary'}>
+              {selectedCandidate?.label || 'Select an option...'}
+            </span>
+            <ChevronDown className={cn(
+              'w-4 h-4 text-txt-secondary transition-transform',
+              isOpen && 'rotate-180'
+            )} />
+          </button>
+
+          {/* Options */}
+          {isOpen && (
+            <div
+              className={cn(
+                'absolute z-10 w-full mt-1 py-1',
+                'bg-surface-elevated rounded-md shadow-lg',
+                'border border-surface-border',
+                'max-h-48 overflow-y-auto'
+              )}
+              role="listbox"
+            >
+              {candidates.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  onClick={() => {
+                    onSelect(candidate.id);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    'w-full px-3 py-2 text-left typo-body',
+                    'hover:bg-surface-hover transition-colors',
+                    selectedId === candidate.id && 'bg-celeste-accent/10 text-celeste-accent'
+                  )}
+                  role="option"
+                  aria-selected={selectedId === candidate.id}
+                >
+                  <div className="flex items-center justify-between">
+                    <span>{candidate.label}</span>
+                    {candidate.confidence != null && (
+                      <span className="typo-meta text-txt-tertiary">
+                        {Math.round(candidate.confidence * 100)}%
+                      </span>
+                    )}
+                  </div>
+                  {candidate.metadata && (
+                    <div className="typo-meta text-txt-tertiary mt-0.5">
+                      {Object.entries(candidate.metadata)
+                        .filter(([k]) => k !== 'id')
+                        .slice(0, 2)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join(' | ')}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ActionModal({
   action,
@@ -425,38 +551,18 @@ export default function ActionModal({
               </div>
             )}
 
-            {/* Disambiguation Selectors - Shown when multiple matches found */}
-            {Object.entries(dropdownOptions).map(([field, options]) => {
-              // Only show disambiguation UI for fields with multiple options
-              if (options.length <= 1) return null;
-
-              return (
-                <DisambiguationSelector
-                  key={field}
-                  fieldName={field}
-                  fieldLabel={getFieldLabel(field)}
-                  options={options.map((opt) => {
-                    // Base option with id and name
-                    const baseOption: { id: string; name: string; [key: string]: unknown } = {
-                      id: opt.value,
-                      name: opt.label,
-                    };
-                    // If the option has additional metadata, include it
-                    // Cast through unknown to satisfy TypeScript strict type checking
-                    const optAny = opt as unknown as { metadata?: Record<string, unknown> };
-                    if (optAny.metadata && typeof optAny.metadata === 'object') {
-                      Object.assign(baseOption, optAny.metadata);
-                    }
-                    return baseOption;
-                  })}
-                  selectedId={formData[field]}
-                  onSelect={(id) => {
-                    handleFieldChange(field, id);
-                  }}
-                  required
-                />
-              );
-            })}
+            {/* Ambiguous entity disambiguation - DISAMB-01 */}
+            {prefillData?.ambiguities?.map((ambiguity) => (
+              <AmbiguityDropdown
+                key={ambiguity.field}
+                fieldName={ambiguity.field}
+                fieldLabel={getFieldLabel(ambiguity.field)}
+                candidates={ambiguity.candidates}
+                selectedId={formData[ambiguity.field] || null}
+                onSelect={(id) => handleFieldChange(ambiguity.field, id)}
+                required
+              />
+            ))}
 
             {/* Dynamic fields from required_fields */}
             {visibleFields.map((field) => {
@@ -616,28 +722,6 @@ export default function ActionModal({
                     {renderInput()}
                   </ConfidenceField>
 
-                  {/* v1.3: Disambiguation UI for low confidence fields */}
-                  {(prefillData?.ambiguities?.find(a => a.field === field) ||
-                    (prefillData?.prefill?.[field]?.confidence ?? 1) < 0.65) && (
-                    <div className="mt-1 p-2 bg-red-500/10 rounded border border-red-500/30 text-xs text-red-400">
-                      <span className="font-medium">Did you mean:</span>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {prefillData?.ambiguities
-                          ?.find(a => a.field === field)?.candidates
-                          .map(c => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => handleFieldChange(field, c.id)}
-                              className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-red-300"
-                            >
-                              {c.label}
-                            </button>
-                          ))
-                        }
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
