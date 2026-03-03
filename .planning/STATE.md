@@ -2,7 +2,7 @@
 
 > **This file tracks decisions, blockers, and position across sessions.**
 >
-> Last Updated: 2026-03-02
+> Last Updated: 2026-03-03
 
 ---
 
@@ -10,255 +10,269 @@
 
 | Field | Value |
 |-------|-------|
-| Milestone | v1.2 — Search Pipeline Truth Hardening |
-| Phase | Phases A-E (Parallel Execution) |
-| Plan | One-shot |
-| Status | Executing — Agents spawned for A, B, D |
-| Last activity | 2026-03-02 — v1.2 execution started |
+| **Active Milestone** | Post-v1.3 — Lens Architecture Conversions |
+| **Status** | ⚙️ **IN PROGRESS** |
+| **Domain** | LENSES & FRAGMENTED ROUTES |
+| **Last Activity** | 2026-03-03 — Phase 20 email conversion complete |
 
-**Progress:** [████░░░░░░░░░░░░░░░░] 20% (3/5 phases in progress)
-
-### Previous Milestone
-v1.3 — Actionable UX Unification: ✓ COMPLETE (Phases 15-19)
+**Progress:** [█] 5% (1/1 phase complete for email conversion)
 
 ---
 
-## Project Reference
+## What v1.3 Delivered (LENSES)
 
-See: `.planning/PROJECT.md` (updated 2026-03-01)
+| Phase | Deliverable | Status |
+|-------|-------------|--------|
+| 15 | IntentEnvelope type (READ/MUTATE/MIXED classification) | ✓ |
+| 16 | /v1/actions/prepare endpoint (form prefill) | ✓ |
+| 16.1 | Mount /prepare in pipeline_service (fix 404) | ✓ |
+| 16.2 | RouteShell + PermissionService (-4,262 LOC) | ✓ |
+| 17 | Readiness states (READY/NEEDS_INPUT/BLOCKED) | ✓ |
+| 18 | Disambiguation UX (ambiguous entity handling) | ✓ |
+| 19 | 614 E2E tests across 12 lenses (4 waves complete) | ✓ |
 
-**Core value:** Unify NLP intent into deterministic READ navigation and MUTATE actions with prefill preview.
-
-**Current focus:** IntentEnvelope → Prefill Integration → Readiness States → Route & Disambiguation → Agent Deployment
+**Key artifacts:**
+- `apps/web/src/components/lens/RouteShell.tsx` — Thin wrapper for all lens routes
+- `apps/web/src/services/permissions.ts` — RBAC from lens_matrix.json
+- `test/e2e/*-intent.spec.ts` — 614 Playwright tests (50+ per lens)
+- `.planning/agents/e2e-coverage/coverage_report.md` — Test coverage report
 
 ---
 
-## Milestone v1.3 Summary
+## Completed Milestones Summary
+
+| Version | Name | Domain | Phases | Status |
+|---------|------|--------|--------|--------|
+| v1.0 | Lens Completion | LENSES | 14 | ✓ Complete |
+| v1.1 | Search Pipeline Hardening | SEARCH | 5 (A-E) | ✓ Complete |
+| v1.2 | Search Snippet Enhancement | SEARCH | 5 | ✓ Complete |
+| v1.3 | Actionable UX Unification | **LENSES** | 7 | ✓ **COMPLETE** |
+
+---
+
+## Phase 20: Email Conversion (Post-v1.3)
+
+**Goal:** Enable email threads to work in both SPA mode (ContextPanel) and fragmented mode
+
+| Phase | Deliverable | Status |
+|-------|-------------|--------|
+| 20 | EmailLensContent + LensRenderer registration | ✓ Complete |
+
+**Key artifacts:**
+- `apps/web/src/components/lens/EmailLensContent.tsx` — SPA mode wrapper for email threads
+- `.planning/phases/20-email-conversion/20-01-SUMMARY.md` — Execution summary
+
+**What was delivered:**
+- Created EmailLensContent.tsx (153 LOC) that wraps EmailThreadViewer
+- Registered 'email' case in LensRenderer switch statement
+- SPA mode: `/app?entity=email&id=X` now renders email via ContextPanel
+- Fragmented mode: `/email/[threadId]` continues to work unchanged
+- SACRED OAuth patterns untouched (0 changes to oauth-utils, authHelpers, useEmailData)
+
+**Execution metrics:**
+- Duration: 117 seconds
+- Tasks: 2 automated implementation tasks
+- Commits: 2 (2a1a9b65, 4dd0b4bf)
+- Files: 1 created, 1 modified
+
+---
+
+## Parked Work (SEARCH — Different Domain)
+
+> ⚠️ **This is SEARCH work, NOT lens work.** Do not conflate with v1.3.
+
+### v1.4 — Recall Improvement (PARKED)
+
+**Domain:** Search pipeline, embeddings, text matching
+**Status:** Blocked on database migration deployment
+
+| Metric | Current | Target | Gap |
+|--------|---------|--------|-----|
+| Recall@3 | 12.1% | 25-35% | Migration needed |
+| Lens Accuracy | 47.3% | 60-70% | Migration needed |
+
+**Blocker:** `50_enhance_search_text.sql` migration not deployed to production.
+
+**To resume v1.4:**
+```bash
+# 1. Deploy migration
+psql $DATABASE_URL -f supabase/migrations/50_enhance_search_text.sql
+
+# 2. Re-run validation
+python3 scripts/eval/v12_recall_harness.py --use-embeddings --sample 100
+```
+
+**Files (search-specific):**
+- `scripts/eval/generate_query_embeddings.py`
+- `scripts/eval/search_synonyms.json`
+- `supabase/migrations/50_enhance_search_text.sql`
+- `.planning/phases/v1.4-recall-improvement/VALIDATION-REPORT.md`
+
+---
+
+## v1.3 Phase Details (LENSES)
 
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
 | 15 | Intent Envelope | Create IntentEnvelope abstraction | INTENT-01..03 | ✓ Complete |
 | 16 | Prefill Integration | Build /v1/actions/prepare endpoint | PREFILL-01..05 | ✓ Complete |
 | 16.1 | Mount /prepare | Fix GAP-001: endpoint returns 404 | GAP-001 | ✓ Complete |
+| 16.2 | Unified Route Architecture | RouteShell + PermissionService (-4,262 LOC) | ROUTE-ARCH-01..04 | ✓ Complete |
 | 17 | Readiness States | Implement READY/NEEDS_INPUT/BLOCKED | READY-01..04 | ✓ Complete |
 | 18 | Route & Disamb | Fragmented URLs + disambiguation UX | ROUTE-01..03, DISAMB-01..03 | ✓ Complete |
-| 19 | Agent Deployment | 24 agents across 4 waves | AGENT-01..04 | ✓ Complete (4/4 waves) |
+| 19 | Agent Deployment | 24 agents across 4 waves (614 E2E tests) | AGENT-01..04 | ✓ Complete (4/4 waves) |
 
 ---
 
-## Performance Metrics
+## Execution Metrics (v1.3)
 
-| Metric | Target | Current | Status |
-|--------|--------|---------|--------|
-| Requirement coverage | 22/22 | 22/22 mapped | ✓ |
-| Phase dependency clarity | 100% | 100% | ✓ |
-| Success criteria per phase | 2-5 | 4-4-4-6-4 | ✓ |
+| Phase | Duration | Tasks | Files |
+|-------|----------|-------|-------|
+| Phase 16 P01 | 305s | 3 | 5 |
+| Phase 16 P02 | 240s | 3 | 3 |
+| Phase 17 P01 | 213s | 3 | 3 |
+| Phase 18 P01 | 241s | 3 | 3 |
+| Phase 18 P02 | 290s | 3 | 2 |
+| Phase 19 P01 | 275s | 3 | 13 |
+| Phase 19 P02 | 842s | 3 | 13 |
+| Phase 19 P03 | 317s | 2 | 2 |
+| Phase 19 P04 | 600s | 3 | 14 |
+| Phase 16.2 P01 | 180s | 1 (one-shot) | 12 |
+
+## Execution Metrics (Phase 20)
+
+| Phase | Duration | Tasks | Files |
+|-------|----------|-------|-------|
+| Phase 20 P01 | 117s | 2 | 2 |
 
 ---
-| Phase 16 P01 | 305s | 3 tasks | 5 files |
-| Phase 16 P02 | 240s | 3 tasks | 3 files |
-| Phase 17 P01 | 213s | 3 tasks | 3 files |
-| Phase 18 P01 | 241 | 3 tasks | 3 files |
-| Phase 18 P02 | 290 | 3 tasks | 2 files |
-| Phase 19 P01 | 275s | 3 tasks | 13 files |
-| Phase 19 P02 | 842s | 3 tasks | 13 files |
-| Phase 19 P03 | 317s | 2 tasks | 2 files |
-| Phase 19 P04 | — | 1 task | 14 files |
 
-## Decisions Made
+## Key Decisions (v1.3 Lens Work)
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| All test files in /test/ only | User directive: no codebase pollution | 2026-02-19 |
-| Use existing truth sets | 9 CSVs × 25 items × 12 variations = 2,700 queries | 2026-02-19 |
-| Deploy first, then validate | AbortError fix exists locally, needs deployment | 2026-02-19 |
-| Baseline before deploy | Capture current state for regression detection | 2026-02-19 |
-| GSD agents for execution | User directive: orchestrate, don't execute directly | 2026-02-19 |
-| Merged PR #365 despite failing CI checks | Vercel deployments succeeded - Backend Validation passed | 2026-02-20 |
-| Auto-removed 1,332 test artifacts | Necessary to achieve clean deployment state | 2026-02-20 |
-| Used sed to modify harness output directory | Simple find/replace approach for post-deploy validation | 2026-02-20 |
-| Phase E iteration required - Recall@3 at 3.62% vs 90% target | 86.38% gap identified in comparison analysis | 2026-02-20 |
-| Latency improved 15.14% (no performance regression concern) | P95 latency reduced from 19.5s to 16.6s | 2026-02-20 |
-| Truth sets are fundamentally invalid (synthetic inventory_item IDs) | All entity types mapped to inventory_items, not actual entity tables | 2026-02-20 |
-| Search pipeline IS working (24.7% Recall@3 for parts with valid IDs) | Proves search functionality when truth sets have real entity IDs | 2026-02-20 |
-| 96.38% failure rate is validation artifact, not search failure | Reported metrics are meaningless due to truth set generation error | 2026-02-20 |
-| v1.3 MUST start with truth set regeneration using real production IDs | Cannot optimize search until accurate baseline metrics established | 2026-02-20 |
-| Realistic v1.3 target: 60-70% Recall@3 (not 90% in single milestone) | Multi-milestone path required: v1.3 (70%) → v1.3 (85%) → v1.4 (90%) | 2026-02-20 |
-| Phase numbering starts at 15 for v1.3 | Continues from v1.0 final phase (14) per milestone convention | 2026-03-01 |
-| 5 phases for v1.3 (not arbitrary) | Derived from requirement categories: INTENT, PREFILL, READY, ROUTE+DISAMB, AGENT | 2026-03-01 |
-| Modify existing files only (no new files) | User directive: useCelesteSearch.ts, SuggestedActions.tsx, ActionModal.tsx, prefill_engine.py | 2026-03-01 |
-| Use existing Action Detector + Entity Extractor | No duplicate NLP systems - leverage proven modules | 2026-03-01 |
-| Used djb2 hash for query_hash | No crypto dependencies, deterministic output | 2026-03-01 |
+| Phase numbering starts at 15 | Continues from v1.0 final phase (14) | 2026-03-01 |
+| 5 phases for v1.3 (not arbitrary) | Derived from requirement categories | 2026-03-01 |
+| Modify existing files only | User directive: no new random files | 2026-03-01 |
+| Use existing Action Detector + Entity Extractor | No duplicate NLP systems | 2026-03-01 |
 | IntentMode: READ/MUTATE/MIXED | Three states covers all intent combinations | 2026-03-01 |
-| READY threshold: confidence >= 0.8 + entity present | Prevents premature READY state for mutations | 2026-03-01 |
-| ActionSuggestion.match_score -> IntentAction.confidence | Mapping backend score to envelope confidence | 2026-03-01 |
-| Role gating uses get_action to retrieve allowed_roles | Check against ACTION_REGISTRY for role blocking | 2026-03-02 |
-| 0.8 confidence threshold for READY state | Per READY-01, READY-02 requirements | 2026-03-02 |
-| Renamed duplicate PrepareResponse to WorkOrderPrepareResponse | Avoid TypeScript interface conflict in actionClient.ts | 2026-03-02 |
-| Direct lens analysis instead of spawning external agents | More efficient - executor already had codebase context loaded | 2026-03-02 |
-| JSON structure includes role_restricted arrays for all actions | Consistency for downstream NLP variant agents | 2026-03-02 |
-| Generated 100 queries per lens for consistent coverage | Equal distribution enables fair accuracy comparison | 2026-03-02 |
-| Maintained ~50/50 READ/MUTATE balance per lens | Ensures both modes are adequately tested | 2026-03-02 |
+| READY threshold: confidence >= 0.8 | Prevents premature READY state | 2026-03-01 |
+| Role gating via ACTION_REGISTRY | Centralized role checking | 2026-03-02 |
+| Direct lens analysis (no external agents) | More efficient - context already loaded | 2026-03-02 |
+| RouteShell pattern for route pages | Eliminates ~400 LOC per route | 2026-03-03 |
+| PermissionService from lens_matrix.json | Single RBAC source of truth | 2026-03-03 |
+
+## Key Decisions (Phase 20 Email Conversion)
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| Use EmailThreadViewer delegation pattern | Avoid duplicating 400 LOC OAuth logic | 2026-03-03 |
+| No fragmented route changes needed | /email/[threadId] already works | 2026-03-03 |
+| Simplified VitalSigns (no icons) | VitalSign type only supports label/value/color | 2026-03-03 |
 
 ---
-- [Phase 16]: "next week" maps to Monday of NEXT week (not just next Monday occurrence)
+
+## v1.3 Technical Decisions
+
+- [Phase 16]: "next week" maps to Monday of NEXT week
 - [Phase 16]: Separate /prepare endpoint (not polluting /list semantics)
-- [Phase 17]: role_blocked field in PrepareResponse for BLOCKED state detection
-- [Phase 17]: deriveReadinessFromPrefill function for client-side readiness derivation
-- [Phase 18]: Segment filters (status, priority, location, type, category) become path segments, not query params
-- [Phase 18]: URL normalization: lowercase, hyphens for spaces, alphanumeric only
-- [Phase 18-02]: Confidence threshold 0.85 separates auto-fill from confirm-required states
-- [Phase 18-02]: AmbiguityDropdown and DateWarning components for no-silent-assumptions UX
-- [Phase 19-01]: 12 lens matrices created with 81 MUTATE actions and 67 READ filters documented
-- [Phase 19-01]: lens_matrix.json aggregates all lenses for Wave 2 NLP variant agents
-- [Phase 19-02]: Generated 1,200 query variants (100 per lens, ~50 READ / ~50 MUTATE each)
-- [Phase 19-02]: intent_truth_set.jsonl aggregates all variants for intent classifier evaluation
-- [Phase 19-03]: 12 resolve_*_entities functions added to centralized prefill_engine.py
-- [Phase 19-03]: Generic prepare_action function dispatches to lens-specific resolvers
-- [Phase 19-03]: All entity resolution enforces yacht_id scoping (security)
-- [Phase 19-04]: 12 E2E test files created in test/e2e/ directory
-- [Phase 19-04]: 614 total tests (307 READ + 307 MUTATE)
-- [Phase 19-04]: Coverage report at .planning/agents/e2e-coverage/coverage_report.md
+- [Phase 17]: role_blocked field in PrepareResponse for BLOCKED detection
+- [Phase 17]: deriveReadinessFromPrefill function for client-side derivation
+- [Phase 18]: Segment filters become path segments, not query params
+- [Phase 18]: URL normalization: lowercase, hyphens for spaces
+- [Phase 18-02]: Confidence threshold 0.85 separates auto-fill from confirm-required
+- [Phase 18-02]: AmbiguityDropdown and DateWarning components
+- [Phase 19-01]: 12 lens matrices with 81 MUTATE actions, 67 READ filters
+- [Phase 19-02]: 1,200 query variants (100 per lens)
+- [Phase 19-03]: 12 resolve_*_entities functions in prefill_engine.py
+- [Phase 19-04]: 614 E2E tests (307 READ + 307 MUTATE)
+- [Phase 16.2]: RouteShell replaces 11 route pages (93% LOC reduction)
+
+---
+
+## v1.3 Guardrails (LENS WORK)
+
+1. **No new random files** — modify existing lens components
+2. **Single canonical contracts** — ActionSuggestion type is the interface
+3. **Determinism first** — same query → same IntentEnvelope
+4. **No duplicate inference systems** — use existing NLP modules
+5. **100% yacht isolation** — all entity lookups scoped by yacht_id
+6. **Explicit role gating** — RLS + backend checks on all mutations
+7. **Surface uncertainty** — never silently assume, show ambiguity to user
+
+---
+
+## What's Next
+
+**v1.3 is COMPLETE.** Options:
+
+1. **Continue with v1.0 Lens Completion** — 14 phases of individual lens refinement remain
+2. **Resume v1.4 Recall Improvement** — Deploy search_text migration first
+3. **Start new milestone** — Define requirements for next feature set
+
+Ask the user which direction to take.
+
+---
 
 ## Blockers
 
 | Blocker | Impact | Owner | Status |
 |---------|--------|-------|--------|
-| None identified | — | — | — |
+| None for lens work | — | — | — |
+| v1.4: Migration not deployed | Search recall blocked | Infra | Parked |
 
 ---
 
 ## Accumulated Context
 
-### From v1.0 Milestone
+### From v1.0 Milestone (LENSES)
 - 14 phases complete (60 requirements)
 - All lenses rebuilt with design system
 - E2E tests passing
 - Ledger triggers verified
 
-### From v1.1 Milestone (F1 Search Pipeline Hardening)
-- Phases A-E complete (17 requirements)
-- Baseline metrics captured
-- 25 commits deployed via PR #365
-- Post-deploy validation complete
-- Root cause analysis: truth sets invalid (synthetic IDs)
-- Search pipeline confirmed working (24.7% Recall@3 with valid IDs)
-- 96.38% failure rate was validation artifact, not search failure
+### From v1.3 Milestone (LENSES)
+- IntentEnvelope abstraction
+- /v1/actions/prepare endpoint
+- Readiness states (READY/NEEDS_INPUT/BLOCKED)
+- Disambiguation UX
+- 614 E2E tests
 
-### From v1.2 Milestone (Search Snippet Enhancement)
-- 5 requirements complete (SNIP-01 through SNIP-05)
-- Search snippets with bold highlighting deployed
-- Full verification complete
-
-### Search Infrastructure
-- 50+ search functions exist in Supabase
-- `f1_search_fusion` (26 args), `f1_search_cards` (7 args) confirmed
-- AbortError fix at `useCelesteSearch.ts:534-548` **NOW DEPLOYED TO PRODUCTION**
-- Production codebase updated with 25 commits via PR #365 (merged 2026-02-20T03:02:28Z)
-- Both Vercel apps deployed successfully (celesteos-product, cloud-pms)
-
-### v1.3 Key Files to Modify
-- `apps/web/src/hooks/useCelesteSearch.ts` — IntentEnvelope type + derivation logic
-- `apps/web/src/components/SpotlightSearch/SuggestedActions.tsx` — Readiness indicators
-- `apps/web/src/components/ActionModal.tsx` — Prefill display + disambiguation UI
-- `supabase/functions/backend_core/actions/prefill_engine.py` — /prepare endpoint
-- `supabase/functions/backend_core/actions/action_router/router.py` — Route handler
-
-### Quality Bar for v1.3
-- Deterministic output: same query → same IntentEnvelope
-- Yacht-isolated: all entity lookups scoped by yacht_id
-- Role-safe: RLS + role gating on all mutations
-- E2E tested: 300+ tests covering suggestion → execution → DB verification
-
-### Roadmap Evolution
-- Phase 16.1 inserted after Phase 16: Mount /prepare endpoint in pipeline_service (URGENT)
+### From v1.1/v1.2 Milestones (SEARCH — different domain)
+- Search pipeline hardening complete
+- AbortError fix deployed
+- Search snippets with highlighting
+- Truth set validation identified issues
 
 ---
 
 ## Session Notes
 
-### 2026-02-19 (Session 1)
-- Context restored from compacted session
-- Confirmed: SQL functions ALREADY exist in Supabase (not missing)
-- Confirmed: AbortError fix EXISTS in local code (not missing)
-- Problem: Code not deployed to production (18+ commits behind)
-- Cleaned up unnecessary SQL migration files created in error
-- Started milestone v1.1 for search pipeline hardening
+### 2026-03-03 (Session 5 - Phase 20 Execution)
+- **Executed:** Phase 20 plan 01 - Email lens SPA mode support
+- **Created:** EmailLensContent.tsx (153 LOC) wrapper component
+- **Modified:** LensRenderer.tsx to register 'email' case
+- **Verified:** SACRED OAuth files unchanged (0 changes confirmed)
+- **Duration:** 117 seconds for 2 automated tasks
+- **Outcome:** SPA mode now supports email, fragmented mode unchanged
+- **Manual testing pending:** Browser verification of both modes
 
-### 2026-02-20 (Session 2)
-- **Phase A complete:** Baseline metrics captured (see A-01-SUMMARY.md)
-- **Phase B complete:** 25 commits deployed to production via PR #365
-  - Auto-fixed: Removed 1,332 test artifacts blocking clean deployment
-  - Merged despite CI test failures (Vercel succeeded, Backend Validation passed)
-  - Production health checks passing
-- **Phase C complete:** Post-deploy validation metrics captured (see C-01-SUMMARY.md)
-  - Ran 2,400 queries against production endpoint
-  - Recall@3: 3.62% (vs baseline 3.58%)
-  - All metrics show slight improvement
-  - Ready for Phase D: Comparison analysis
-- **Phase D complete:** Comparison analysis complete (see D-01-SUMMARY.md)
-  - Generated diff.json, failures.jsonl, report.md
-  - 2 queries improved, 1 regressed, 85 unchanged hits, 2,312 unchanged misses
-  - Acceptance criteria: Recall@3 NOT MET (3.62% vs 90% target), Latency MET (-15.14%)
-  - Verdict: Phase E iteration required to address 86.38% gap to target
-- **Phase E complete:** Root cause analysis complete (see E-01-SUMMARY.md)
-  - Identified critical truth set error: all entities mapped to inventory_items with synthetic IDs
-  - Validated search IS working: 24.7% Recall@3 for parts with valid expected_ids
-  - Documented evidence: 0% hits for 7/9 entity types due to invalid truth sets
-  - Created 836-line comprehensive analysis with 3-phase v1.3 roadmap
-  - Verdict: 96.38% failure is validation artifact, not search failure. Must regenerate truth sets.
+### 2026-03-03 (Session 4)
+- **Discovered:** Phase 19 Wave 4 was already executed (614 E2E tests exist)
+- **Fixed:** Created missing 19-04-SUMMARY.md
+- **Fixed:** Updated ROADMAP.md to mark Phase 19 complete
+- **Fixed:** Separated v1.3 (lenses) from v1.4 (search) in STATE.md
+- **Lesson:** State files can drift — verify against filesystem
+
+### 2026-03-02 (Session 3 continued)
+- Phase 16.2 one-shot: RouteShell + PermissionService
+- 11 route pages replaced with ~27 LOC each
+- Net reduction: 4,262 LOC → 285 LOC (93%)
 
 ### 2026-03-01 (Session 3)
-- **v1.3 roadmap created:** 5 phases (15-19), 22 requirements
-- **Requirement coverage:** 100% (all 22 v1.3 requirements mapped)
-- **Phase structure derived from requirement categories:**
-  - Phase 15: Intent Envelope (INTENT-01..03)
-  - Phase 16: Prefill Integration (PREFILL-01..05)
-  - Phase 17: Readiness States (READY-01..04)
-  - Phase 18: Route & Disambiguation (ROUTE-01..03, DISAMB-01..03)
-  - Phase 19: Agent Deployment (AGENT-01..04)
-- **Success criteria:** 4-4-4-6-4 observable behaviors per phase
-- **Dependencies identified:** Linear flow 15→16→17→18→19
-- **Files written:** ROADMAP.md (appended v1.3 section), STATE.md (updated), REQUIREMENTS.md traceability preserved
-- **Phase 15 Plan 01 complete:**
-  - IntentEnvelope type + supporting types defined
-  - deriveIntentEnvelope() with djb2 hashing implemented
-  - intentEnvelope integrated into useCelesteSearch hook
-  - verifyEnvelopeDeterminism() utility added
-  - 3 commits: 33cdc7e3, 9d4c9271, 72ad52d4
+- v1.3 roadmap created: 7 phases (15-19), 22 requirements
+- Phase 15-19 plans created and executed
 
 ---
 
-## Next Single Action
-
-**Milestone v1.2 In Progress — Search Pipeline Truth Hardening**
-
-Parallel execution of 5 phases:
-- Phase A: Regenerate truth sets with real production IDs (agent running)
-- Phase B: Classify 1,200 queries into difficulty tiers (agent running)
-- Phase C: Validate button rendering across tiers (pending)
-- Phase D: Add confidence-based fallback routing (agent running)
-- Phase E: Measure final Recall@3 with real data (pending — depends on A, B)
-
-Goal: Fix the 96.38% "failure rate" that was actually a validation artifact from synthetic IDs.
-
-### Completed Milestones
-
-**v1.3 — Actionable UX Unification** ✓ COMPLETE
-- IntentEnvelope type + derivation logic
-- /v1/actions/prepare endpoint
-- READY/NEEDS_INPUT/BLOCKED readiness states
-- Fragmented URL routes + disambiguation UX
-- 614 E2E Playwright tests
-
----
-
-## v1.3 Guardrails (Non-Negotiable)
-
-1. **No new random files** — modify existing: useCelesteSearch.ts, SuggestedActions.tsx, ActionModal.tsx, prefill_engine.py
-2. **Single canonical contracts** — ActionSuggestion conforms to: type, lens, confidence, route, query_params, action_id, prefill_preview, readiness
-3. **Determinism first** — same query → same structured output
-4. **No duplicate inference systems** — use existing Action Detector + Entity Extractor
-5. **100% yacht isolation** — all entity lookups scoped by yacht_id
-6. **Explicit role gating** — RLS + backend checks on all mutations
-7. **Surface uncertainty** — never silently assume, always show ambiguity to user
+*This file focuses on LENS work (v1.3). Search work (v1.4) is parked separately.*
