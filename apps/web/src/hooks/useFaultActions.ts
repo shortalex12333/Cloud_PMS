@@ -240,85 +240,17 @@ export function useFaultActions(faultId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Role permission helpers
+// Role permission helpers - DELEGATED TO CENTRALIZED SERVICE
 // ---------------------------------------------------------------------------
 
-/** All crew roles (can report faults, add notes/photos) */
-const ALL_CREW_ROLES = ['crew', 'deckhand', 'steward', 'chef', 'eto', 'engineer', 'chief_engineer', 'chief_officer', 'captain', 'manager'];
+// Re-export from centralized permission service (single source of truth)
+// The centralized service reads from lens_matrix.json, eliminating hardcoded role arrays
+export { useFaultPermissions } from '@/hooks/permissions/useFaultPermissions';
+export type { FaultPermissions } from '@/hooks/permissions/useFaultPermissions';
 
 /**
- * Restricted roles for fault status transitions (acknowledge, close, update, reopen, diagnose, mark false alarm)
- * Source of truth: .planning/agents/lens-matrix/lens_matrix.json → fault.mutate_actions.*.role_restricted
- */
-const FAULT_RESTRICTED_ROLES = ['chief_engineer', 'captain', 'manager'];
-
-/** Roles allowed to add notes/photos — all crew (role_restricted: [] in lens_matrix.json) */
-const ADD_CONTENT_ROLES = ['crew', 'deckhand', 'steward', 'chef', 'eto', 'engineer', 'chief_engineer', 'chief_officer', 'captain', 'manager'];
-
-/** Roles allowed to view manual sections — all crew can access manuals */
-const SHOW_MANUAL_ROLES = ['captain', 'chief_engineer', 'chief_officer', 'manager', 'purser', 'bosun', 'crew', 'deckhand', 'steward', 'chef', 'eto', 'engineer'];
-
-export interface FaultPermissions {
-  /** Can report a new fault (all crew) */
-  canReport: boolean;
-  /** Can acknowledge fault (engineer+) */
-  canAcknowledge: boolean;
-  /** Can close / resolve fault (engineer+) */
-  canClose: boolean;
-  /** Can update fault severity/description (engineer+) */
-  canUpdate: boolean;
-  /** Can reopen a closed fault (engineer+) */
-  canReopen: boolean;
-  /** Can create work order from fault (engineer+) */
-  canCreateWorkOrder: boolean;
-  /** Can mark fault as false alarm (engineer+) */
-  canMarkFalseAlarm: boolean;
-  /** Can diagnose fault (engineer+) */
-  canDiagnose: boolean;
-  /** Can add notes (all crew) */
-  canAddNote: boolean;
-  /** Can add photos (all crew) */
-  canAddPhoto: boolean;
-  /** Can view manual sections (all crew) */
-  canShowManual: boolean;
-}
-
-/**
- * useFaultPermissions
- *
- * Derives boolean capability flags from the current user's role.
- * Used to conditionally show (not disable) action buttons in FaultLens.
- * Per UI_SPEC.md: hide, not disable for role gates.
+ * Legacy interface maintained for backward compatibility.
+ * New code should use useFaultPermissions from '@/hooks/permissions'.
  *
  * Source of truth: .planning/agents/lens-matrix/lens_matrix.json → fault.mutate_actions
- *
- * Role matrix:
- * - report_fault:            role_restricted: [] (all crew)
- * - acknowledge_fault:       role_restricted: ["chief_engineer", "captain", "manager"]
- * - close_fault:             role_restricted: ["chief_engineer", "captain", "manager"]
- * - update_fault:            role_restricted: ["chief_engineer", "captain", "manager"]
- * - reopen_fault:            role_restricted: ["chief_engineer", "captain", "manager"]
- * - diagnose_fault:          role_restricted: ["chief_engineer", "captain", "manager"]
- * - mark_fault_false_alarm:  role_restricted: ["chief_engineer", "captain", "manager"]
- * - add_fault_note:          role_restricted: [] (all crew)
- * - add_fault_photo:         role_restricted: [] (all crew)
- * - show_manual_section:     all crew (not in lens_matrix.json)
  */
-export function useFaultPermissions(): FaultPermissions {
-  const { user } = useAuth();
-  const role = user?.role ?? '';
-
-  return {
-    canReport: ALL_CREW_ROLES.includes(role),
-    canAcknowledge: FAULT_RESTRICTED_ROLES.includes(role),
-    canClose: FAULT_RESTRICTED_ROLES.includes(role),
-    canUpdate: FAULT_RESTRICTED_ROLES.includes(role),
-    canReopen: FAULT_RESTRICTED_ROLES.includes(role),
-    canCreateWorkOrder: FAULT_RESTRICTED_ROLES.includes(role),
-    canMarkFalseAlarm: FAULT_RESTRICTED_ROLES.includes(role),
-    canDiagnose: FAULT_RESTRICTED_ROLES.includes(role),
-    canAddNote: ADD_CONTENT_ROLES.includes(role),
-    canAddPhoto: ADD_CONTENT_ROLES.includes(role),
-    canShowManual: SHOW_MANUAL_ROLES.includes(role),
-  };
-}

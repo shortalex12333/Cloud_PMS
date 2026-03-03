@@ -146,8 +146,8 @@ export function usePartActions(partId: string) {
 
   /** transfer_part — move stock between locations (HOD+) */
   const transferPart = useCallback(
-    (quantity: number, targetLocation: string, notes?: string) =>
-      execute('transfer_part', { quantity, target_location: targetLocation, notes }),
+    (quantity: number, fromLocation: string, toLocation: string, notes?: string) =>
+      execute('transfer_part', { quantity, from_location: fromLocation, to_location: toLocation, notes }),
     [execute]
   );
 
@@ -199,32 +199,25 @@ export function usePartActions(partId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Role permission helpers
+// Role permission helpers - DELEGATED TO CENTRALIZED SERVICE
 // ---------------------------------------------------------------------------
 
-/** All roles with HOD-level or above access */
-const HOD_ROLES = ['chief_engineer', 'eto', 'chief_officer', 'captain', 'manager'];
-
-/** Roles allowed to consume parts (everyone with vessel access) */
-const CONSUME_ROLES = ['crew', 'chief_engineer', 'eto', 'chief_officer', 'captain', 'manager'];
-
-/** Roles allowed to add to shopping list */
-const SHOPPING_LIST_ROLES = ['crew', 'chief_engineer', 'eto', 'chief_officer', 'captain', 'manager'];
+import { usePartPermissions as useCentralizedPartPermissions } from '@/hooks/permissions/usePartPermissions';
 
 export interface PartPermissions {
   /** Can view part details (all authenticated users) */
   canView: boolean;
-  /** Can consume stock (crew can do this — everyone with vessel access) */
+  /** Can consume stock (all roles per lens_matrix) */
   canConsume: boolean;
-  /** Can receive stock (HOD+) */
+  /** Can receive stock (all roles per lens_matrix) */
   canReceive: boolean;
-  /** Can transfer stock between locations (HOD+) */
+  /** Can transfer stock between locations (all roles per lens_matrix) */
   canTransfer: boolean;
-  /** Can manually adjust stock level (HOD+) */
+  /** Can manually adjust stock level (chief_engineer, captain, manager) */
   canAdjustStock: boolean;
-  /** Can write off stock (HOD+) */
+  /** Can write off stock (chief_engineer, captain, manager) */
   canWriteOff: boolean;
-  /** Can add to shopping list (crew and above) */
+  /** Can add to shopping list (all roles per lens_matrix) */
   canAddToShoppingList: boolean;
 }
 
@@ -232,20 +225,19 @@ export interface PartPermissions {
  * usePartPermissions
  *
  * Derives a set of boolean capability flags from the current user's role.
- * These are used to conditionally show (not disable) action buttons.
+ * DELEGATED TO CENTRALIZED SERVICE - reads from lens_matrix.json
  * Per UI_SPEC.md: hide, not disable for role gates.
  */
 export function usePartPermissions(): PartPermissions {
-  const { user } = useAuth();
-  const role = user?.role ?? '';
+  const central = useCentralizedPartPermissions();
 
   return {
     canView: true, // All authenticated users can view parts
-    canConsume: CONSUME_ROLES.includes(role),
-    canReceive: HOD_ROLES.includes(role),
-    canTransfer: HOD_ROLES.includes(role),
-    canAdjustStock: HOD_ROLES.includes(role),
-    canWriteOff: HOD_ROLES.includes(role),
-    canAddToShoppingList: SHOPPING_LIST_ROLES.includes(role),
+    canConsume: central.canConsumePart,
+    canReceive: central.canReceivePart,
+    canTransfer: central.canTransferPart,
+    canAdjustStock: central.canAdjustStockQuantity,
+    canWriteOff: central.canWriteOffPart,
+    canAddToShoppingList: central.canAddToShoppingList,
   };
 }

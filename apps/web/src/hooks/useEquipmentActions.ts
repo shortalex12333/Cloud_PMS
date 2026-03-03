@@ -14,7 +14,9 @@
  * 5. link_part_to_equipment - Add to BOM (engineer+)
  * 6. flag_equipment_attention - Set/clear attention flag (engineer+)
  * 7. decommission_equipment - Terminal state (captain/manager, SIGNED)
+ * 8. archive_equipment - Soft-delete (captain/chief_engineer/manager)
  *
+ * 10. attach_image_with_comment - Upload image with comment (captain+)
  * Role-based access is enforced at the API level; visibility gates live in
  * EquipmentLens (hide, not disable).
  */
@@ -47,6 +49,14 @@ export interface SignatureData {
   signed_at: string;
   signer_name: string;
   signer_role: string;
+}
+
+/** PIN + TOTP signature for restore/archive actions */
+export interface PinTotpSignature {
+  pin: string;
+  totp: string;
+  signer_id: string;
+  signed_at: string;
 }
 
 // API URL — same origin Next.js API route proxied to Render backend
@@ -268,13 +278,13 @@ export function useEquipmentActions(equipmentId: string) {
 
   /**
    * decommission_equipment — Mark equipment as decommissioned (terminal state)
-   * Requires signature capture for audit trail.
+   * Requires PIN + TOTP signature for audit trail.
    *
    * @param reason - Reason for decommissioning
-   * @param signature - Signature data (base64, timestamp, signer info)
+   * @param signature - PIN + TOTP signature data
    */
   const decommissionEquipment = useCallback(
-    (reason: string, signature: SignatureData) =>
+    (reason: string, signature: PinTotpSignature) =>
       execute('decommission_equipment', {
         reason,
         signature,
@@ -283,6 +293,141 @@ export function useEquipmentActions(equipmentId: string) {
   );
 
   // -------------------------------------------------------------------------
+  // decommission_and_replace_equipment
+  // Atomically retire old + create replacement (captain/chief_engineer, SIGNED)
+  // -------------------------------------------------------------------------
+
+  /**
+   * decommissionAndReplace — Retire old equipment and create replacement atomically.
+   * Requires PIN + TOTP signature for audit trail.
+   *
+   * @param replacementEquipment - New equipment details (name, equipment_type, manufacturer?, model?, serial_number?)
+   * @param signature - PIN + TOTP signature data
+   * @param reason - Optional reason for decommissioning and replacement
+   */
+  const decommissionAndReplace = useCallback(
+    (
+      replacementEquipment: {
+        name: string;
+        equipment_type: string;
+        manufacturer?: string;
+        model?: string;
+        serial_number?: string;
+      },
+      signature: PinTotpSignature,
+      reason?: string
+    ) =>
+      execute('decommission_and_replace_equipment', {
+        replacement_equipment: replacementEquipment,
+        signature,
+        reason,
+      }),
+    [execute]
+  );
+
+  // -------------------------------------------------------------------------
+  // set_equipment_status (NEW)
+  // Set equipment status with OOS work order validation
+  // -------------------------------------------------------------------------
+
+  /**
+   * setStatus — Set equipment operational status with work order validation
+   * @param status - Target status (operational, out_of_service, maintenance, decommissioned)
+   * @param workOrderId - Optional work order ID for out_of_service status
+   * @param notes - Optional notes for status change
+   */
+  const setStatus = useCallback(
+    (
+      status: 'operational' | 'out_of_service' | 'maintenance' | 'decommissioned',
+      workOrderId?: string,
+      notes?: string
+    ) =>
+      execute('set_equipment_status', {
+        status,
+        work_order_id: workOrderId,
+        notes,
+      }),
+    [execute]
+  );
+  // -------------------------------------------------------------------------
+  // SPEC ACTION 8: archive_equipment
+  // Soft-delete (captain/chief_engineer/manager)
+  // -------------------------------------------------------------------------
+
+  /**
+   * archiveEquipment — Soft-delete equipment (archive it from active use)
+   * @param reason - Optional reason for archiving
+   */
+  const archiveEquipment = useCallback(
+    (reason?: string) =>
+      execute('archive_equipment', {
+        reason,
+      }),
+    [execute]
+  );
+
+  // -------------------------------------------------------------------------
+  // SPEC ACTION 9: restore_archived_equipment
+  // Unarchive equipment (captain/chief_engineer/manager, SIGNED)
+  // -------------------------------------------------------------------------
+
+  /**
+   * restoreEquipment — Restore an archived equipment record
+   * Requires PIN + TOTP signature for audit trail.
+   *
+   * @param signature - PIN + TOTP signature data
+   * @param reason - Optional reason for restoration
+   */
+  const restoreEquipment = useCallback(
+    (signature: PinTotpSignature, reason?: string) =>
+      execute('restore_archived_equipment', {
+        signature,
+        reason,
+      }),
+    [execute]
+  );
+
+  // -------------------------------------------------------------------------
+  // SPEC ACTION 10: attach_image_with_comment
+  // Upload image with inline comment (captain+)
+  // -------------------------------------------------------------------------
+
+  /**
+   * attachImage — Attach an image to equipment with an optional inline comment
+   * @param imagePath - Storage URL or file path of the image to attach
+   * @param comment - Optional comment or description to attach with the image
+   */
+  const attachImage = useCallback(
+    (imagePath: string, comment?: string) =>
+      execute('attach_image_with_comment', {
+        image_path: imagePath,
+        comment,
+      }),
+    [execute]
+  );
+  // -------------------------------------------------------------------------
+  // SPEC ACTION 8: record_equipment_hours
+  // Record running hours meter reading
+  // -------------------------------------------------------------------------
+
+  /**
+   * recordHours — Record a running hours meter reading for equipment
+   * Logs meter reading to equipment hours audit trail.
+   *
+   * @param reading - The hours meter reading value (numeric)
+   * @param readingDate - Optional date of reading (ISO string, defaults to now)
+   * @param notes - Optional notes about the reading
+   */
+  const recordHours = useCallback(
+    (reading: number, readingDate?: string, notes?: string) =>
+      execute("record_equipment_hours", {
+        reading,
+        reading_date: readingDate,
+        notes,
+      }),
+    [execute]
+  );
+
   // Legacy actions (kept for backward compatibility)
   // -------------------------------------------------------------------------
 
@@ -361,7 +506,7 @@ export function useEquipmentActions(equipmentId: string) {
     isLoading,
     error,
 
-    // SPEC ACTIONS (7 required per equipment_lens_v2_PHASE_4_ACTIONS.md)
+    // SPEC ACTIONS (8 required per equipment_lens_v2_PHASE_4_ACTIONS.md)
     updateEquipmentStatus,      // 1. Change status (engineer+)
     addEquipmentNote,           // 2. Add note (all crew)
     attachFileToEquipment,      // 3. Upload photo/doc (all crew)
@@ -369,6 +514,12 @@ export function useEquipmentActions(equipmentId: string) {
     linkPartToEquipment,        // 5. Add to BOM (engineer+)
     flagEquipmentAttention,     // 6. Set/clear attention flag (engineer+)
     decommissionEquipment,      // 7. Terminal state (captain/manager, SIGNED)
+    archiveEquipment,           // 8. Soft-delete (captain/chief_engineer/manager)
+    restoreEquipment,           // 8. Unarchive equipment (captain/chief_engineer/manager, SIGNED)
+    decommissionAndReplace,     // 8. Retire + create replacement (captain/chief_engineer, SIGNED)
+    attachImage,                // 10. Attach image with comment (captain+)
+    recordHours,                // 11. Record meter reading (captain+)
+    setStatus,                  // Set status with OOS work order validation
 
     // Legacy actions (backward compatibility)
     viewEquipment,
@@ -381,90 +532,93 @@ export function useEquipmentActions(equipmentId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Role permission helpers
+// Role permission helpers - DELEGATED TO CENTRALIZED SERVICE
 // ---------------------------------------------------------------------------
 
-/** All roles with HOD-level or above access */
-const HOD_ROLES = ['chief_engineer', 'eto', 'chief_officer', 'captain', 'manager'];
+import { useEquipmentPermissions as useCentralizedEquipmentPermissions } from '@/hooks/permissions/useEquipmentPermissions';
 
-/** Engineer+ roles (can update status, create WOs, link parts, flag attention) */
-const ENGINEER_PLUS_ROLES = ['engineer', 'chief_engineer', 'eto', 'captain', 'manager'];
-
-/** Roles allowed to decommission equipment (captain/manager only - requires signature) */
-const DECOMMISSION_ROLES = ['captain', 'manager'];
-
-/** All crew can add notes and attach files */
-const ALL_CREW_ROLES = ['crew', 'deck', 'interior', 'engineer', 'chief_engineer', 'eto', 'chief_officer', 'captain', 'manager'];
-
-/** Roles allowed to update equipment details */
-const UPDATE_ROLES = ['chief_engineer', 'eto', 'captain', 'manager'];
-
-/** Roles allowed to create work orders */
-const CREATE_WO_ROLES = ['chief_engineer', 'eto', 'chief_officer', 'captain', 'manager'];
-
-/** Roles allowed to link documents */
-const LINK_DOC_ROLES = ['chief_engineer', 'eto', 'captain', 'manager'];
-
-/** Roles allowed to log running hours */
-const LOG_HOURS_ROLES = ['chief_engineer', 'eto', 'engineer', 'captain', 'manager'];
-
+// Extended interface with additional legacy permissions not in lens_matrix.json
 export interface EquipmentPermissions {
   /** Can view equipment details (all crew) */
   canView: boolean;
-  /** Can update equipment fields (HOD+) */
+  /** Can update equipment fields (chief_engineer, captain, manager) */
   canUpdate: boolean;
-  /** Can link a document to this equipment */
+  /** Can link a document to this equipment (all roles per lens_matrix) */
   canLinkDocument: boolean;
   /** Can create a work order from this equipment */
   canCreateWorkOrder: boolean;
   /** Can report a fault on this equipment */
   canReportFault: boolean;
-  /** Can log running hours for this equipment */
+  /** Can log running hours for this equipment (all roles per lens_matrix) */
   canLogHours: boolean;
 
-  // SPEC ACTION PERMISSIONS
-  /** Can update equipment status (engineer+) */
+  // From lens_matrix.json equipment lens
+  /** Can update equipment status (chief_engineer, captain, manager) */
   canUpdateStatus: boolean;
   /** Can add notes (all crew) */
   canAddNote: boolean;
   /** Can attach files (all crew) */
   canAttachFile: boolean;
-  /** Can create work order for equipment (engineer+) */
+  /** Can create work order for equipment */
   canCreateWorkOrderForEquipment: boolean;
-  /** Can link part to equipment BOM (engineer+) */
+  /** Can link part to equipment BOM */
   canLinkPart: boolean;
-  /** Can flag equipment for attention (engineer+) */
+  /** Can flag equipment for attention */
   canFlagAttention: boolean;
   /** Can decommission equipment (captain/manager, requires signature) */
   canDecommission: boolean;
+  /** Can decommission and replace equipment */
+  canDecommissionReplace: boolean;
+  /** Can record equipment hours */
+  canRecordHours: boolean;
+  /** Can restore archived equipment */
+  canRestore: boolean;
+  /** Can archive equipment */
+  canArchive: boolean;
+  /** Can attach images with comments */
+  canAttachImage: boolean;
+  /** Can set equipment status */
+  canSetStatus: boolean;
 }
 
 /**
  * useEquipmentPermissions
  *
  * Derives a set of boolean capability flags from the current user's role.
- * These are used to conditionally show (not disable) action buttons.
+ * DELEGATED TO CENTRALIZED SERVICE - reads from lens_matrix.json
+ *
+ * Note: Some legacy permissions are derived from the centralized equipment lens,
+ * which only has 5 actions. Extended permissions use the same derivation logic.
  */
 export function useEquipmentPermissions(): EquipmentPermissions {
-  const { user } = useAuth();
-  const role = user?.role ?? '';
+  const central = useCentralizedEquipmentPermissions();
 
   return {
-    // Legacy permissions
-    canView: true, // All authenticated users can view equipment
-    canUpdate: UPDATE_ROLES.includes(role),
-    canLinkDocument: LINK_DOC_ROLES.includes(role),
-    canCreateWorkOrder: CREATE_WO_ROLES.includes(role),
-    canReportFault: HOD_ROLES.includes(role),
-    canLogHours: LOG_HOURS_ROLES.includes(role),
+    // All authenticated users can view
+    canView: true,
 
-    // SPEC ACTION PERMISSIONS (7 required)
-    canUpdateStatus: ENGINEER_PLUS_ROLES.includes(role),      // 1. engineer+
-    canAddNote: ALL_CREW_ROLES.includes(role),                // 2. all crew
-    canAttachFile: ALL_CREW_ROLES.includes(role),             // 3. all crew
-    canCreateWorkOrderForEquipment: ENGINEER_PLUS_ROLES.includes(role), // 4. engineer+
-    canLinkPart: ENGINEER_PLUS_ROLES.includes(role),          // 5. engineer+
-    canFlagAttention: ENGINEER_PLUS_ROLES.includes(role),     // 6. engineer+
-    canDecommission: DECOMMISSION_ROLES.includes(role),       // 7. captain/manager (signed)
+    // From lens_matrix.json equipment lens
+    canUpdate: central.canUpdateEquipment,
+    canUpdateStatus: central.canSetEquipmentStatus,
+    canLinkDocument: central.canLinkDocumentToEquipment,
+    canLogHours: central.canUpdateRunningHours,
+    canRecordHours: central.canUpdateRunningHours,
+
+    // Derived permissions - use update_equipment role restriction
+    canCreateWorkOrder: central.canUpdateEquipment,
+    canReportFault: central.canUpdateEquipment,
+    canCreateWorkOrderForEquipment: central.canUpdateEquipment,
+    canLinkPart: central.canUpdateEquipment,
+    canFlagAttention: central.canUpdateEquipment,
+    canDecommission: central.canSetEquipmentStatus,
+    canDecommissionReplace: central.canSetEquipmentStatus,
+    canRestore: central.canSetEquipmentStatus,
+    canArchive: central.canSetEquipmentStatus,
+    canSetStatus: central.canSetEquipmentStatus,
+
+    // All roles can do these (role_restricted: [])
+    canAddNote: central.canLinkDocumentToEquipment, // Uses same "all roles" logic
+    canAttachFile: central.canLinkDocumentToEquipment,
+    canAttachImage: central.canLinkDocumentToEquipment,
   };
 }

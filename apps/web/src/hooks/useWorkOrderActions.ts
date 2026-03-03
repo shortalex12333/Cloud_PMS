@@ -11,7 +11,7 @@
  *   add_wo_part, add_parts_to_work_order, add_work_order_photo,
  *   assign_work_order, reassign_work_order, update_work_order,
  *   archive_work_order, add_wo_hours, view_work_order_checklist,
- *   create_work_order_from_fault
+ *   create_work_order_from_fault, view_my_work_orders, view_related_entities
  *
  * Role-based access is enforced at the API level; visibility gates live in
  * WorkOrderLens (hide, not disable).
@@ -205,6 +205,28 @@ export function useWorkOrderActions(workOrderId: string) {
     [execute]
   );
 
+  /** view_my_work_orders — fetch work orders assigned to current user (read-only) */
+  const viewMyWorkOrders = useCallback(
+    (params?: {
+      status_filter?: string[];
+      date_range?: { start: string; end: string };
+      group_by?: 'status' | 'priority' | 'equipment';
+    }) =>
+      execute('view_my_work_orders', {
+        status_filter: params?.status_filter,
+        date_range: params?.date_range,
+        group_by: params?.group_by,
+      }),
+    [execute]
+  );
+
+  /** view_related_entities — fetch context links (parts, manuals, handovers, faults, certificates) */
+  const viewRelatedEntities = useCallback(
+    (entityTypes?: ('part' | 'manual' | 'handover' | 'fault' | 'certificate')[]) =>
+      execute('view_related_entities', { entity_types: entityTypes }),
+    [execute]
+  );
+
   // -------------------------------------------------------------------------
   // Return
   // -------------------------------------------------------------------------
@@ -244,68 +266,63 @@ export function useWorkOrderActions(workOrderId: string) {
 
     // Read-only
     viewChecklist,
+    viewMyWorkOrders,
+    viewRelatedEntities,
   };
 }
 
 // ---------------------------------------------------------------------------
-// Role permission helpers
+// Role permission helpers - DELEGATED TO CENTRALIZED SERVICE
 // ---------------------------------------------------------------------------
 
-/** All roles with HOD-level or above access */
-const HOD_ROLES = ['chief_engineer', 'eto', 'chief_officer', 'captain', 'manager'];
-
-/** Roles allowed to close work orders */
-const CLOSE_ROLES = ['chief_engineer', 'chief_officer', 'captain', 'manager'];
-
-/** Roles allowed to add parts / photos */
-const ADD_PARTS_ROLES = ['chief_engineer', 'chief_officer', 'captain'];
-
-/** Roles allowed to archive work orders */
-const ARCHIVE_ROLES = ['captain', 'manager'];
+import { useWorkOrderPermissions as useCentralizedWorkOrderPermissions } from '@/hooks/permissions/useWorkOrderPermissions';
 
 export interface WorkOrderPermissions {
-  /** Can add a note (HOD+) */
+  /** Can add a note (all roles per lens_matrix) */
   canAddNote: boolean;
-  /** Can close/complete (senior HOD+) */
+  /** Can close/complete (chief_engineer, captain, manager) */
   canClose: boolean;
-  /** Can start the work order (HOD+) */
+  /** Can start the work order (all roles) */
   canStart: boolean;
-  /** Can cancel (HOD+) */
+  /** Can cancel (chief_engineer, captain, manager) */
   canCancel: boolean;
-  /** Can add parts (chief_engineer, chief_officer, captain) */
+  /** Can add parts (all roles per lens_matrix) */
   canAddPart: boolean;
-  /** Can add photos */
+  /** Can add photos (all roles per lens_matrix) */
   canAddPhoto: boolean;
-  /** Can assign/reassign (HOD+) */
+  /** Can assign/reassign (chief_engineer, captain, manager) */
   canAssign: boolean;
-  /** Can archive (captain, manager only) */
+  /** Can archive (chief_engineer, captain, manager) */
   canArchive: boolean;
-  /** Can update WO details (HOD+) */
+  /** Can update WO details (all roles per lens_matrix) */
   canUpdate: boolean;
-  /** Can log hours (HOD+) */
+  /** Can log hours (all roles) */
   canAddHours: boolean;
+  /** Can view related entities */
+  canViewRelated: boolean;
 }
 
 /**
  * useWorkOrderPermissions
  *
  * Derives a set of boolean capability flags from the current user's role.
- * These are used to conditionally show (not disable) action buttons.
+ * DELEGATED TO CENTRALIZED SERVICE - reads from lens_matrix.json
  */
 export function useWorkOrderPermissions(): WorkOrderPermissions {
-  const { user } = useAuth();
-  const role = user?.role ?? '';
+  const central = useCentralizedWorkOrderPermissions();
 
   return {
-    canAddNote: HOD_ROLES.includes(role),
-    canClose: CLOSE_ROLES.includes(role),
-    canStart: HOD_ROLES.includes(role),
-    canCancel: HOD_ROLES.includes(role),
-    canAddPart: ADD_PARTS_ROLES.includes(role),
-    canAddPhoto: ADD_PARTS_ROLES.includes(role),
-    canAssign: HOD_ROLES.includes(role),
-    canArchive: ARCHIVE_ROLES.includes(role),
-    canUpdate: HOD_ROLES.includes(role),
-    canAddHours: HOD_ROLES.includes(role),
+    // From lens_matrix.json work_order lens
+    canAddNote: central.canAddNoteToWorkOrder,
+    canClose: central.canCloseWorkOrder,
+    canStart: central.canUpdateWorkOrder, // Starting is an update action
+    canCancel: central.canCloseWorkOrder, // Cancel requires same permissions as close
+    canAddPart: central.canAddPartToWorkOrder,
+    canAddPhoto: central.canAttachPhotoToWorkOrder,
+    canAssign: central.canAssignWorkOrder,
+    canArchive: central.canCloseWorkOrder, // Archive requires close permissions
+    canUpdate: central.canUpdateWorkOrder,
+    canAddHours: central.canUpdateWorkOrder, // Hours update is a WO update
+    canViewRelated: true, // All authenticated users can view related entities
   };
 }

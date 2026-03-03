@@ -1,0 +1,763 @@
+{
+  "generated_at": "2026-03-02T17:45:35Z",
+  "version": "1.0",
+  "lenses": {
+    "work_order": {
+      "lens": "work_order",
+      "read_filters": {
+        "status": ["draft", "open", "in_progress", "pending_parts", "completed", "closed", "cancelled"],
+        "priority": ["routine", "urgent", "emergency"],
+        "type": ["planned", "unplanned", "corrective", "preventive"],
+        "equipment_id": null,
+        "assigned_to": null,
+        "due_date": {"field": "due_date", "type": "date"},
+        "created_at": {"field": "created_at", "type": "datetime"}
+      },
+      "mutate_actions": {
+        "create_work_order": {
+          "action_id": "create_work_order",
+          "required_fields": ["title", "equipment_id", "priority", "type"],
+          "optional_fields": ["description", "scheduled_date", "due_date", "assigned_to"],
+          "role_restricted": [],
+          "requires_signature": true,
+          "confirmation_message": "Create new work order for this equipment?"
+        },
+        "create_work_order_from_fault": {
+          "action_id": "create_work_order_from_fault",
+          "required_fields": ["fault_id", "title", "equipment_id", "priority"],
+          "optional_fields": ["description", "scheduled_date"],
+          "role_restricted": [],
+          "requires_signature": true
+        },
+        "update_work_order": {
+          "action_id": "update_work_order",
+          "required_fields": ["work_order_id"],
+          "optional_fields": ["title", "description", "priority", "status", "due_date", "assigned_to"],
+          "role_restricted": []
+        },
+        "add_note_to_work_order": {
+          "action_id": "add_note_to_work_order",
+          "required_fields": ["work_order_id", "note_text"],
+          "optional_fields": [],
+          "role_restricted": []
+        },
+        "add_part_to_work_order": {
+          "action_id": "add_part_to_work_order",
+          "required_fields": ["work_order_id", "part_id", "quantity"],
+          "optional_fields": ["notes"],
+          "role_restricted": []
+        },
+        "mark_work_order_complete": {
+          "action_id": "mark_work_order_complete",
+          "required_fields": ["work_order_id", "resolution"],
+          "optional_fields": ["completion_notes"],
+          "role_restricted": [],
+          "requires_signature": true
+        },
+        "assign_work_order": {
+          "action_id": "assign_work_order",
+          "required_fields": ["work_order_id", "assigned_to"],
+          "optional_fields": ["assignment_notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_confirmation": true
+        },
+        "close_work_order": {
+          "action_id": "close_work_order",
+          "required_fields": ["work_order_id"],
+          "optional_fields": ["close_notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_confirmation": true
+        },
+        "schedule_work_order": {
+          "action_id": "schedule_work_order",
+          "required_fields": ["work_order_id", "scheduled_date"],
+          "optional_fields": ["scheduled_time"],
+          "role_restricted": []
+        },
+        "set_priority_on_work_order": {
+          "action_id": "set_priority_on_work_order",
+          "required_fields": ["work_order_id", "priority"],
+          "optional_fields": [],
+          "role_restricted": []
+        },
+        "attach_photo_to_work_order": {
+          "action_id": "attach_photo_to_work_order",
+          "required_fields": ["work_order_id", "photo_storage_path"],
+          "optional_fields": ["caption"],
+          "role_restricted": []
+        },
+        "attach_document_to_work_order": {
+          "action_id": "attach_document_to_work_order",
+          "required_fields": ["work_order_id", "document_id"],
+          "optional_fields": ["notes"],
+          "role_restricted": []
+        }
+      }
+    },
+    "fault": {
+      "lens": "fault",
+      "read_filters": {
+        "status": ["open", "investigating", "work_ordered", "resolved", "closed", "false_alarm"],
+        "severity": ["cosmetic", "minor", "major", "critical", "safety"],
+        "equipment_id": null,
+        "reported_by": null,
+        "reported_at": {"field": "reported_at", "type": "datetime"},
+        "location": null
+      },
+      "mutate_actions": {
+        "report_fault": {
+          "action_id": "report_fault",
+          "required_fields": ["title", "equipment_id", "severity"],
+          "optional_fields": ["description", "fault_code", "photo_storage_path"],
+          "role_restricted": [],
+          "severity_mapping": {
+            "low": "cosmetic",
+            "medium": "minor",
+            "high": "major"
+          }
+        },
+        "acknowledge_fault": {
+          "action_id": "acknowledge_fault",
+          "required_fields": ["fault_id"],
+          "optional_fields": ["acknowledgment_notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "close_fault": {
+          "action_id": "close_fault",
+          "required_fields": ["fault_id", "resolution"],
+          "optional_fields": ["resolution_notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "update_fault": {
+          "action_id": "update_fault",
+          "required_fields": ["fault_id"],
+          "optional_fields": ["title", "description", "severity", "status"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "add_fault_photo": {
+          "action_id": "add_fault_photo",
+          "required_fields": ["fault_id", "photo_storage_path"],
+          "optional_fields": ["caption"],
+          "role_restricted": []
+        },
+        "add_fault_note": {
+          "action_id": "add_fault_note",
+          "required_fields": ["fault_id", "note_text"],
+          "optional_fields": [],
+          "role_restricted": []
+        },
+        "diagnose_fault": {
+          "action_id": "diagnose_fault",
+          "required_fields": ["fault_id", "diagnosis"],
+          "optional_fields": ["recommended_parts", "recommended_action"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "reopen_fault": {
+          "action_id": "reopen_fault",
+          "required_fields": ["fault_id"],
+          "optional_fields": ["reopen_reason"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "mark_fault_false_alarm": {
+          "action_id": "mark_fault_false_alarm",
+          "required_fields": ["fault_id"],
+          "optional_fields": ["false_alarm_reason"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        }
+      }
+    },
+    "equipment": {
+      "lens": "equipment",
+      "read_filters": {
+        "status": ["operational", "out_of_service", "maintenance", "decommissioned"],
+        "category": null,
+        "location": null,
+        "manufacturer": null,
+        "install_date": {"field": "install_date", "type": "date"},
+        "last_service_date": {"field": "last_service_date", "type": "date"},
+        "risk_score": {"field": "risk_score", "type": "numeric", "range": [0, 1]}
+      },
+      "mutate_actions": {
+        "update_equipment": {
+          "action_id": "update_equipment",
+          "required_fields": ["equipment_id"],
+          "optional_fields": ["name", "model", "manufacturer", "serial_number", "location", "notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "set_equipment_status": {
+          "action_id": "set_equipment_status",
+          "required_fields": ["equipment_id", "status"],
+          "optional_fields": ["status_reason", "work_order_id"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "status_flow": {
+            "operational": ["out_of_service", "maintenance"],
+            "out_of_service": ["operational", "maintenance", "decommissioned"],
+            "maintenance": ["operational", "out_of_service"],
+            "decommissioned": []
+          }
+        },
+        "link_document_to_equipment": {
+          "action_id": "link_document_to_equipment",
+          "required_fields": ["equipment_id", "document_id"],
+          "optional_fields": ["link_type", "notes"],
+          "role_restricted": []
+        },
+        "update_running_hours": {
+          "action_id": "update_running_hours",
+          "required_fields": ["equipment_id", "running_hours"],
+          "optional_fields": ["recorded_at"],
+          "role_restricted": []
+        },
+        "log_contractor_work": {
+          "action_id": "log_contractor_work",
+          "required_fields": ["equipment_id", "contractor_name", "work_description"],
+          "optional_fields": ["work_date", "invoice_reference"],
+          "role_restricted": []
+        }
+      }
+    },
+    "part": {
+      "lens": "part",
+      "read_filters": {
+        "stock_status": ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK", "OVERSTOCKED", "ON_ORDER"],
+        "category": null,
+        "manufacturer": null,
+        "location": null,
+        "equipment_id": null,
+        "reorder_needed": {"field": "reorder_needed", "type": "boolean"}
+      },
+      "mutate_actions": {
+        "consume_part": {
+          "action_id": "consume_part",
+          "required_fields": ["part_id", "quantity", "work_order_id"],
+          "optional_fields": ["consumption_notes", "location"],
+          "role_restricted": [],
+          "idempotency_enforced": true,
+          "error_codes": {
+            "INSUFFICIENT_STOCK": 409
+          }
+        },
+        "receive_part": {
+          "action_id": "receive_part",
+          "required_fields": ["part_id", "quantity", "supplier_id"],
+          "optional_fields": ["receiving_id", "location", "batch_number", "expiry_date"],
+          "role_restricted": [],
+          "idempotency_enforced": true
+        },
+        "transfer_part": {
+          "action_id": "transfer_part",
+          "required_fields": ["part_id", "quantity", "from_location", "to_location"],
+          "optional_fields": ["transfer_notes"],
+          "role_restricted": []
+        },
+        "adjust_stock_quantity": {
+          "action_id": "adjust_stock_quantity",
+          "required_fields": ["part_id", "new_quantity", "adjustment_reason"],
+          "optional_fields": ["adjustment_notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_signature": true
+        },
+        "write_off_part": {
+          "action_id": "write_off_part",
+          "required_fields": ["part_id", "quantity", "write_off_reason"],
+          "optional_fields": ["photo_storage_path"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_signature": true
+        },
+        "add_to_shopping_list": {
+          "action_id": "add_to_shopping_list",
+          "required_fields": ["part_id", "quantity_requested"],
+          "optional_fields": ["urgency", "required_by_date", "notes"],
+          "role_restricted": []
+        },
+        "order_part": {
+          "action_id": "order_part",
+          "required_fields": ["part_id", "quantity", "supplier_id"],
+          "optional_fields": ["expected_delivery", "purchase_order_reference"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_confirmation": true
+        }
+      }
+    },
+    "inventory": {
+      "lens": "inventory",
+      "read_filters": {
+        "stock_status": ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK", "OVERSTOCKED", "ON_ORDER"],
+        "location": null,
+        "category": null,
+        "reorder_needed": {"field": "reorder_needed", "type": "boolean"},
+        "last_counted_at": {"field": "last_counted_at", "type": "datetime"}
+      },
+      "mutate_actions": {
+        "log_part_usage": {
+          "action_id": "log_part_usage",
+          "required_fields": ["part_id", "quantity", "work_order_id"],
+          "optional_fields": ["usage_notes"],
+          "role_restricted": []
+        },
+        "update_stock_level": {
+          "action_id": "update_stock_level",
+          "required_fields": ["part_id", "quantity_change", "reason"],
+          "optional_fields": ["reference_id", "notes"],
+          "role_restricted": []
+        },
+        "create_purchase_request": {
+          "action_id": "create_purchase_request",
+          "required_fields": ["part_id", "quantity_requested"],
+          "optional_fields": ["urgency", "required_by_date", "notes", "preferred_supplier"],
+          "role_restricted": []
+        },
+        "reserve_part": {
+          "action_id": "reserve_part",
+          "required_fields": ["part_id", "quantity", "work_order_id"],
+          "optional_fields": ["reservation_notes"],
+          "role_restricted": []
+        },
+        "count_inventory": {
+          "action_id": "count_inventory",
+          "required_fields": ["part_id", "counted_quantity"],
+          "optional_fields": ["count_notes", "discrepancy_reason"],
+          "role_restricted": []
+        }
+      }
+    },
+    "certificate": {
+      "lens": "certificate",
+      "read_filters": {
+        "status": ["draft", "active", "superseded", "expired", "revoked"],
+        "certificate_type": null,
+        "vessel_or_crew": ["vessel", "crew"],
+        "expiry_date": {"field": "expiry_date", "type": "date"},
+        "is_expiring_soon": {"field": "is_expiring_soon", "type": "boolean"},
+        "is_expired": {"field": "is_expired", "type": "boolean"}
+      },
+      "vessel_certificate_types": ["ISM", "ISPS", "SOLAS", "MLC", "CLASS", "FLAG", "SEC", "SRC", "SCC", "LOAD_LINE", "TONNAGE", "MARPOL", "IOPP"],
+      "crew_certificate_types": ["STCW", "ENG1", "COC", "GMDSS", "BST", "PSC", "AFF", "MEDICAL_CARE"],
+      "mutate_actions": {
+        "create_vessel_certificate": {
+          "action_id": "create_vessel_certificate",
+          "required_fields": ["certificate_type", "issue_date", "expiry_date", "issuing_authority"],
+          "optional_fields": ["certificate_number", "document_id", "notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_confirmation": true
+        },
+        "create_crew_certificate": {
+          "action_id": "create_crew_certificate",
+          "required_fields": ["certificate_type", "crew_member_id", "issue_date", "expiry_date", "issuing_authority"],
+          "optional_fields": ["certificate_number", "document_id", "notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_confirmation": true
+        },
+        "update_certificate": {
+          "action_id": "update_certificate",
+          "required_fields": ["certificate_id"],
+          "optional_fields": ["expiry_date", "notes", "status"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "link_document_to_certificate": {
+          "action_id": "link_document_to_certificate",
+          "required_fields": ["certificate_id", "document_id"],
+          "optional_fields": ["link_notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "supersede_certificate": {
+          "action_id": "supersede_certificate",
+          "required_fields": ["certificate_id", "new_certificate_id"],
+          "optional_fields": ["supersede_notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_signature": true
+        },
+        "delete_certificate": {
+          "action_id": "delete_certificate",
+          "required_fields": ["certificate_id", "delete_reason"],
+          "optional_fields": [],
+          "role_restricted": ["manager"],
+          "requires_confirmation": true
+        },
+        "upload_certificate_document": {
+          "action_id": "upload_certificate_document",
+          "required_fields": ["certificate_id", "document_storage_path"],
+          "optional_fields": ["document_description"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_confirmation": true
+        },
+        "update_certificate_metadata": {
+          "action_id": "update_certificate_metadata",
+          "required_fields": ["certificate_id"],
+          "optional_fields": ["issuing_authority", "certificate_number", "notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"],
+          "requires_confirmation": true
+        }
+      }
+    },
+    "handover": {
+      "lens": "handover",
+      "read_filters": {
+        "category": ["ongoing_fault", "work_in_progress", "equipment_status", "important_info", "general"],
+        "priority": ["low", "normal", "high"],
+        "created_at": {"field": "created_at", "type": "datetime"},
+        "author": null,
+        "entity_type": ["fault", "work_order", "equipment", "part", "document"]
+      },
+      "mutate_actions": {
+        "add_to_handover": {
+          "action_id": "add_to_handover",
+          "required_fields": ["title", "summary_text", "category"],
+          "optional_fields": ["entity_type", "entity_id", "priority", "equipment_name", "location"],
+          "role_restricted": [],
+          "entity_category_mapping": {
+            "fault": "ongoing_fault",
+            "work_order": "work_in_progress",
+            "document": "important_info",
+            "equipment": "equipment_status",
+            "part": "general"
+          }
+        },
+        "edit_handover_item": {
+          "action_id": "edit_handover_item",
+          "required_fields": ["handover_item_id"],
+          "optional_fields": ["title", "summary_text", "category", "priority"],
+          "role_restricted": []
+        },
+        "attach_document_to_handover": {
+          "action_id": "attach_document_to_handover",
+          "required_fields": ["handover_item_id", "document_id"],
+          "optional_fields": ["attachment_notes"],
+          "role_restricted": []
+        },
+        "export_handover": {
+          "action_id": "export_handover",
+          "required_fields": ["export_format"],
+          "optional_fields": ["date_range_start", "date_range_end", "categories"],
+          "role_restricted": [],
+          "requires_confirmation": true
+        },
+        "regenerate_handover_summary": {
+          "action_id": "regenerate_handover_summary",
+          "required_fields": ["handover_export_id"],
+          "optional_fields": [],
+          "role_restricted": []
+        },
+        "edit_handover_section": {
+          "action_id": "edit_handover_section",
+          "required_fields": ["handover_export_id", "section_key"],
+          "optional_fields": ["section_content"],
+          "role_restricted": []
+        }
+      }
+    },
+    "hours_of_rest": {
+      "lens": "hours_of_rest",
+      "read_filters": {
+        "user_id": null,
+        "record_date": {"field": "record_date", "type": "date"},
+        "start_date": {"field": "record_date", "type": "date"},
+        "end_date": {"field": "record_date", "type": "date"},
+        "is_daily_compliant": {"field": "is_daily_compliant", "type": "boolean"},
+        "is_weekly_compliant": {"field": "is_weekly_compliant", "type": "boolean"},
+        "warning_status": ["active", "acknowledged", "dismissed"]
+      },
+      "compliance_standards": ["ILO MLC 2006", "STCW Convention"],
+      "mutate_actions": {
+        "log_hours_of_rest": {
+          "action_id": "log_hours_of_rest",
+          "required_fields": ["record_date", "rest_periods"],
+          "optional_fields": ["notes"],
+          "role_restricted": [],
+          "requires_confirmation": true
+        },
+        "upsert_hours_of_rest": {
+          "action_id": "upsert_hours_of_rest",
+          "required_fields": ["user_id", "record_date", "rest_periods"],
+          "optional_fields": ["total_rest_hours", "total_work_hours", "notes"],
+          "role_restricted": []
+        },
+        "create_monthly_signoff": {
+          "action_id": "create_monthly_signoff",
+          "required_fields": ["user_id", "month", "year"],
+          "optional_fields": [],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "sign_monthly_signoff": {
+          "action_id": "sign_monthly_signoff",
+          "required_fields": ["signoff_id", "signature_type"],
+          "optional_fields": ["signature_notes"],
+          "role_restricted": [],
+          "requires_signature": true,
+          "signature_types": ["crew", "hod", "captain"]
+        },
+        "create_crew_template": {
+          "action_id": "create_crew_template",
+          "required_fields": ["template_name", "rest_periods"],
+          "optional_fields": ["description"],
+          "role_restricted": []
+        },
+        "apply_crew_template": {
+          "action_id": "apply_crew_template",
+          "required_fields": ["template_id", "start_date", "end_date"],
+          "optional_fields": ["user_id"],
+          "role_restricted": []
+        },
+        "acknowledge_warning": {
+          "action_id": "acknowledge_warning",
+          "required_fields": ["warning_id"],
+          "optional_fields": ["acknowledgment_notes"],
+          "role_restricted": []
+        },
+        "dismiss_warning": {
+          "action_id": "dismiss_warning",
+          "required_fields": ["warning_id", "dismissal_reason"],
+          "optional_fields": [],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        }
+      }
+    },
+    "warranty": {
+      "lens": "warranty",
+      "read_filters": {
+        "status": ["active", "expired", "claimed", "voided"],
+        "equipment_id": null,
+        "part_id": null,
+        "expiry_date": {"field": "expiry_date", "type": "date"},
+        "is_expiring_soon": {"field": "is_expiring_soon", "type": "boolean"},
+        "supplier": null
+      },
+      "mutate_actions": {
+        "create_warranty": {
+          "action_id": "create_warranty",
+          "required_fields": ["equipment_id", "start_date", "end_date", "supplier"],
+          "optional_fields": ["warranty_number", "coverage_details", "document_id", "notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "update_warranty": {
+          "action_id": "update_warranty",
+          "required_fields": ["warranty_id"],
+          "optional_fields": ["end_date", "coverage_details", "notes", "status"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "claim_warranty": {
+          "action_id": "claim_warranty",
+          "required_fields": ["warranty_id", "claim_description", "fault_id"],
+          "optional_fields": ["claim_reference", "supporting_documents"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "void_warranty": {
+          "action_id": "void_warranty",
+          "required_fields": ["warranty_id", "void_reason"],
+          "optional_fields": ["void_notes"],
+          "role_restricted": ["manager"],
+          "requires_confirmation": true
+        },
+        "link_document_to_warranty": {
+          "action_id": "link_document_to_warranty",
+          "required_fields": ["warranty_id", "document_id"],
+          "optional_fields": ["link_notes"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "extend_warranty": {
+          "action_id": "extend_warranty",
+          "required_fields": ["warranty_id", "new_end_date"],
+          "optional_fields": ["extension_notes", "extension_reference"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        }
+      }
+    },
+    "shopping_list": {
+      "lens": "shopping_list",
+      "read_filters": {
+        "status": ["candidate", "under_review", "approved", "ordered", "partially_fulfilled", "fulfilled", "installed", "rejected"],
+        "source_type": ["inventory_low", "inventory_oos", "work_order_usage", "receiving_missing", "receiving_damaged", "manual_add"],
+        "urgency": ["low", "normal", "high", "critical"],
+        "created_at": {"field": "created_at", "type": "datetime"},
+        "required_by_date": {"field": "required_by_date", "type": "date"},
+        "part_id": null
+      },
+      "status_flow": {
+        "candidate": ["under_review", "approved"],
+        "under_review": ["approved", "rejected"],
+        "approved": ["ordered"],
+        "ordered": ["partially_fulfilled", "fulfilled"],
+        "partially_fulfilled": ["fulfilled"],
+        "fulfilled": ["installed"],
+        "installed": [],
+        "rejected": []
+      },
+      "mutate_actions": {
+        "create_shopping_list_item": {
+          "action_id": "create_shopping_list_item",
+          "required_fields": ["part_name", "quantity_requested", "source_type"],
+          "optional_fields": ["part_id", "part_number", "manufacturer", "unit", "preferred_supplier", "estimated_unit_price", "urgency", "required_by_date", "source_work_order_id", "source_receiving_id", "source_notes"],
+          "role_restricted": []
+        },
+        "approve_shopping_list_item": {
+          "action_id": "approve_shopping_list_item",
+          "required_fields": ["item_id"],
+          "optional_fields": ["approval_notes", "approved_quantity"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "reject_shopping_list_item": {
+          "action_id": "reject_shopping_list_item",
+          "required_fields": ["item_id", "rejection_reason"],
+          "optional_fields": [],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "promote_candidate_to_part": {
+          "action_id": "promote_candidate_to_part",
+          "required_fields": ["item_id", "part_category", "min_quantity"],
+          "optional_fields": ["part_number", "manufacturer", "location", "unit"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "update_shopping_list_item": {
+          "action_id": "update_shopping_list_item",
+          "required_fields": ["item_id"],
+          "optional_fields": ["quantity_requested", "urgency", "required_by_date", "notes"],
+          "role_restricted": []
+        },
+        "mark_item_ordered": {
+          "action_id": "mark_item_ordered",
+          "required_fields": ["item_id", "purchase_order_id"],
+          "optional_fields": ["expected_delivery"],
+          "role_restricted": ["chief_engineer", "captain", "manager"]
+        },
+        "mark_item_received": {
+          "action_id": "mark_item_received",
+          "required_fields": ["item_id", "quantity_received"],
+          "optional_fields": ["receiving_notes", "receiving_id"],
+          "role_restricted": []
+        }
+      }
+    },
+    "email": {
+      "lens": "email",
+      "read_filters": {
+        "filter_state": ["all", "linked", "unlinked"],
+        "search_query": null,
+        "thread_id": null,
+        "has_attachments": {"field": "has_attachments", "type": "boolean"},
+        "is_read": {"field": "is_read", "type": "boolean"},
+        "received_at": {"field": "received_at", "type": "datetime"}
+      },
+      "link_entity_types": ["work_order", "equipment", "fault", "part", "handover"],
+      "mutate_actions": {
+        "link_email_to_entity": {
+          "action_id": "link_email_to_entity",
+          "required_fields": ["thread_id", "entity_type", "entity_id"],
+          "optional_fields": ["link_notes"],
+          "role_restricted": []
+        },
+        "unlink_email_from_entity": {
+          "action_id": "unlink_email_from_entity",
+          "required_fields": ["link_id"],
+          "optional_fields": [],
+          "role_restricted": []
+        },
+        "create_work_order_from_email": {
+          "action_id": "create_work_order_from_email",
+          "required_fields": ["thread_id", "title", "equipment_id", "priority"],
+          "optional_fields": ["description", "scheduled_date"],
+          "role_restricted": [],
+          "requires_signature": true
+        },
+        "create_fault_from_email": {
+          "action_id": "create_fault_from_email",
+          "required_fields": ["thread_id", "title", "equipment_id", "severity"],
+          "optional_fields": ["description"],
+          "role_restricted": []
+        },
+        "mark_thread_read": {
+          "action_id": "mark_thread_read",
+          "required_fields": ["thread_id"],
+          "optional_fields": [],
+          "role_restricted": []
+        },
+        "archive_thread": {
+          "action_id": "archive_thread",
+          "required_fields": ["thread_id"],
+          "optional_fields": ["archive_reason"],
+          "role_restricted": [],
+          "requires_confirmation": true
+        },
+        "download_attachment": {
+          "action_id": "download_attachment",
+          "required_fields": ["message_id", "attachment_id"],
+          "optional_fields": [],
+          "role_restricted": []
+        }
+      }
+    },
+    "receiving": {
+      "lens": "receiving",
+      "read_filters": {
+        "status": ["draft", "pending_review", "accepted", "rejected"],
+        "supplier_id": null,
+        "created_at": {"field": "created_at", "type": "datetime"},
+        "received_at": {"field": "received_at", "type": "datetime"},
+        "has_discrepancies": {"field": "has_discrepancies", "type": "boolean"}
+      },
+      "mutate_actions": {
+        "create_receiving": {
+          "action_id": "create_receiving",
+          "required_fields": ["supplier_id"],
+          "optional_fields": ["expected_items", "purchase_order_id", "notes"],
+          "role_restricted": []
+        },
+        "attach_receiving_image_with_comment": {
+          "action_id": "attach_receiving_image_with_comment",
+          "required_fields": ["receiving_id", "image_storage_path"],
+          "optional_fields": ["comment", "image_type"],
+          "role_restricted": []
+        },
+        "extract_receiving_candidates": {
+          "action_id": "extract_receiving_candidates",
+          "required_fields": ["receiving_id", "image_id"],
+          "optional_fields": [],
+          "role_restricted": [],
+          "advisory_only": true
+        },
+        "update_receiving_fields": {
+          "action_id": "update_receiving_fields",
+          "required_fields": ["receiving_id"],
+          "optional_fields": ["supplier_id", "notes", "received_date"],
+          "role_restricted": []
+        },
+        "add_receiving_item": {
+          "action_id": "add_receiving_item",
+          "required_fields": ["receiving_id", "part_id", "quantity_received"],
+          "optional_fields": ["condition", "location", "batch_number", "expiry_date", "notes"],
+          "role_restricted": []
+        },
+        "adjust_receiving_item": {
+          "action_id": "adjust_receiving_item",
+          "required_fields": ["receiving_item_id", "quantity_received"],
+          "optional_fields": ["adjustment_reason", "condition"],
+          "role_restricted": []
+        },
+        "link_invoice_document": {
+          "action_id": "link_invoice_document",
+          "required_fields": ["receiving_id", "document_id"],
+          "optional_fields": ["invoice_number", "invoice_date"],
+          "role_restricted": []
+        },
+        "accept_receiving": {
+          "action_id": "accept_receiving",
+          "required_fields": ["receiving_id"],
+          "optional_fields": ["acceptance_notes"],
+          "role_restricted": [],
+          "requires_signature": true
+        },
+        "reject_receiving": {
+          "action_id": "reject_receiving",
+          "required_fields": ["receiving_id", "rejection_reason"],
+          "optional_fields": ["rejection_notes"],
+          "role_restricted": []
+        }
+      }
+    }
+  },
+  "metadata": {
+    "total_lenses": 12,
+    "total_actions": 81,
+    "total_filters": 67,
+    "lenses_list": ["work_order", "fault", "equipment", "part", "inventory", "certificate", "handover", "hours_of_rest", "warranty", "shopping_list", "email", "receiving"]
+  }
+}
