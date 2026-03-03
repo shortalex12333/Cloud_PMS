@@ -29,6 +29,8 @@ import { HoursOfRestLensContent } from './HoursOfRestLensContent';
 import { WarrantyLensContent } from './WarrantyLensContent';
 import { ShoppingListLensContent } from './ShoppingListLensContent';
 import { DocumentLensContent } from './DocumentLensContent';
+import { WorklistLensContent } from './WorklistLensContent';
+import { EmailLensContent } from './EmailLensContent';
 
 export interface LensRendererProps {
   /** Entity type to render */
@@ -135,13 +137,17 @@ export function LensRenderer({
       return <ShoppingListLensContent {...commonProps} />;
     case 'document':
       return <DocumentLensContent {...commonProps} />;
+    case 'worklist':
+      return <WorklistLensContent {...commonProps} />;
+    case 'email':
+      return <EmailLensContent {...commonProps} />;
     default:
       return (
         <div className="p-6 text-celeste-text-muted">
           <p>Unknown entity type: {entityType}</p>
           <p className="typo-meta mt-2 text-celeste-text-disabled">
             Supported types: work_order, fault, equipment, part, inventory, receiving,
-            certificate, handover, handover_export, hours_of_rest, warranty, shopping_list, document
+            certificate, handover, handover_export, hours_of_rest, warranty, shopping_list, document, worklist, email
           </p>
         </div>
       );
