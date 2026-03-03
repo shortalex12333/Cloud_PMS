@@ -15,6 +15,9 @@ import { RouteLayout } from '@/components/layout';
 import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { useFaultActions, useFaultPermissions } from '@/hooks/useFaultActions';
+import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
+import { toast } from 'sonner';
 
 function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -103,7 +106,17 @@ function NotFoundState() {
   );
 }
 
-function FaultContent({ data, onNavigate }: { data: Record<string, unknown>; onNavigate: (type: string, id: string) => void }) {
+function FaultContent({
+  data,
+  faultId,
+  onNavigate,
+  onRefresh,
+}: {
+  data: Record<string, unknown>;
+  faultId: string;
+  onNavigate: (type: string, id: string) => void;
+  onRefresh: () => void;
+}) {
   const title = (data?.title || 'Fault') as string;
   const severity = (data?.severity || '') as string;
   const status = (data?.status || '') as string;
@@ -112,6 +125,78 @@ function FaultContent({ data, onNavigate }: { data: Record<string, unknown>; onN
   const equipmentName = data?.equipment_name as string;
   const reportedBy = data?.reported_by_name as string;
   const reportedAt = data?.reported_at as string;
+
+  // Action hooks - wired up for button functionality (Fixed 2026-03-02)
+  const {
+    isLoading: actionLoading,
+    closeFault,
+    acknowledgeFault,
+    reopenFault,
+  } = useFaultActions(faultId);
+  const permissions = useFaultPermissions();
+
+  // Modal state
+  const [showCreateWoModal, setShowCreateWoModal] = React.useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
+
+  // Action handlers
+  const handleClose = React.useCallback(async () => {
+    const result = await closeFault();
+    if (result.success) {
+      toast.success('Fault closed');
+      onRefresh();
+    } else {
+      toast.error('Failed to close fault', { description: result.error });
+    }
+    setShowStatusDropdown(false);
+  }, [closeFault, onRefresh]);
+
+  const handleAcknowledge = React.useCallback(async () => {
+    const result = await acknowledgeFault();
+    if (result.success) {
+      toast.success('Fault acknowledged');
+      onRefresh();
+    } else {
+      toast.error('Failed to acknowledge fault', { description: result.error });
+    }
+    setShowStatusDropdown(false);
+  }, [acknowledgeFault, onRefresh]);
+
+  const handleReopen = React.useCallback(async () => {
+    const result = await reopenFault();
+    if (result.success) {
+      toast.success('Fault reopened');
+      onRefresh();
+    } else {
+      toast.error('Failed to reopen fault', { description: result.error });
+    }
+    setShowStatusDropdown(false);
+  }, [reopenFault, onRefresh]);
+
+  const handleCreateWorkOrder = React.useCallback(() => {
+    setShowCreateWoModal(true);
+  }, []);
+
+  const handleWoCreated = React.useCallback((woId: string) => {
+    setShowCreateWoModal(false);
+    toast.success('Work order created');
+    onNavigate('work_order', woId);
+  }, [onNavigate]);
+
+  // Determine available status actions based on current status
+  const statusActions = React.useMemo(() => {
+    const actions: Array<{ label: string; onClick: () => void; visible: boolean }> = [];
+    if (status !== 'acknowledged' && permissions.canAcknowledge) {
+      actions.push({ label: 'Acknowledge', onClick: handleAcknowledge, visible: true });
+    }
+    if (status !== 'closed' && permissions.canClose) {
+      actions.push({ label: 'Close', onClick: handleClose, visible: true });
+    }
+    if (status === 'closed' && permissions.canReopen) {
+      actions.push({ label: 'Reopen', onClick: handleReopen, visible: true });
+    }
+    return actions;
+  }, [status, permissions, handleAcknowledge, handleClose, handleReopen]);
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -153,10 +238,97 @@ function FaultContent({ data, onNavigate }: { data: Record<string, unknown>; onN
         )}
       </div>
 
-      <div className="flex gap-3 pt-4 border-t border-white/10">
-        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">Update Status</button>
-        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition-colors">Create Work Order</button>
+      {/* Action buttons - GAP-006 FIX: Added dedicated buttons with testids matching Lens components */}
+      <div className="flex flex-wrap gap-3 pt-4 border-t border-white/10">
+        {/* Create Work Order - primary action for open faults */}
+        {permissions.canCreateWorkOrder && status === 'open' && (
+          <button
+            onClick={handleCreateWorkOrder}
+            disabled={actionLoading}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+            data-testid="create-wo-button"
+          >
+            Create Work Order
+          </button>
+        )}
+
+        {/* Acknowledge - for open faults, Engineer+ */}
+        {permissions.canAcknowledge && status === 'open' && (
+          <button
+            onClick={handleAcknowledge}
+            disabled={actionLoading}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+            data-testid="acknowledge-fault-btn"
+          >
+            {actionLoading ? 'Acknowledging...' : 'Acknowledge'}
+          </button>
+        )}
+
+        {/* Close - for open/investigating faults, Engineer+ */}
+        {permissions.canClose && ['open', 'investigating', 'acknowledged'].includes(status) && (
+          <button
+            onClick={handleClose}
+            disabled={actionLoading}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+            data-testid="close-fault-btn"
+          >
+            {actionLoading ? 'Closing...' : 'Close'}
+          </button>
+        )}
+
+        {/* Reopen - for closed/resolved faults, Engineer+ */}
+        {permissions.canReopen && ['closed', 'resolved', 'false_alarm'].includes(status) && (
+          <button
+            onClick={handleReopen}
+            disabled={actionLoading}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+            data-testid="reopen-fault-btn"
+          >
+            {actionLoading ? 'Reopening...' : 'Reopen'}
+          </button>
+        )}
+
+        {/* False Alarm - for open/investigating faults, Engineer+ */}
+        {permissions.canMarkFalseAlarm && ['open', 'investigating', 'acknowledged'].includes(status) && (
+          <button
+            onClick={() => {
+              // Mark as false alarm
+              toast.info('False alarm requires reason', { description: 'Please use full lens for this action' });
+            }}
+            disabled={actionLoading}
+            className="px-4 py-2 bg-amber-600/20 text-amber-400 border border-amber-500/50 hover:bg-amber-600/30 rounded-lg text-sm transition-colors disabled:opacity-50"
+            data-testid="false-alarm-btn"
+          >
+            False Alarm
+          </button>
+        )}
+
+        {/* Add Note - all crew */}
+        {permissions.canAddNote && (
+          <button
+            onClick={() => {
+              toast.info('Add note', { description: 'Please use full lens for notes' });
+            }}
+            disabled={actionLoading}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+            data-testid="add-note-btn"
+          >
+            Add Note
+          </button>
+        )}
       </div>
+
+      {/* Create Work Order Modal */}
+      <CreateWorkOrderModal
+        open={showCreateWoModal}
+        onOpenChange={setShowCreateWoModal}
+        onSuccess={handleWoCreated}
+        context={{
+          fault_id: faultId,
+          fault_description: description || '',
+          suggested_title: `WO for: ${title}`,
+        }}
+      />
     </div>
   );
 }
@@ -199,7 +371,7 @@ function FaultDetailPageContent() {
     content = msg.includes('404') ? <NotFoundState /> : <ErrorState message={msg} onRetry={handleRefresh} />;
   }
   else if (!fault) content = <NotFoundState />;
-  else content = <FaultContent data={fault} onNavigate={handleNavigate} />;
+  else content = <FaultContent data={fault} faultId={faultId} onNavigate={handleNavigate} onRefresh={handleRefresh} />;
 
   return (
     <RouteLayout
