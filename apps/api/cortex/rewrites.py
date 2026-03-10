@@ -25,7 +25,7 @@ from functools import lru_cache
 
 from openai import AsyncOpenAI
 
-from services.types import UserContext, SearchBudget, DEFAULT_BUDGET
+from services.user_context_types import UserContext, SearchBudget, DEFAULT_BUDGET
 
 # Optional Redis for cross-process caching
 try:
@@ -331,6 +331,93 @@ def _generate_stopword_rewrites(query: str) -> List[Rewrite]:
     return []
 
 
+# ============================================================================
+# Preamble Stripping (Belt-and-Suspenders for Trigram/TSV)
+# ============================================================================
+
+import re as _re
+
+# Common natural-language preambles that add noise trigrams without matching
+# anything in the search_index. These poison pg_trgm similarity scores.
+_PREAMBLE_PATTERNS = [
+    _re.compile(r'^show\s+me\s+(?:the\s+)?', _re.IGNORECASE),
+    _re.compile(r'^find\s+me\s+(?:the\s+)?', _re.IGNORECASE),
+    _re.compile(r'^search\s+for\s+(?:the\s+)?', _re.IGNORECASE),
+    _re.compile(r'^look\s+up\s+(?:the\s+)?', _re.IGNORECASE),
+    _re.compile(r'^where\s+is\s+(?:the\s+)?', _re.IGNORECASE),
+    _re.compile(r'^where\s+are\s+(?:the\s+)?', _re.IGNORECASE),
+    _re.compile(r'^i\s+need\s+(?:the\s+|a\s+|to\s+(?:see|find|get)\s+(?:the\s+)?)?', _re.IGNORECASE),
+    _re.compile(r'^can\s+you\s+(?:show|find|get)\s+(?:me\s+)?(?:the\s+)?', _re.IGNORECASE),
+    _re.compile(r'^(?:please\s+)?(?:show|find|get)\s+(?:me\s+)?(?:the\s+)?', _re.IGNORECASE),
+    _re.compile(r'^get\s+me\s+(?:the\s+)?', _re.IGNORECASE),
+    _re.compile(r'^what\s+is\s+(?:the\s+|a\s+)?', _re.IGNORECASE),
+    _re.compile(r'^(?:the\s+)?(?:filter|part|item)\s+(?:for|of)\s+(?:the\s+)?', _re.IGNORECASE),
+]
+
+# Mid-query connector phrases that add TSV AND requirements without matching
+# search_index content. Applied as second-level cleanup after preamble stripping.
+_CONNECTOR_PATTERNS = [
+    _re.compile(r'\s+with\s+(?:the\s+|a\s+)?(?:code|number|id|ref)\s+', _re.IGNORECASE),
+    _re.compile(r'\s+for\s+the\s+', _re.IGNORECASE),
+    _re.compile(r'\s+from\s+the\s+', _re.IGNORECASE),
+    _re.compile(r'\s+on\s+the\s+', _re.IGNORECASE),
+    _re.compile(r'\s+of\s+the\s+', _re.IGNORECASE),
+]
+
+
+def _strip_preamble(query: str) -> Optional[str]:
+    """
+    Strip natural-language preamble from query for trigram/TSV improvement.
+
+    Returns stripped text if meaningful (>=3 chars and different from original),
+    or None if no preamble found or result too short.
+
+    Examples:
+        _strip_preamble("Show me the fuel filter") -> "fuel filter"
+        _strip_preamble("fuel filter") -> None  (no preamble)
+        _strip_preamble("Show me") -> None  (result too short)
+    """
+    text = query.strip()
+    for pattern in _PREAMBLE_PATTERNS:
+        stripped = pattern.sub('', text).strip()
+        if stripped and len(stripped) >= 3 and stripped.lower() != text.lower():
+            return stripped
+    return None
+
+
+def _normalize_wo_numbers(query: str) -> Optional[str]:
+    """
+    Normalize work order references to canonical WO-NNNN format.
+
+    This is FORMAT NORMALIZATION (same class as text_cleaner compound splits),
+    NOT a synonym. WO numbers have a canonical format in search_index.
+
+    Examples:
+        _normalize_wo_numbers("work order 37 sewage") → "WO-0037 sewage"
+        _normalize_wo_numbers("wo 45 generator") → "WO-0045 generator"
+        _normalize_wo_numbers("fuel filter") → None  (no WO reference)
+    """
+    # Match "work order [#]N", "wo [#]N", "wo#N", "work order number N"
+    pattern = _re.compile(
+        r'\b(?:work\s+order\s+(?:number\s+)?#?|wo[\s\-#]?)(\d{1,4})\b',
+        _re.IGNORECASE
+    )
+    match = pattern.search(query)
+    if not match:
+        return None
+
+    number = int(match.group(1))
+    wo_code = f"WO-{number:04d}"
+
+    # Replace the matched pattern with the canonical form
+    normalized = pattern.sub(wo_code, query).strip()
+
+    # Only return if different from original
+    if normalized.lower() != query.lower():
+        return normalized
+    return None
+
+
 async def generate_rewrites(
     query: str,
     ctx: UserContext,
@@ -353,7 +440,7 @@ async def generate_rewrites(
         RewriteResult with list of Rewrite objects
 
     GUARDRAILS:
-    - Max 3 rewrites (including original)
+    - Max 5 rewrites (all go in ONE SQL call via f1_search_cards, zero extra latency)
     - Must complete within budget.rewrite_budget_ms
     - Cache key includes tenant context for isolation
     """
@@ -382,6 +469,58 @@ async def generate_rewrites(
         confidence=1.0,
     )]
 
+    # PRIORITY 0: Preamble stripping (belt-and-suspenders for trigram/TSV)
+    # Strips "Show me the", "Find me the", etc. that poison pg_trgm similarity.
+    # Original query is ALWAYS kept — stripped version is ADDITIVE only.
+    stripped = _strip_preamble(query)
+    if stripped and stripped not in [r.text for r in rewrites]:
+        rewrites.append(Rewrite(
+            text=stripped,
+            source="preamble_stripped",
+            confidence=0.95,
+        ))
+        logger.debug(f"[Cortex] Preamble stripped: '{query}' -> '{stripped}'")
+
+    # PRIORITY 0.1: Connector-phrase stripping (second-level cleanup)
+    # After preamble is stripped, remove mid-query connector phrases that
+    # add TSV AND requirements without matching search_index content.
+    # "GPS signal lost fault with code E032" → "GPS signal lost fault E032"
+    connector_base = stripped if stripped else query
+    connector_stripped = connector_base
+    for cp in _CONNECTOR_PATTERNS:
+        connector_stripped = cp.sub(' ', connector_stripped).strip()
+
+    if connector_stripped and len(connector_stripped) >= 3 and connector_stripped.lower() != connector_base.lower():
+        if connector_stripped not in [r.text for r in rewrites]:
+            rewrites.append(Rewrite(
+                text=connector_stripped,
+                source="connector_stripped",
+                confidence=0.90,
+            ))
+            logger.debug(f"[Cortex] Connector stripped: '{connector_base}' -> '{connector_stripped}'")
+
+    # PRIORITY 0.5: WO-number normalization (format normalization, NOT synonym)
+    # Converts "work order 37" → "WO-0037" for TSV matching.
+    wo_normalized = _normalize_wo_numbers(query)
+    if wo_normalized and wo_normalized not in [r.text for r in rewrites]:
+        rewrites.append(Rewrite(
+            text=wo_normalized,
+            source="wo_normalized",
+            confidence=0.95,
+        ))
+        logger.debug(f"[Cortex] WO normalized: '{query}' -> '{wo_normalized}'")
+
+    # Also normalize the preamble-stripped version if it exists
+    if stripped:
+        wo_from_stripped = _normalize_wo_numbers(stripped)
+        if wo_from_stripped and wo_from_stripped not in [r.text for r in rewrites]:
+            rewrites.append(Rewrite(
+                text=wo_from_stripped,
+                source="wo_normalized_stripped",
+                confidence=0.90,
+            ))
+            logger.debug(f"[Cortex] WO normalized (stripped): '{stripped}' -> '{wo_from_stripped}'")
+
     # Check time budget
     def _time_remaining_ms() -> int:
         return budget_ms - int((time.time() - start_time) * 1000)
@@ -393,12 +532,12 @@ async def generate_rewrites(
         if stopword_rewrites:
             # Stopword rewrites take precedence - add all and skip other rewrites
             for sr in stopword_rewrites:
-                if len(rewrites) >= 3:
+                if len(rewrites) >= 5:
                     break
                 if sr.text not in [r.text for r in rewrites]:
                     rewrites.append(sr)
-            # Cap at 3 and skip other rewrites for stopwords
-            rewrites = rewrites[:3]
+            # Cap at 5 and skip other rewrites for stopwords
+            rewrites = rewrites[:5]
             logger.info(
                 f"[Cortex] Stopword detected: '{query}' -> {len(rewrites)} rewrites "
                 f"(bypassing FTS stop word filter)"
@@ -420,22 +559,22 @@ async def generate_rewrites(
             rewrites.append(abbrev_rewrite)
 
     # Generate synonym rewrites
-    if len(rewrites) < 3 and _time_remaining_ms() > 10:
+    if len(rewrites) < 5 and _time_remaining_ms() > 10:
         synonym_rewrites = _generate_synonyms(query)
         for sr in synonym_rewrites:
-            if len(rewrites) >= 3:
+            if len(rewrites) >= 5:
                 break
             if sr.text not in [r.text for r in rewrites]:
                 rewrites.append(sr)
 
     # Generate prefix expansion for short queries
-    if len(rewrites) < 3 and len(query.strip()) <= 8 and _time_remaining_ms() > 10:
+    if len(rewrites) < 5 and len(query.strip()) <= 8 and _time_remaining_ms() > 10:
         prefix_rewrite = _generate_prefix_expansion(query)
         if prefix_rewrite and prefix_rewrite.text not in [r.text for r in rewrites]:
             rewrites.append(prefix_rewrite)
 
-    # Cap at 3 rewrites
-    rewrites = rewrites[:3]
+    # Cap at 5 rewrites (all go in ONE SQL call via f1_search_cards, zero extra latency)
+    rewrites = rewrites[:5]
 
     # Cache results
     await _set_cached_rewrites(cache_key, rewrites)

@@ -51,7 +51,7 @@ from starlette.responses import StreamingResponse
 from middleware.auth import get_authenticated_user
 
 # F1 Search types and services
-from services.types import UserContext, SearchBudget, DEFAULT_BUDGET
+from services.user_context_types import UserContext, SearchBudget, DEFAULT_BUDGET
 
 # Cortex rewrites and embeddings
 from cortex.rewrites import generate_rewrites, generate_embeddings, Rewrite, RewriteResult
@@ -273,13 +273,10 @@ router = APIRouter(prefix="/api/f1/search", tags=["f1-search"])
 # Format: postgresql://service_role:...@db.xxx.supabase.co:6543/postgres
 _raw_dsn = os.getenv("READ_DB_DSN") or os.getenv("DATABASE_URL")
 
-# Ensure we use Supavisor pooler (port 6543) not direct connection (port 5432)
-# Direct connections exhaust PostgreSQL slots under SSE streaming load
-if _raw_dsn and ":5432" in _raw_dsn:
-    READ_DSN = _raw_dsn.replace(":5432", ":6543")
-    logger.warning("[F1Search] Switched port 5432 → 6543 (Supavisor pooler for connection safety)")
-else:
-    READ_DSN = _raw_dsn
+# Use DSN as-is. Supavisor pooler (:6543) is NOT available for this tenant
+# (returns "Tenant or user not found"). Direct connection (:5432) works.
+# The asyncpg pool below already limits concurrent connections (max 10).
+READ_DSN = _raw_dsn
 
 # Connection pool (lazy init)
 _pool: Optional[asyncpg.Pool] = None
@@ -287,7 +284,10 @@ _pool: Optional[asyncpg.Pool] = None
 
 async def _init_connection(conn):
     """Initialize connection with statement_timeout (Supabase doesn't support as startup param)."""
-    await conn.execute("SET statement_timeout = '800ms'")
+    # Local dev has ~262ms TCP latency to Supabase; Render has ~10ms.
+    # Use F1_STATEMENT_TIMEOUT env to override (default: 3000ms for headroom).
+    st = os.getenv("F1_STATEMENT_TIMEOUT", "3000")
+    await conn.execute(f"SET statement_timeout = '{st}ms'")
 
 
 async def get_db_pool() -> asyncpg.Pool:
@@ -300,7 +300,7 @@ async def get_db_pool() -> asyncpg.Pool:
             READ_DSN,
             min_size=2,
             max_size=10,
-            command_timeout=1.5,  # 1500ms - must exceed statement_timeout (800ms) + network latency
+            command_timeout=5.0,  # Must exceed statement_timeout + network latency (~262ms local)
             statement_cache_size=0,  # LAW 14: Disable statement caching for pgbouncer/Supavisor compatibility
             init=_init_connection,  # Set statement_timeout after connection
         )
@@ -316,7 +316,8 @@ async def get_db_connection() -> asyncpg.Connection:
         statement_cache_size=0,  # LAW 14: Disable statement caching for pgbouncer/Supavisor compatibility
     )
     # Set statement_timeout after connection (Supabase doesn't support as startup param)
-    await conn.execute("SET statement_timeout = '800ms'")
+    st = os.getenv("F1_STATEMENT_TIMEOUT", "3000")
+    await conn.execute(f"SET statement_timeout = '{st}ms'")
     return conn
 
 
@@ -568,8 +569,11 @@ def reciprocal_rank_fusion(
         if not scores[key].get('search_text') and item.get('search_text'):
             scores[key]['search_text'] = item.get('search_text')
 
-    # Sort by RRF score descending
-    fused = sorted(scores.values(), key=lambda x: x['rrf_score'], reverse=True)
+    # Sort by RRF score descending, break ties by object_id for deterministic ordering
+    fused = sorted(
+        scores.values(),
+        key=lambda x: (-x['rrf_score'], str(x.get('object_id', ''))),
+    )
 
     # Build final result format
     results = []
@@ -757,19 +761,19 @@ async def call_hyper_search_multi(
 
     GUARDRAILS:
     - Must have ctx.org_id (RLS requirement)
-    - Max 3 rewrites
+    - Max 5 rewrites
     - statement_timeout enforced by connection
 
     Args:
         conn: asyncpg connection
-        rewrites: List of Rewrite objects (max 3)
+        rewrites: List of Rewrite objects (max 5)
         ctx: UserContext with org_id and yacht_id
         rrf_k: RRF smoothing constant (default 60)
         page_limit: Max results to return (default 20)
         object_types: Optional list of object_types to filter results
     """
-    # Ensure max 3 rewrites
-    rewrites = rewrites[:3]
+    # Ensure max 5 rewrites
+    rewrites = rewrites[:5]
 
     texts = [r.text for r in rewrites]
 
@@ -792,7 +796,7 @@ async def call_hyper_search_multi(
     # Pass object_types as 8th parameter (NULL = search all types)
     rows = await conn.fetch(
         """
-        SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
+        SELECT object_type, object_id, payload, search_text, fused_score, best_rewrite_idx, ranks, components
         FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
         """,
         texts,
@@ -923,8 +927,8 @@ async def f1_search_stream(
             # find "Watermaker/Desalinator" via vector similarity
 
             # LAW 23 Constants
-            L1_FAST_BUDGET_MS = 150  # Fast path: typical OpenAI latency with warm cache
-            L2_DEEP_BUDGET_MS = 800  # Deep path: wait for cold OpenAI if L1 fails
+            L1_FAST_BUDGET_MS = int(os.getenv("F1_L1_EMBEDDING_BUDGET_MS", "500"))
+            L2_DEEP_BUDGET_MS = int(os.getenv("F1_L2_EMBEDDING_BUDGET_MS", "2000"))
             L1_MIN_RESULTS_THRESHOLD = 3  # Escalate to L2 if fewer than this many hits
 
             # Start L1 embedding generation as background task
@@ -955,45 +959,31 @@ async def f1_search_stream(
             # NOTE: We extract entities and detect intent for analytics/diagnostics,
             # but we do NOT use them to filter the search. This ensures unbiased
             # global search - if we guess wrong on intent, we don't hide results.
+            # PERF: Fire-and-forget — extraction runs in background while search
+            # proceeds immediately. Results collected after search completes.
             # ================================================================
 
             detected_object_types = None  # For analytics only, NOT passed to search
             extraction_result = None
             extracted_entities = {}
+            extraction_task = None  # Background task for entity extraction
 
-            # Try ExtractionOrchestrator first (richer entity extraction)
+            # Fire extraction as background task (does NOT block search)
             orchestrator = get_orchestrator()
             if orchestrator:
-                with tracer.start_as_current_span("extraction.orchestrator") as span:
-                    span.set_attribute("search_id", search_id)
+                async def _extract_entities():
+                    """Background entity extraction — analytics only."""
                     try:
-                        extraction_result = await orchestrator.extract(q)
-                        extracted_entities = extraction_result.get('entities', {})
-                        span.set_attribute("entity_types", ",".join(extracted_entities.keys()))
-                        span.set_attribute("needs_ai", extraction_result.get('metadata', {}).get('needs_ai', False))
-
-                        # Map extracted entities to object_types (for analytics only)
-                        detected_object_types = map_entities_to_object_types(extracted_entities)
-
-                        if detected_object_types:
-                            logger.info(
-                                f"[F1Search] Orchestrator detected (analytics only): search_id={search_id[:8]}..., "
-                                f"entities={list(extracted_entities.keys())}, "
-                                f"detected_types={detected_object_types}"
-                            )
-                        else:
-                            logger.debug(
-                                f"[F1Search] Orchestrator: no object_type mapping for entities={list(extracted_entities.keys())}"
-                            )
-
+                        return await orchestrator.extract(q)
                     except Exception as e:
                         logger.warning(f"[F1Search] Orchestrator extraction failed: {e}")
-                        span.set_attribute("error", str(e))
+                        return None
 
-            # Fallback to domain detection if orchestrator didn't produce mappings
-            if not detected_object_types:
-                detected_object_types = detect_target_object_types(q)
+                extraction_task = asyncio.create_task(_extract_entities())
+                logger.debug(f"[F1Search] Extraction task started (fire-and-forget): {search_id[:8]}...")
 
+            # Domain detection fallback (instant, no AI) — used while extraction runs
+            detected_object_types = detect_target_object_types(q)
             if detected_object_types:
                 logger.info(
                     f"[F1Search] Intent detected (analytics only): search_id={search_id[:8]}..., "
@@ -1054,10 +1044,24 @@ async def f1_search_stream(
                             span.set_attribute("result_count", len(results))
                             return results
 
-                    # Run text search immediately
+                    # Run text search immediately (graceful degradation on failure)
                     with tracer.start_as_current_span("law23.l1_text_search") as span:
                         span.set_attribute("search_id", search_id)
-                        text_results = await run_text_search()
+                        try:
+                            text_results = await run_text_search()
+                        except (asyncpg.exceptions.QueryCanceledError, asyncio.TimeoutError) as e:
+                            logger.warning(
+                                f"[F1Search] Text search failed (degrading gracefully): "
+                                f"search_id={search_id[:8]}..., error={type(e).__name__}: {e}"
+                            )
+                            text_results = []
+                        except Exception as e:
+                            logger.error(
+                                f"[F1Search] Text search unexpected error: "
+                                f"search_id={search_id[:8]}..., error={e}",
+                                exc_info=True
+                            )
+                            text_results = []
                         span.set_attribute("text_result_count", len(text_results))
 
                     # ============================================================
@@ -1308,6 +1312,26 @@ async def f1_search_stream(
                     "partial": False,
                     "count": len(items),
                 })
+
+            # ================================================================
+            # Phase 4d: Collect extraction results (if ready)
+            # Extraction ran in background during search. Collect with short
+            # timeout — if not done, use empty dict (search was unaffected).
+            # ================================================================
+            if extraction_task is not None:
+                try:
+                    extraction_result = await asyncio.wait_for(extraction_task, timeout=0.1)
+                    if extraction_result:
+                        extracted_entities = extraction_result.get('entities', {})
+                        detected_object_types = map_entities_to_object_types(extracted_entities) or detected_object_types
+                        logger.debug(
+                            f"[F1Search] Extraction collected post-search: "
+                            f"entities={list(extracted_entities.keys())}"
+                        )
+                except asyncio.TimeoutError:
+                    logger.debug(f"[F1Search] Extraction still running at finalize — using empty entities")
+                except Exception as e:
+                    logger.warning(f"[F1Search] Extraction collection failed: {e}")
 
             # ================================================================
             # Phase 5: Finalize
