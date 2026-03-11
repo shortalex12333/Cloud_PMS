@@ -661,16 +661,25 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
             raise HTTPException(status_code=404, detail="Receiving not found")
 
         data = response.data
+
+        items_response = supabase.table('pms_receiving_items') \
+            .select('id, description, quantity_expected, quantity_received, unit_price, currency, part_id') \
+            .eq('receiving_id', receiving_id) \
+            .eq('yacht_id', yacht_id) \
+            .execute()
+
         return {
             "id": data.get('id'),
             "vendor_name": data.get('vendor_name'),
             "vendor_reference": data.get('vendor_reference'),
+            "po_number": data.get('po_number'),
             "received_date": data.get('received_date'),
             "status": data.get('status', 'draft'),
             "total": data.get('total'),
             "currency": data.get('currency'),
             "notes": data.get('notes'),
             "received_by": data.get('received_by'),
+            "items": items_response.data or [],
             "created_at": data.get('created_at'),
             "updated_at": data.get('updated_at'),
         }
