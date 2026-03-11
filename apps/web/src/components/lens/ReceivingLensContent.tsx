@@ -80,7 +80,7 @@ export function ReceivingLensContent({
     { label: 'Status', value: statusLabel, color: statusColor },
     { label: 'Vendor', value: vendor_name },
     { label: 'Items', value: `${items.length} item${items.length === 1 ? '' : 's'}` },
-    { label: 'Total', value: total !== undefined ? `${currency} ${total.toFixed(2)}` : '—' },
+    { label: 'Total', value: total != null ? `${currency} ${total.toFixed(2)}` : '—' },
     { label: 'Received', value: received_date ? formatRelativeTime(received_date) : '—' },
   ];
 
