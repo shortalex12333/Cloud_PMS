@@ -1,0 +1,480 @@
+[
+  {
+    "action_id": "consume_part",
+    "description": "Natural language patterns for consuming/using parts from inventory",
+    "variants": [
+      {
+        "text": "used 3 oil filters on the generator service",
+        "entities": {
+          "part_name": "oil filter",
+          "quantity": 3,
+          "equipment_name": "generator"
+        }
+      },
+      {
+        "text": "took an impeller from stock for WO-2024-050",
+        "entities": {
+          "part_name": "impeller",
+          "quantity": 1,
+          "work_order_id": "WO-2024-050"
+        }
+      },
+      {
+        "text": "consumed 2 zinc anodes during the hull inspection",
+        "entities": {
+          "part_name": "zinc anode",
+          "quantity": 2,
+          "notes": "hull inspection"
+        }
+      },
+      {
+        "text": "installed 4 new v-belts on the main engine",
+        "entities": {
+          "part_name": "v-belt",
+          "quantity": 4,
+          "equipment_name": "main engine"
+        }
+      },
+      {
+        "text": "replaced the raw water pump seal",
+        "entities": {
+          "part_name": "raw water pump seal",
+          "quantity": 1
+        }
+      },
+      {
+        "text": "used up the last fuel filter for the port engine",
+        "entities": {
+          "part_name": "fuel filter",
+          "quantity": 1,
+          "equipment_name": "port engine"
+        }
+      },
+      {
+        "text": "fitted 2 hose clamps on the exhaust riser",
+        "entities": {
+          "part_name": "hose clamp",
+          "quantity": 2,
+          "equipment_name": "exhaust riser"
+        }
+      },
+      {
+        "text": "pulled 5 meters of marine hose from stores for the bilge pump repair",
+        "entities": {
+          "part_name": "marine hose",
+          "quantity": 5,
+          "unit": "meters",
+          "equipment_name": "bilge pump"
+        }
+      }
+    ]
+  },
+  {
+    "action_id": "receive_part",
+    "description": "Natural language patterns for receiving parts into inventory",
+    "variants": [
+      {
+        "text": "received 10 impellers from the supplier",
+        "entities": {
+          "part_name": "impeller",
+          "quantity": 10
+        }
+      },
+      {
+        "text": "got 24 zinc anodes delivered this morning",
+        "entities": {
+          "part_name": "zinc anode",
+          "quantity": 24,
+          "notes": "delivered this morning"
+        }
+      },
+      {
+        "text": "just took delivery of 6 fuel filters from Cat Marine",
+        "entities": {
+          "part_name": "fuel filter",
+          "quantity": 6,
+          "supplier_name": "Cat Marine"
+        }
+      },
+      {
+        "text": "booked in 12 o-ring kits from the chandlery",
+        "entities": {
+          "part_name": "o-ring kit",
+          "quantity": 12,
+          "supplier_name": "chandlery"
+        }
+      },
+      {
+        "text": "accepted shipment of 8 alternator belts",
+        "entities": {
+          "part_name": "alternator belt",
+          "quantity": 8
+        }
+      },
+      {
+        "text": "received 5 hydraulic hoses, one was damaged",
+        "entities": {
+          "part_name": "hydraulic hose",
+          "quantity": 5,
+          "notes": "one was damaged"
+        }
+      },
+      {
+        "text": "took in 20 stainless steel hose clamps assorted sizes",
+        "entities": {
+          "part_name": "stainless steel hose clamp",
+          "quantity": 20,
+          "notes": "assorted sizes"
+        }
+      },
+      {
+        "text": "stocked 4 seawater strainer baskets from Perko",
+        "entities": {
+          "part_name": "seawater strainer basket",
+          "quantity": 4,
+          "manufacturer": "Perko"
+        }
+      }
+    ]
+  },
+  {
+    "action_id": "transfer_part",
+    "description": "Natural language patterns for transferring parts between locations",
+    "variants": [
+      {
+        "text": "move the spare pump from engine room to lazarette",
+        "entities": {
+          "part_name": "spare pump",
+          "quantity": 1,
+          "from_location": "engine room",
+          "to_location": "lazarette"
+        }
+      },
+      {
+        "text": "transferred 10 zinc anodes from forepeak to bosun's locker",
+        "entities": {
+          "part_name": "zinc anode",
+          "quantity": 10,
+          "from_location": "forepeak",
+          "to_location": "bosun's locker"
+        }
+      },
+      {
+        "text": "relocate all impellers to the main engine room storage",
+        "entities": {
+          "part_name": "impeller",
+          "quantity": "all",
+          "to_location": "main engine room storage"
+        }
+      },
+      {
+        "text": "shifting 6 oil filters from deck locker A to engine spares cabinet",
+        "entities": {
+          "part_name": "oil filter",
+          "quantity": 6,
+          "from_location": "deck locker A",
+          "to_location": "engine spares cabinet"
+        }
+      },
+      {
+        "text": "moving the backup seals from crew mess storage to workshop",
+        "entities": {
+          "part_name": "seal",
+          "quantity": 1,
+          "from_location": "crew mess storage",
+          "to_location": "workshop"
+        }
+      },
+      {
+        "text": "bring 3 v-belts down from the flybridge locker to engine room",
+        "entities": {
+          "part_name": "v-belt",
+          "quantity": 3,
+          "from_location": "flybridge locker",
+          "to_location": "engine room"
+        }
+      },
+      {
+        "text": "redistribute fuel filters between port and starboard engine lockers",
+        "entities": {
+          "part_name": "fuel filter",
+          "from_location": "port engine locker",
+          "to_location": "starboard engine locker"
+        }
+      },
+      {
+        "text": "take 2 hydraulic cylinders from shore store to yacht",
+        "entities": {
+          "part_name": "hydraulic cylinder",
+          "quantity": 2,
+          "from_location": "shore store",
+          "to_location": "yacht"
+        }
+      }
+    ]
+  },
+  {
+    "action_id": "adjust_stock_quantity",
+    "description": "Natural language patterns for adjusting/correcting inventory counts",
+    "variants": [
+      {
+        "text": "adjust impeller count to 5",
+        "entities": {
+          "part_name": "impeller",
+          "new_quantity": 5
+        }
+      },
+      {
+        "text": "correct the zinc anode stock level to 18, found extras during audit",
+        "entities": {
+          "part_name": "zinc anode",
+          "new_quantity": 18,
+          "reason": "found extras during audit"
+        }
+      },
+      {
+        "text": "set fuel filter quantity to 12 after physical count",
+        "entities": {
+          "part_name": "fuel filter",
+          "new_quantity": 12,
+          "reason": "physical count"
+        }
+      },
+      {
+        "text": "update o-ring kit inventory to 8, inventory discrepancy",
+        "entities": {
+          "part_name": "o-ring kit",
+          "new_quantity": 8,
+          "reason": "inventory discrepancy"
+        }
+      },
+      {
+        "text": "fix the belt count - should be 6 not 4",
+        "entities": {
+          "part_name": "belt",
+          "new_quantity": 6,
+          "reason": "count correction"
+        }
+      },
+      {
+        "text": "reconcile hose clamp stock to actual of 45",
+        "entities": {
+          "part_name": "hose clamp",
+          "new_quantity": 45,
+          "reason": "stock reconciliation"
+        }
+      },
+      {
+        "text": "amend seal quantity in system to 3, two were miscounted",
+        "entities": {
+          "part_name": "seal",
+          "new_quantity": 3,
+          "reason": "two were miscounted"
+        }
+      },
+      {
+        "text": "stocktake adjustment: raw water pump impellers now showing 7",
+        "entities": {
+          "part_name": "raw water pump impeller",
+          "new_quantity": 7,
+          "reason": "stocktake adjustment"
+        }
+      }
+    ]
+  },
+  {
+    "action_id": "write_off_part",
+    "description": "Natural language patterns for writing off damaged/expired parts",
+    "variants": [
+      {
+        "text": "write off 2 impellers, they were water damaged",
+        "entities": {
+          "part_name": "impeller",
+          "quantity": 2,
+          "reason": "water damaged"
+        }
+      },
+      {
+        "text": "scrap 5 zinc anodes, corroded beyond use",
+        "entities": {
+          "part_name": "zinc anode",
+          "quantity": 5,
+          "reason": "corroded beyond use"
+        }
+      },
+      {
+        "text": "discard 3 fuel filters - past expiry date",
+        "entities": {
+          "part_name": "fuel filter",
+          "quantity": 3,
+          "reason": "past expiry date"
+        }
+      },
+      {
+        "text": "write off the cracked hydraulic hose",
+        "entities": {
+          "part_name": "hydraulic hose",
+          "quantity": 1,
+          "reason": "cracked"
+        }
+      },
+      {
+        "text": "dispose of 4 perished rubber seals",
+        "entities": {
+          "part_name": "rubber seal",
+          "quantity": 4,
+          "reason": "perished"
+        }
+      },
+      {
+        "text": "condemn 2 v-belts found with cracks during inspection",
+        "entities": {
+          "part_name": "v-belt",
+          "quantity": 2,
+          "reason": "cracks found during inspection"
+        }
+      },
+      {
+        "text": "writing off the old gasket set, material degraded",
+        "entities": {
+          "part_name": "gasket set",
+          "quantity": 1,
+          "reason": "material degraded"
+        }
+      },
+      {
+        "text": "remove 6 o-rings from inventory, shelf life expired",
+        "entities": {
+          "part_name": "o-ring",
+          "quantity": 6,
+          "reason": "shelf life expired"
+        }
+      }
+    ]
+  },
+  {
+    "action_id": "add_to_shopping_list",
+    "description": "Natural language patterns for adding parts to the shopping/order list",
+    "variants": [
+      {
+        "text": "need to order more zinc anodes",
+        "entities": {
+          "part_name": "zinc anode"
+        }
+      },
+      {
+        "text": "add 10 fuel filters to the shopping list",
+        "entities": {
+          "part_name": "fuel filter",
+          "quantity": 10
+        }
+      },
+      {
+        "text": "put impellers on the order list, urgent",
+        "entities": {
+          "part_name": "impeller",
+          "priority": "urgent"
+        }
+      },
+      {
+        "text": "we need to restock oil filters, order 12",
+        "entities": {
+          "part_name": "oil filter",
+          "quantity": 12
+        }
+      },
+      {
+        "text": "add v-belts to procurement list for the yard period",
+        "entities": {
+          "part_name": "v-belt",
+          "notes": "for yard period"
+        }
+      },
+      {
+        "text": "request 6 raw water pump seals on next chandlery order",
+        "entities": {
+          "part_name": "raw water pump seal",
+          "quantity": 6,
+          "notes": "next chandlery order"
+        }
+      },
+      {
+        "text": "running low on hose clamps, add 50 assorted to order",
+        "entities": {
+          "part_name": "hose clamp",
+          "quantity": 50,
+          "notes": "assorted"
+        }
+      },
+      {
+        "text": "order 4 strainer baskets for WO-2024-089",
+        "entities": {
+          "part_name": "strainer basket",
+          "quantity": 4,
+          "source_work_order_id": "WO-2024-089"
+        }
+      }
+    ]
+  },
+  {
+    "action_id": "generate_part_labels",
+    "description": "Natural language patterns for generating part inventory labels",
+    "variants": [
+      {
+        "text": "print labels for all the new zinc anodes",
+        "entities": {
+          "part_name": "zinc anode",
+          "quantity": "all"
+        }
+      },
+      {
+        "text": "generate QR labels for engine room parts",
+        "entities": {
+          "location": "engine room",
+          "label_format": "QR"
+        }
+      },
+      {
+        "text": "need labels for the impellers with bin locations",
+        "entities": {
+          "part_name": "impeller",
+          "include_location": true
+        }
+      },
+      {
+        "text": "create barcode stickers for all filters",
+        "entities": {
+          "part_name": "filter",
+          "label_format": "barcode"
+        }
+      },
+      {
+        "text": "print bin labels for the new hydraulic fittings",
+        "entities": {
+          "part_name": "hydraulic fitting",
+          "include_location": true
+        }
+      },
+      {
+        "text": "generate inventory tags for belts and hoses",
+        "entities": {
+          "part_names": ["belt", "hose"]
+        }
+      },
+      {
+        "text": "make labels for the gasket kits showing part numbers",
+        "entities": {
+          "part_name": "gasket kit",
+          "include_part_number": true
+        }
+      },
+      {
+        "text": "print storage labels for all spare parts in lazarette",
+        "entities": {
+          "location": "lazarette",
+          "include_location": true
+        }
+      }
+    ]
+  }
+]
