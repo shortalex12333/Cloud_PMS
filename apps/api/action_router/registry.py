@@ -795,7 +795,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/equipment/link-document",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],  # HOD only - restrict to match document actions
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],  # All crew - lens_matrix.json role_restricted: [] means open access
         required_fields=["yacht_id", "equipment_id", "document_id"],
         domain="documents",  # Changed from "equipment" to "documents" per Document Lens v2 spec
         variant=ActionVariant.MUTATE,
@@ -987,6 +987,26 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         variant=ActionVariant.READ,
     ),
 
+    # Acknowledge handover receipt - added 2026-03-02
+    "acknowledge_handover": ActionDefinition(
+        action_id="acknowledge_handover",
+        label="Acknowledge Handover",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "eto", "captain", "manager", "purser"],
+        required_fields=["yacht_id", "handover_id"],
+        domain="handover",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["acknowledge", "handover", "receipt", "confirm", "receive"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("handover_id", FieldClassification.REQUIRED, description="Handover ID to acknowledge"),
+            FieldMetadata("acknowledgment_notes", FieldClassification.OPTIONAL, description="Optional notes"),
+            FieldMetadata("signature", FieldClassification.OPTIONAL, description="Digital signature data"),
+        ],
+    ),
+
     # ========================================================================
     # FAULT ACTIONS (Fault Lens v1 - Binding Brief 2026-01-27)
     # ========================================================================
@@ -1029,8 +1049,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/faults/acknowledge",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        # Canonical: HOD + captain only
-        allowed_roles=["chief_engineer", "chief_officer", "captain"],
+        # Canonical: HOD + captain + manager (lens_matrix.json source of truth)
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "fault_id"],
         domain="faults",
         variant=ActionVariant.MUTATE,
@@ -1047,8 +1067,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/faults/close",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        # Canonical: HOD + captain only
-        allowed_roles=["chief_engineer", "chief_officer", "captain"],
+        # Canonical: HOD + captain + manager (lens_matrix.json source of truth)
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "fault_id"],
         domain="faults",
         variant=ActionVariant.MUTATE,
@@ -1066,8 +1086,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/faults/update",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        # Canonical: HOD + captain only
-        allowed_roles=["chief_engineer", "chief_officer", "captain"],
+        # Canonical: HOD + captain + manager (lens_matrix.json source of truth)
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "fault_id"],
         domain="faults",
         variant=ActionVariant.MUTATE,
@@ -1919,6 +1939,30 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
+    # Mark shopping list item as ordered (procurement action) - added 2026-03-02
+    "mark_shopping_list_ordered": ActionDefinition(
+        action_id="mark_shopping_list_ordered",
+        label="Mark as Ordered",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],  # HoD only
+        required_fields=["yacht_id", "shopping_list_item_id"],
+        domain="shopping_list",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["order", "ordered", "shopping", "list", "purchase", "procurement", "po"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("shopping_list_item_id", FieldClassification.REQUIRED, description="Shopping list item ID (must be in 'approved' status)"),
+            FieldMetadata("order_id", FieldClassification.OPTIONAL, description="Link to purchase order"),
+            FieldMetadata("order_reference", FieldClassification.OPTIONAL, description="External PO reference number"),
+            FieldMetadata("supplier", FieldClassification.OPTIONAL, description="Supplier name"),
+            FieldMetadata("ordered_quantity", FieldClassification.OPTIONAL, description="Quantity actually ordered"),
+            FieldMetadata("unit_price", FieldClassification.OPTIONAL, description="Actual unit price"),
+            FieldMetadata("expected_delivery_date", FieldClassification.OPTIONAL, description="Expected delivery date"),
+        ],
+    ),
+
     "promote_candidate_to_part": ActionDefinition(
         action_id="promote_candidate_to_part",
         label="Add to Parts Catalog",
@@ -1980,7 +2024,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/parts/adjust-stock",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["captain", "manager"],  # SIGNED actions: Captain/Manager only
+        allowed_roles=["chief_engineer", "captain", "manager"],  # SIGNED actions: lens_matrix.json source of truth
         required_fields=["yacht_id", "part_id", "new_quantity", "reason", "signature"],
         domain="parts",
         variant=ActionVariant.SIGNED,  # Requires PIN+TOTP
@@ -2052,7 +2096,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/parts/write-off",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["captain", "manager"],  # SIGNED actions: Captain/Manager only
+        allowed_roles=["chief_engineer", "captain", "manager"],  # SIGNED actions: lens_matrix.json source of truth
         required_fields=["yacht_id", "part_id", "quantity", "reason", "signature"],
         domain="parts",
         variant=ActionVariant.SIGNED,  # Requires PIN+TOTP
@@ -2260,7 +2304,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],  # HOD+ only
         required_fields=["yacht_id", "claim_id"],
         domain="warranty",
-        variant=ActionVariant.READ,  # Prepare only, does not send
+        variant=ActionVariant.MUTATE,  # Saves draft, requires audit trail
         search_keywords=["compose", "email", "warranty", "claim", "draft", "send"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
@@ -2315,6 +2359,48 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             FieldMetadata("record_date", FieldClassification.REQUIRED),
             FieldMetadata("rest_periods", FieldClassification.REQUIRED),
             FieldMetadata("total_rest_hours", FieldClassification.REQUIRED),
+        ],
+    ),
+
+    # MUTATE: Verify Hours of Rest (HOD+) - added 2026-03-02
+    "verify_hours_of_rest": ActionDefinition(
+        action_id="verify_hours_of_rest",
+        label="Verify Hours of Rest",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "record_id"],
+        domain="hours_of_rest",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["verify", "approve", "hours", "rest", "hor", "compliance"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("record_id", FieldClassification.REQUIRED, description="Hours of rest record ID"),
+            FieldMetadata("verification_notes", FieldClassification.OPTIONAL, description="Verification notes"),
+            FieldMetadata("signature", FieldClassification.OPTIONAL, description="Digital signature data"),
+        ],
+    ),
+
+    # MUTATE: Add Rest Period - added 2026-03-02
+    "add_rest_period": ActionDefinition(
+        action_id="add_rest_period",
+        label="Add Rest Period",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "cook", "chef", "bosun", "engineer", "eto", "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "record_id", "start_time", "end_time"],
+        domain="hours_of_rest",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "rest", "period", "sleep", "hours", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("record_id", FieldClassification.REQUIRED, description="Hours of rest record ID"),
+            FieldMetadata("start_time", FieldClassification.REQUIRED, description="Rest period start time (ISO string)"),
+            FieldMetadata("end_time", FieldClassification.REQUIRED, description="Rest period end time (ISO string)"),
+            FieldMetadata("rest_type", FieldClassification.OPTIONAL, description="scheduled, unscheduled, or split"),
+            FieldMetadata("notes", FieldClassification.OPTIONAL, description="Notes about the rest period"),
         ],
     ),
 

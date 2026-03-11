@@ -48,6 +48,17 @@ from action_router.middleware import validate_action_payload, InputValidationErr
 from action_router.registry import get_action
 from middleware.auth import lookup_tenant_for_user
 
+# Import models for /prepare endpoint (Phase 16.1 - GAP-001 fix)
+from action_router.router import (
+    PrepareRequest,
+    PrepareResponse,
+    PrefillField,
+    AmbiguityCandidate,
+    Ambiguity,
+    PrepareError,
+)
+from common.prefill_engine import build_prepare_response
+
 logger = logging.getLogger(__name__)
 
 # ============================================================================
@@ -519,6 +530,258 @@ async def commit_create_work_order(
 
 
 # ============================================================================
+# PREPARE ENDPOINT (Phase 16.1 - GAP-001 fix)
+# ============================================================================
+
+@router.post("/prepare", response_model=PrepareResponse)
+async def prepare_action(
+    request_data: PrepareRequest,
+    authorization: str = Header(None),
+) -> PrepareResponse:
+    """
+    Generate action prefill preview from NLP query with per-field confidence.
+
+    This endpoint accepts natural language queries and returns prefilled form
+    data with confidence scores, missing fields, and disambiguation options.
+
+    Flow:
+    1. Validate JWT -> extract user context
+    2. Resolve tenant from MASTER DB if yacht_id not in JWT
+    3. Validate yacht isolation (RLS enforcement)
+    4. Validate domain
+    5. Check role gating for selected action
+    6. Call build_prepare_response() from prefill_engine
+    7. Return structured PrepareResponse
+
+    Args:
+        request_data: PrepareRequest with q, domain, candidate_action_ids, context, hint_entities, client
+        authorization: JWT token from Authorization header
+
+    Returns:
+        PrepareResponse with action_id, prefill (with confidence per field),
+        missing_required_fields, ambiguities, and structured errors
+    """
+    try:
+        # ====================================================================
+        # STEP 1: Validate JWT and extract user context
+        # ====================================================================
+        jwt_result = validate_jwt(authorization)
+        if not jwt_result.valid:
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "status": "error",
+                    "error_code": jwt_result.error.error_code,
+                    "message": jwt_result.error.message,
+                },
+            )
+
+        user_context = jwt_result.context
+
+        # ====================================================================
+        # STEP 1.5: Resolve tenant from MASTER DB if yacht_id not in JWT
+        # ====================================================================
+        if not user_context.get("yacht_id") and lookup_tenant_for_user:
+            tenant_info = lookup_tenant_for_user(user_context["user_id"])
+            if tenant_info:
+                user_context["yacht_id"] = tenant_info["yacht_id"]
+                user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
+                if not tenant_info.get("role"):
+                    raise HTTPException(
+                        status_code=403,
+                        detail={
+                            "status": "error",
+                            "error_code": "no_tenant_role",
+                            "message": "User has no active role on yacht",
+                        },
+                    )
+                user_context["role"] = tenant_info["role"]
+            else:
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "status": "error",
+                        "error_code": "user_no_tenant",
+                        "message": "User is not assigned to any yacht/tenant",
+                    },
+                )
+
+        # ====================================================================
+        # STEP 2: Validate yacht isolation (RLS enforcement)
+        # ====================================================================
+        yacht_id = user_context.get("yacht_id")
+        if not yacht_id:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "error_code": "missing_yacht_id",
+                    "message": "yacht_id not found in JWT context",
+                },
+            )
+
+        # Validate request context matches JWT context if provided
+        if request_data.context.get("yacht_id"):
+            yacht_result = validate_yacht_isolation(
+                request_data.context, user_context
+            )
+            if not yacht_result.valid:
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "status": "error",
+                        "error_code": yacht_result.error.error_code,
+                        "message": yacht_result.error.message,
+                    },
+                )
+
+        # ====================================================================
+        # STEP 3: Validate domain
+        # ====================================================================
+        valid_domains = [
+            "work_orders", "faults", "equipment", "parts", "inventory",
+            "certificates", "crew", "documents", "shopping_list", "receiving"
+        ]
+
+        if request_data.domain not in valid_domains:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "error_code": "INVALID_DOMAIN",
+                    "message": f"Domain '{request_data.domain}' not recognized. Valid: {', '.join(valid_domains)}",
+                },
+            )
+
+        # ====================================================================
+        # STEP 4: Get Supabase client for lookups
+        # ====================================================================
+        supabase_client = None
+        tenant_key_alias = user_context.get("tenant_key_alias")
+
+        if tenant_key_alias:
+            try:
+                supabase_client = get_tenant_client(tenant_key_alias)
+            except Exception as e:
+                logger.warning(f"[Prepare] Failed to get tenant client: {e}")
+
+        if not supabase_client:
+            logger.warning(
+                f"[Prepare] No Supabase client available. Entity lookups will fail."
+            )
+
+        # ====================================================================
+        # STEP 5: Merge context with user info
+        # ====================================================================
+        context = {
+            **request_data.context,
+            "yacht_id": yacht_id,
+            "user_id": user_context.get("user_id"),
+            "user_role": user_context.get("role"),
+        }
+
+        # ====================================================================
+        # STEP 5.5: Check role gating for selected action
+        # ====================================================================
+        role_blocked = False
+        blocked_reason = None
+
+        # Get first candidate action to check role gating
+        if request_data.candidate_action_ids:
+            try:
+                action_def = get_action(request_data.candidate_action_ids[0])
+                user_role = user_context.get("role", "")
+                allowed_roles = action_def.allowed_roles or []
+                if allowed_roles and user_role not in allowed_roles:
+                    role_blocked = True
+                    blocked_reason = f"Action requires one of: {', '.join(allowed_roles)}. Your role: {user_role}"
+                    logger.info(f"[Prepare] Role blocked: {user_role} not in {allowed_roles}")
+            except KeyError:
+                # Action not found in registry - continue without role blocking
+                logger.warning(f"[Prepare] Action '{request_data.candidate_action_ids[0]}' not in registry, skipping role check")
+
+        # ====================================================================
+        # STEP 6: Call build_prepare_response from prefill_engine
+        # ====================================================================
+        prepare_result = await build_prepare_response(
+            q=request_data.q,
+            domain=request_data.domain,
+            candidate_action_ids=request_data.candidate_action_ids,
+            context=context,
+            hint_entities=request_data.hint_entities or {},
+            client=request_data.client,
+            supabase_client=supabase_client,
+        )
+
+        # ====================================================================
+        # STEP 7: Convert to PrepareResponse format
+        # ====================================================================
+        # Convert prefill dict to PrefillField objects
+        prefill_fields = {}
+        for field_name, field_data in prepare_result.get("prefill", {}).items():
+            prefill_fields[field_name] = PrefillField(
+                value=field_data.get("value"),
+                confidence=field_data.get("confidence", 0.0),
+                source=field_data.get("source", "unknown")
+            )
+
+        # Convert ambiguities
+        ambiguities = []
+        for amb in prepare_result.get("ambiguities", []):
+            candidates = [
+                AmbiguityCandidate(
+                    id=cand.get("id", ""),
+                    label=cand.get("label", ""),
+                    confidence=cand.get("confidence", 0.5)
+                )
+                for cand in amb.get("candidates", [])
+            ]
+            ambiguities.append(Ambiguity(
+                field=amb.get("field", ""),
+                candidates=candidates
+            ))
+
+        # Convert errors
+        errors = [
+            PrepareError(
+                error_code=err.get("error_code", ""),
+                message=err.get("message", ""),
+                field=err.get("field")
+            )
+            for err in prepare_result.get("errors", [])
+        ]
+
+        # ====================================================================
+        # STEP 8: Return structured response
+        # ====================================================================
+        return PrepareResponse(
+            action_id=prepare_result.get("action_id", ""),
+            match_score=prepare_result.get("match_score", 0.0),
+            ready_to_commit=prepare_result.get("ready_to_commit", False),
+            prefill=prefill_fields,
+            missing_required_fields=prepare_result.get("missing_required_fields", []),
+            ambiguities=ambiguities,
+            errors=errors,
+            role_blocked=role_blocked,
+            blocked_reason=blocked_reason
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"[Prepare] Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "error_code": "prepare_error",
+                "message": f"Prepare failed: {str(e)}",
+            },
+        )
+
+
+# ============================================================================
 # PREVIEW ENDPOINTS
 # ============================================================================
 
@@ -931,6 +1194,7 @@ async def execute_action(
         "reject_shopping_list_item": ["item_id", "rejection_reason"],
         "promote_candidate_to_part": ["item_id"],
         "view_shopping_list_history": ["item_id"],
+        "link_to_work_order": ["work_order_id"],
     }
 
     if action in REQUIRED_FIELDS:
@@ -5455,7 +5719,7 @@ async def execute_action(
         # ===== SHOPPING LIST ACTIONS (Shopping List Lens v1) =====
         elif action in ("create_shopping_list_item", "approve_shopping_list_item",
                        "reject_shopping_list_item", "promote_candidate_to_part",
-                       "view_shopping_list_history"):
+                       "view_shopping_list_history", "link_to_work_order"):
             if not shopping_list_handlers:
                 raise HTTPException(status_code=503, detail="Shopping list handlers not available")
 
@@ -5466,6 +5730,7 @@ async def execute_action(
                 "reject_shopping_list_item": ["chief_engineer", "chief_officer", "captain", "manager"],  # HoD only
                 "promote_candidate_to_part": ["chief_engineer", "manager"],  # Engineers only
                 "view_shopping_list_history": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+                "link_to_work_order": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],  # All crew
             }
 
             # RBAC Check: Verify user role is authorized
@@ -5486,6 +5751,7 @@ async def execute_action(
                 "reject_shopping_list_item": shopping_list_handlers.reject_shopping_list_item,
                 "promote_candidate_to_part": shopping_list_handlers.promote_candidate_to_part,
                 "view_shopping_list_history": shopping_list_handlers.view_shopping_list_history,
+                "link_to_work_order": shopping_list_handlers.link_to_work_order,
             }
 
             handler_fn = handler_map[action]

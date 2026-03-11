@@ -935,6 +935,195 @@ class ShoppingListHandlers:
             builder.set_error("INTERNAL_ERROR", str(e), 500)
             return builder.build()
 
+    async def mark_shopping_list_ordered(
+        self,
+        entity_id: str,  # shopping_list_item_id
+        yacht_id: str,
+        params: Dict
+    ) -> Dict:
+        """
+        Mark shopping list item as ordered (procurement action).
+
+        Allowed Roles: HoD only (captain, chief_engineer, chief_officer, manager)
+
+        Tables Written:
+        - pms_shopping_list_items (UPDATE status, ordered_by, ordered_at, order fields)
+        - pms_shopping_list_state_history (INSERT via trigger)
+        - pms_audit_log (INSERT)
+
+        State Transition:
+        - approved → ordered
+
+        Optional Fields:
+        - order_id (uuid) - link to purchase order
+        - order_reference (text) - external PO reference number
+        - supplier (text) - supplier name
+        - ordered_quantity (numeric) - quantity actually ordered
+        - unit_price (numeric) - actual unit price
+        - expected_delivery_date (date) - expected delivery date
+
+        Returns:
+        - 200 + updated item on success
+        - 400 if invalid state transition
+        - 404 if item not found
+        - 403 if user not HoD
+        """
+        builder = ResponseBuilder(
+            "mark_shopping_list_ordered",
+            entity_id,
+            "shopping_list_item",
+            yacht_id
+        )
+
+        try:
+            # ============================================================
+            # AUTH & HOD CHECK
+            # ============================================================
+
+            user_id = params.get("user_id")
+            if not user_id:
+                builder.set_error("UNAUTHORIZED", "User not authenticated", 401)
+                return builder.build()
+
+            # Get user profile (yacht + role check)
+            user_result = self.db.table("auth_users_profiles").select(
+                "id, name, yacht_id"
+            ).eq("id", user_id).maybe_single().execute()
+
+            if not user_result or not user_result.data or user_result.data["yacht_id"] != yacht_id:
+                logger.warning(f"Yacht isolation breach attempt: user {user_id} != yacht {yacht_id}")
+                builder.set_error("FORBIDDEN", "Access denied", 403)
+                return builder.build()
+
+            # ============================================================
+            # ROLE CHECK: Only HoD can mark as ordered
+            # ============================================================
+            is_hod_result = self.db.rpc("is_hod", {"p_user_id": user_id, "p_yacht_id": yacht_id}).execute()
+
+            if not is_hod_result or not is_hod_result.data:
+                logger.warning(f"Non-HoD attempted mark_ordered: user={user_id}, yacht={yacht_id}")
+                builder.set_error(
+                    "FORBIDDEN",
+                    "Only HoD (chief engineer, chief officer, captain, manager) can mark items as ordered",
+                    403
+                )
+                return builder.build()
+
+            # ============================================================
+            # FETCH ITEM & VALIDATE STATE
+            # ============================================================
+
+            item_result = self.db.table("pms_shopping_list_items").select(
+                "id, part_name, quantity_approved, status, rejected_at"
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            if not item_result or not item_result.data:
+                builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}")
+                return builder.build()
+
+            item = item_result.data
+
+            # Check if item has been rejected
+            if item.get("rejected_at"):
+                builder.set_error(
+                    "INVALID_STATE",
+                    "Cannot mark a rejected item as ordered",
+                    400
+                )
+                return builder.build()
+
+            # Check valid transition (approved → ordered)
+            if item["status"] != "approved":
+                builder.set_error(
+                    "INVALID_STATE",
+                    f"Cannot mark item with status '{item['status']}' as ordered. Expected: approved.",
+                    400
+                )
+                return builder.build()
+
+            # ============================================================
+            # UPDATE ITEM (approved → ordered)
+            # ============================================================
+
+            now = datetime.now(timezone.utc).isoformat()
+
+            update_payload = {
+                "status": "ordered",
+                "ordered_by": user_id,
+                "ordered_at": now,
+                "order_id": params.get("order_id"),
+                "order_reference": params.get("order_reference"),
+                "supplier": params.get("supplier"),
+                "ordered_quantity": params.get("ordered_quantity") or item.get("quantity_approved"),
+                "unit_price": params.get("unit_price"),
+                "expected_delivery_date": params.get("expected_delivery_date"),
+                "updated_by": user_id,
+                "updated_at": now,
+            }
+
+            # Update (RLS enforces is_hod() check)
+            update_result = self.db.table("pms_shopping_list_items").update(
+                update_payload
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).execute()
+
+            if not update_result.data or len(update_result.data) == 0:
+                builder.set_error(
+                    "FORBIDDEN",
+                    "Only HoD can mark shopping list items as ordered",
+                    403
+                )
+                return builder.build()
+
+            # ============================================================
+            # AUDIT LOG
+            # ============================================================
+
+            audit_payload = {
+                "id": str(uuid.uuid4()),
+                "yacht_id": yacht_id,
+                "entity_type": "shopping_list_item",
+                "entity_id": entity_id,
+                "action": "mark_shopping_list_ordered",
+                "user_id": user_id,
+                "old_values": {
+                    "status": item["status"],
+                },
+                "new_values": {
+                    "status": "ordered",
+                    "ordered_by": user_id,
+                    "order_reference": params.get("order_reference"),
+                    "supplier": params.get("supplier"),
+                },
+                "signature": {},  # Non-signed action
+                "metadata": {"source": "shopping_list_lens"},
+                "created_at": now,
+            }
+
+            try:
+                self.db.table("pms_audit_log").insert(audit_payload).execute()
+            except Exception as audit_err:
+                logger.warning(f"Audit log insert failed (non-critical): {audit_err}")
+
+            # ============================================================
+            # RESPONSE
+            # ============================================================
+
+            builder.set_data({
+                "shopping_list_item_id": entity_id,
+                "part_name": item["part_name"],
+                "status": "ordered",
+                "ordered_at": now,
+                "order_reference": params.get("order_reference"),
+                "supplier": params.get("supplier"),
+            })
+
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"mark_shopping_list_ordered failed: {e}", exc_info=True)
+            builder.set_error("INTERNAL_ERROR", str(e), 500)
+            return builder.build()
+
     # =========================================================================
     # READ HANDLERS
     # =========================================================================
@@ -1039,6 +1228,162 @@ class ShoppingListHandlers:
 
         except Exception as e:
             logger.error(f"view_shopping_list_history failed: {e}", exc_info=True)
+            builder.set_error("INTERNAL_ERROR", str(e), 500)
+            return builder.build()
+
+    async def link_to_work_order(
+        self,
+        entity_id: str,  # shopping_list_item_id
+        yacht_id: str,
+        params: Dict
+    ) -> Dict:
+        """
+        Link shopping list item to a work order.
+
+        Allowed Roles: All Crew
+
+        Tables Written:
+        - pms_shopping_list_items (UPDATE source_work_order_id)
+        - pms_audit_log (INSERT)
+
+        Required Fields:
+        - work_order_id (uuid)
+
+        Returns:
+        - 200 + updated item on success
+        - 400 if validation fails
+        - 404 if item or work order not found
+        """
+        builder = ResponseBuilder(
+            "link_to_work_order",
+            entity_id,
+            "shopping_list_item",
+            yacht_id
+        )
+
+        try:
+            # ============================================================
+            # AUTH CHECK
+            # ============================================================
+
+            user_id = params.get("user_id")
+            if not user_id:
+                builder.set_error("UNAUTHORIZED", "User not authenticated", 401)
+                return builder.build()
+
+            # Get user profile (yacht isolation check)
+            user_result = self.db.table("auth_users_profiles").select(
+                "id, name, yacht_id"
+            ).eq("id", user_id).maybe_single().execute()
+
+            if not user_result or not user_result.data or user_result.data["yacht_id"] != yacht_id:
+                logger.warning(f"Yacht isolation breach attempt: user {user_id} != yacht {yacht_id}")
+                builder.set_error("FORBIDDEN", "Access denied", 403)
+                return builder.build()
+
+            # ============================================================
+            # FIELD VALIDATION
+            # ============================================================
+
+            work_order_id = params.get("work_order_id")
+            if not work_order_id:
+                builder.set_error("VALIDATION_FAILED", "work_order_id is required", 400)
+                return builder.build()
+
+            # ============================================================
+            # VERIFY SHOPPING LIST ITEM EXISTS
+            # ============================================================
+
+            item_result = self.db.table("pms_shopping_list_items").select(
+                "id, part_name, source_work_order_id"
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            if not item_result or not item_result.data:
+                builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}")
+                return builder.build()
+
+            item = item_result.data
+
+            # ============================================================
+            # VERIFY WORK ORDER EXISTS
+            # ============================================================
+
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, title, work_order_number"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            if not wo_result or not wo_result.data:
+                builder.set_error("NOT_FOUND", f"Work order not found: {work_order_id}")
+                return builder.build()
+
+            work_order = wo_result.data
+
+            # ============================================================
+            # UPDATE SHOPPING LIST ITEM
+            # ============================================================
+
+            now = datetime.now(timezone.utc).isoformat()
+
+            update_payload = {
+                "source_work_order_id": work_order_id,
+                "source_type": "work_order_usage",  # Update source type to reflect WO linkage
+                "updated_by": user_id,
+                "updated_at": now,
+            }
+
+            update_result = self.db.table("pms_shopping_list_items").update(
+                update_payload
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).execute()
+
+            if not update_result.data or len(update_result.data) == 0:
+                builder.set_error("EXECUTION_FAILED", "Failed to update shopping list item", 500)
+                return builder.build()
+
+            # ============================================================
+            # AUDIT LOG
+            # ============================================================
+
+            audit_payload = {
+                "id": str(uuid.uuid4()),
+                "yacht_id": yacht_id,
+                "entity_type": "shopping_list_item",
+                "entity_id": entity_id,
+                "action": "link_to_work_order",
+                "user_id": user_id,
+                "old_values": {
+                    "source_work_order_id": item.get("source_work_order_id"),
+                },
+                "new_values": {
+                    "source_work_order_id": work_order_id,
+                    "work_order_title": work_order.get("title"),
+                },
+                "signature": {},  # Non-signed action
+                "metadata": {"source": "shopping_list_lens"},
+                "created_at": now,
+            }
+
+            try:
+                self.db.table("pms_audit_log").insert(audit_payload).execute()
+            except Exception as audit_err:
+                logger.warning(f"Audit log insert failed (non-critical): {audit_err}")
+
+            # ============================================================
+            # RESPONSE
+            # ============================================================
+
+            builder.set_data({
+                "shopping_list_item_id": entity_id,
+                "part_name": item["part_name"],
+                "source_work_order_id": work_order_id,
+                "work_order_title": work_order.get("title"),
+                "work_order_number": work_order.get("work_order_number"),
+                "linked_at": now,
+            })
+
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"link_to_work_order failed: {e}", exc_info=True)
             builder.set_error("INTERNAL_ERROR", str(e), 500)
             return builder.build()
 

@@ -47,6 +47,7 @@ from handlers.receiving_handlers import (
     _view_receiving_history_adapter,
 )
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
+from handlers.handover_handlers import HandoverHandlers
 
 # Lazy-initialized handler instances
 _p3_handlers = None
@@ -60,6 +61,7 @@ _receiving_handlers = None
 _shopping_list_handlers = None
 _document_handlers = None
 _document_comment_handlers = None
+_handover_handlers = None
 
 
 def _get_p3_handlers():
@@ -160,6 +162,14 @@ def _get_hours_of_rest_handlers():
     if _hours_of_rest_handlers is None:
         _hours_of_rest_handlers = HoursOfRestHandlers(get_supabase_client())
     return _hours_of_rest_handlers
+
+
+def _get_handover_handlers():
+    """Get lazy-initialized Handover Lens handlers. Added 2026-03-02."""
+    global _handover_handlers
+    if _handover_handlers is None:
+        _handover_handlers = HandoverHandlers(get_supabase_client())
+    return _handover_handlers
 
 
 # ============================================================================
@@ -268,7 +278,7 @@ async def close_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
     supabase = get_supabase_client()
 
     # Update work order status
-    result = supabase.table("work_orders").update({
+    result = supabase.table("pms_work_orders").update({
         "status": "completed",
         "completed_at": datetime.utcnow().isoformat(),
         "completed_by": params["user_id"],
@@ -2975,6 +2985,16 @@ async def _sl_view_history(params: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+async def _sl_mark_ordered(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Mark shopping list item as ordered (procurement action). Added 2026-03-02."""
+    handlers = _get_shopping_list_handlers()
+    return await handlers.mark_shopping_list_ordered(
+        entity_id=params["shopping_list_item_id"],
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+
 # =============================================================================
 # Hours of Rest Handlers (Crew Lens v3) - Maritime Compliance
 # =============================================================================
@@ -3089,6 +3109,45 @@ async def _hor_dismiss_warning(params: Dict[str, Any]) -> Dict[str, Any]:
     handlers = _get_hours_of_rest_handlers()
     return await handlers.dismiss_warning(
         entity_id=params["warning_id"],
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        payload=params
+    )
+
+
+# ============================================================================
+# CRITICAL-4/5 FIX WRAPPERS - Added 2026-03-02
+# ============================================================================
+
+async def _hor_verify_record(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Verify hours of rest record wrapper. Added 2026-03-02 for CRITICAL-4 fix."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.verify_hours_of_rest(
+        entity_id=params["record_id"],
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+
+async def _hor_add_rest_period(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Add rest period wrapper. Added 2026-03-02 for CRITICAL-5 fix."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.add_rest_period(
+        entity_id=params["record_id"],
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+
+# ============================================================================
+# CRITICAL-3 FIX WRAPPER - Added 2026-03-02
+# ============================================================================
+
+async def _handover_acknowledge(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Acknowledge handover wrapper. Added 2026-03-02 for CRITICAL-3 fix."""
+    handlers = _get_handover_handlers()
+    return await handlers.acknowledge_handover_execute(
+        handover_id=params.get("handover_id") or params.get("entity_id"),
         yacht_id=params["yacht_id"],
         user_id=params["user_id"],
         payload=params
@@ -3302,6 +3361,7 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "create_shopping_list_item": _sl_create_item,
     "approve_shopping_list_item": _sl_approve_item,
     "reject_shopping_list_item": _sl_reject_item,
+    "mark_shopping_list_ordered": _sl_mark_ordered,  # Added 2026-03-02
     "promote_candidate_to_part": _sl_promote_candidate,
     "view_shopping_list_history": _sl_view_history,
 
@@ -3320,6 +3380,13 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "list_crew_warnings": _hor_list_warnings,
     "acknowledge_warning": _hor_acknowledge_warning,
     "dismiss_warning": _hor_dismiss_warning,
+
+    # =========================================================================
+    # CRITICAL-3/4/5 FIX HANDLERS - Added 2026-03-02
+    # =========================================================================
+    "verify_hours_of_rest": _hor_verify_record,  # CRITICAL-4 fix
+    "add_rest_period": _hor_add_rest_period,  # CRITICAL-5 fix
+    "acknowledge_handover": _handover_acknowledge,  # CRITICAL-3 fix
 }
 
 

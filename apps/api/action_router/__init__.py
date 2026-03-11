@@ -15,6 +15,14 @@ from .registry import (
     list_actions,
     get_actions_for_role,
 )
+from .telemetry import (
+    log_action_event,
+    log_suggestion_viewed,
+    log_prefill_requested,
+    log_prefill_completed,
+    log_execute_requested,
+    log_execute_completed,
+)
 
 __all__ = [
     "router",
@@ -25,4 +33,11 @@ __all__ = [
     "get_action",
     "list_actions",
     "get_actions_for_role",
+    # Telemetry exports
+    "log_action_event",
+    "log_suggestion_viewed",
+    "log_prefill_requested",
+    "log_prefill_completed",
+    "log_execute_requested",
+    "log_execute_completed",
 ]

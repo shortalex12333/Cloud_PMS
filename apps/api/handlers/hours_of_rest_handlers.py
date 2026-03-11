@@ -1184,3 +1184,217 @@ class HoursOfRestHandlers:
             logger.error(f"Error dismissing warning: {e}")
             builder.set_error("DATABASE_ERROR", str(e))
             return builder.build()
+
+    # =========================================================================
+    # VERIFY HOURS OF REST - Added 2026-03-02 for CRITICAL-4 fix
+    # =========================================================================
+
+    async def verify_hours_of_rest(
+        self,
+        entity_id: str,  # record_id
+        yacht_id: str,
+        params: Optional[Dict] = None
+    ) -> Dict:
+        """
+        Verify hours of rest compliance for a record (HOD/Captain action).
+
+        CRITICAL-4 FIX: This action was registered in registry but had no handler.
+
+        Params:
+        - record_id: UUID of the HoR record to verify
+        - yacht_id: UUID of the yacht (from JWT context)
+        - user_id: UUID of the verifying user (from JWT)
+        - verification_notes: Optional notes
+
+        Returns:
+        - Verified record
+        - Compliance status
+        """
+        builder = ResponseBuilder("verify_hours_of_rest", entity_id, "hours_of_rest", yacht_id)
+
+        try:
+            params = params or {}
+            user_id = params.get("user_id")
+            verification_notes = params.get("verification_notes", "")
+
+            # Get the record
+            result = self.db.table("pms_crew_hours_of_rest").select(
+                "id, yacht_id, user_id, record_date, total_rest_hours, "
+                "status, verified_at, verified_by, created_at"
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).execute()
+
+            if not result.data:
+                builder.set_error("NOT_FOUND", f"Hours of rest record not found: {entity_id}")
+                return builder.build()
+
+            record = result.data[0]
+
+            # Check if already verified
+            if record.get("verified_at"):
+                builder.set_error("INVALID_STATE", "Record already verified")
+                return builder.build()
+
+            # Update record with verification
+            timestamp = datetime.now(timezone.utc).isoformat()
+            update_data = {
+                "verified_at": timestamp,
+                "verified_by": user_id,
+                "status": "verified",
+                "verification_notes": verification_notes,
+            }
+
+            update_result = self.db.table("pms_crew_hours_of_rest").update(
+                update_data
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).select("*").execute()
+
+            if not update_result.data:
+                builder.set_error("UPDATE_FAILED", "Failed to verify record")
+                return builder.build()
+
+            # Write audit log
+            _write_hor_audit_log(self.db, {
+                "yacht_id": yacht_id,
+                "entity_type": "hours_of_rest",
+                "entity_id": entity_id,
+                "action": "verify_hours_of_rest",
+                "user_id": user_id,
+                "old_values": {"status": record.get("status")},
+                "new_values": {"status": "verified"},
+                "signature": {},
+            })
+
+            builder.set_data({
+                "record": update_result.data[0],
+                "verified_at": timestamp,
+                "verified_by": user_id,
+            })
+
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"Error verifying hours of rest: {e}")
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
+
+    # =========================================================================
+    # ADD REST PERIOD - Added 2026-03-02 for CRITICAL-5 fix
+    # =========================================================================
+
+    async def add_rest_period(
+        self,
+        entity_id: str,  # record_id
+        yacht_id: str,
+        params: Optional[Dict] = None
+    ) -> Dict:
+        """
+        Add a rest period to an hours of rest record.
+
+        CRITICAL-5 FIX: This action was registered in registry but had no handler.
+
+        Params:
+        - record_id: UUID of the HoR record
+        - yacht_id: UUID of the yacht (from JWT context)
+        - start_time: str - Start time of rest period (HH:MM or ISO)
+        - end_time: str - End time of rest period (HH:MM or ISO)
+        - notes: Optional notes about the rest period
+
+        Returns:
+        - Updated record with new rest period
+        - Recalculated compliance status
+        """
+        builder = ResponseBuilder("add_rest_period", entity_id, "hours_of_rest", yacht_id)
+
+        try:
+            params = params or {}
+            start_time = params.get("start_time")
+            end_time = params.get("end_time")
+            notes = params.get("notes", "")
+
+            if not start_time or not end_time:
+                builder.set_error("MISSING_REQUIRED_FIELD", "start_time and end_time are required")
+                return builder.build()
+
+            # Get the record
+            result = self.db.table("pms_crew_hours_of_rest").select(
+                "id, yacht_id, user_id, record_date, rest_periods, "
+                "total_rest_hours, status, created_at"
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).execute()
+
+            if not result.data:
+                builder.set_error("NOT_FOUND", f"Hours of rest record not found: {entity_id}")
+                return builder.build()
+
+            record = result.data[0]
+
+            # Get existing rest periods (JSON array) or initialize
+            rest_periods = record.get("rest_periods") or []
+            if isinstance(rest_periods, str):
+                rest_periods = json.loads(rest_periods)
+
+            # Add new rest period
+            new_period = {
+                "start": start_time,
+                "end": end_time,
+                "notes": notes,
+                "added_at": datetime.now(timezone.utc).isoformat(),
+            }
+            rest_periods.append(new_period)
+
+            # Calculate total rest hours from all periods
+            total_rest_hours = 0
+            for period in rest_periods:
+                try:
+                    start = datetime.strptime(period["start"], "%H:%M")
+                    end = datetime.strptime(period["end"], "%H:%M")
+                    # Handle overnight rest (end < start)
+                    if end < start:
+                        end = end + timedelta(days=1)
+                    hours = (end - start).total_seconds() / 3600
+                    total_rest_hours += hours
+                except (ValueError, KeyError):
+                    # Skip malformed periods
+                    pass
+
+            # Check MLC compliance
+            is_compliant = total_rest_hours >= 10  # MLC minimum 10 hours/day
+
+            # Update record
+            update_data = {
+                "rest_periods": json.dumps(rest_periods),
+                "total_rest_hours": round(total_rest_hours, 2),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            update_result = self.db.table("pms_crew_hours_of_rest").update(
+                update_data
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).select("*").execute()
+
+            if not update_result.data:
+                builder.set_error("UPDATE_FAILED", "Failed to add rest period")
+                return builder.build()
+
+            # Write audit log
+            _write_hor_audit_log(self.db, {
+                "yacht_id": yacht_id,
+                "entity_type": "hours_of_rest",
+                "entity_id": entity_id,
+                "action": "add_rest_period",
+                "user_id": params.get("user_id"),
+                "new_values": {"rest_period": new_period, "total_rest_hours": total_rest_hours},
+                "signature": {},
+            })
+
+            builder.set_data({
+                "record": update_result.data[0],
+                "rest_periods": rest_periods,
+                "total_rest_hours": round(total_rest_hours, 2),
+                "is_compliant": is_compliant,
+                "period_added": new_period,
+            })
+
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"Error adding rest period: {e}")
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()

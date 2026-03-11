@@ -812,13 +812,31 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
                 "message": "Receiving record not found"
             }
 
-        # Check if already accepted
-        if recv_result.data.get("status") == "accepted":
-            return {
-                "status": "error",
-                "error_code": "ALREADY_ACCEPTED",
-                "message": "Cannot add items to accepted receiving record"
-            }
+        # MEDIUM-3 FIX: State validation - only allow adding items to draft/pending records
+        current_status = recv_result.data.get("status")
+        allowed_statuses = ("draft", "pending")
+
+        if current_status not in allowed_statuses:
+            # Map specific statuses to appropriate error codes
+            if current_status == "accepted":
+                return {
+                    "status": "error",
+                    "error_code": "ALREADY_ACCEPTED",
+                    "message": "Cannot add items to accepted receiving record"
+                }
+            elif current_status == "rejected":
+                return {
+                    "status": "error",
+                    "error_code": "ALREADY_REJECTED",
+                    "message": "Cannot add items to rejected receiving record"
+                }
+            else:
+                # Catch-all for any other terminal/closed states
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_STATE",
+                    "message": f"Cannot add items to receiving record with status '{current_status}'. Only draft or pending records can be modified."
+                }
 
         # Insert line item
         item_payload = {
@@ -947,6 +965,50 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
         unit_price = params.get("unit_price")
         description = params.get("description")
         request_context = params.get("request_context")
+
+        # MEDIUM-3 FIX: Verify parent receiving status before allowing item adjustments
+        try:
+            recv_result = db.table("pms_receiving").select(
+                "id, status"
+            ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        except Exception as e:
+            logger.error(f"Database query error: {e}")
+            return {
+                "status": "error",
+                "error_code": "DATABASE_ERROR",
+                "message": "Failed to query receiving record"
+            }
+
+        if not recv_result.data:
+            return {
+                "status": "error",
+                "error_code": "NOT_FOUND",
+                "message": "Receiving record not found"
+            }
+
+        # State validation - only allow adjusting items in draft/pending records
+        current_status = recv_result.data.get("status")
+        allowed_statuses = ("draft", "pending")
+
+        if current_status not in allowed_statuses:
+            if current_status == "accepted":
+                return {
+                    "status": "error",
+                    "error_code": "ALREADY_ACCEPTED",
+                    "message": "Cannot adjust items in accepted receiving record"
+                }
+            elif current_status == "rejected":
+                return {
+                    "status": "error",
+                    "error_code": "ALREADY_REJECTED",
+                    "message": "Cannot adjust items in rejected receiving record"
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_STATE",
+                    "message": f"Cannot adjust items in receiving record with status '{current_status}'. Only draft or pending records can be modified."
+                }
 
         # Get current item
         item_result = db.table("pms_receiving_items").select(

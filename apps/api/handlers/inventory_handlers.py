@@ -23,6 +23,17 @@ from actions.action_response_schema import ResponseBuilder
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# THRESHOLD CONSTANTS (centralized for consistency between preview and execute)
+# =============================================================================
+# Stock warning threshold: Uses minimum_quantity from part record
+# Both preview and execute use the SAME threshold logic:
+#   - Warning if stock_level == 0 (ZERO stock)
+#   - Warning if stock_level <= minimum_quantity (LOW stock)
+# This ensures consistent warnings are shown in preview and execute phases.
+# =============================================================================
+
+
 class InventoryHandlers:
     """
     Handlers for inventory and parts management actions.
@@ -494,8 +505,10 @@ class InventoryHandlers:
             new_stock_level = part_result.data[0].get("quantity_on_hand", 0) if part_result.data and len(part_result.data) > 0 else 0
             minimum_quantity = part_result.data[0].get("minimum_quantity", 0) if part_result.data and len(part_result.data) > 0 else 0
 
-            # Check stock warning
-            stock_warning = new_stock_level <= minimum_quantity or new_stock_level == 0
+            # Check stock warning (aligned with preview threshold logic)
+            # Preview uses: after_usage == 0 OR after_usage <= minimum_quantity
+            # Execute uses same logic for consistency
+            stock_warning = new_stock_level == 0 or new_stock_level <= minimum_quantity
 
             # Get part and user names
             part_name = "Unknown"

@@ -182,7 +182,7 @@ class CandidateFinder:
         serial_numbers = parts.get('serial_number', [])
         for serial in serial_numbers:
             try:
-                result = self.supabase.table('equipment').select(
+                result = self.supabase.table('pms_equipment').select(
                     'id, name, serial_number, model, manufacturer'
                 ).eq('yacht_id', yacht_id).ilike(
                     'serial_number', f'%{serial}%'

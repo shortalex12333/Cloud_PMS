@@ -850,10 +850,41 @@ def _update_certificate_adapter(handlers: CertificateHandlers):
             raise ValueError(f"Certificate not found or access denied: {cert_id}")
 
         old_values = current.data
+        current_status = old_values.get("status")
 
-        # Don't allow updates to superseded/revoked certificates
-        if old_values.get("status") in ("superseded", "revoked"):
-            raise ValueError(f"Cannot update certificate with status '{old_values.get('status')}'")
+        # Don't allow updates to superseded/revoked certificates (terminal states)
+        if current_status in ("superseded", "revoked"):
+            raise ValueError(f"Cannot update certificate with status '{current_status}'")
+
+        # Check if certificate is expired (state transition validation - MEDIUM-1 fix)
+        is_currently_expired = handlers._is_expired(old_values.get("expiry_date"))
+
+        # For expired certificates, only allow renewal (must provide new future expiry_date)
+        if is_currently_expired or current_status == "expired":
+            new_expiry_date = params.get("expiry_date")
+
+            if not new_expiry_date:
+                raise ValueError(
+                    "Cannot update expired certificate without providing a new expiry_date. "
+                    "Use renewal action with a future expiry date."
+                )
+
+            # Validate the new expiry_date is in the future
+            try:
+                from datetime import datetime, timezone
+                expiry_dt = datetime.fromisoformat(new_expiry_date.replace("Z", "+00:00"))
+                if expiry_dt.tzinfo is None:
+                    expiry_dt = expiry_dt.replace(tzinfo=timezone.utc)
+
+                if expiry_dt <= datetime.now(timezone.utc):
+                    raise ValueError(
+                        "New expiry_date must be in the future for certificate renewal. "
+                        "Cannot update expired certificate with a past or current date."
+                    )
+            except ValueError as ve:
+                if "must be in the future" in str(ve) or "Cannot update expired" in str(ve):
+                    raise
+                raise ValueError(f"Invalid expiry_date format: {new_expiry_date}")
 
         # Build update payload (only include fields that are provided)
         update_fields = {}
@@ -880,22 +911,35 @@ def _update_certificate_adapter(handlers: CertificateHandlers):
         if issue_date and expiry_date and expiry_date < issue_date:
             raise ValueError("expiry_date must be after issue_date")
 
+        # State transition: If renewing an expired certificate, transition to "active"
+        is_renewal = (is_currently_expired or current_status == "expired") and "expiry_date" in update_fields
+        if is_renewal:
+            update_fields["status"] = "active"
+            audit_fields["status"] = "active"
+            audit_fields["_renewal_action"] = True  # Mark as renewal for audit trail
+
         # Update certificate
         res = db.table(table).update(update_fields).eq("yacht_id", yacht_id).eq("id", cert_id).execute()
         if not res.data:
             raise ValueError("Update failed or not permitted by RLS")
 
         # Audit log (non-signed)
+        # Use "renew_certificate" action if this was a renewal, else "update_certificate"
+        audit_action = "renew_certificate" if is_renewal else "update_certificate"
         audit = {
             "yacht_id": yacht_id,
             "entity_type": "certificate",
             "entity_id": cert_id,
-            "action": "update_certificate",
+            "action": audit_action,
             "user_id": user_id,
-            "old_values": {k: old_values.get(k) for k in audit_fields.keys()},
-            "new_values": audit_fields,
+            "old_values": {k: old_values.get(k) for k in audit_fields.keys() if k != "_renewal_action"},
+            "new_values": {k: v for k, v in audit_fields.items() if k != "_renewal_action"},
             "signature": {},
-            "metadata": {"source": "certificate_lens", "domain": domain},
+            "metadata": {
+                "source": "certificate_lens",
+                "domain": domain,
+                "is_renewal": is_renewal,
+            },
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         try:
@@ -903,11 +947,19 @@ def _update_certificate_adapter(handlers: CertificateHandlers):
         except Exception:
             pass
 
-        return {
+        result = {
             "status": "success",
             "certificate_id": cert_id,
             "updated_fields": list(update_fields.keys()),
         }
+
+        # Include renewal info in response
+        if is_renewal:
+            result["is_renewal"] = True
+            result["new_status"] = "active"
+            result["message"] = "Certificate renewed successfully"
+
+        return result
 
     return _fn
 

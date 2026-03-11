@@ -645,5 +645,112 @@ class HandoverHandlers:
             kwargs['summary'] = summary_text
         return await self.add_to_handover_execute(*args, **kwargs)
 
+    # =========================================================================
+    # ACKNOWLEDGE HANDOVER - Added 2026-03-02 for CRITICAL-3 fix
+    # =========================================================================
+
+    async def acknowledge_handover_execute(
+        self,
+        handover_id: str,
+        yacht_id: str,
+        user_id: str,
+        payload: Optional[Dict] = None
+    ) -> Dict:
+        """
+        Acknowledge receipt of a handover (incoming crew).
+
+        CRITICAL-3 FIX: This action was registered in registry but had no handler.
+
+        Params:
+        - handover_id: UUID of the handover to acknowledge
+        - yacht_id: UUID of the yacht (from JWT context)
+        - user_id: UUID of the acknowledging user (from JWT)
+        - payload: Optional dict with:
+          - notes: str - Optional acknowledgment notes
+          - timestamp: str - Optional override timestamp (ISO format)
+
+        Returns:
+        - Acknowledged handover record
+        - Updated status
+        """
+        try:
+            payload = payload or {}
+
+            # Verify handover exists and belongs to yacht
+            result = self.db.table("dash_handover_items").select(
+                "id, yacht_id, status, created_at, acknowledged_at, acknowledged_by"
+            ).eq("id", handover_id).eq("yacht_id", yacht_id).execute()
+
+            if not result.data:
+                return ResponseBuilder.error(
+                    action="acknowledge_handover",
+                    error_code="NOT_FOUND",
+                    message=f"Handover not found: {handover_id}"
+                )
+
+            handover = result.data[0]
+
+            # Check if already acknowledged
+            if handover.get("acknowledged_at"):
+                return ResponseBuilder.error(
+                    action="acknowledge_handover",
+                    error_code="INVALID_STATE",
+                    message="Handover already acknowledged"
+                )
+
+            # Update handover with acknowledgment
+            timestamp = payload.get("timestamp") or datetime.now(timezone.utc).isoformat()
+            update_data = {
+                "acknowledged_at": timestamp,
+                "acknowledged_by": user_id,
+                "status": "acknowledged",
+                "acknowledgment_notes": payload.get("notes"),
+            }
+
+            update_result = self.db.table("dash_handover_items").update(
+                update_data
+            ).eq("id", handover_id).eq("yacht_id", yacht_id).select("*").execute()
+
+            if not update_result.data:
+                return ResponseBuilder.error(
+                    action="acknowledge_handover",
+                    error_code="UPDATE_FAILED",
+                    message="Failed to acknowledge handover"
+                )
+
+            # Write audit log
+            try:
+                self.db.table("pms_audit_log").insert({
+                    "yacht_id": yacht_id,
+                    "entity_type": "handover",
+                    "entity_id": handover_id,
+                    "action": "acknowledge_handover",
+                    "user_id": user_id,
+                    "old_values": {"status": handover.get("status")},
+                    "new_values": {"status": "acknowledged"},
+                    "signature": {},
+                    "created_at": timestamp,
+                }).execute()
+            except Exception as e:
+                logger.warning(f"Audit log failed for acknowledge_handover: {e}")
+
+            return ResponseBuilder.success(
+                action="acknowledge_handover",
+                result={
+                    "handover": update_result.data[0],
+                    "acknowledged_at": timestamp,
+                    "acknowledged_by": user_id,
+                },
+                message="Handover acknowledged successfully"
+            )
+
+        except Exception as e:
+            logger.exception(f"Error acknowledging handover: {e}")
+            return ResponseBuilder.error(
+                action="acknowledge_handover",
+                error_code="INTERNAL_ERROR",
+                message=f"Failed to acknowledge handover: {str(e)}"
+            )
+
 
 __all__ = ["HandoverHandlers"]

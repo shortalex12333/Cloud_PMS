@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
 import uuid
 
-from .types import UserContext, SearchBudget, DEFAULT_BUDGET
+from .user_context_types import UserContext, SearchBudget, DEFAULT_BUDGET
 
 
 @dataclass

@@ -44,6 +44,9 @@ from dataclasses import dataclass, field as dataclass_field
 # Field classification (matches action_router.registry.FieldClassification)
 FieldClassification = Literal["REQUIRED", "OPTIONAL", "BACKEND_AUTO", "CONTEXT"]
 
+# Field types for special processing (e.g., date parsing)
+FieldType = Literal["string", "date", "number", "boolean", "uuid"]
+
 
 @dataclass
 class FieldMetadata:
@@ -73,6 +76,12 @@ class FieldMetadata:
         description: Human-readable description for UI hints
         options: Valid options for enum fields (static dropdown)
         validator: Optional validation function name (for custom validation)
+        field_type: Type of field for special processing (e.g., "date" for date parsing)
+            - "string": Default, no special processing
+            - "date": Parse natural language dates (tomorrow, next week, etc.)
+            - "number": Parse numeric values
+            - "boolean": Parse boolean values
+            - "uuid": Validate UUID format
     """
     name: str
     classification: FieldClassification
@@ -84,6 +93,7 @@ class FieldMetadata:
     description: Optional[str] = None
     options: Optional[List[str]] = None
     validator: Optional[str] = None
+    field_type: Optional[FieldType] = "string"
 
     def __post_init__(self):
         """Validate field metadata consistency."""
@@ -120,6 +130,7 @@ class FieldMetadata:
             "description": self.description,
             "options": self.options,
             "validator": self.validator,
+            "field_type": self.field_type,
         }
 
 
@@ -176,6 +187,7 @@ VALID_ENTITY_TYPES = {
 __all__ = [
     "FieldMetadata",
     "FieldClassification",
+    "FieldType",
     "LookupResult",
     "ENTITY_EQUIPMENT",
     "ENTITY_SYMPTOM",

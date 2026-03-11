@@ -77,7 +77,7 @@ import logging
 # Parse and normalize origins from env var
 ALLOWED_ORIGINS_STR = os.getenv(
     "ALLOWED_ORIGINS",
-    "https://auth.celeste7.ai,https://app.celeste7.ai,https://api.celeste7.ai,https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app,http://localhost:3000,http://localhost:8000"
+    "https://auth.celeste7.ai,https://app.celeste7.ai,https://api.celeste7.ai,https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app,http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:8000"
 )
 
 # Normalize: strip whitespace, remove empties, deduplicate
@@ -303,6 +303,18 @@ except Exception as e:
     logger.error("Part Lens endpoints will not be available")
 
 # ============================================================================
+# INVENTORY ROUTES (Inventory Lens)
+# ============================================================================
+
+try:
+    from routes.inventory_routes import router as inventory_router
+    app.include_router(inventory_router, prefix="/v1/inventory", tags=["inventory"])
+    logger.info("✅ Inventory routes registered at /v1/inventory/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Inventory routes: {e}")
+    logger.error("Inventory endpoints will not be available")
+
+# ============================================================================
 # FAULT LENS V1 ROUTES (Phase 7-8)
 # ============================================================================
 
@@ -313,6 +325,30 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to register Fault Lens routes: {e}")
     logger.error("Fault Lens endpoints will not be available")
+
+# ============================================================================
+# EQUIPMENT ROUTES (Equipment Lens v1)
+# ============================================================================
+
+try:
+    from routes.equipment_routes import router as equipment_router
+    app.include_router(equipment_router, prefix="/v1/equipment", tags=["equipment"])
+    logger.info("✅ Equipment routes registered at /v1/equipment/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Equipment routes: {e}")
+    logger.error("Equipment endpoints will not be available")
+
+# ============================================================================
+# WORK ORDER ROUTES
+# ============================================================================
+
+try:
+    from routes.work_order_routes import router as work_order_router
+    app.include_router(work_order_router, prefix="/v1/work-orders", tags=["work-orders"])
+    logger.info("✅ Work Order routes registered at /v1/work-orders/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Work Order routes: {e}")
+    logger.error("Work Order endpoints will not be available")
 
 # ============================================================================
 # SHOW RELATED ROUTES (Work Order Lens P1)
