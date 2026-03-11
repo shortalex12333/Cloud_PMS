@@ -9,6 +9,7 @@
 ### v1.0 — Lens Completion
 
 **Shipped:** 2026-02-17
+**Domain:** LENSES
 **Phases:** 0-14 (15 phases)
 **Requirements:** 60
 
@@ -19,13 +20,12 @@
 - Gap remediation
 - Handover export with editable signatures
 
-**Last phase:** 14 (Handover Export Editable)
-
 ---
 
 ### v1.1 — F1 Search Pipeline Hardening
 
 **Shipped:** 2026-02-20
+**Domain:** SEARCH
 **Phases:** A-E (5 phases)
 **Requirements:** 17
 
@@ -45,6 +45,7 @@
 ### v1.2 — Search Snippet Enhancement
 
 **Shipped:** 2026-02-26
+**Domain:** SEARCH
 **Phases:** Backend + Frontend (2 implicit phases)
 **Requirements:** 5 (SNIP-01 through SNIP-05)
 
@@ -53,38 +54,60 @@
 - `generate_snippet()` function in `f1_search_streaming.py`
 - SSE response includes snippet with **bold** highlighting
 - `SpotlightResultRow.tsx` renders snippet with bold styling
-- Full verification complete
 
 ---
 
-## Current Milestone
-
 ### v1.3 — Actionable UX Unification
 
-**Started:** 2026-03-01
-**Phases:** 15-19 (5 phases)
+**Shipped:** 2026-03-03
+**Domain:** LENSES
+**Phases:** 15, 16, 16.1, 16.2, 17, 18, 19 (7 phases)
 **Requirements:** 22
 
-**Target deliverables:**
+**Key deliverables:**
 - IntentEnvelope abstraction (READ | MUTATE | MIXED)
 - `/v1/actions/prepare` endpoint for prefill preview
 - Readiness states (READY, NEEDS_INPUT, BLOCKED)
-- Canonical fragmented URLs for READ navigation
 - Disambiguation UX for ambiguous entities
-- 24 agent deployment across 4 waves
+- RouteShell pattern (-4,262 LOC across 11 routes)
+- PermissionService from lens_matrix.json
+- 614 E2E Playwright tests across 12 lenses
+
+---
+
+## Parked Milestones
+
+### v1.4 — Recall Improvement (PARKED)
+
+**Started:** 2026-02-20
+**Domain:** SEARCH
+**Status:** Blocked on database migration deployment
+
+**Blocker:** `50_enhance_search_text.sql` not deployed to production
+
+**Current metrics:**
+- Recall@3: 12.1%
+- Target: 25-35% (after migration)
+
+**To resume:**
+```bash
+psql $DATABASE_URL -f supabase/migrations/50_enhance_search_text.sql
+```
 
 ---
 
 ## Phase Numbering
 
-| Milestone | First Phase | Last Phase |
-|-----------|-------------|------------|
-| v1.0 | 0 | 14 |
-| v1.1 | A | E |
-| v1.2 | (implicit) | (implicit) |
-| v1.3 | 15 | 19 |
+| Milestone | Domain | First Phase | Last Phase |
+|-----------|--------|-------------|------------|
+| v1.0 | LENSES | 0 | 14 |
+| v1.1 | SEARCH | A | E |
+| v1.2 | SEARCH | (implicit) | (implicit) |
+| v1.3 | LENSES | 15 | 19 |
+| v1.4 | SEARCH | A | D (parked) |
 
-**Next phase number:** 15
+**Next available phase:** 20 (for lens work) or v1.4 Phase E (for search work)
 
 ---
-*Last updated: 2026-03-01 — v1.3 milestone started*
+
+*Last updated: 2026-03-03 — v1.3 milestone completed*

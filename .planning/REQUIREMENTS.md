@@ -333,9 +333,9 @@ Requirements for Actionable UX Unification. Each maps to roadmap phases 15-19.
 
 ### Intent Envelope (INTENT)
 
-- [ ] **INTENT-01**: IntentEnvelope type captures query, lens, mode (READ|MUTATE|MIXED), filters, actions, entities, readiness_state
-- [ ] **INTENT-02**: Envelope derived from Action Detector (Module A) + Entity Extractor (Module B) + existing filter inference
-- [ ] **INTENT-03**: Same query produces same structured output — deterministic, no probabilistic variance
+- [x] **INTENT-01**: IntentEnvelope type captures query, lens, mode (READ|MUTATE|MIXED), filters, actions, entities, readiness_state
+- [x] **INTENT-02**: Envelope derived from Action Detector (Module A) + Entity Extractor (Module B) + existing filter inference
+- [x] **INTENT-03**: Same query produces same structured output — deterministic, no probabilistic variance
 
 ### Prefill Integration (PREFILL)
 
@@ -389,9 +389,9 @@ Requirements for Actionable UX Unification. Each maps to roadmap phases 15-19.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INTENT-01 | Phase 15 | Pending |
-| INTENT-02 | Phase 15 | Pending |
-| INTENT-03 | Phase 15 | Pending |
+| INTENT-01 | Phase 15 | Complete |
+| INTENT-02 | Phase 15 | Complete |
+| INTENT-03 | Phase 15 | Complete |
 | PREFILL-01 | Phase 16 | Pending |
 | PREFILL-02 | Phase 16 | Pending |
 | PREFILL-03 | Phase 16 | Pending |
