@@ -219,7 +219,7 @@ async def get_equipment(yacht_id: str) -> List[Dict[str, Any]]:
     """
     supabase = get_supabase_client()
 
-    response = supabase.table('equipment') \
+    response = supabase.table('pms_equipment') \
         .select('*') \
         .eq('yacht_id', yacht_id) \
         .execute()
@@ -233,7 +233,7 @@ async def get_equipment_by_id(yacht_id: str, equipment_id: str) -> Optional[Dict
     """
     supabase = get_supabase_client()
 
-    response = supabase.table('equipment') \
+    response = supabase.table('pms_equipment') \
         .select('*') \
         .eq('id', equipment_id) \
         .eq('yacht_id', yacht_id) \
@@ -259,7 +259,7 @@ async def get_work_orders(
     """
     supabase = get_supabase_client()
 
-    query = supabase.table('work_orders') \
+    query = supabase.table('pms_work_orders') \
         .select('*', count='exact') \
         .eq('yacht_id', yacht_id)
 
@@ -285,7 +285,7 @@ async def create_work_order(yacht_id: str, data: Dict[str, Any]) -> Dict[str, An
 
     data['yacht_id'] = yacht_id
 
-    response = supabase.table('work_orders') \
+    response = supabase.table('pms_work_orders') \
         .insert(data) \
         .execute()
 
@@ -308,7 +308,7 @@ async def get_faults(
     """
     supabase = get_supabase_client()
 
-    query = supabase.table('faults') \
+    query = supabase.table('pms_faults') \
         .select('*', count='exact') \
         .eq('yacht_id', yacht_id)
 
@@ -342,7 +342,7 @@ async def get_parts(
     """
     supabase = get_supabase_client()
 
-    query = supabase.table('parts') \
+    query = supabase.table('pms_parts') \
         .select('*', count='exact') \
         .eq('yacht_id', yacht_id)
 

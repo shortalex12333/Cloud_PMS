@@ -40,9 +40,14 @@ SYNONYMS = {
     'w/o': 'work order',
     'w.o.': 'work order',
     'wo': 'work order',
+    'wos': 'work orders',  # Plural abbreviation (migration 52 fix)
+    'w/os': 'work orders',  # Plural with slash
     'workorder': 'work order',
+    'workorders': 'work orders',
     'work-order': 'work order',
+    'work-orders': 'work orders',
     'work_order': 'work order',
+    'work_orders': 'work orders',
 
     # Parts/inventory
     'inv': 'inventory',

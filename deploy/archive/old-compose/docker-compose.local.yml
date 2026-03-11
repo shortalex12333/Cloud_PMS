@@ -1,0 +1,167 @@
+# =============================================================================
+# CelesteOS Local Development - Render Replica
+# =============================================================================
+# Mirrors Render services locally for full-stack debugging.
+#
+# Architecture (from F1_SEARCH_ENGINE_ARCHITECTURE.md):
+#   DATA PREPARATION LAYER (async background workers):
+#     - Workers 1-3 (Detective, Sniper, Librarian) run inline in celeste-backend
+#     - Worker 4 (Projectionist): projection-worker — CDC → search_index
+#     - Worker 5 (Embedder): embedding-worker — OpenAI → embedding_1536
+#     - Nightly Feedback: cron — click aggregation → learned_keywords
+#
+#   QUERY EXECUTION LAYER (sync, on every search):
+#     - f1_search_streaming.py → Cortex rewrites → f1_search_cards() RPC
+#     - 4 strategies in parallel: Trigram, TSV (BM25), Vector, Exact
+#     - RRF fusion (K=60) → SSE stream → frontend
+#
+# Redis: DISABLED locally (graceful degradation built into all code paths)
+# Cache-listener: REMOVED (only exists for Redis cache coherence)
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up api                    # API only
+#   docker compose -f docker-compose.local.yml up api projection-worker  # API + projection
+#   docker compose -f docker-compose.local.yml up                        # Everything
+#
+# Env vars loaded from: apps/api/.env.docker (REDIS_URL overridden to empty)
+# =============================================================================
+
+services:
+  # =========================================================================
+  # SERVICE 1: celeste-backend (F1 Pipeline Core)
+  # Render: Web Service, Starter tier
+  # Role: API Gateway + Workers 1-3 (Detective, Sniper, Librarian)
+  # =========================================================================
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: celeste-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./apps/api/.env.docker
+    environment:
+      - PORT=8000
+      # Disable Redis locally — all code paths gracefully degrade
+      - REDIS_URL=
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    # Create logs dir owned by appuser to fix capability_observability.py permission error
+    command: >
+      sh -c "mkdir -p /app/logs && uvicorn pipeline_service:app --host 0.0.0.0 --port 8000"
+    user: "0:0"
+    restart: unless-stopped
+
+  # =========================================================================
+  # SERVICE 2: projection-worker (Worker 4 - Projectionist)
+  # Render: Background Worker, Starter tier
+  # Role: Watches source tables, projects data into search_index
+  # =========================================================================
+  projection-worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: celeste-projection-worker
+    env_file:
+      - ./apps/api/.env.docker
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
+      - F1_PROJECTION_WORKER_ENABLED=TRUE
+      - PROJECTION_BATCH_SIZE=50
+      - PROJECTION_POLL_INTERVAL=5
+      - LOG_LEVEL=INFO
+      - REDIS_URL=
+    command: ["python", "workers/projection_worker.py"]
+    user: "10001:10001"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # =========================================================================
+  # SERVICE 3: embedding-worker (Worker 5 - Embedder)
+  # Render: Background Worker, Starter tier
+  # Role: Generates 1536-dim vectors from search_text + learned_keywords
+  # =========================================================================
+  embedding-worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: celeste-embedding-worker
+    env_file:
+      - ./apps/api/.env.docker
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
+      - BATCH_SIZE=100
+      - BATCH_SLEEP_SEC=0.1
+      - EMBED_DIM=1536
+      - EMBED_MODEL=text-embedding-3-small
+      - EMBEDDING_MODEL=text-embedding-3-small
+      - EMBEDDING_VERSION=3
+      - ERROR_SLEEP_SEC=1.0
+      - REQUEST_TIMEOUT_SEC=30
+      - LOG_LEVEL=INFO
+      - REDIS_URL=
+    command: ["python", "workers/embedding_worker_1536.py"]
+    user: "10001:10001"
+    restart: unless-stopped
+
+  # =========================================================================
+  # SERVICE 4: nightly-feedback-loop (Counterfactual Learning)
+  # Render: Cron Job, Starter tier
+  # Role: Aggregates search clicks → yacht-specific vocabulary learning
+  # Schedule on Render: 0 3 * * * (3:00 AM UTC daily)
+  # =========================================================================
+  nightly-feedback:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: celeste-nightly-feedback
+    env_file:
+      - ./apps/api/.env.docker
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
+      - MIN_CLICKS=3
+      - LOOKBACK_DAYS=30
+      - BATCH_SIZE=100
+      - LOG_LEVEL=INFO
+      - REDIS_URL=
+    # Run once and exit (for manual triggering). Use cron externally for scheduling.
+    command: ["python", "-m", "workers.nightly_feedback_loop"]
+    user: "10001:10001"
+    profiles:
+      - cron
+
+  # =========================================================================
+  # SERVICE 5: web (Next.js Frontend)
+  # Vercel in production, local Docker for full-stack testing
+  #
+  # AUTH MODEL (from DB_architecture.md):
+  #   - Frontend authenticates against MASTER Supabase only
+  #   - All operational data goes through Render API → TENANT DB
+  #   - Frontend does NOT talk to TENANT DB directly
+  # =========================================================================
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: celeste-web
+    ports:
+      - "3000:3000"
+    environment:
+      # MASTER Supabase for auth only (NOT tenant operational data)
+      - NEXT_PUBLIC_SUPABASE_URL=https://qvzmkaamzaqxpzbewjxe.supabase.co
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzkwNDYsImV4cCI6MjA3OTU1NTA0Nn0.MMzzsRkvbug-u19GBUnD0qLDtMVWEbOf6KE8mAADaxw
+      # Point frontend at local API (Docker networking)
+      - NEXT_PUBLIC_API_URL=http://api:8000
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - NEXT_PUBLIC_YACHT_SALT=e49469e09cb6529e0bfef118370cf8425b006f0abbc77475da2e0cb479af8b18
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

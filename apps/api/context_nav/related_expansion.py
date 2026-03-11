@@ -51,7 +51,7 @@ def get_related_for_equipment(
     # Domain: faults
     if "faults" in allowed_domains:
         try:
-            response = supabase.table("faults").select(
+            response = supabase.table("pms_faults").select(
                 "id, title, severity, detected_at, resolved_at"
             ).eq("yacht_id", str(yacht_id)).eq("equipment_id", str(anchor_id)).order(
                 "detected_at", desc=True
@@ -71,7 +71,7 @@ def get_related_for_equipment(
     # Domain: work_orders
     if "work_orders" in allowed_domains:
         try:
-            response = supabase.table("work_orders").select(
+            response = supabase.table("pms_work_orders").select(
                 "id, number, title, status, priority, created_at"
             ).eq("yacht_id", str(yacht_id)).eq("equipment_id", str(anchor_id)).order(
                 "created_at", desc=True
@@ -110,7 +110,7 @@ def get_related_for_fault(
     # Domain: work_orders
     if "work_orders" in allowed_domains:
         try:
-            response = supabase.table("work_orders").select(
+            response = supabase.table("pms_work_orders").select(
                 "id, number, title, status, priority, created_at"
             ).eq("yacht_id", str(yacht_id)).eq("fault_id", str(anchor_id)).order(
                 "created_at", desc=True
@@ -130,13 +130,13 @@ def get_related_for_fault(
     if "inventory" in allowed_domains:
         try:
             # Get fault's equipment_id
-            fault_response = supabase.table("faults").select("equipment_id").eq(
+            fault_response = supabase.table("pms_faults").select("equipment_id").eq(
                 "id", str(anchor_id)
             ).eq("yacht_id", str(yacht_id)).maybe_single().execute()
 
             if fault_response.data and fault_response.data.get("equipment_id"):
                 equipment_id = fault_response.data["equipment_id"]
-                equip_response = supabase.table("equipment").select(
+                equip_response = supabase.table("pms_equipment").select(
                     "id, name, model, location, status"
                 ).eq("id", equipment_id).eq("yacht_id", str(yacht_id)).maybe_single().execute()
 
@@ -172,7 +172,7 @@ def get_related_for_work_order(
 
     # Get work_order to access its FKs
     try:
-        wo_response = supabase.table("work_orders").select(
+        wo_response = supabase.table("pms_work_orders").select(
             "equipment_id, fault_id"
         ).eq("id", str(anchor_id)).eq("yacht_id", str(yacht_id)).maybe_single().execute()
 
@@ -184,7 +184,7 @@ def get_related_for_work_order(
         # Domain: inventory (via work_order.equipment_id)
         if "inventory" in allowed_domains and wo_data.get("equipment_id"):
             try:
-                equip_response = supabase.table("equipment").select(
+                equip_response = supabase.table("pms_equipment").select(
                     "id, name, model, location, status"
                 ).eq("id", wo_data["equipment_id"]).eq("yacht_id", str(yacht_id)).maybe_single().execute()
 
@@ -202,7 +202,7 @@ def get_related_for_work_order(
         # Domain: faults (via work_order.fault_id)
         if "faults" in allowed_domains and wo_data.get("fault_id"):
             try:
-                fault_response = supabase.table("faults").select(
+                fault_response = supabase.table("pms_faults").select(
                     "id, title, severity, detected_at, resolved_at"
                 ).eq("id", wo_data["fault_id"]).eq("yacht_id", str(yacht_id)).maybe_single().execute()
 
@@ -319,7 +319,7 @@ def _fetch_artifact_details(
     """Fetch artifact details for user-added relation."""
     try:
         if artefact_type == "inventory_item":
-            response = supabase.table("equipment").select("id, name, model, location").eq(
+            response = supabase.table("pms_equipment").select("id, name, model, location").eq(
                 "id", artefact_id
             ).eq("yacht_id", str(yacht_id)).maybe_single().execute()
             if response.data:
@@ -332,7 +332,7 @@ def _fetch_artifact_details(
                 }
 
         elif artefact_type == "fault":
-            response = supabase.table("faults").select("id, title, severity").eq(
+            response = supabase.table("pms_faults").select("id, title, severity").eq(
                 "id", artefact_id
             ).eq("yacht_id", str(yacht_id)).maybe_single().execute()
             if response.data:
@@ -345,7 +345,7 @@ def _fetch_artifact_details(
                 }
 
         elif artefact_type == "work_order":
-            response = supabase.table("work_orders").select("id, number, title, status").eq(
+            response = supabase.table("pms_work_orders").select("id, number, title, status").eq(
                 "id", artefact_id
             ).eq("yacht_id", str(yacht_id)).maybe_single().execute()
             if response.data:

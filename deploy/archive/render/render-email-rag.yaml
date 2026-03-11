@@ -1,0 +1,36 @@
+# Render Blueprint for Email RAG Services
+# Deploy: https://dashboard.render.com/select-repo?type=blueprint
+
+services:
+  # ==========================================================================
+  # EMAIL RAG BACKGROUND WORKER
+  # ==========================================================================
+  - type: worker
+    name: email-rag-worker
+    runtime: python
+    region: oregon  # Same region as your API for low latency
+    plan: starter   # $7/month - can scale later
+
+    # Build configuration
+    rootDir: apps/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: python worker.py
+
+    # Auto-deploy on push to main
+    autoDeploy: true
+    branch: main
+
+    # Environment variables (set in Render dashboard for security)
+    envVars:
+      - key: SUPABASE_URL
+        sync: false  # Set manually in dashboard
+      - key: SUPABASE_SERVICE_KEY
+        sync: false  # Set manually in dashboard
+      - key: OPENAI_API_KEY
+        sync: false  # Set manually in dashboard
+      - key: WORKER_POLL_INTERVAL
+        value: "60"
+      - key: WORKER_BATCH_SIZE
+        value: "10"
+      - key: WORKER_STAGING_MODE
+        value: "true"  # Set to "false" for production

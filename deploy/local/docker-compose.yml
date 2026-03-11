@@ -1,0 +1,162 @@
+# =============================================================================
+# CelesteOS Full Local Stack — Render Replacement
+# =============================================================================
+# This is the ONLY docker-compose you need. Everything else is archived.
+#
+# Architecture (F1 Search Engine):
+#
+#   DATA PREPARATION (async background daemons):
+#     api          → Workers 1-3 inline (Detective, Sniper, Librarian)
+#     projection   → Worker 4 (Projectionist) — CDC → search_index
+#     embedding    → Worker 5 (Embedder) — OpenAI → embedding_1536
+#     nightly      → Cron (manual) — click aggregation → learned_keywords
+#
+#   QUERY EXECUTION (sync, per search):
+#     api          → Cortex rewrites → f1_search_cards() RPC
+#                    4 strategies parallel: Trigram, TSV, Vector, Exact
+#                    RRF fusion (K=60) → SSE stream
+#
+#   FRONTEND:
+#     web          → Next.js → MASTER Supabase (auth) + API (data)
+#
+# DB Model (two-DB gateway):
+#     MASTER  (qvzmkaamzaqxpzbewjxe) = auth + fleet_registry
+#     TENANT  (vzsohavtuotocgrfkfyd)  = all PMS data, search_index
+#     Supavisor pooler does NOT work — direct :5432 only
+#
+# Redis: DISABLED (graceful degradation in all code paths)
+#
+# Usage:
+#   ./celeste.sh start        # API + workers
+#   ./celeste.sh start-all    # API + workers + web
+#   ./celeste.sh logs api     # Follow API logs
+#   ./celeste.sh stop         # Stop everything
+# =============================================================================
+
+services:
+  # =========================================================================
+  # API — Pipeline Core + Workers 1-3
+  # Replaces: Render celeste-pipeline-v1 ($7/mo)
+  # =========================================================================
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: celeste-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PORT=8000
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003,http://127.0.0.1:3003,http://localhost:8000,https://app.celeste7.ai,https://auth.celeste7.ai,https://api.celeste7.ai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    command: >
+      sh -c "mkdir -p /app/logs && uvicorn pipeline_service:app --host 0.0.0.0 --port 8000"
+    user: "0:0"
+    restart: unless-stopped
+
+  # =========================================================================
+  # Worker 4 — Projectionist (CDC → search_index)
+  # Replaces: Render projection-worker ($7/mo)
+  # =========================================================================
+  projection:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: celeste-projection
+    env_file:
+      - .env
+    environment:
+      - F1_PROJECTION_WORKER_ENABLED=TRUE
+      - PROJECTION_BATCH_SIZE=50
+      - PROJECTION_POLL_INTERVAL=5
+      - LOG_LEVEL=INFO
+    command: ["python", "workers/projection_worker.py"]
+    user: "10001:10001"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # =========================================================================
+  # Worker 5 — Embedder (OpenAI → embedding_1536)
+  # Replaces: Render embedding-worker ($7/mo)
+  # =========================================================================
+  embedding:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: celeste-embedding
+    env_file:
+      - .env
+    environment:
+      - BATCH_SIZE=100
+      - BATCH_SLEEP_SEC=0.1
+      - EMBED_DIM=1536
+      - EMBED_MODEL=text-embedding-3-small
+      - EMBEDDING_MODEL=text-embedding-3-small
+      - EMBEDDING_VERSION=3
+      - ERROR_SLEEP_SEC=1.0
+      - REQUEST_TIMEOUT_SEC=30
+      - LOG_LEVEL=INFO
+    command: ["python", "workers/embedding_worker_1536.py"]
+    user: "10001:10001"
+    restart: unless-stopped
+
+  # =========================================================================
+  # Nightly Feedback Loop — Counterfactual Learning
+  # Replaces: Render nightly-feedback-loop cron ($7/mo)
+  # Manual trigger only: ./celeste.sh nightly
+  # =========================================================================
+  nightly:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: celeste-nightly
+    env_file:
+      - .env
+    environment:
+      - MIN_CLICKS=3
+      - LOOKBACK_DAYS=30
+      - BATCH_SIZE=100
+      - LOG_LEVEL=INFO
+    command: ["python", "-m", "workers.nightly_feedback_loop"]
+    user: "10001:10001"
+    profiles:
+      - cron
+
+  # =========================================================================
+  # Frontend — Next.js
+  # Replaces: Vercel (for local testing)
+  # Auth: MASTER Supabase only. All data via API.
+  #
+  # IMPORTANT: NEXT_PUBLIC_* vars are baked at BUILD TIME (not runtime).
+  # Change build args here, then rebuild: ./celeste.sh rebuild web
+  # =========================================================================
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_SUPABASE_URL: https://qvzmkaamzaqxpzbewjxe.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzkwNDYsImV4cCI6MjA3OTU1NTA0Nn0.MMzzsRkvbug-u19GBUnD0qLDtMVWEbOf6KE8mAADaxw
+        NEXT_PUBLIC_APP_URL: http://localhost:3002
+        NEXT_PUBLIC_YACHT_SALT: e49469e09cb6529e0bfef118370cf8425b006f0abbc77475da2e0cb479af8b18
+    container_name: celeste-web
+    ports:
+      - "3002:3000"
+    env_file:
+      - .env.web
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - frontend

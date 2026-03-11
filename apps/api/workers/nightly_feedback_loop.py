@@ -116,11 +116,8 @@ def get_connection(retries=3, delay=5):
         logger.error("DATABASE_URL not set")
         sys.exit(1)
 
-    # Ensure we're using the Supavisor pooler port
+    # Use DSN as-is — Supavisor pooler (:6543) not available for this tenant
     dsn = DB_DSN
-    if ":5432" in dsn:
-        dsn = dsn.replace(":5432", ":6543")
-        logger.warning("Switched port 5432 → 6543 (Supavisor pooler)")
 
     for attempt in range(retries):
         try:
