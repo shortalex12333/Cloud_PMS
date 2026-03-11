@@ -23,11 +23,13 @@ You are the frontend engineer for Celeste — a single-URL yacht maintenance sys
 
 ## WHAT CELESTE IS
 
-- One URL. No routes. No dashboard. No sidebar navigation.
+- **Primary UX:** Single URL (`/app?entity=...`) with full-screen lenses. No dashboard. No sidebar navigation.
+- **Fragmented Routes (v1.3):** Optional `/faults/123` style URLs via RouteShell — same LensContent, different entry point.
 - Query → Focus → Act. User types intent, system returns results, user opens entity, entity shows micro-actions.
 - Backend authority. Frontend renders what backend returns. Never invents actions.
 - Every lens (entity view) opens full-screen. Not a card. Not a sidebar. Full viewport.
 - Every user action logged to ledger. Every read, write, navigate — all of it.
+- **RBAC via PermissionService** — reads from `lens_matrix.json`, single source of truth.
 
 ---
 
@@ -240,6 +242,41 @@ colors: {
 
 ---
 
+## CURRENT LENS STATUS (v1.3)
+
+**Updated:** 2026-03-03
+
+| Component | Status | Files |
+|-----------|--------|-------|
+| LensContent pattern | 11 lenses | `apps/web/src/components/lens/*LensContent.tsx` |
+| Email (SPA mode) | ⚠️ Works but needs conversion | `apps/web/src/components/email/EmailSurface.tsx` (940 LOC) |
+| Route pages | 11/12 (Handover/Worklist panel-only) | `apps/web/src/app/*/[id]/page.tsx` |
+| Action hooks | 15 wired | `apps/web/src/hooks/use*Actions.ts` |
+| PermissionService | ✅ | `apps/web/src/services/permissions.ts` |
+| RouteShell | ✅ | `apps/web/src/components/lens/RouteShell.tsx` |
+| E2E tests | 614 (unverified) | `test/e2e/*-intent.spec.ts` |
+
+**Email Conversion Needed (GAP-027):**
+- Email works in SPA mode (`/app` + `EmailOverlay`) but NOT in fragmented route architecture
+- Needs `EmailLensContent.tsx` wrapping existing `EmailThreadViewer.tsx`
+- Must register in `LensRenderer.tsx` switch statement
+- **SACRED — DO NOT MODIFY:** OAuth patterns in `oauth-utils.ts`, dual 401 handling in `useEmailData.ts`, token exchange in Render backend
+
+**Key Architecture:**
+- RouteShell wraps LensContent for fragmented routes (93% LOC reduction)
+- PermissionService reads RBAC from `lens_matrix.json`
+- All actions POST to `/v1/actions/execute`
+
+**Remaining Gaps:**
+- **GAP-027 (HIGH):** Email conversion to fragmented route architecture (4-8 hours)
+- **GAP-028:** Handover/Worklist route decision (panel-only or create route)
+- **GAP-029:** Add 'document' to lens_matrix.json
+- **GAP-030 (CRITICAL):** E2E tests need verification run
+
+See `docs/ON_GOING_WORK/BACKEND/LENSES/GAPS.md` for details.
+
+---
+
 ## LENS STRUCTURE
 
 Every lens follows this exact layout. No variations.
@@ -324,7 +361,7 @@ Entity names that reference other entities are clickable teal links. Clicking:
 - /compact at 60% context. No exceptions.
 
 ### NEVER
-- Create new routes or URLs. One URL: `app.celeste7.ai`
+- Create standalone route pages with duplicate UI. Use RouteShell → LensContent pattern (see UNIFIED-ROUTE-ARCHITECTURE.md).
 - Invent actions backend didn't return.
 - Render UUIDs, yacht_ids, internal keys to users.
 - Auto-send emails. User reviews, signs, then sends.

@@ -1,0 +1,456 @@
+[
+  {
+    "action_id": "report_fault",
+    "description": "Report a new fault on equipment",
+    "required_fields": ["title", "equipment_id", "severity"],
+    "variants": [
+      {
+        "text": "report a fault on the main engine",
+        "entities": { "equipment_name": "main engine" },
+        "implied_severity": null,
+        "notes": "formal, explicit action"
+      },
+      {
+        "text": "engine's broken!",
+        "entities": { "equipment_name": "engine" },
+        "implied_severity": "major",
+        "notes": "urgent/casual with implied severity from exclamation"
+      },
+      {
+        "text": "AC not working",
+        "entities": { "equipment_name": "AC" },
+        "implied_severity": "minor",
+        "notes": "casual report, common crew shorthand"
+      },
+      {
+        "text": "critical issue with the generator",
+        "entities": { "equipment_name": "generator" },
+        "implied_severity": "critical",
+        "notes": "explicit severity keyword"
+      },
+      {
+        "text": "something wrong with ME1",
+        "entities": { "equipment_name": "ME1" },
+        "implied_severity": "medium",
+        "notes": "equipment code reference, vague issue"
+      },
+      {
+        "text": "bilge pump making weird noise",
+        "entities": { "equipment_name": "bilge pump", "symptom": "weird noise" },
+        "implied_severity": "minor",
+        "notes": "symptom-based report"
+      },
+      {
+        "text": "log fault watermaker low pressure",
+        "entities": { "equipment_name": "watermaker", "symptom": "low pressure" },
+        "implied_severity": "minor",
+        "notes": "action verb variation + symptom"
+      },
+      {
+        "text": "URGENT: bow thruster not responding",
+        "entities": { "equipment_name": "bow thruster", "symptom": "not responding" },
+        "implied_severity": "critical",
+        "notes": "all caps urgency indicator"
+      }
+    ]
+  },
+  {
+    "action_id": "acknowledge_fault",
+    "description": "Acknowledge awareness of a reported fault",
+    "required_fields": ["fault_id"],
+    "variants": [
+      {
+        "text": "acknowledge the engine fault",
+        "entities": { "equipment_name": "engine" },
+        "implied_severity": null,
+        "notes": "formal acknowledgment"
+      },
+      {
+        "text": "got it, looking at the stabilizer issue",
+        "entities": { "equipment_name": "stabilizer" },
+        "implied_severity": null,
+        "notes": "casual acknowledgment with context"
+      },
+      {
+        "text": "ack the bilge alarm",
+        "entities": { "equipment_name": "bilge" },
+        "implied_severity": null,
+        "notes": "shorthand acknowledgment"
+      },
+      {
+        "text": "I'm aware of the genset fault",
+        "entities": { "equipment_name": "genset" },
+        "implied_severity": null,
+        "notes": "first person awareness statement"
+      },
+      {
+        "text": "confirm receipt of watermaker issue",
+        "entities": { "equipment_name": "watermaker" },
+        "implied_severity": null,
+        "notes": "formal receipt confirmation"
+      },
+      {
+        "text": "seen the AC problem",
+        "entities": { "equipment_name": "AC" },
+        "implied_severity": null,
+        "notes": "minimal casual acknowledgment"
+      }
+    ]
+  },
+  {
+    "action_id": "close_fault",
+    "description": "Close a resolved fault with resolution details",
+    "required_fields": ["fault_id", "resolution"],
+    "variants": [
+      {
+        "text": "close the generator fault, replaced alternator",
+        "entities": { "equipment_name": "generator", "resolution": "replaced alternator" },
+        "implied_severity": null,
+        "notes": "close with inline resolution"
+      },
+      {
+        "text": "main engine issue resolved",
+        "entities": { "equipment_name": "main engine" },
+        "implied_severity": null,
+        "notes": "implicit close via resolved status"
+      },
+      {
+        "text": "fixed the bow thruster, closing fault",
+        "entities": { "equipment_name": "bow thruster" },
+        "implied_severity": null,
+        "notes": "action sequence - fixed then close"
+      },
+      {
+        "text": "mark the stabilizer fault as complete",
+        "entities": { "equipment_name": "stabilizer" },
+        "implied_severity": null,
+        "notes": "complete synonym for close"
+      },
+      {
+        "text": "watermaker back online, close this one",
+        "entities": { "equipment_name": "watermaker" },
+        "implied_severity": null,
+        "notes": "status update with close request"
+      },
+      {
+        "text": "done with the bilge pump repair",
+        "entities": { "equipment_name": "bilge pump" },
+        "implied_severity": null,
+        "notes": "completion-implied close"
+      }
+    ]
+  },
+  {
+    "action_id": "update_fault",
+    "description": "Update fault details, severity, or status",
+    "required_fields": ["fault_id"],
+    "variants": [
+      {
+        "text": "update the engine fault severity to critical",
+        "entities": { "equipment_name": "engine", "severity": "critical" },
+        "implied_severity": "critical",
+        "notes": "explicit severity update"
+      },
+      {
+        "text": "change the generator issue to major",
+        "entities": { "equipment_name": "generator", "severity": "major" },
+        "implied_severity": "major",
+        "notes": "change verb for update"
+      },
+      {
+        "text": "escalate the thruster problem",
+        "entities": { "equipment_name": "thruster" },
+        "implied_severity": "major",
+        "notes": "escalate implies severity increase"
+      },
+      {
+        "text": "downgrade the AC fault to cosmetic",
+        "entities": { "equipment_name": "AC", "severity": "cosmetic" },
+        "implied_severity": "cosmetic",
+        "notes": "downgrade with target severity"
+      },
+      {
+        "text": "add more info to the watermaker fault",
+        "entities": { "equipment_name": "watermaker" },
+        "implied_severity": null,
+        "notes": "information update"
+      },
+      {
+        "text": "stabilizer issue is worse than we thought",
+        "entities": { "equipment_name": "stabilizer" },
+        "implied_severity": "major",
+        "notes": "implicit severity escalation"
+      }
+    ]
+  },
+  {
+    "action_id": "reopen_fault",
+    "description": "Reopen a previously closed fault",
+    "required_fields": ["fault_id"],
+    "variants": [
+      {
+        "text": "reopen the main engine fault",
+        "entities": { "equipment_name": "main engine" },
+        "implied_severity": null,
+        "notes": "explicit reopen"
+      },
+      {
+        "text": "that generator issue is back",
+        "entities": { "equipment_name": "generator" },
+        "implied_severity": null,
+        "notes": "recurrence implies reopen"
+      },
+      {
+        "text": "bow thruster problem returned",
+        "entities": { "equipment_name": "bow thruster" },
+        "implied_severity": null,
+        "notes": "returned synonym for reopen"
+      },
+      {
+        "text": "the stabilizer fix didn't hold",
+        "entities": { "equipment_name": "stabilizer" },
+        "implied_severity": null,
+        "notes": "failed fix implies reopen needed"
+      },
+      {
+        "text": "unclose the bilge pump fault",
+        "entities": { "equipment_name": "bilge pump" },
+        "implied_severity": null,
+        "notes": "unclose variation"
+      },
+      {
+        "text": "watermaker acting up again, need to revisit",
+        "entities": { "equipment_name": "watermaker" },
+        "implied_severity": null,
+        "notes": "again implies recurrence/reopen"
+      }
+    ]
+  },
+  {
+    "action_id": "diagnose_fault",
+    "description": "Add diagnostic findings to a fault",
+    "required_fields": ["fault_id", "diagnosis"],
+    "variants": [
+      {
+        "text": "diagnose the engine fault: fuel injector clogged",
+        "entities": { "equipment_name": "engine", "diagnosis": "fuel injector clogged" },
+        "implied_severity": null,
+        "notes": "explicit diagnosis with finding"
+      },
+      {
+        "text": "root cause of generator issue is worn bearings",
+        "entities": { "equipment_name": "generator", "diagnosis": "worn bearings" },
+        "implied_severity": null,
+        "notes": "root cause phrasing"
+      },
+      {
+        "text": "found the problem with the thruster: shaft seal leak",
+        "entities": { "equipment_name": "thruster", "diagnosis": "shaft seal leak" },
+        "implied_severity": null,
+        "notes": "found the problem phrasing"
+      },
+      {
+        "text": "stabilizer fault caused by hydraulic pump failure",
+        "entities": { "equipment_name": "stabilizer", "diagnosis": "hydraulic pump failure" },
+        "implied_severity": null,
+        "notes": "caused by diagnosis phrasing"
+      },
+      {
+        "text": "watermaker low pressure due to membrane fouling",
+        "entities": { "equipment_name": "watermaker", "diagnosis": "membrane fouling" },
+        "implied_severity": null,
+        "notes": "due to phrasing"
+      },
+      {
+        "text": "assessed the bilge pump - impeller damaged",
+        "entities": { "equipment_name": "bilge pump", "diagnosis": "impeller damaged" },
+        "implied_severity": null,
+        "notes": "assessed variation"
+      }
+    ]
+  },
+  {
+    "action_id": "mark_fault_false_alarm",
+    "description": "Mark a fault as a false alarm",
+    "required_fields": ["fault_id"],
+    "variants": [
+      {
+        "text": "the pump issue was a false alarm",
+        "entities": { "equipment_name": "pump" },
+        "implied_severity": null,
+        "notes": "explicit false alarm statement"
+      },
+      {
+        "text": "mark generator fault as false positive",
+        "entities": { "equipment_name": "generator" },
+        "implied_severity": null,
+        "notes": "false positive synonym"
+      },
+      {
+        "text": "cancel the bilge alarm, sensor malfunction",
+        "entities": { "equipment_name": "bilge", "reason": "sensor malfunction" },
+        "implied_severity": null,
+        "notes": "cancel with reason"
+      },
+      {
+        "text": "no actual fault on the thruster, dismiss it",
+        "entities": { "equipment_name": "thruster" },
+        "implied_severity": null,
+        "notes": "no actual fault phrasing"
+      },
+      {
+        "text": "engine alarm was spurious",
+        "entities": { "equipment_name": "engine" },
+        "implied_severity": null,
+        "notes": "spurious alarm terminology"
+      },
+      {
+        "text": "disregard the stabilizer fault report",
+        "entities": { "equipment_name": "stabilizer" },
+        "implied_severity": null,
+        "notes": "disregard phrasing"
+      }
+    ]
+  },
+  {
+    "action_id": "add_fault_photo",
+    "description": "Attach a photo to an existing fault",
+    "required_fields": ["fault_id", "photo_storage_path"],
+    "variants": [
+      {
+        "text": "add photo to the engine fault",
+        "entities": { "equipment_name": "engine" },
+        "implied_severity": null,
+        "notes": "explicit add photo"
+      },
+      {
+        "text": "attach image of the generator damage",
+        "entities": { "equipment_name": "generator" },
+        "implied_severity": null,
+        "notes": "attach image variation"
+      },
+      {
+        "text": "upload picture of thruster corrosion",
+        "entities": { "equipment_name": "thruster", "description": "corrosion" },
+        "implied_severity": null,
+        "notes": "upload picture with description"
+      },
+      {
+        "text": "here's a pic of the watermaker leak",
+        "entities": { "equipment_name": "watermaker", "description": "leak" },
+        "implied_severity": null,
+        "notes": "casual photo share"
+      },
+      {
+        "text": "photo evidence for the bilge pump issue",
+        "entities": { "equipment_name": "bilge pump" },
+        "implied_severity": null,
+        "notes": "evidence phrasing"
+      },
+      {
+        "text": "documenting stabilizer damage with photos",
+        "entities": { "equipment_name": "stabilizer" },
+        "implied_severity": null,
+        "notes": "documenting variation"
+      }
+    ]
+  },
+  {
+    "action_id": "add_fault_note",
+    "description": "Add a note or comment to a fault",
+    "required_fields": ["fault_id", "note_text"],
+    "variants": [
+      {
+        "text": "add note to engine fault: checked oil levels, normal",
+        "entities": { "equipment_name": "engine", "note_text": "checked oil levels, normal" },
+        "implied_severity": null,
+        "notes": "explicit add note with content"
+      },
+      {
+        "text": "comment on generator issue: parts on order",
+        "entities": { "equipment_name": "generator", "note_text": "parts on order" },
+        "implied_severity": null,
+        "notes": "comment variation"
+      },
+      {
+        "text": "update thruster fault: waiting for diver",
+        "entities": { "equipment_name": "thruster", "note_text": "waiting for diver" },
+        "implied_severity": null,
+        "notes": "update as note addition"
+      },
+      {
+        "text": "note: stabilizer requires shore-side repair",
+        "entities": { "equipment_name": "stabilizer", "note_text": "requires shore-side repair" },
+        "implied_severity": null,
+        "notes": "note prefix format"
+      },
+      {
+        "text": "memo on watermaker: vendor contacted",
+        "entities": { "equipment_name": "watermaker", "note_text": "vendor contacted" },
+        "implied_severity": null,
+        "notes": "memo variation"
+      },
+      {
+        "text": "bilge pump fault: captain notified",
+        "entities": { "equipment_name": "bilge pump", "note_text": "captain notified" },
+        "implied_severity": null,
+        "notes": "simple colon-separated note"
+      }
+    ]
+  },
+  {
+    "action_id": "create_work_order_from_fault",
+    "description": "Create a work order linked to an existing fault",
+    "required_fields": ["fault_id", "title", "equipment_id", "priority"],
+    "variants": [
+      {
+        "text": "create work order from the engine fault",
+        "entities": { "equipment_name": "engine" },
+        "implied_priority": "normal",
+        "notes": "explicit create WO from fault"
+      },
+      {
+        "text": "make a job for the generator issue",
+        "entities": { "equipment_name": "generator" },
+        "implied_priority": "normal",
+        "notes": "job synonym for work order"
+      },
+      {
+        "text": "urgent work order for the thruster fault",
+        "entities": { "equipment_name": "thruster", "priority": "urgent" },
+        "implied_priority": "urgent",
+        "notes": "priority-qualified work order"
+      },
+      {
+        "text": "turn the stabilizer fault into a work order",
+        "entities": { "equipment_name": "stabilizer" },
+        "implied_priority": "normal",
+        "notes": "turn into phrasing"
+      },
+      {
+        "text": "schedule repair for the watermaker problem",
+        "entities": { "equipment_name": "watermaker" },
+        "implied_priority": "normal",
+        "notes": "schedule repair implies WO creation"
+      },
+      {
+        "text": "bilge pump needs a work order, it's an emergency",
+        "entities": { "equipment_name": "bilge pump", "priority": "emergency" },
+        "implied_priority": "emergency",
+        "notes": "emergency priority work order"
+      },
+      {
+        "text": "convert fault to task for ME1",
+        "entities": { "equipment_name": "ME1" },
+        "implied_priority": "normal",
+        "notes": "convert + task synonym"
+      },
+      {
+        "text": "raise a maintenance ticket for the genset fault",
+        "entities": { "equipment_name": "genset" },
+        "implied_priority": "normal",
+        "notes": "maintenance ticket variation"
+      }
+    ]
+  }
+]

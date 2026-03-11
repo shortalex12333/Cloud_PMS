@@ -1,0 +1,436 @@
+{
+  "generated": "2026-03-02T03:00:00.000Z",
+  "version": "1.3",
+  "phase": 19,
+  "wave": 1,
+  "lenses": [
+    {
+      "lens": "work_order",
+      "read_filters": [
+        "wo_number",
+        "title",
+        "description",
+        "status",
+        "priority",
+        "equipment_id",
+        "equipment_name",
+        "assigned_to",
+        "created_at",
+        "due_date",
+        "type",
+        "parts_count"
+      ],
+      "mutate_actions": [
+        {
+          "action_id": "add_wo_note",
+          "required_fields": ["note_text"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "add-note-btn"
+        },
+        {
+          "action_id": "start_work_order",
+          "required_fields": [],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "start-work-btn"
+        },
+        {
+          "action_id": "mark_work_order_complete",
+          "required_fields": ["completion_notes"],
+          "allowed_roles": ["chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "mark-complete-btn"
+        },
+        {
+          "action_id": "cancel_work_order",
+          "required_fields": ["reason"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "action-cancel"
+        },
+        {
+          "action_id": "add_part_to_work_order",
+          "required_fields": ["part_id", "quantity"],
+          "allowed_roles": ["chief_engineer", "chief_officer", "captain"],
+          "testid": "action-add-part"
+        },
+        {
+          "action_id": "add_work_order_photo",
+          "required_fields": ["photo_url"],
+          "allowed_roles": ["chief_engineer", "chief_officer", "captain"],
+          "testid": "action-add-photo"
+        },
+        {
+          "action_id": "assign_work_order",
+          "required_fields": ["assigned_to"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "action-assign"
+        },
+        {
+          "action_id": "reassign_work_order",
+          "required_fields": ["assignee_id", "reason", "signature"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "reassign-btn"
+        },
+        {
+          "action_id": "update_work_order",
+          "required_fields": [],
+          "optional_fields": ["title", "description", "priority", "due_date", "type"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "edit-wo-btn"
+        },
+        {
+          "action_id": "archive_work_order",
+          "required_fields": ["deletion_reason", "signature"],
+          "allowed_roles": ["captain", "manager"],
+          "testid": "action-archive"
+        },
+        {
+          "action_id": "add_wo_hours",
+          "required_fields": ["hours"],
+          "optional_fields": ["notes"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "add-hours-btn"
+        }
+      ]
+    },
+    {
+      "lens": "fault",
+      "read_filters": [
+        "status",
+        "severity",
+        "equipment_id",
+        "equipment_name",
+        "title",
+        "description",
+        "reported_by",
+        "reported_at",
+        "resolved_at"
+      ],
+      "mutate_actions": [
+        {
+          "action_id": "report_fault",
+          "required_fields": ["equipment_id", "title"],
+          "optional_fields": ["description", "severity"],
+          "allowed_roles": ["crew", "deckhand", "steward", "chef", "eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "report-fault-btn"
+        },
+        {
+          "action_id": "acknowledge_fault",
+          "required_fields": ["fault_id"],
+          "allowed_roles": ["eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "acknowledge-fault-btn"
+        },
+        {
+          "action_id": "close_fault",
+          "required_fields": ["fault_id"],
+          "optional_fields": ["resolution_notes"],
+          "allowed_roles": ["eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "close-fault-btn"
+        },
+        {
+          "action_id": "update_fault",
+          "required_fields": ["fault_id"],
+          "optional_fields": ["severity", "description", "title"],
+          "allowed_roles": ["eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "update-fault-btn"
+        },
+        {
+          "action_id": "reopen_fault",
+          "required_fields": ["fault_id"],
+          "optional_fields": ["reason"],
+          "allowed_roles": ["eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "reopen-fault-btn"
+        },
+        {
+          "action_id": "diagnose_fault",
+          "required_fields": ["fault_id", "diagnosis"],
+          "optional_fields": ["recommended_action"],
+          "allowed_roles": ["eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "diagnose-fault-btn"
+        },
+        {
+          "action_id": "mark_fault_false_alarm",
+          "required_fields": ["fault_id"],
+          "optional_fields": ["reason"],
+          "allowed_roles": ["eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "false-alarm-btn"
+        },
+        {
+          "action_id": "add_fault_photo",
+          "required_fields": ["fault_id", "photo_url"],
+          "optional_fields": ["caption"],
+          "allowed_roles": ["crew", "deckhand", "steward", "chef", "eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "add-photo-btn"
+        },
+        {
+          "action_id": "add_fault_note",
+          "required_fields": ["fault_id", "text"],
+          "allowed_roles": ["crew", "deckhand", "steward", "chef", "eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "add-note-btn"
+        },
+        {
+          "action_id": "create_work_order_from_fault",
+          "required_fields": ["fault_id"],
+          "optional_fields": ["title", "description", "priority"],
+          "allowed_roles": ["eto", "engineer", "chief_engineer", "chief_officer", "captain", "manager"],
+          "testid": "create-wo-button"
+        }
+      ]
+    },
+    {
+      "lens": "equipment",
+      "read_filters": [
+        "status",
+        "equipment_type",
+        "location",
+        "manufacturer",
+        "model",
+        "serial_number",
+        "installation_date",
+        "last_maintenance",
+        "next_maintenance",
+        "attention_flag"
+      ],
+      "mutate_actions": [
+        {
+          "action_id": "update_equipment_status",
+          "required_fields": ["status", "equipment_id"],
+          "allowed_roles": ["engineer", "chief_engineer", "eto", "captain", "manager"],
+          "testid": "update-status-button"
+        },
+        {
+          "action_id": "add_equipment_note",
+          "required_fields": ["note_text", "equipment_id"],
+          "allowed_roles": ["crew", "deck", "interior", "engineer", "chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "add-note-btn"
+        },
+        {
+          "action_id": "attach_file_to_equipment",
+          "required_fields": ["file_url", "file_name", "equipment_id"],
+          "allowed_roles": ["crew", "deck", "interior", "engineer", "chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "attach-file-btn"
+        },
+        {
+          "action_id": "create_work_order_for_equipment",
+          "required_fields": ["title", "description", "equipment_id"],
+          "allowed_roles": ["engineer", "chief_engineer", "eto", "captain", "manager"],
+          "testid": "create-wo-btn"
+        },
+        {
+          "action_id": "link_part_to_equipment",
+          "required_fields": ["part_id", "equipment_id"],
+          "allowed_roles": ["engineer", "chief_engineer", "eto", "captain", "manager"],
+          "testid": "link-part-btn"
+        },
+        {
+          "action_id": "flag_equipment_attention",
+          "required_fields": ["flagged", "equipment_id"],
+          "allowed_roles": ["engineer", "chief_engineer", "eto", "captain", "manager"],
+          "testid": "flag-attention-button"
+        },
+        {
+          "action_id": "decommission_equipment",
+          "required_fields": ["reason", "signature", "equipment_id"],
+          "allowed_roles": ["captain", "manager"],
+          "testid": "decommission-button"
+        },
+        {
+          "action_id": "archive_equipment",
+          "required_fields": ["equipment_id"],
+          "optional_fields": ["reason"],
+          "allowed_roles": ["captain", "chief_engineer", "manager"],
+          "testid": "archive-equipment-btn"
+        },
+        {
+          "action_id": "report_fault",
+          "required_fields": ["equipment_id"],
+          "optional_fields": ["title", "description", "severity"],
+          "allowed_roles": ["crew", "deck", "interior", "engineer", "chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "report-fault-btn"
+        },
+        {
+          "action_id": "record_equipment_hours",
+          "required_fields": ["reading", "equipment_id"],
+          "optional_fields": ["reading_date", "notes"],
+          "allowed_roles": ["captain", "chief_engineer", "chief_officer", "manager", "purser", "bosun", "crew"],
+          "testid": "record-hours-btn"
+        }
+      ]
+    },
+    {
+      "lens": "part",
+      "read_filters": [
+        "name",
+        "part_number",
+        "category",
+        "quantity_on_hand",
+        "quantity_minimum",
+        "unit_of_measure",
+        "storage_location",
+        "unit_cost",
+        "supplier_part_number",
+        "description"
+      ],
+      "mutate_actions": [
+        {
+          "action_id": "consume_part",
+          "required_fields": ["quantity"],
+          "optional_fields": ["notes", "work_order_id", "equipment_id"],
+          "allowed_roles": ["crew", "chief_engineer", "eto", "engineer", "chief_officer", "captain", "manager"],
+          "testid": "action-consume-part"
+        },
+        {
+          "action_id": "receive_part",
+          "required_fields": ["quantity"],
+          "optional_fields": ["notes"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "action-receive-part"
+        },
+        {
+          "action_id": "transfer_part",
+          "required_fields": ["quantity", "from_location", "to_location"],
+          "optional_fields": ["notes"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "action-transfer-part"
+        },
+        {
+          "action_id": "adjust_stock_quantity",
+          "required_fields": ["new_quantity", "reason"],
+          "optional_fields": ["location_id", "signature"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "action-adjust-stock"
+        },
+        {
+          "action_id": "write_off_part",
+          "required_fields": ["quantity", "reason"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager"],
+          "testid": "action-write-off"
+        },
+        {
+          "action_id": "add_to_shopping_list",
+          "required_fields": ["quantity"],
+          "optional_fields": ["priority", "notes", "source_work_order_id"],
+          "allowed_roles": ["crew", "chief_engineer", "eto", "engineer", "chief_officer", "captain", "manager"],
+          "testid": "action-shopping-list"
+        },
+        {
+          "action_id": "generate_part_labels",
+          "required_fields": ["part_ids"],
+          "optional_fields": ["label_format", "include_location"],
+          "allowed_roles": ["captain", "chief_engineer", "chief_officer", "manager", "purser", "bosun"],
+          "testid": "action-generate-labels"
+        }
+      ]
+    },
+    {
+      "lens": "certificate",
+      "read_filters": [
+        "name",
+        "title",
+        "certificate_type",
+        "type",
+        "status",
+        "issuing_authority",
+        "issue_date",
+        "expiry_date",
+        "certificate_number",
+        "notes",
+        "crew_member_id",
+        "vessel_id"
+      ],
+      "mutate_actions": [
+        {
+          "action_id": "update_certificate",
+          "required_fields": ["new_expiry_date"],
+          "optional_fields": ["issue_date", "issuing_authority", "certificate_number", "notes"],
+          "allowed_roles": ["chief_officer", "captain", "manager", "purser"],
+          "testid": "renew-certificate-btn"
+        },
+        {
+          "action_id": "link_document_to_certificate",
+          "required_fields": ["document_id"],
+          "optional_fields": ["relationship_type"],
+          "allowed_roles": ["chief_engineer", "eto", "chief_officer", "captain", "manager", "purser"],
+          "testid": "link-document-btn"
+        },
+        {
+          "action_id": "create_vessel_certificate",
+          "required_fields": ["certificate_type", "issuing_authority", "issue_date", "expiry_date", "certificate_number"],
+          "optional_fields": ["document_id"],
+          "allowed_roles": ["captain", "chief_engineer", "manager"],
+          "testid": "create-vessel-cert-btn"
+        },
+        {
+          "action_id": "create_crew_certificate",
+          "required_fields": ["crew_member_id", "certificate_type", "issuing_authority", "issue_date", "expiry_date", "certificate_number"],
+          "optional_fields": ["document_id"],
+          "allowed_roles": ["captain", "chief_engineer", "chief_officer", "manager", "purser"],
+          "testid": "create-crew-cert-btn"
+        },
+        {
+          "action_id": "supersede_certificate",
+          "required_fields": ["new_certificate_id", "signature"],
+          "optional_fields": ["reason"],
+          "allowed_roles": ["captain", "chief_engineer", "manager"],
+          "testid": "supersede-cert-btn"
+        }
+      ]
+    },
+    {
+      "lens": "document",
+      "read_filters": [
+        "filename",
+        "name",
+        "title",
+        "description",
+        "mime_type",
+        "file_size",
+        "url",
+        "created_at",
+        "created_by",
+        "classification",
+        "equipment_id",
+        "equipment_name"
+      ],
+      "mutate_actions": [
+        {
+          "action_id": "delete_document",
+          "required_fields": ["reason", "signature"],
+          "allowed_roles": ["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+          "testid": "delete-document-btn"
+        },
+        {
+          "action_id": "update_document",
+          "required_fields": [],
+          "optional_fields": ["doc_type", "title", "tags", "oem_id", "system_path", "document_type"],
+          "allowed_roles": ["captain", "chief_engineer", "chief_officer", "manager", "purser"],
+          "testid": "reclassify-btn"
+        },
+        {
+          "action_id": "add_document_tags",
+          "required_fields": ["tags"],
+          "allowed_roles": ["captain", "chief_engineer", "chief_officer", "manager", "purser", "bosun", "crew"],
+          "testid": "add-tags-btn"
+        },
+        {
+          "action_id": "get_document_url",
+          "required_fields": [],
+          "optional_fields": ["expiry_seconds"],
+          "allowed_roles": ["captain", "chief_engineer", "chief_officer", "manager", "purser", "bosun", "crew"],
+          "testid": "copy-link-btn"
+        }
+      ]
+    }
+  ],
+  "statistics": {
+    "total_lenses": 6,
+    "total_read_filters": 63,
+    "total_mutate_actions": 47,
+    "coverage": {
+      "work_order": { "read_filters": 12, "mutate_actions": 11 },
+      "fault": { "read_filters": 9, "mutate_actions": 10 },
+      "equipment": { "read_filters": 10, "mutate_actions": 10 },
+      "part": { "read_filters": 10, "mutate_actions": 7 },
+      "certificate": { "read_filters": 12, "mutate_actions": 5 },
+      "document": { "read_filters": 12, "mutate_actions": 4 }
+    }
+  }
+}
