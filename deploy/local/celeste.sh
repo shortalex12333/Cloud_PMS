@@ -236,7 +236,7 @@ try:
         if ename == 'result_batch':
             for item in d['items'][:10]:
                 p = item['payload']
-                name = p.get('name') or p.get('label') or p.get('subject', '?')
+                name = p.get('name') or p.get('title') or p.get('label') or p.get('description') or p.get('subject', '?')
                 print(f"  {item['object_type']:14s} {name[:50]}")
         elif ename == 'finalized':
             print(f"\n  {d['total_results']} results in {d['latency_ms']:.0f}ms (stream: {elapsed:.0f}ms)")
