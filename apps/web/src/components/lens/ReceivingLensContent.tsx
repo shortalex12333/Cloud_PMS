@@ -47,7 +47,7 @@ export function ReceivingLensContent({
   const po_number = data.po_number as string | undefined;
   const status = (data.status as string) || 'draft';
   const received_date = data.received_date as string | undefined;
-  const total = data.total as number | undefined;
+  const total = data.total as number | null | undefined;
   const currency = (data.currency as string) || 'USD';
   const received_by = data.received_by as string | undefined;
   const notes = data.notes as string | undefined;
@@ -67,7 +67,7 @@ export function ReceivingLensContent({
     { label: 'Status', value: statusLabel, color: statusColor },
     { label: 'Vendor', value: vendor_name },
     { label: 'Items', value: `${items.length} item${items.length === 1 ? '' : 's'}` },
-    { label: 'Total', value: total !== undefined ? `${currency} ${total.toFixed(2)}` : '—' },
+    { label: 'Total', value: total != null ? `${currency} ${total.toFixed(2)}` : '—' },
     { label: 'Received', value: received_date ? formatRelativeTime(received_date) : '—' },
   ];
 
@@ -131,4 +131,3 @@ export function ReceivingLensContent({
     </div>
   );
 }
-

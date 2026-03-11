@@ -218,8 +218,9 @@ async def async_client() -> AsyncGenerator[httpx.AsyncClient, None]:
     Uses httpx.AsyncClient with app parameter for in-memory testing.
     Configured with reasonable timeouts for SSE streaming.
     """
+    transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(
-        app=app,
+        transport=transport,
         base_url="http://test",
         timeout=httpx.Timeout(30.0, connect=5.0),
         follow_redirects=True,
