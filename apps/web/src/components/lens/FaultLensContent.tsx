@@ -17,6 +17,7 @@ import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { GhostButton } from '@/components/ui/GhostButton';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { useFaultActions, useFaultPermissions } from '@/hooks/useFaultActions';
 import { toast } from 'sonner';
@@ -193,14 +194,196 @@ export function FaultLensContent({
             <VitalSignsRow signs={vitalSigns} />
           </div>
 
-          {status === 'open' && (
-            <div className="mt-4">
+          {/* Action buttons */}
+          <div className="mt-4 flex items-center gap-2 flex-wrap">
+            {/* Create Work Order - only for open faults */}
+            {status === 'open' && (
               <PrimaryButton
                 onClick={handleCreateWorkOrder}
                 className="text-[13px] min-h-9 px-4 py-2"
               >
                 Create Work Order
               </PrimaryButton>
+            )}
+
+            {/* Acknowledge - only for open faults, Engineer+ */}
+            {canAcknowledge && (
+              <GhostButton
+                onClick={handleAcknowledge}
+                disabled={actionLoading}
+                data-testid="acknowledge-fault-btn"
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                Acknowledge
+              </GhostButton>
+            )}
+
+            {/* Close Fault - for open/investigating faults, Engineer+ */}
+            {canClose && !showCloseInput && (
+              <GhostButton
+                onClick={() => setShowCloseInput(true)}
+                disabled={actionLoading}
+                data-testid="close-fault-btn"
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                Close
+              </GhostButton>
+            )}
+
+            {/* Reopen Fault - for closed/resolved faults, Engineer+ */}
+            {canReopen && !showReopenInput && (
+              <GhostButton
+                onClick={() => setShowReopenInput(true)}
+                disabled={actionLoading}
+                data-testid="reopen-fault-btn"
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                Reopen
+              </GhostButton>
+            )}
+
+            {/* Mark False Alarm - for open/investigating faults, Engineer+ */}
+            {canMarkFalseAlarm && !showFalseAlarmInput && (
+              <GhostButton
+                onClick={() => setShowFalseAlarmInput(true)}
+                disabled={actionLoading}
+                data-testid="false-alarm-btn"
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                False Alarm
+              </GhostButton>
+            )}
+
+            {/* Add Note - all crew */}
+            {permissions.canAddNote && !showNoteInput && (
+              <GhostButton
+                onClick={() => setShowNoteInput(true)}
+                disabled={actionLoading}
+                data-testid="add-note-btn"
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                Add Note
+              </GhostButton>
+            )}
+          </div>
+
+          {/* Close Fault Input */}
+          {showCloseInput && (
+            <div className="mt-4 p-4 bg-surface-elevated rounded-lg border border-surface-border">
+              <label className="block text-sm font-medium text-celeste-text-primary mb-2">
+                Resolution Notes (optional)
+              </label>
+              <textarea
+                value={closeNotes}
+                onChange={(e) => setCloseNotes(e.target.value)}
+                placeholder="Enter resolution notes..."
+                className="w-full px-3 py-2 bg-surface-base border border-surface-border rounded-md text-celeste-text-primary placeholder-celeste-text-muted focus:outline-none focus:ring-2 focus:ring-celeste-accent min-h-[80px]"
+              />
+              <div className="mt-3 flex gap-2">
+                <PrimaryButton
+                  onClick={handleClose}
+                  disabled={actionLoading}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  {actionLoading ? 'Closing...' : 'Confirm Close'}
+                </PrimaryButton>
+                <GhostButton
+                  onClick={() => { setShowCloseInput(false); setCloseNotes(''); }}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  Cancel
+                </GhostButton>
+              </div>
+            </div>
+          )}
+
+          {/* Reopen Fault Input */}
+          {showReopenInput && (
+            <div className="mt-4 p-4 bg-surface-elevated rounded-lg border border-surface-border">
+              <label className="block text-sm font-medium text-celeste-text-primary mb-2">
+                Reason for Reopening (optional)
+              </label>
+              <textarea
+                value={reopenReason}
+                onChange={(e) => setReopenReason(e.target.value)}
+                placeholder="Enter reason for reopening..."
+                className="w-full px-3 py-2 bg-surface-base border border-surface-border rounded-md text-celeste-text-primary placeholder-celeste-text-muted focus:outline-none focus:ring-2 focus:ring-celeste-accent min-h-[80px]"
+              />
+              <div className="mt-3 flex gap-2">
+                <PrimaryButton
+                  onClick={handleReopen}
+                  disabled={actionLoading}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  {actionLoading ? 'Reopening...' : 'Confirm Reopen'}
+                </PrimaryButton>
+                <GhostButton
+                  onClick={() => { setShowReopenInput(false); setReopenReason(''); }}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  Cancel
+                </GhostButton>
+              </div>
+            </div>
+          )}
+
+          {/* False Alarm Input */}
+          {showFalseAlarmInput && (
+            <div className="mt-4 p-4 bg-surface-elevated rounded-lg border border-surface-border">
+              <label className="block text-sm font-medium text-celeste-text-primary mb-2">
+                Reason (optional)
+              </label>
+              <textarea
+                value={falseAlarmReason}
+                onChange={(e) => setFalseAlarmReason(e.target.value)}
+                placeholder="Enter reason for marking as false alarm..."
+                className="w-full px-3 py-2 bg-surface-base border border-surface-border rounded-md text-celeste-text-primary placeholder-celeste-text-muted focus:outline-none focus:ring-2 focus:ring-celeste-accent min-h-[80px]"
+              />
+              <div className="mt-3 flex gap-2">
+                <PrimaryButton
+                  onClick={handleMarkFalseAlarm}
+                  disabled={actionLoading}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  {actionLoading ? 'Marking...' : 'Confirm False Alarm'}
+                </PrimaryButton>
+                <GhostButton
+                  onClick={() => { setShowFalseAlarmInput(false); setFalseAlarmReason(''); }}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  Cancel
+                </GhostButton>
+              </div>
+            </div>
+          )}
+
+          {/* Add Note Input */}
+          {showNoteInput && (
+            <div className="mt-4 p-4 bg-surface-elevated rounded-lg border border-surface-border">
+              <label className="block text-sm font-medium text-celeste-text-primary mb-2">
+                Note
+              </label>
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Enter your note..."
+                className="w-full px-3 py-2 bg-surface-base border border-surface-border rounded-md text-celeste-text-primary placeholder-celeste-text-muted focus:outline-none focus:ring-2 focus:ring-celeste-accent min-h-[80px]"
+              />
+              <div className="mt-3 flex gap-2">
+                <PrimaryButton
+                  onClick={handleAddNote}
+                  disabled={actionLoading || !noteText.trim()}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  {actionLoading ? 'Adding...' : 'Add Note'}
+                </PrimaryButton>
+                <GhostButton
+                  onClick={() => { setShowNoteInput(false); setNoteText(''); }}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  Cancel
+                </GhostButton>
+              </div>
             </div>
           )}
 

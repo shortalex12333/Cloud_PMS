@@ -12,6 +12,8 @@ import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { toast } from 'sonner';
+import { useHandoverActions, useHandoverPermissions } from '@/hooks/useHandoverActions';
 
 export interface HandoverLensContentProps {
   id: string;
@@ -41,6 +43,10 @@ export function HandoverLensContent({
   onNavigate,
   onRefresh,
 }: HandoverLensContentProps) {
+  // Hooks
+  const { acknowledgeHandover, isLoading } = useHandoverActions(id);
+  const { canAcknowledge } = useHandoverPermissions();
+
   // Map data
   const title = (data.title as string) || 'Handover Note';
   const department = (data.department as string) || 'General';
@@ -80,9 +86,23 @@ export function HandoverLensContent({
           <VitalSignsRow signs={vitalSigns} />
         </div>
 
-        {status === 'pending' && (
+        {status === 'pending' && canAcknowledge && (
           <div className="mt-4">
-            <PrimaryButton onClick={() => console.log('[HandoverLens] Acknowledge:', id)} className="text-[13px] min-h-9 px-4 py-2">Acknowledge Handover</PrimaryButton>
+            <PrimaryButton
+              onClick={async () => {
+                const result = await acknowledgeHandover();
+                if (result.success) {
+                  toast.success('Handover acknowledged');
+                  onRefresh?.();
+                } else {
+                  toast.error(result.error || 'Failed to acknowledge handover');
+                }
+              }}
+              disabled={isLoading}
+              className="text-[13px] min-h-9 px-4 py-2"
+            >
+              {isLoading ? 'Acknowledging...' : 'Acknowledge Handover'}
+            </PrimaryButton>
           </div>
         )}
 

@@ -752,62 +752,12 @@
           "role_restricted": []
         }
       }
-    },
-    "document": {
-      "lens": "document",
-      "read_filters": {
-        "status": ["active", "archived", "expired"],
-        "classification": ["operational", "compliance"],
-        "mime_type": null,
-        "equipment_id": null,
-        "created_at": {"field": "created_at", "type": "datetime"},
-        "has_thumbnail": {"field": "has_thumbnail", "type": "boolean"}
-      },
-      "mutate_actions": {
-        "upload_document": {
-          "action_id": "upload_document",
-          "required_fields": ["file_storage_path", "filename"],
-          "optional_fields": ["title", "description", "classification", "equipment_id", "tags"],
-          "role_restricted": []
-        },
-        "update_document": {
-          "action_id": "update_document",
-          "required_fields": ["document_id"],
-          "optional_fields": ["title", "tags", "oem_id", "system_path", "document_type"],
-          "role_restricted": []
-        },
-        "delete_document": {
-          "action_id": "delete_document",
-          "required_fields": ["document_id", "reason"],
-          "optional_fields": [],
-          "role_restricted": ["chief_engineer", "captain", "manager"],
-          "requires_signature": true
-        },
-        "add_document_tags": {
-          "action_id": "add_document_tags",
-          "required_fields": ["document_id", "tags"],
-          "optional_fields": [],
-          "role_restricted": []
-        },
-        "get_document_url": {
-          "action_id": "get_document_url",
-          "required_fields": ["document_id"],
-          "optional_fields": ["expiry_seconds"],
-          "role_restricted": []
-        },
-        "reclassify_document": {
-          "action_id": "reclassify_document",
-          "required_fields": ["document_id", "classification"],
-          "optional_fields": ["reclassification_notes"],
-          "role_restricted": ["chief_engineer", "captain", "manager"]
-        }
-      }
     }
   },
   "metadata": {
-    "total_lenses": 13,
-    "total_actions": 87,
-    "total_filters": 73,
-    "lenses_list": ["work_order", "fault", "equipment", "part", "inventory", "certificate", "handover", "hours_of_rest", "warranty", "shopping_list", "email", "receiving", "document"]
+    "total_lenses": 12,
+    "total_actions": 81,
+    "total_filters": 67,
+    "lenses_list": ["work_order", "fault", "equipment", "part", "inventory", "certificate", "handover", "hours_of_rest", "warranty", "shopping_list", "email", "receiving"]
   }
 }

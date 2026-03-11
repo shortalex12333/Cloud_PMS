@@ -4,11 +4,40 @@
  * Deterministic, rule-based inference from user query to suggested filters.
  * Priority: Pattern matching > Keyword matching
  *
+ * VERB ROUTING: Filters are now lens-aware. Only filters matching the detected
+ * lens are returned, ensuring "show work orders for main engine" gets work order
+ * filters, not equipment filters.
+ *
  * NO LLM inference. NO hallucinated filters.
  * Output MUST map to filter_ids from catalog.ts
  */
 
 import { ALL_FILTERS, QuickFilter, getActiveFilters } from './catalog';
+
+// ============================================================================
+// Lens-Aware Filter Inference
+// ============================================================================
+
+/**
+ * Map from LensType to filter domain
+ * Used to filter suggestions to only show relevant filters for detected lens
+ */
+const LENS_TO_DOMAIN_MAP: Record<string, string> = {
+  work_order: 'work-orders',
+  fault: 'faults',
+  equipment: 'equipment',
+  part: 'inventory',
+  certificate: 'certificates',
+  shopping_list: 'shopping-list',
+  receiving: 'receiving',
+  document: 'documents',
+  crew: 'crew',
+  email: 'email',
+  handover: 'handover',
+  hours_of_rest: 'hours-of-rest',
+  warranty: 'warranty',
+  unknown: '',  // Empty string matches all domains
+};
 
 export interface InferredFilter {
   filter: QuickFilter;
@@ -130,13 +159,18 @@ function detectDomain(query: string): string | null {
 }
 
 /**
- * Infer filters from user query
+ * Infer filters from user query with lens-aware filtering
+ *
+ * VERB ROUTING: When a lens is provided, only filters matching that lens domain
+ * are returned. This ensures "show work orders for main engine" gets work order
+ * filters, not equipment filters.
  *
  * @param query - User's search query
  * @param maxResults - Maximum number of filters to return (default: 5)
+ * @param lens - Optional lens type to constrain filter suggestions (from verb routing)
  * @returns Array of inferred filters, sorted by score descending
  */
-export function inferFilters(query: string, maxResults = 5): InferredFilter[] {
+export function inferFilters(query: string, maxResults = 5, lens?: string): InferredFilter[] {
   if (!query || query.length < 3) {
     return [];
   }
@@ -146,20 +180,34 @@ export function inferFilters(query: string, maxResults = 5): InferredFilter[] {
   const seenFilterIds = new Set<string>();
   const activeFilters = getActiveFilters();
 
+  // Get the domain constraint from lens (if provided)
+  const lensDomain = lens ? LENS_TO_DOMAIN_MAP[lens] : null;
+
+  // Helper to check if filter matches lens constraint
+  const matchesLensConstraint = (filter: QuickFilter): boolean => {
+    // If no lens constraint, allow all
+    if (!lensDomain) return true;
+    // If lens is 'unknown', allow all
+    if (lensDomain === '') return true;
+    // Otherwise, filter must match lens domain
+    return filter.domain === lensDomain;
+  };
+
   // Phase 1: Explicit pattern matching (highest confidence)
   for (const { pattern, filter_id, score } of EXPLICIT_PATTERNS) {
     if (pattern.test(query) && !seenFilterIds.has(filter_id)) {
       const filter = activeFilters.find((f) => f.filter_id === filter_id);
-      if (filter) {
+      if (filter && matchesLensConstraint(filter)) {
         results.push({ filter, score, matchType: 'pattern' });
         seenFilterIds.add(filter_id);
       }
     }
   }
 
-  // Phase 2: Keyword matching (medium confidence)
+  // Phase 2: Keyword matching (medium confidence) - constrained by lens
   for (const filter of activeFilters) {
     if (seenFilterIds.has(filter.filter_id)) continue;
+    if (!matchesLensConstraint(filter)) continue;
 
     let keywordScore = 0;
     let matchedKeywords = 0;
@@ -182,7 +230,8 @@ export function inferFilters(query: string, maxResults = 5): InferredFilter[] {
   }
 
   // Phase 3: Domain-based suggestions (lower confidence)
-  const domain = detectDomain(query);
+  // Use lens domain if provided, otherwise detect from query
+  const domain = lensDomain || detectDomain(query);
   if (domain) {
     const domainFilters = activeFilters.filter(
       (f) => f.domain === domain && !seenFilterIds.has(f.filter_id)
@@ -221,4 +270,43 @@ export function getSuggestionsForDomain(domain: string, limit = 4): QuickFilter[
   return getActiveFilters()
     .filter((f) => f.domain === domain)
     .slice(0, limit);
+}
+
+/**
+ * Get suggested filters for a specific lens type
+ * Converts lens type to domain and returns matching filters
+ *
+ * Example:
+ * - getSuggestionsForLens('work_order') -> work order filters
+ * - getSuggestionsForLens('fault') -> fault filters
+ *
+ * @param lens - The lens type from verb routing (e.g., 'work_order', 'fault')
+ * @param limit - Maximum number of filters to return
+ */
+export function getSuggestionsForLens(lens: string, limit = 4): QuickFilter[] {
+  const domain = LENS_TO_DOMAIN_MAP[lens];
+  if (!domain) {
+    return [];
+  }
+  return getSuggestionsForDomain(domain, limit);
+}
+
+/**
+ * Infer filters with verb routing context
+ *
+ * This is the primary entry point for lens-aware filter inference.
+ * Use the lens from detectPrimaryIntent() to ensure filters match
+ * the user's intent, not just keyword matches.
+ *
+ * Example:
+ * - Query: "show overdue work orders for main engine"
+ * - Lens: work_order (from verb routing)
+ * - Result: Only work order filters (wo_overdue), not equipment filters
+ *
+ * @param query - User's search query
+ * @param lens - Lens type from detectPrimaryIntent()
+ * @param maxResults - Maximum number of filters to return
+ */
+export function inferFiltersWithLens(query: string, lens: string, maxResults = 5): InferredFilter[] {
+  return inferFilters(query, maxResults, lens);
 }

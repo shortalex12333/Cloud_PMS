@@ -7,9 +7,16 @@
  * Per rules.md: Documents are viewed in a full-screen lens, not downloaded.
  * Media files (images, videos) render inline.
  * Text documents (PDF, etc.) render with preview/viewer.
+ *
+ * Actions wired (2026-03-02):
+ *   - delete_document (SIGNED - requires PIN+TOTP)
+ *   - update_document (reclassify)
+ *   - add_document_tags
+ *   - get_document_url (copy signed URL)
  */
 
 import * as React from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { LensHeader, LensTitleBlock } from './LensHeader';
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
@@ -50,6 +57,33 @@ export function DocumentLensContent({
 }: DocumentLensContentProps) {
   const actions = useDocumentActions(id);
   const perms = useDocumentPermissions();
+
+  // Action state
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [newTags, setNewTags] = useState('');
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
+  // Action handlers
+  const handleAddTags = async () => {
+    if (!newTags.trim()) return;
+    const tags = newTags.split(',').map((t) => t.trim()).filter(Boolean);
+    const result = await actions.addTags(tags);
+    if (result.success) {
+      setNewTags('');
+      setShowTagInput(false);
+      onRefresh?.();
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    const result = await actions.getSignedUrl(3600);
+    const data = result.data as Record<string, unknown> | undefined;
+    if (result.success && data?.url) {
+      await navigator.clipboard.writeText(data.url as string);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }
+  };
 
   // Map data
   const filename = (data.filename as string) || (data.name as string) || 'Document';
@@ -110,6 +144,104 @@ export function DocumentLensContent({
             </GhostButton>
           </div>
         )}
+
+        {/* Actions Section - wired 2026-03-02 */}
+        <div className="mt-6">
+          <SectionContainer title="Actions" stickyTop={56}>
+            <div className="flex flex-wrap gap-3">
+              {/* Copy Signed URL */}
+              {perms.canGetUrl && (
+                <GhostButton
+                  onClick={handleCopyUrl}
+                  disabled={actions.isLoading}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  {copiedUrl ? '✓ Copied!' : 'Copy Link'}
+                </GhostButton>
+              )}
+
+              {/* Add Tags */}
+              {perms.canAddTags && !showTagInput && (
+                <GhostButton
+                  onClick={() => setShowTagInput(true)}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  Add Tags
+                </GhostButton>
+              )}
+
+              {/* Reclassify Document */}
+              {perms.canReclassify && (
+                <GhostButton
+                  onClick={() => {
+                    const newClass = window.prompt('Enter new classification:', classification);
+                    if (newClass && newClass !== classification) {
+                      actions.reclassifyDocument(newClass).then((result) => {
+                        if (result.success) onRefresh?.();
+                      });
+                    }
+                  }}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  Reclassify
+                </GhostButton>
+              )}
+
+              {/* Delete Document (SIGNED action) */}
+              {perms.canDelete && (
+                <GhostButton
+                  onClick={() => {
+                    const reason = window.prompt('Reason for deletion:');
+                    if (reason) {
+                      const pin = window.prompt('Enter PIN:');
+                      const totp = window.prompt('Enter TOTP code:');
+                      if (pin && totp) {
+                        actions.deleteDocument(reason, { pin_hash: pin, totp_code: totp })
+                          .then((result) => {
+                            if (result.success) {
+                              onBack();
+                            } else {
+                              window.alert(result.error || 'Delete failed');
+                            }
+                          });
+                      }
+                    }
+                  }}
+                  disabled={actions.isLoading}
+                  className="text-[13px] min-h-9 px-4 py-2 text-celeste-red hover:text-celeste-red-hover"
+                >
+                  Delete
+                </GhostButton>
+              )}
+            </div>
+
+            {/* Tag Input UI */}
+            {showTagInput && (
+              <div className="mt-4 flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={newTags}
+                  onChange={(e) => setNewTags(e.target.value)}
+                  placeholder="tag1, tag2, tag3"
+                  className="flex-1 px-3 py-2 rounded border border-surface-border bg-surface-primary text-celeste-text-primary text-sm"
+                />
+                <GhostButton
+                  onClick={handleAddTags}
+                  disabled={actions.isLoading}
+                  className="text-[13px] min-h-9 px-4 py-2 bg-celeste-blue text-white hover:bg-celeste-blue-hover"
+                >
+                  Save
+                </GhostButton>
+                <GhostButton
+                  onClick={() => { setShowTagInput(false); setNewTags(''); }}
+                  className="text-[13px] min-h-9 px-4 py-2"
+                >
+                  Cancel
+                </GhostButton>
+              </div>
+            )}
+          </SectionContainer>
+        </div>
 
         <div className="mt-6 border-t border-surface-border" aria-hidden="true" />
 

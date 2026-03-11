@@ -13,6 +13,8 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
+import { toast } from 'sonner';
+import { useHoursOfRestActions, useHoursOfRestPermissions } from '@/hooks/useHoursOfRestActions';
 
 export interface HoursOfRestLensContentProps {
   id: string;
@@ -35,6 +37,10 @@ export function HoursOfRestLensContent({
   onNavigate,
   onRefresh,
 }: HoursOfRestLensContentProps) {
+  // Actions and permissions
+  const { verifyRecord, addRestPeriod, isLoading, error } = useHoursOfRestActions(id);
+  const { canVerify, canAddPeriod } = useHoursOfRestPermissions();
+
   // Map data
   const crew_name = (data.crew_name as string) || 'Crew Member';
   const date = data.date as string | undefined;
@@ -64,6 +70,37 @@ export function HoursOfRestLensContent({
     { label: 'Date', value: date ? new Date(date).toLocaleDateString() : '—' },
   ];
 
+  // Action handlers
+  const handleVerifyRecord = async () => {
+    const result = await verifyRecord();
+    if (result.success) {
+      toast.success('Record verified');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to verify record');
+    }
+  };
+
+  const handleAddRestPeriod = async () => {
+    // TODO: Open a dialog/modal to collect rest period details
+    // For now, use a placeholder with current time range
+    const now = new Date();
+    const startTime = new Date(now.getTime() - 8 * 60 * 60 * 1000); // 8 hours ago
+
+    const result = await addRestPeriod({
+      start_time: startTime.toISOString(),
+      end_time: now.toISOString(),
+      rest_type: 'scheduled',
+    });
+
+    if (result.success) {
+      toast.success('Rest period added');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to add rest period');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <LensHeader entityType="Hours of Rest" title={crew_name} onBack={onBack} onClose={onClose} />
@@ -81,10 +118,26 @@ export function HoursOfRestLensContent({
           <VitalSignsRow signs={vitalSigns} />
         </div>
 
-        {status !== 'verified' && (
+        {status !== 'verified' && (canVerify || canAddPeriod) && (
           <div className="mt-4 flex items-center gap-2">
-            <PrimaryButton onClick={() => console.log('[HoursOfRestLens] Verify:', id)} className="text-[13px] min-h-9 px-4 py-2">Verify Record</PrimaryButton>
-            <GhostButton onClick={() => console.log('[HoursOfRestLens] Add rest period:', id)} className="text-[13px] min-h-9 px-4 py-2">Add Rest Period</GhostButton>
+            {canVerify && (
+              <PrimaryButton
+                onClick={handleVerifyRecord}
+                disabled={isLoading}
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                {isLoading ? 'Verifying...' : 'Verify Record'}
+              </PrimaryButton>
+            )}
+            {canAddPeriod && (
+              <GhostButton
+                onClick={handleAddRestPeriod}
+                disabled={isLoading}
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                {isLoading ? 'Adding...' : 'Add Rest Period'}
+              </GhostButton>
+            )}
           </div>
         )}
 
@@ -125,4 +178,3 @@ export function HoursOfRestLensContent({
     </div>
   );
 }
-

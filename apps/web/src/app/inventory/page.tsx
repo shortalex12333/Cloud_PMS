@@ -10,6 +10,7 @@ import { EntityList } from '@/features/entity-list/components/EntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
 import { fetchParts, fetchPart } from '@/features/inventory/api';
 import { partToListResult } from '@/features/inventory/adapter';
+import { ConsumePartModal, ReceivePartModal, TransferPartModal, AdjustStockModal } from '@/features/inventory/components';
 import type { Part } from '@/features/inventory/types';
 
 function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
@@ -47,6 +48,12 @@ function PartDetail({ id }: { id: string }) {
     addToShoppingList,
   } = usePartActions(id);
 
+  // Modal state
+  const [showConsumeModal, setShowConsumeModal] = React.useState(false);
+  const [showReceiveModal, setShowReceiveModal] = React.useState(false);
+  const [showTransferModal, setShowTransferModal] = React.useState(false);
+  const [showAdjustStockModal, setShowAdjustStockModal] = React.useState(false);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['part', id],
     queryFn: () => fetchPart(id, token || ''),
@@ -55,37 +62,45 @@ function PartDetail({ id }: { id: string }) {
   });
 
   // Action handlers with query invalidation
-  const handleConsume = React.useCallback(async () => {
-    const result = await consumePart(1);
+  const handleConsumeSubmit = React.useCallback(async (quantity: number, notes?: string) => {
+    const result = await consumePart(quantity, notes);
     if (result.success) {
       queryClient.invalidateQueries({ queryKey: ['part', id] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     }
+    return result;
   }, [consumePart, queryClient, id]);
 
-  const handleReceive = React.useCallback(async () => {
-    const result = await receivePart(1);
+  // Receive modal submit handler
+  const handleReceiveSubmit = React.useCallback(async (quantity: number, notes?: string) => {
+    const result = await receivePart(quantity, notes);
     if (result.success) {
       queryClient.invalidateQueries({ queryKey: ['part', id] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     }
+    return result;
   }, [receivePart, queryClient, id]);
 
-  const handleTransfer = React.useCallback(async () => {
-    const result = await transferPart(1, 'default');
+  // Transfer modal submit handler
+  const handleTransferSubmit = React.useCallback(async (quantity: number, toLocation: string, notes?: string) => {
+    const fromLocation = data?.location || 'default';
+    const result = await transferPart(quantity, fromLocation, toLocation, notes);
     if (result.success) {
       queryClient.invalidateQueries({ queryKey: ['part', id] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     }
-  }, [transferPart, queryClient, id]);
+    return result;
+  }, [transferPart, queryClient, id, data?.location]);
 
-  const handleAdjustStock = React.useCallback(async () => {
-    const result = await adjustStock(data?.quantity_on_hand ?? 0, 'Manual adjustment');
+  // Adjust stock modal submit handler
+  const handleAdjustStockSubmit = React.useCallback(async (newQuantity: number, reason: string) => {
+    const result = await adjustStock(newQuantity, reason);
     if (result.success) {
       queryClient.invalidateQueries({ queryKey: ['part', id] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     }
-  }, [adjustStock, queryClient, id, data?.quantity_on_hand]);
+    return result;
+  }, [adjustStock, queryClient, id]);
 
   const handleWriteOff = React.useCallback(async () => {
     const result = await writeOff(1, 'Write off');
@@ -158,40 +173,44 @@ function PartDetail({ id }: { id: string }) {
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2 pt-4 border-t border-white/10">
-        {permissions.canConsume && (
+        {permissions.canConsume && data.quantity_on_hand > 0 && (
           <button
-            onClick={handleConsume}
+            onClick={() => setShowConsumeModal(true)}
             disabled={isActionLoading}
             className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+            data-testid="use-part-button"
           >
             Use Part
           </button>
         )}
         {permissions.canReceive && (
           <button
-            onClick={handleReceive}
+            onClick={() => setShowReceiveModal(true)}
             disabled={isActionLoading}
             className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+            data-testid="receive-stock-button"
           >
             Receive Stock
           </button>
         )}
-        {permissions.canTransfer && (
+        {permissions.canTransfer && data.quantity_on_hand > 0 && (
           <button
-            onClick={handleTransfer}
+            onClick={() => setShowTransferModal(true)}
             disabled={isActionLoading}
             className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+            data-testid="transfer-button"
           >
             Transfer
           </button>
         )}
         {permissions.canAdjustStock && (
           <button
-            onClick={handleAdjustStock}
+            onClick={() => setShowAdjustStockModal(true)}
             disabled={isActionLoading}
             className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+            data-testid="adjust-stock-button"
           >
-            Adjust Stock
+            Adjust
           </button>
         )}
         {permissions.canWriteOff && (
@@ -213,6 +232,51 @@ function PartDetail({ id }: { id: string }) {
           </button>
         )}
       </div>
+
+      {/* Consume Part Modal */}
+      <ConsumePartModal
+        open={showConsumeModal}
+        onClose={() => setShowConsumeModal(false)}
+        onSubmit={handleConsumeSubmit}
+        isLoading={isActionLoading}
+        partName={data.name}
+        currentQuantity={data.quantity_on_hand}
+        unitOfMeasure={data.unit_of_measure}
+      />
+
+      {/* Receive Part Modal */}
+      <ReceivePartModal
+        open={showReceiveModal}
+        onClose={() => setShowReceiveModal(false)}
+        onSubmit={handleReceiveSubmit}
+        isLoading={isActionLoading}
+        partName={data.name}
+        currentQuantity={data.quantity_on_hand}
+        unitOfMeasure={data.unit_of_measure}
+      />
+
+      {/* Transfer Part Modal */}
+      <TransferPartModal
+        open={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        onSubmit={handleTransferSubmit}
+        isLoading={isActionLoading}
+        partName={data.name}
+        currentQuantity={data.quantity_on_hand}
+        currentLocation={data.location}
+        unitOfMeasure={data.unit_of_measure}
+      />
+
+      {/* Adjust Stock Modal */}
+      <AdjustStockModal
+        open={showAdjustStockModal}
+        onClose={() => setShowAdjustStockModal(false)}
+        onSubmit={handleAdjustStockSubmit}
+        isLoading={isActionLoading}
+        partName={data.name}
+        currentQuantity={data.quantity_on_hand}
+        unitOfMeasure={data.unit_of_measure}
+      />
     </div>
   );
 }

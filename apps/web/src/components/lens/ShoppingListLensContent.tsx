@@ -13,6 +13,8 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
+import { toast } from 'sonner';
+import { useShoppingListActions, useShoppingListPermissions } from '@/hooks/useShoppingListActions';
 
 export interface ShoppingListLensContentProps {
   id: string;
@@ -21,6 +23,15 @@ export interface ShoppingListLensContentProps {
   onClose: () => void;
   onNavigate?: (entityType: string, entityId: string) => void;
   onRefresh?: () => void;
+}
+
+interface ShoppingListItem {
+  id: string;
+  part_name: string;
+  quantity_requested: number;
+  unit?: string;
+  status: string;
+  urgency?: 'low' | 'normal' | 'high' | 'critical';
 }
 
 function mapStatusToColor(status: string): 'critical' | 'warning' | 'success' | 'neutral' {
@@ -33,6 +44,81 @@ function mapStatusToColor(status: string): 'critical' | 'warning' | 'success' | 
   }
 }
 
+/**
+ * ItemActions - Action buttons for a single shopping list item.
+ * Uses useShoppingListActions hook with the specific item ID.
+ */
+function ItemActions({
+  item,
+  canApprove,
+  canReject,
+  onRefresh,
+}: {
+  item: ShoppingListItem;
+  canApprove: boolean;
+  canReject: boolean;
+  onRefresh?: () => void;
+}) {
+  const { approveItem, rejectItem, isLoading } = useShoppingListActions(item.id);
+  const [actionInProgress, setActionInProgress] = React.useState<'approve' | 'reject' | null>(null);
+
+  const handleApprove = async () => {
+    setActionInProgress('approve');
+    const result = await approveItem();
+    if (result.success) {
+      toast.success('Item approved');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to approve item');
+    }
+    setActionInProgress(null);
+  };
+
+  const handleReject = async () => {
+    setActionInProgress('reject');
+    // TODO: Open modal to collect rejection reason
+    const result = await rejectItem('Item rejected');
+    if (result.success) {
+      toast.success('Item rejected');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to reject item');
+    }
+    setActionInProgress(null);
+  };
+
+  const isDisabled = isLoading || actionInProgress !== null;
+
+  return (
+    <div className="flex gap-1">
+      {canApprove && (
+        <button
+          onClick={handleApprove}
+          disabled={isDisabled}
+          className={cn(
+            'typo-meta px-2 py-1 bg-status-success/20 text-status-success rounded hover:bg-status-success/30',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+        >
+          {actionInProgress === 'approve' ? '...' : 'Approve'}
+        </button>
+      )}
+      {canReject && (
+        <button
+          onClick={handleReject}
+          disabled={isDisabled}
+          className={cn(
+            'typo-meta px-2 py-1 bg-status-critical/20 text-status-critical rounded hover:bg-status-critical/30',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+        >
+          {actionInProgress === 'reject' ? '...' : 'Reject'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ShoppingListLensContent({
   id,
   data,
@@ -41,6 +127,13 @@ export function ShoppingListLensContent({
   onNavigate,
   onRefresh,
 }: ShoppingListLensContentProps) {
+  // Hooks for list-level actions (no item ID) and permissions
+  const { createItem, markOrdered, isLoading } = useShoppingListActions();
+  const { canCreate, canApprove, canReject, canMarkOrdered } = useShoppingListPermissions();
+
+  // Track loading state per action type
+  const [actionInProgress, setActionInProgress] = React.useState<string | null>(null);
+
   // Map data
   const title = (data.title as string) || 'Shopping List';
   const status = (data.status as string) || 'pending';
@@ -50,14 +143,7 @@ export function ShoppingListLensContent({
   const approved_at = data.approved_at as string | undefined;
 
   // Items from child table
-  const items = (data.items as Array<{
-    id: string;
-    part_name: string;
-    quantity_requested: number;
-    unit?: string;
-    status: string;
-    urgency?: 'low' | 'normal' | 'high' | 'critical';
-  }>) || [];
+  const items = (data.items as ShoppingListItem[]) || [];
 
   const statusColor = mapStatusToColor(status);
   const statusLabel = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -73,6 +159,39 @@ export function ShoppingListLensContent({
     { label: 'Approver', value: approver_name ?? 'Pending' },
     { label: 'Created', value: created_at ? formatRelativeTime(created_at) : '—' },
   ];
+
+  // Action handlers
+  const handleAddItem = async () => {
+    setActionInProgress('create');
+    // TODO: Open modal to collect item details
+    // For now, show placeholder - in production this would open a form modal
+    const result = await createItem({
+      description: 'New item',
+      quantity: 1,
+      unit: 'each',
+      priority: 'normal',
+    });
+    if (result.success) {
+      toast.success('Item added to shopping list');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to add item');
+    }
+    setActionInProgress(null);
+  };
+
+  const handleMarkOrdered = async () => {
+    setActionInProgress('order');
+    // Mark all approved items as ordered
+    const result = await markOrdered({});
+    if (result.success) {
+      toast.success(`${approvedItems} item${approvedItems === 1 ? '' : 's'} marked as ordered`);
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to mark items as ordered');
+    }
+    setActionInProgress(null);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -91,9 +210,23 @@ export function ShoppingListLensContent({
         </div>
 
         <div className="mt-4 flex items-center gap-2 flex-wrap">
-          <PrimaryButton onClick={() => console.log('[ShoppingListLens] Add item:', id)} className="text-[13px] min-h-9 px-4 py-2">Add Item</PrimaryButton>
-          {approvedItems > 0 && (
-            <GhostButton onClick={() => console.log('[ShoppingListLens] Mark ordered:', id)} className="text-[13px] min-h-9 px-4 py-2">Mark {approvedItems} as Ordered</GhostButton>
+          {canCreate && (
+            <PrimaryButton
+              onClick={handleAddItem}
+              disabled={isLoading || actionInProgress === 'create'}
+              className="text-[13px] min-h-9 px-4 py-2"
+            >
+              {actionInProgress === 'create' ? 'Adding...' : 'Add Item'}
+            </PrimaryButton>
+          )}
+          {canMarkOrdered && approvedItems > 0 && (
+            <GhostButton
+              onClick={handleMarkOrdered}
+              disabled={isLoading || actionInProgress === 'order'}
+              className="text-[13px] min-h-9 px-4 py-2"
+            >
+              {actionInProgress === 'order' ? 'Processing...' : `Mark ${approvedItems} as Ordered`}
+            </GhostButton>
           )}
         </div>
 
@@ -110,6 +243,8 @@ export function ShoppingListLensContent({
                                        item.urgency === 'high' ? 'text-status-warning' : 'text-celeste-text-muted';
                   const itemStatusColor = item.status === 'approved' ? 'text-status-success' :
                                           item.status === 'rejected' ? 'text-status-critical' : 'text-celeste-text-muted';
+                  const showActions = (item.status === 'candidate' || item.status === 'under_review') && (canApprove || canReject);
+
                   return (
                     <li key={item.id || index} className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg">
                       <div>
@@ -125,21 +260,13 @@ export function ShoppingListLensContent({
                         <span className={cn('typo-meta uppercase', itemStatusColor)}>
                           {item.status.replace(/_/g, ' ')}
                         </span>
-                        {(item.status === 'candidate' || item.status === 'under_review') && (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => console.log('[ShoppingListLens] Approve item:', item.id)}
-                              className="typo-meta px-2 py-1 bg-status-success/20 text-status-success rounded hover:bg-status-success/30"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => console.log('[ShoppingListLens] Reject item:', item.id)}
-                              className="typo-meta px-2 py-1 bg-status-critical/20 text-status-critical rounded hover:bg-status-critical/30"
-                            >
-                              Reject
-                            </button>
-                          </div>
+                        {showActions && (
+                          <ItemActions
+                            item={item}
+                            canApprove={canApprove}
+                            canReject={canReject}
+                            onRefresh={onRefresh}
+                          />
                         )}
                       </div>
                     </li>
@@ -164,4 +291,3 @@ export function ShoppingListLensContent({
     </div>
   );
 }
-

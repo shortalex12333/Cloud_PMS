@@ -236,8 +236,8 @@ export function WorkOrderLensContent({
     return result;
   }, [actions, onRefresh]);
 
-  const handleReassign = React.useCallback(async (assigneeId: string) => {
-    const result = await actions.assignWorkOrder(assigneeId);
+  const handleReassign = React.useCallback(async (assigneeId: string, reason: string, signature: SignaturePayload) => {
+    const result = await actions.reassignWorkOrder(assigneeId, reason, signature);
     if (result.success) onRefresh?.();
     return result;
   }, [actions, onRefresh]);
@@ -264,6 +264,21 @@ export function WorkOrderLensContent({
     const result = await actions.updateWorkOrder(changes as Record<string, unknown>);
     if (result.success) onRefresh?.();
     return result;
+  }, [actions, onRefresh]);
+
+  /** Add photo/file to work order */
+  const handleAddFile = React.useCallback(async () => {
+    const photoUrl = window.prompt('Enter the photo/file URL:');
+    if (!photoUrl?.trim()) return;
+
+    const caption = window.prompt('Enter a caption (optional):') || undefined;
+
+    const result = await actions.addPhoto(photoUrl.trim(), caption);
+    if (result.success) {
+      onRefresh?.();
+    } else {
+      window.alert(result.error || 'Failed to add photo');
+    }
   }, [actions, onRefresh]);
 
   return (
@@ -392,7 +407,7 @@ export function WorkOrderLensContent({
         <div className="mt-6">
           <AttachmentsSection
             attachments={attachments}
-            onAddFile={() => {}}
+            onAddFile={handleAddFile}
             canAddFile={perms.canAddPhoto}
             stickyTop={56}
           />
@@ -435,6 +450,7 @@ export function WorkOrderLensContent({
         isLoading={actions.isLoading}
         crew={availableCrew}
         currentAssigneeId={assigned_to}
+        workOrderId={id}
       />
 
       <ArchiveModal

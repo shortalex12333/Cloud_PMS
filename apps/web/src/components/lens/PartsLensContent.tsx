@@ -13,6 +13,8 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
+import { toast } from 'sonner';
+import { usePartActions, usePartsPermissions } from '@/hooks/usePartActions';
 
 export interface PartsLensContentProps {
   id: string;
@@ -39,6 +41,10 @@ export function PartsLensContent({
   onNavigate,
   onRefresh,
 }: PartsLensContentProps) {
+  // Hook up actions and permissions
+  const { consumePart, adjustStock, isLoading } = usePartActions(id);
+  const { canConsume, canAdjust } = usePartsPermissions();
+
   // Map data
   const part_name = (data.name as string) || (data.part_name as string) || 'Part';
   const part_number = data.part_number as string | undefined;
@@ -50,6 +56,29 @@ export function PartsLensContent({
   const supplier = data.supplier as string | undefined;
   const category = data.category as string | undefined;
   const last_counted_at = data.last_counted_at as string | undefined;
+
+  // Action handlers
+  const handleLogUsage = async () => {
+    const result = await consumePart(1);
+    if (result.success) {
+      toast.success('Usage logged successfully');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to log usage');
+    }
+  };
+
+  const handleCountStock = async () => {
+    // For stock count, we pass the current quantity and a default reason
+    // In a full implementation, this would open a modal to collect the new quantity and reason
+    const result = await adjustStock(stock_quantity, 'Physical count');
+    if (result.success) {
+      toast.success('Stock count recorded successfully');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to record stock count');
+    }
+  };
 
   const stockColor = mapStockStatus(stock_quantity, min_stock_level);
   const stockLabel = stock_quantity <= 0 ? 'Out of Stock' :
@@ -86,8 +115,24 @@ export function PartsLensContent({
         </div>
 
         <div className="mt-4 flex items-center gap-2">
-          <PrimaryButton onClick={() => console.log('[PartsLens] Log usage:', id)} className="text-[13px] min-h-9 px-4 py-2">Log Usage</PrimaryButton>
-          <GhostButton onClick={() => console.log('[PartsLens] Count stock:', id)} className="text-[13px] min-h-9 px-4 py-2">Count Stock</GhostButton>
+          {canConsume && (
+            <PrimaryButton
+              onClick={handleLogUsage}
+              disabled={isLoading}
+              className="text-[13px] min-h-9 px-4 py-2"
+            >
+              {isLoading ? 'Loading...' : 'Log Usage'}
+            </PrimaryButton>
+          )}
+          {canAdjust && (
+            <GhostButton
+              onClick={handleCountStock}
+              disabled={isLoading}
+              className="text-[13px] min-h-9 px-4 py-2"
+            >
+              {isLoading ? 'Loading...' : 'Count Stock'}
+            </GhostButton>
+          )}
         </div>
 
         <div className="mt-6 border-t border-surface-border" aria-hidden="true" />

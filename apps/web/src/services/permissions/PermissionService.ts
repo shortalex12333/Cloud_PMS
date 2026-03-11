@@ -12,7 +12,7 @@
  */
 
 // Import lens_matrix.json at build time
-import lensMatrix from '../../../../../.planning/agents/lens-matrix/lens_matrix.json';
+import lensMatrix from '../../config/lens_matrix.json';
 
 // ---------------------------------------------------------------------------
 // Types

@@ -248,6 +248,8 @@ export default function SpotlightSearch({
     clear,
     actionSuggestions,
     refetch,
+    deriveReadinessStates,
+    prefillData,
   } = useCelesteSearch(
     user?.yachtId ?? null,
     objectType ? [objectType] : null
@@ -1013,6 +1015,8 @@ export default function SpotlightSearch({
               actions={actionSuggestions}
               yachtId={user?.yachtId ?? null}
               onActionComplete={refetch}
+              readinessStates={deriveReadinessStates()}
+              prefillData={prefillData}
             />
           )}
 
@@ -1229,31 +1233,22 @@ export default function SpotlightSearch({
         {/* Utility Icon Row - Email ≡, Menu ≡, Settings ⚙
             Centered below search bar, tokenized spacing */}
         <div className="flex justify-center items-center gap-ds-3 mt-ds-4">
-          {/* Email Button with hamburger icon */}
+          {/* Email Button - navigates to /email fragmented route (lens pattern) */}
           <button
             onClick={() => {
-              const newEmailScope = !emailScopeActive;
-              toggleEmailScope(newEmailScope);
-              if (!newEmailScope) {
-                setEmailResults([]);
-              }
-              clear();
-              inputRef.current?.focus();
+              router.push(getEntityRoute('email'));
             }}
             className={cn(
               'flex items-center gap-2',
               'p-ds-2',
               'rounded-md',
               'transition-all duration-fast ease-out',
-              emailScopeActive
-                ? 'bg-brand-interactive text-surface-elevated'
-                : 'text-txt-tertiary hover:text-txt-secondary hover:bg-surface-active'
+              'text-txt-tertiary hover:text-txt-secondary hover:bg-surface-active'
             )}
-            aria-label={emailScopeActive ? 'Exit Email' : 'Email'}
+            aria-label="Email"
             data-testid="utility-email-button"
           >
             <Mail className="w-5 h-5" strokeWidth={1.5} />
-            <Menu className="w-3 h-3" strokeWidth={2} />
           </button>
 
           {/* Menu Button with hamburger icon */}

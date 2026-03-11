@@ -13,6 +13,8 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
+import { toast } from 'sonner';
+import { useReceivingActions, useReceivingPermissions } from '@/hooks/useReceivingActions';
 
 export interface ReceivingLensContentProps {
   id: string;
@@ -41,6 +43,17 @@ export function ReceivingLensContent({
   onNavigate,
   onRefresh,
 }: ReceivingLensContentProps) {
+  // Hook for receiving actions
+  const {
+    addLineItem,
+    completeReceiving,
+    reportDiscrepancy,
+    isLoading,
+  } = useReceivingActions(id);
+
+  // Hook for role-based permissions
+  const { canAdd, canComplete, canReject } = useReceivingPermissions();
+
   // Map data
   const vendor_name = (data.vendor_name as string) || 'Unknown Vendor';
   const vendor_reference = data.vendor_reference as string | undefined;
@@ -73,6 +86,52 @@ export function ReceivingLensContent({
 
   const canModify = status === 'draft';
 
+  // Handler for Add Item button
+  const handleAddItem = async () => {
+    // For now, add a placeholder item - in a real implementation,
+    // this would open a modal or form to collect item details
+    const result = await addLineItem({
+      description: 'New item',
+      quantity_received: 1,
+      condition: 'new',
+    });
+
+    if (result.success) {
+      toast.success('Line item added');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to add line item');
+    }
+  };
+
+  // Handler for Accept button
+  const handleAccept = async () => {
+    const result = await completeReceiving();
+
+    if (result.success) {
+      toast.success('Receiving completed');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to complete receiving');
+    }
+  };
+
+  // Handler for Reject button
+  const handleReject = async () => {
+    const result = await reportDiscrepancy({
+      type: 'other',
+      description: 'Receiving rejected',
+      action_required: 'escalate',
+    });
+
+    if (result.success) {
+      toast.success('Discrepancy reported');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to report discrepancy');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <LensHeader entityType="Receiving" title={po_number || vendor_name} onBack={onBack} onClose={onClose} />
@@ -92,9 +151,33 @@ export function ReceivingLensContent({
 
         {canModify && (
           <div className="mt-4 flex items-center gap-2">
-            <PrimaryButton onClick={() => console.log('[ReceivingLens] Add item:', id)} className="text-[13px] min-h-9 px-4 py-2">Add Item</PrimaryButton>
-            <GhostButton onClick={() => console.log('[ReceivingLens] Accept:', id)} className="text-[13px] min-h-9 px-4 py-2">Accept</GhostButton>
-            <GhostButton onClick={() => console.log('[ReceivingLens] Reject:', id)} className="text-[13px] min-h-9 px-4 py-2 text-status-critical">Reject</GhostButton>
+            {canAdd && (
+              <PrimaryButton
+                onClick={handleAddItem}
+                disabled={isLoading}
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                {isLoading ? 'Adding...' : 'Add Item'}
+              </PrimaryButton>
+            )}
+            {canComplete && (
+              <GhostButton
+                onClick={handleAccept}
+                disabled={isLoading}
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                {isLoading ? 'Processing...' : 'Accept'}
+              </GhostButton>
+            )}
+            {canReject && (
+              <GhostButton
+                onClick={handleReject}
+                disabled={isLoading}
+                className="text-[13px] min-h-9 px-4 py-2 text-status-critical"
+              >
+                {isLoading ? 'Processing...' : 'Reject'}
+              </GhostButton>
+            )}
           </div>
         )}
 
@@ -131,4 +214,3 @@ export function ReceivingLensContent({
     </div>
   );
 }
-

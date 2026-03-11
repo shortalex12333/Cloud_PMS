@@ -30,6 +30,8 @@ export {
   inferFilters,
   hasExplicitFilterMatch,
   getSuggestionsForDomain,
+  getSuggestionsForLens,
+  inferFiltersWithLens,
 } from './infer';
 
 // Re-export execution functions

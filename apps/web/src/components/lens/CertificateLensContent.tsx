@@ -6,12 +6,19 @@
  */
 
 import * as React from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { LensHeader, LensTitleBlock } from './LensHeader';
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { toast } from 'sonner';
+import {
+  useCertificateActions,
+  useCertificatePermissions,
+  type CertificateType,
+} from '@/hooks/useCertificateActions';
 
 export interface CertificateLensContentProps {
   id: string;
@@ -33,6 +40,18 @@ function mapStatusToColor(status: string, expiryDate?: string): 'critical' | 'wa
   return 'success';
 }
 
+/**
+ * Determine certificate type from data object.
+ * Vessel certificates have vessel_id, crew certificates have crew_member_id.
+ */
+function determineCertificateType(data: Record<string, unknown>): CertificateType {
+  if (data.crew_member_id || data.crewMemberId) {
+    return 'crew';
+  }
+  // Default to vessel if vessel_id present or no crew identifier
+  return 'vessel';
+}
+
 export function CertificateLensContent({
   id,
   data,
@@ -41,6 +60,17 @@ export function CertificateLensContent({
   onNavigate,
   onRefresh,
 }: CertificateLensContentProps) {
+  // Determine certificate type for proper API routing
+  const certType = determineCertificateType(data);
+
+  // Hook up certificate actions and permissions
+  const { renewCertificate, linkDocument, isLoading, error } = useCertificateActions(id, certType);
+  const { canRenew, canLink } = useCertificatePermissions();
+
+  // State for renewal dialog
+  const [showRenewalInput, setShowRenewalInput] = useState(false);
+  const [newExpiryDate, setNewExpiryDate] = useState('');
+
   // Map data
   const name = (data.name as string) || (data.title as string) || 'Certificate';
   const certificate_type = (data.certificate_type as string) || (data.type as string) || 'General';
@@ -75,6 +105,52 @@ export function CertificateLensContent({
     { label: 'Expires', value: expiryDisplay, color: statusColor },
   ];
 
+  /**
+   * Handle certificate renewal submission.
+   */
+  const handleRenewCertificate = async () => {
+    if (!newExpiryDate) {
+      toast.error('Please select a new expiry date');
+      return;
+    }
+
+    const result = await renewCertificate({ new_expiry_date: newExpiryDate });
+
+    if (result.success) {
+      toast.success('Certificate renewed successfully');
+      setShowRenewalInput(false);
+      setNewExpiryDate('');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to renew certificate');
+    }
+  };
+
+  /**
+   * Toggle renewal input visibility.
+   */
+  const handleRenewClick = () => {
+    if (showRenewalInput) {
+      // If already showing, submit
+      handleRenewCertificate();
+    } else {
+      // Show the date input
+      setShowRenewalInput(true);
+      // Pre-populate with a date 1 year from now
+      const oneYearFromNow = new Date();
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+      setNewExpiryDate(oneYearFromNow.toISOString().split('T')[0]);
+    }
+  };
+
+  /**
+   * Cancel renewal flow.
+   */
+  const handleCancelRenewal = () => {
+    setShowRenewalInput(false);
+    setNewExpiryDate('');
+  };
+
   return (
     <div className="flex flex-col h-full">
       <LensHeader entityType="Certificate" title={name} onBack={onBack} onClose={onClose} />
@@ -92,9 +168,43 @@ export function CertificateLensContent({
           <VitalSignsRow signs={vitalSigns} />
         </div>
 
-        {statusColor !== 'success' && (
-          <div className="mt-4">
-            <PrimaryButton onClick={() => console.log('[CertificateLens] Renew:', id)} className="text-[13px] min-h-9 px-4 py-2">Renew Certificate</PrimaryButton>
+        {/* Renewal action - only shown if status is not success and user has permission */}
+        {statusColor !== 'success' && canRenew && (
+          <div className="mt-4 flex flex-col gap-3">
+            {showRenewalInput && (
+              <div className="flex items-center gap-3">
+                <label htmlFor="new-expiry-date" className="text-celeste-text-muted text-sm">
+                  New expiry date:
+                </label>
+                <input
+                  id="new-expiry-date"
+                  type="date"
+                  value={newExpiryDate}
+                  onChange={(e) => setNewExpiryDate(e.target.value)}
+                  className="px-3 py-1.5 text-sm border border-surface-border rounded-md bg-surface-background text-celeste-text-primary focus:outline-none focus:ring-2 focus:ring-celeste-brand"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <PrimaryButton
+                onClick={handleRenewClick}
+                disabled={isLoading}
+                className="text-[13px] min-h-9 px-4 py-2"
+              >
+                {isLoading ? 'Renewing...' : showRenewalInput ? 'Confirm Renewal' : 'Renew Certificate'}
+              </PrimaryButton>
+              {showRenewalInput && (
+                <button
+                  type="button"
+                  onClick={handleCancelRenewal}
+                  disabled={isLoading}
+                  className="text-sm text-celeste-text-muted hover:text-celeste-text-primary transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -144,4 +254,3 @@ export function CertificateLensContent({
     </div>
   );
 }
-

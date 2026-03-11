@@ -12,6 +12,9 @@ import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { GhostButton } from '@/components/ui/GhostButton';
+import { toast } from 'sonner';
+import { useWarrantyActions, useWarrantyPermissions } from '@/hooks/useWarrantyActions';
 
 export interface WarrantyLensContentProps {
   id: string;
@@ -41,6 +44,86 @@ export function WarrantyLensContent({
   onNavigate,
   onRefresh,
 }: WarrantyLensContentProps) {
+  // Hook for warranty actions and permissions
+  // GAP-007 FIX: Wire all 4 warranty actions (2026-03-02)
+  const { fileClaim, approveClaim, rejectClaim, composeEmail, isLoading } = useWarrantyActions(id);
+  const { canFileClaim, canApproveClaim, canRejectClaim, canComposeEmail } = useWarrantyPermissions();
+
+  // Track which action is in progress
+  const [actionInProgress, setActionInProgress] = React.useState<string | null>(null);
+
+  // Handler for filing a warranty claim
+  const handleFileClaim = async () => {
+    setActionInProgress('file');
+    const result = await fileClaim({
+      issue_description: 'Warranty claim',
+      issue_date: new Date().toISOString(),
+    });
+    if (result.success) {
+      toast.success('Claim filed successfully');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to file claim');
+    }
+    setActionInProgress(null);
+  };
+
+  // Handler for approving a warranty claim (Captain/Manager only)
+  const handleApproveClaim = async () => {
+    // In production, this would open a modal to collect amount and notes
+    const amount = window.prompt('Enter approved amount:');
+    if (!amount) return;
+
+    setActionInProgress('approve');
+    const result = await approveClaim(
+      parseFloat(amount),
+      'Approved via lens',
+      'credit'
+    );
+    if (result.success) {
+      toast.success('Claim approved');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to approve claim');
+    }
+    setActionInProgress(null);
+  };
+
+  // Handler for rejecting a warranty claim (Captain/Manager only)
+  const handleRejectClaim = async () => {
+    const reason = window.prompt('Enter rejection reason:');
+    if (!reason) return;
+
+    setActionInProgress('reject');
+    const result = await rejectClaim(reason);
+    if (result.success) {
+      toast.success('Claim rejected');
+      onRefresh?.();
+    } else {
+      toast.error(result.error || 'Failed to reject claim');
+    }
+    setActionInProgress(null);
+  };
+
+  // Handler for composing warranty email (HOD+ only)
+  const handleComposeEmail = async () => {
+    setActionInProgress('email');
+    const result = await composeEmail({ template_type: 'initial_claim' });
+    if (result.success) {
+      toast.success('Email composed');
+      // If result contains mailto link or draft URL, open it
+      const data = result.data as Record<string, unknown> | undefined;
+      if (data?.mailto) {
+        window.location.href = data.mailto as string;
+      } else if (data?.draft_url) {
+        window.open(data.draft_url as string, '_blank');
+      }
+    } else {
+      toast.error(result.error || 'Failed to compose email');
+    }
+    setActionInProgress(null);
+  };
+
   // Map data
   const title = (data.title as string) || (data.name as string) || 'Warranty';
   const equipment_id = data.equipment_id as string | undefined;
@@ -94,11 +177,56 @@ export function WarrantyLensContent({
           <VitalSignsRow signs={vitalSigns} />
         </div>
 
-        {status === 'active' && (
-          <div className="mt-4">
-            <PrimaryButton onClick={() => console.log('[WarrantyLens] File claim:', id)} className="text-[13px] min-h-9 px-4 py-2">File Claim</PrimaryButton>
-          </div>
-        )}
+        {/* Action Buttons - GAP-007 FIX: Added all 4 warranty action buttons (2026-03-02) */}
+        <div className="mt-4 flex items-center gap-2 flex-wrap">
+          {/* File Claim - for active warranties, HOD+ */}
+          {status === 'active' && canFileClaim && (
+            <PrimaryButton
+              onClick={handleFileClaim}
+              disabled={isLoading || actionInProgress !== null}
+              className="text-[13px] min-h-9 px-4 py-2"
+              data-testid="file-claim-btn"
+            >
+              {actionInProgress === 'file' ? 'Filing...' : 'File Claim'}
+            </PrimaryButton>
+          )}
+
+          {/* Approve Claim - for pending claims, Captain/Manager only */}
+          {status === 'pending_approval' && canApproveClaim && (
+            <PrimaryButton
+              onClick={handleApproveClaim}
+              disabled={isLoading || actionInProgress !== null}
+              className="text-[13px] min-h-9 px-4 py-2 bg-status-success hover:bg-status-success/90"
+              data-testid="approve-claim-btn"
+            >
+              {actionInProgress === 'approve' ? 'Approving...' : 'Approve Claim'}
+            </PrimaryButton>
+          )}
+
+          {/* Reject Claim - for pending claims, Captain/Manager only */}
+          {status === 'pending_approval' && canRejectClaim && (
+            <GhostButton
+              onClick={handleRejectClaim}
+              disabled={isLoading || actionInProgress !== null}
+              className="text-[13px] min-h-9 px-4 py-2 text-status-critical hover:bg-status-critical/10"
+              data-testid="reject-claim-btn"
+            >
+              {actionInProgress === 'reject' ? 'Rejecting...' : 'Reject Claim'}
+            </GhostButton>
+          )}
+
+          {/* Compose Email - for claimed warranties, HOD+ */}
+          {(status === 'claimed' || status === 'pending_approval' || status === 'active') && canComposeEmail && (
+            <GhostButton
+              onClick={handleComposeEmail}
+              disabled={isLoading || actionInProgress !== null}
+              className="text-[13px] min-h-9 px-4 py-2"
+              data-testid="compose-email-btn"
+            >
+              {actionInProgress === 'email' ? 'Composing...' : 'Compose Email'}
+            </GhostButton>
+          )}
+        </div>
 
         <div className="mt-6 border-t border-surface-border" aria-hidden="true" />
 

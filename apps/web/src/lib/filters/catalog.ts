@@ -269,6 +269,7 @@ export const EMAIL_FILTERS: QuickFilter[] = [
     query_params: { filter: 'email_unlinked', linked: 'false' },
     keywords: ['unlinked', 'not linked', 'orphan emails', 'unassigned'],
     definition: 'NOT EXISTS (SELECT 1 FROM email_links WHERE thread_id = id AND is_active = true)',
+    blocked: 'EXECUTION_MISSING: applyEmailFilter not implemented in execute.ts',
   },
   {
     filter_id: 'email_linked',
@@ -279,6 +280,7 @@ export const EMAIL_FILTERS: QuickFilter[] = [
     query_params: { filter: 'email_linked', linked: 'true' },
     keywords: ['linked', 'connected', 'assigned emails'],
     definition: 'EXISTS (SELECT 1 FROM email_links WHERE thread_id = id AND is_active = true)',
+    blocked: 'EXECUTION_MISSING: applyEmailFilter not implemented in execute.ts',
   },
   {
     filter_id: 'email_with_attachments',
@@ -289,6 +291,7 @@ export const EMAIL_FILTERS: QuickFilter[] = [
     query_params: { filter: 'email_with_attachments' },
     keywords: ['attachments', 'has files', 'with documents'],
     definition: 'has_attachments = true',
+    blocked: 'EXECUTION_MISSING: applyEmailFilter not implemented in execute.ts',
   },
 ];
 
@@ -306,6 +309,7 @@ export const SHOPPING_LIST_FILTERS: QuickFilter[] = [
     query_params: { filter: 'shop_pending' },
     keywords: ['pending', 'awaiting approval', 'needs approval'],
     definition: "status IN ('candidate', 'under_review')",
+    blocked: 'EXECUTION_MISSING: applyShoppingListFilter not implemented in execute.ts',
   },
   {
     filter_id: 'shop_urgent',
@@ -316,6 +320,7 @@ export const SHOPPING_LIST_FILTERS: QuickFilter[] = [
     query_params: { filter: 'shop_urgent' },
     keywords: ['urgent', 'critical', 'rush order'],
     definition: "urgency IN ('high', 'critical') AND status NOT IN ('fulfilled', 'installed')",
+    blocked: 'EXECUTION_MISSING: applyShoppingListFilter not implemented in execute.ts',
   },
 ];
 
@@ -333,6 +338,7 @@ export const RECEIVING_FILTERS: QuickFilter[] = [
     query_params: { filter: 'recv_pending' },
     keywords: ['pending', 'in progress', 'not complete'],
     definition: "status IN ('in_progress', 'partial')",
+    blocked: 'EXECUTION_MISSING: applyReceivingFilter not implemented in execute.ts',
   },
   {
     filter_id: 'recv_discrepancy',
@@ -343,6 +349,7 @@ export const RECEIVING_FILTERS: QuickFilter[] = [
     query_params: { filter: 'recv_discrepancy' },
     keywords: ['discrepancy', 'issue', 'problem', 'mismatch'],
     definition: "status = 'discrepancy'",
+    blocked: 'EXECUTION_MISSING: applyReceivingFilter not implemented in execute.ts',
   },
 ];
 
