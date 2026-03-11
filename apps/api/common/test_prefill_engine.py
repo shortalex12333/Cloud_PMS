@@ -11,12 +11,14 @@ Run with:
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, Any
+from datetime import date, datetime, timedelta, timezone
 
 from common.field_metadata import FieldMetadata, LookupResult
 from common.prefill_engine import (
     extract_entity_value,
     apply_compose_template,
     apply_value_map,
+    apply_date_parsing,
     generate_backend_auto_value,
     build_mutation_preview,
 )
@@ -110,6 +112,82 @@ def test_apply_value_map_none_value():
     value_map = {"urgent": "critical"}
     result = apply_value_map(None, value_map)
     assert result is None
+
+
+# =============================================================================
+# TEST DATE PARSING
+# =============================================================================
+
+def test_apply_date_parsing_tomorrow():
+    """Test parsing 'tomorrow' returns ISO date."""
+    result = apply_date_parsing("tomorrow")
+    expected = (date.today() + timedelta(days=1)).isoformat()
+    assert result == expected
+
+
+def test_apply_date_parsing_next_week():
+    """Test parsing 'next week' returns Monday."""
+    result = apply_date_parsing("next week")
+    assert result is not None
+    parsed = date.fromisoformat(result)
+    assert parsed.weekday() == 0  # Monday
+
+
+def test_apply_date_parsing_in_x_days():
+    """Test parsing 'in 5 days' returns correct date."""
+    result = apply_date_parsing("in 5 days")
+    expected = (date.today() + timedelta(days=5)).isoformat()
+    assert result == expected
+
+
+def test_apply_date_parsing_asap():
+    """Test parsing 'asap' returns today."""
+    result = apply_date_parsing("asap")
+    expected = date.today().isoformat()
+    assert result == expected
+
+
+def test_apply_date_parsing_urgent():
+    """Test parsing 'urgent' returns today."""
+    result = apply_date_parsing("urgent")
+    expected = date.today().isoformat()
+    assert result == expected
+
+
+def test_apply_date_parsing_end_of_month():
+    """Test parsing 'end of month' returns last day of month."""
+    result = apply_date_parsing("end of month")
+    assert result is not None
+    parsed = date.fromisoformat(result)
+    # Verify it's the last day by checking next day is different month
+    next_day = parsed + timedelta(days=1)
+    assert next_day.month != parsed.month or next_day.year != parsed.year
+
+
+def test_apply_date_parsing_random_text():
+    """Test parsing non-date text returns None."""
+    result = apply_date_parsing("random text")
+    assert result is None
+
+
+def test_apply_date_parsing_iso_date_passthrough():
+    """Test ISO date strings are passed through unchanged."""
+    iso_date = "2024-03-15"
+    result = apply_date_parsing(iso_date)
+    assert result == iso_date
+
+
+def test_apply_date_parsing_none():
+    """Test parsing None returns None."""
+    result = apply_date_parsing(None)
+    assert result is None
+
+
+def test_apply_date_parsing_with_base_date():
+    """Test parsing with specific base date."""
+    base = datetime(2024, 3, 15, 12, 0, 0, tzinfo=timezone.utc)
+    result = apply_date_parsing("tomorrow", base)
+    assert result == "2024-03-16"
 
 
 # =============================================================================
@@ -367,6 +445,170 @@ async def test_build_mutation_preview_with_lookup_no_match():
     assert "equipment_id" in preview["missing_required"]
     assert preview["ready_to_commit"] == False
     assert any("No match found" in w for w in preview["warnings"])
+
+
+# =============================================================================
+# TEST DATE FIELD INTEGRATION
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_build_mutation_preview_with_date_field_tomorrow():
+    """Test building mutation preview with date field set to 'tomorrow'."""
+    field_metadata = {
+        "due_date": FieldMetadata(
+            name="due_date",
+            classification="OPTIONAL",
+            auto_populate_from="due_date",
+            field_type="date",
+        ),
+    }
+
+    extracted_entities = {"due_date": "tomorrow"}
+
+    preview = await build_mutation_preview(
+        query_text="test",
+        extracted_entities=extracted_entities,
+        field_metadata=field_metadata,
+        yacht_id="yacht-123",
+        supabase_client=Mock(),
+    )
+
+    expected = (date.today() + timedelta(days=1)).isoformat()
+    assert preview["mutation_preview"]["due_date"] == expected
+
+
+@pytest.mark.asyncio
+async def test_build_mutation_preview_with_date_field_next_week():
+    """Test building mutation preview with date field set to 'next week'."""
+    field_metadata = {
+        "due_date": FieldMetadata(
+            name="due_date",
+            classification="REQUIRED",
+            auto_populate_from="due_date",
+            field_type="date",
+        ),
+    }
+
+    extracted_entities = {"due_date": "next week"}
+
+    preview = await build_mutation_preview(
+        query_text="test",
+        extracted_entities=extracted_entities,
+        field_metadata=field_metadata,
+        yacht_id="yacht-123",
+        supabase_client=Mock(),
+    )
+
+    result_date = date.fromisoformat(preview["mutation_preview"]["due_date"])
+    assert result_date.weekday() == 0  # Monday
+    assert preview["ready_to_commit"] == True
+
+
+@pytest.mark.asyncio
+async def test_build_mutation_preview_with_date_field_asap():
+    """Test building mutation preview with date field set to 'asap'."""
+    field_metadata = {
+        "due_date": FieldMetadata(
+            name="due_date",
+            classification="OPTIONAL",
+            auto_populate_from="due_date",
+            field_type="date",
+        ),
+    }
+
+    extracted_entities = {"due_date": "asap"}
+
+    preview = await build_mutation_preview(
+        query_text="test",
+        extracted_entities=extracted_entities,
+        field_metadata=field_metadata,
+        yacht_id="yacht-123",
+        supabase_client=Mock(),
+    )
+
+    expected = date.today().isoformat()
+    assert preview["mutation_preview"]["due_date"] == expected
+
+
+@pytest.mark.asyncio
+async def test_build_mutation_preview_with_date_field_in_days():
+    """Test building mutation preview with date field set to 'in 3 days'."""
+    field_metadata = {
+        "due_date": FieldMetadata(
+            name="due_date",
+            classification="OPTIONAL",
+            auto_populate_from="due_date",
+            field_type="date",
+        ),
+    }
+
+    extracted_entities = {"due_date": "in 3 days"}
+
+    preview = await build_mutation_preview(
+        query_text="test",
+        extracted_entities=extracted_entities,
+        field_metadata=field_metadata,
+        yacht_id="yacht-123",
+        supabase_client=Mock(),
+    )
+
+    expected = (date.today() + timedelta(days=3)).isoformat()
+    assert preview["mutation_preview"]["due_date"] == expected
+
+
+@pytest.mark.asyncio
+async def test_build_mutation_preview_with_date_field_non_date():
+    """Test building mutation preview with date field and non-date text."""
+    field_metadata = {
+        "due_date": FieldMetadata(
+            name="due_date",
+            classification="OPTIONAL",
+            auto_populate_from="due_date",
+            field_type="date",
+        ),
+    }
+
+    # Non-date text should be passed through
+    extracted_entities = {"due_date": "some random text"}
+
+    preview = await build_mutation_preview(
+        query_text="test",
+        extracted_entities=extracted_entities,
+        field_metadata=field_metadata,
+        yacht_id="yacht-123",
+        supabase_client=Mock(),
+    )
+
+    # Non-parseable date text should be kept as-is
+    assert preview["mutation_preview"]["due_date"] == "some random text"
+
+
+@pytest.mark.asyncio
+async def test_build_mutation_preview_backend_auto_date_field():
+    """Test BACKEND_AUTO field with date type."""
+    field_metadata = {
+        "scheduled_date": FieldMetadata(
+            name="scheduled_date",
+            classification="BACKEND_AUTO",
+            auto_populate_from="scheduled_date",
+            field_type="date",
+        ),
+    }
+
+    extracted_entities = {"scheduled_date": "end of month"}
+
+    preview = await build_mutation_preview(
+        query_text="test",
+        extracted_entities=extracted_entities,
+        field_metadata=field_metadata,
+        yacht_id="yacht-123",
+        supabase_client=Mock(),
+    )
+
+    result_date = date.fromisoformat(preview["mutation_preview"]["scheduled_date"])
+    # Verify it's end of month (next day is different month)
+    next_day = result_date + timedelta(days=1)
+    assert next_day.month != result_date.month or next_day.year != result_date.year
 
 
 # =============================================================================

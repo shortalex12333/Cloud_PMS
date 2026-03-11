@@ -349,7 +349,7 @@ class TestBuildUserContext:
         auth_context_yacht_a: Dict[str, Any],
     ):
         """UserContext must have org_id extracted from auth."""
-        from services.types import UserContext
+        from services.user_context_types import UserContext
 
         ctx = UserContext(
             user_id=auth_context_yacht_a["user_id"],
@@ -363,7 +363,7 @@ class TestBuildUserContext:
 
     def test_user_context_requires_org_id(self):
         """UserContext must raise error if org_id is missing."""
-        from services.types import UserContext
+        from services.user_context_types import UserContext
 
         with pytest.raises(ValueError) as exc_info:
             UserContext(
@@ -376,7 +376,7 @@ class TestBuildUserContext:
 
     def test_user_context_requires_user_id(self):
         """UserContext must raise error if user_id is missing."""
-        from services.types import UserContext
+        from services.user_context_types import UserContext
 
         with pytest.raises(ValueError) as exc_info:
             UserContext(

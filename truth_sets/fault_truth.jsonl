@@ -1,25 +1,25 @@
-{"entity_id": "c007e1fa-2542-45fa-a3ad-c32bc3a56eff", "display_name": "FalseAlarm Test falarm-1772146870414-8r4uh4", "status": "open", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "5192eae9-0825-447f-a301-e65400256cb9", "display_name": "FalseAlarm Test falarm-1772146628335-7wogdj", "status": "open", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "0aa264b4-dec5-45a5-bcce-7623e583b576", "display_name": "FalseAlarm Test falarm-1772146606739-t85b2t", "status": "open", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "79bb9f54-3176-4005-a3cd-cb764bd1c6a9", "display_name": "Reopen Test reopen-1772146520345-6n0fhu", "status": "closed", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "d8f5b3c2-4f90-4b13-8f09-e5e37faaa2f9", "display_name": "Close Test close-1772146519253-iapzxe", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "19771305-8515-4daa-a514-edc15c27e3ac", "display_name": "Reopen Test reopen-1772146486647-bp9oef", "status": "closed", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "60f49218-c951-4031-92ff-110f3c79ac63", "display_name": "Close Test close-1772146485446-f7id0a", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "e5ebc6e9-47f8-4a61-81c9-519017a3c074", "display_name": "Test Fault fault-1772069411872-2ihdtu", "status": "closed", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "f2148be5-e014-46be-b6b1-8f3e284ea825", "display_name": "Test Fault fault-1772069358899-1expau", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "1d06971d-c51c-48c0-853c-df12d9606a1b", "display_name": "Test Fault fault-1772069318921-97uw43", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "c68d5e9f-00b0-4ea4-88e1-f9f4511ccb89", "display_name": "Test Fault fault-1772066149078-x6misp", "status": "closed", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "68af325d-3240-4def-96ad-79cd80316000", "display_name": "Test Fault fault-1772066096434-83pqiu", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "170f809f-f3b8-46e0-90ce-97b2613a08f2", "display_name": "Test Fault fault-1772066054086-hg8esx", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "804f6185-93f6-4a25-bc89-6d4d71c6145d", "display_name": "Test Fault fault-1772059221550-od9sjj", "status": "closed", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "d64fac31-af13-422f-8e47-12b7e3a54824", "display_name": "Test Fault fault-1772059167665-eqwq8p", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "f19be756-da5a-4def-9e1a-dd029698e365", "display_name": "Test Fault fault-1772059127763-0cb9zv", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "9f12c827-62c9-482c-bdb4-404e35b31c06", "display_name": "Test Fault fault-1772059081281-gtc2n0", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "4d5687f3-76bf-4a5d-b006-be4b448b21d1", "display_name": "Test Fault fault-1772059041343-rrruwm", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "29052f54-932b-4362-bb17-2fc65b84e383", "display_name": "Test Fault fault-1772057548073-44a5m0", "status": "closed", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "5f50151e-7f5c-435b-9e75-47438dc58c23", "display_name": "Test Fault fault-1772057495011-wgo200", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "947df68f-e16d-4772-ad10-2802367cfd97", "display_name": "Test Fault fault-1772057453638-2snh8d", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "a1b6cc40-b098-4dbd-9f3b-962b805d8f0b", "display_name": "Test Fault fault-1772055950098-5qmlju", "status": "closed", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "9da98b39-17e3-4d88-926a-aae19628eb4f", "display_name": "Test Fault fault-1772055897074-x5erzq", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "262ed0be-dfdb-40cd-a14e-177c960c8f3c", "display_name": "Test Fault fault-1772055856733-zgq1k4", "status": "investigating", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
-{"entity_id": "7d13f9dd-994f-47e4-a0c7-3676a10a01e0", "display_name": "Test Fault fault-1772055701914-jou1hu", "status": "closed", "lens": "fault", "severity": "medium", "equipment_id": "8e91e289-a156-444c-b315-88c0a06c9492"}
+{"entity_id": "6ab8f178-4662-4e42-9f08-7f2534251002", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "487af777-ef2b-469d-bfda-adc18fdcb629", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "2beafaaa-cb9b-4f8f-9215-10105c0bdae7", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "5fb0041f-a783-4bb6-bb2e-44385a0f79ce", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "4dc23a72-4e82-4502-8450-2ae3b9882120", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "e1eb6a00-5e5c-432c-a23a-318b4252c477", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "a8d6b4c0-9e51-4408-81cb-fbb20015f7b2", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "8d8522e4-e7f4-4e8a-894f-3248e2706377", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "0280dc5e-1e55-4e11-af0c-920106515934", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "3c959fe5-489d-451c-93e9-c91edf5a69e7", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "3e683954-d4a0-4c1f-b51a-a7f432eaf826", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "8af8bd46-a5aa-430c-8c1a-8d7ddef3650e", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "4af90dd5-0b4a-46d2-bc58-8f4b625eaec1", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "e45a7ac5-adce-40e8-9ae3-2e8e4b19b427", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "251e7ee7-37e8-49c2-9836-bd7628d63624", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "1f41d11f-1f0a-4735-8a12-e7a094f832a6", "display_name": "E2E Test: Minor vibration detected on starboard generator", "status": "closed", "lens": "fault", "priority": "routine"}
+{"entity_id": "ce5912d1-6340-4828-8e27-1eaa95ac5cf8", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "27c6b84e-bef3-49f4-947b-fedf688b8ef0", "display_name": "High Temperature Alarm", "status": "closed", "lens": "fault", "priority": "routine"}
+{"entity_id": "8a39c5ec-2389-4af5-9da2-c491d8477163", "display_name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "7b98c701-9588-496f-8f75-218b933542a8", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "7df753dc-4199-46c6-b5e8-0b0af6bd03e1", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "fb446cd3-0882-4263-894e-0ada2f3f5e2e", "display_name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "7b2ec4a4-0ab9-4a51-ae46-72176da6c1e8", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "6ce4dbf6-2310-4f27-8abd-c38750458ec2", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}
+{"entity_id": "4a3493b4-7dfc-4bc2-ae30-eba16a27d31f", "display_name": "Test fault report", "status": "open", "lens": "fault", "priority": "routine"}

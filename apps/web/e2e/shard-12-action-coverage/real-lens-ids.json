@@ -1,0 +1,37 @@
+{
+  "CERTIFICATE_IDS": {
+    "ACTIVE_1": "486bc333-492d-4cc4-a1dc-31391785838a",
+    "ACTIVE_2": "4334eaad-50bb-451f-962a-e99220852545",
+    "ACTIVE_3": "e95036e5-3fcc-4ceb-9ebe-67a9e2ce69d8",
+    "ACTIVE_4": "ea02d9e6-4c0e-4ba3-9dcf-87a09e3c0f5b",
+    "ACTIVE_5": "b0f191f6-d0ab-4433-8bc9-0a0b0bcbdbfc"
+  },
+  "DOCUMENT_IDS": {
+    "DOC_1": "9c16cf55-e5f8-449b-b86f-08658e2914b5",
+    "DOC_2": "5633f722-c425-4abd-85c9-0bb9af7fa541",
+    "DOC_3": "25287ff9-7839-441f-bfa3-30808a6e7509",
+    "DOC_4": "a39b99e4-eb07-49af-b0fb-e72e1b6a8918",
+    "DOC_5": "e7aba7f7-93b1-4223-bf14-c2b870542db4"
+  },
+  "FAULT_IDS": {
+    "OPEN_1": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+    "OPEN_2": "29c81ea1-f067-442b-b4a1-05c4ec2b84b9"
+  },
+  "WORK_ORDER_IDS": {
+    "DRAFT_1": "19de511d-727c-48da-bbad-ef2691595531",
+    "DRAFT_2": "1af54ee4-d90c-450e-9687-039ed7128068"
+  },
+  "PART_IDS": {
+    "PART_1": "5dd34337-c4c4-41dd-9c6b-adf84af349a8",
+    "PART_2": "2f452e3b-bf3e-464e-82d5-7d0bc849e6c0",
+    "PART_3": "5543266b-2d8c-46a0-88e2-74a7ab403cdd",
+    "PART_4": "f7913ad1-6832-4169-b816-4538c8b7a417",
+    "PART_5": "19770833-a0b7-42a1-a6a7-8d5316a1db3d"
+  },
+  "RECEIVING_IDS": {
+    "DRAFT_1": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f"
+  },
+  "SHOPPING_LIST_IDS": {
+    "PENDING_1": "386121a0-1956-44af-b662-0274680024c2"
+  }
+}

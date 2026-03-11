@@ -293,13 +293,13 @@ class TestSearchTimeout:
 
     def test_timeout_budget_constant(self):
         """Verify timeout budget constant is 800ms."""
-        from services.types import DEFAULT_BUDGET
+        from services.user_context_types import DEFAULT_BUDGET
 
         assert DEFAULT_BUDGET.global_timeout_ms == 800
 
     def test_db_statement_timeout(self):
         """Verify DB statement timeout is configured."""
-        from services.types import DEFAULT_BUDGET
+        from services.user_context_types import DEFAULT_BUDGET
 
         # DB timeout should be less than global timeout
         assert DEFAULT_BUDGET.db_timeout_ms < DEFAULT_BUDGET.global_timeout_ms
@@ -397,7 +397,7 @@ class TestJWTValidation:
 
         # In production, missing org_id in JWT would cause 403
         # This tests the requirement
-        from services.types import UserContext
+        from services.user_context_types import UserContext
 
         # Should work with org_id
         ctx = UserContext(

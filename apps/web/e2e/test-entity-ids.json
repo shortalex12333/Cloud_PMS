@@ -1,0 +1,120 @@
+{
+  "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+  "equipment": [
+    {
+      "id": "8e91e289-a156-444c-b315-88c0a06c9492",
+      "name": "STATUS-TEST-maintenance-c0b2"
+    },
+    {
+      "id": "04c518e6-c61f-42fe-a7b2-4cd69a0505ce",
+      "name": "STATUS-TEST-operational-4525"
+    },
+    {
+      "id": "23f5532b-03bb-49f9-abed-9121bb214c08",
+      "name": "STATUS-TEST-operational-946e"
+    }
+  ],
+  "work_orders": [
+    {
+      "id": "2531d846-5753-4faa-a549-20a6dc2ade73",
+      "wo_number": null,
+      "status": "completed"
+    },
+    {
+      "id": "30ec33c7-48f4-4047-b32d-eacd602e74d6",
+      "wo_number": "WO-TEST-68DB4A",
+      "status": "planned"
+    },
+    {
+      "id": "b507e262-bdcf-4a59-971b-e5c8ff2707f6",
+      "wo_number": null,
+      "status": "completed"
+    }
+  ],
+  "faults": [
+    {
+      "id": "e9f058f8-4814-4228-aba4-7e66f9cb3430",
+      "title": "Test fault report",
+      "status": "open"
+    },
+    {
+      "id": "77b3ac41-ab1c-4b69-8dfc-26e392251e54",
+      "title": "Test fault report",
+      "status": "open"
+    },
+    {
+      "id": "1643a815-ac9d-4831-a96d-ff808834434a",
+      "title": "Test fault report",
+      "status": "open"
+    }
+  ],
+  "parts": [
+    {
+      "id": "f7913ad1-6832-4169-b816-4538c8b7a417",
+      "part_number": "FLT-0033-146",
+      "name": "Fuel Filter Generator"
+    },
+    {
+      "id": "2f452e3b-bf3e-464e-82d5-7d0bc849e6c0",
+      "part_number": "PMP-0018-280",
+      "name": "Raw Water Pump Seal Kit"
+    },
+    {
+      "id": "5543266b-2d8c-46a0-88e2-74a7ab403cdd",
+      "part_number": "ENG-0029-432",
+      "name": "Cylinder Liner O-Ring Kit"
+    }
+  ],
+  "documents": [],
+  "certificates": [
+    {
+      "id": "987b966d-4ab4-47c2-8a16-e1747cfff0da",
+      "certificate_name": "DNV GL Class Certificate",
+      "certificate_type": "class"
+    },
+    {
+      "id": "3388c0a5-3e16-4975-bdd8-247fd975c3a3",
+      "certificate_name": "Lloyd's Register Class Certificate",
+      "certificate_type": "class"
+    },
+    {
+      "id": "9627c392-51fe-4453-9ac4-8e021e605fd9",
+      "certificate_name": "ABS Class Certificate",
+      "certificate_type": "class"
+    }
+  ],
+  "receiving": [
+    {
+      "id": "8af58a9c-3022-4545-80f9-79b2ba4e37c2",
+      "vendor_name": null,
+      "status": "draft"
+    },
+    {
+      "id": "db7f455b-192e-4c7d-b502-c329308dac79",
+      "vendor_name": null,
+      "status": "draft"
+    },
+    {
+      "id": "5374631e-3e7c-4388-b666-8de8883e8460",
+      "vendor_name": null,
+      "status": "accepted"
+    }
+  ],
+  "shopping_list_items": [
+    {
+      "id": "693eae41-0873-4de5-85e9-f5c659d47863",
+      "part_name": "HOD Test Part 1769620245",
+      "status": "approved"
+    },
+    {
+      "id": "94d00427-4642-487e-b824-34d775494493",
+      "part_name": "Candidate Part 1769620247",
+      "status": "approved"
+    },
+    {
+      "id": "317f4092-3e37-4402-975e-090703f1273d",
+      "part_name": "HOD Test Part 1769621195",
+      "status": "approved"
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "_description": "Synonym mapping for search_text enhancement. Each key is an object_type, and the array contains synonyms/aliases that should be appended to search_text to improve trigram matching.",
+  "_version": "1.0.0",
+  "_created": "2026-03-02",
+  "_usage": "Used by 50_enhance_search_text.sql migration to append searchable aliases",
+
+  "work_order": [
+    "work order",
+    "WO",
+    "task",
+    "job",
+    "maintenance",
+    "repair",
+    "service",
+    "PM",
+    "preventive maintenance",
+    "corrective",
+    "scheduled"
+  ],
+
+  "fault": [
+    "fault",
+    "defect",
+    "issue",
+    "problem",
+    "failure",
+    "breakdown",
+    "malfunction",
+    "incident",
+    "report",
+    "damage",
+    "error"
+  ],
+
+  "certificate": [
+    "certificate",
+    "cert",
+    "document",
+    "doc",
+    "credential",
+    "license",
+    "licence",
+    "permit",
+    "compliance",
+    "expiring",
+    "renewal",
+    "valid",
+    "flag state"
+  ],
+
+  "equipment": [
+    "equipment",
+    "machine",
+    "unit",
+    "asset",
+    "device",
+    "machinery",
+    "system",
+    "component",
+    "gear",
+    "apparatus"
+  ],
+
+  "part": [
+    "part",
+    "spare",
+    "component",
+    "item",
+    "consumable",
+    "supply",
+    "replacement",
+    "piece"
+  ],
+
+  "inventory": [
+    "inventory",
+    "stock",
+    "parts",
+    "spares",
+    "supplies",
+    "onboard",
+    "quantity",
+    "storage",
+    "warehouse",
+    "location"
+  ],
+
+  "email": [
+    "email",
+    "mail",
+    "message",
+    "correspondence",
+    "communication",
+    "inbox"
+  ],
+
+  "hours_of_rest": [
+    "hours of rest",
+    "rest hours",
+    "crew rest",
+    "MLC",
+    "compliance",
+    "violation",
+    "fatigue",
+    "work hours",
+    "schedule",
+    "rest period",
+    "maritime labour"
+  ],
+
+  "receiving": [
+    "receiving",
+    "delivery",
+    "shipment",
+    "package",
+    "arrival",
+    "receipt",
+    "incoming",
+    "inbound",
+    "cargo",
+    "consignment"
+  ],
+
+  "handover": [
+    "handover",
+    "handover note",
+    "changeover",
+    "turnover",
+    "shift",
+    "transition",
+    "brief",
+    "briefing",
+    "watch"
+  ],
+
+  "handover_item": [
+    "handover",
+    "handover item",
+    "handover note",
+    "changeover",
+    "turnover",
+    "shift note",
+    "transition item"
+  ],
+
+  "shopping_list": [
+    "shopping list",
+    "shopping",
+    "wish list",
+    "wishlist",
+    "to order",
+    "requisition",
+    "request",
+    "needed",
+    "purchase request"
+  ],
+
+  "shopping_item": [
+    "shopping item",
+    "shopping",
+    "wish list item",
+    "requisition item",
+    "purchase request",
+    "to order",
+    "needed"
+  ],
+
+  "warranty": [
+    "warranty",
+    "guarantee",
+    "claim",
+    "coverage",
+    "manufacturer warranty"
+  ],
+
+  "document": [
+    "document",
+    "doc",
+    "file",
+    "PDF",
+    "manual",
+    "specification",
+    "drawing",
+    "attachment"
+  ],
+
+  "supplier": [
+    "supplier",
+    "vendor",
+    "manufacturer",
+    "provider",
+    "company",
+    "contact"
+  ],
+
+  "purchase_order": [
+    "purchase order",
+    "PO",
+    "order",
+    "procurement",
+    "buy",
+    "purchasing"
+  ],
+
+  "work_order_note": [
+    "work order note",
+    "WO note",
+    "note",
+    "comment",
+    "update",
+    "remark",
+    "log entry"
+  ],
+
+  "note": [
+    "note",
+    "comment",
+    "remark",
+    "annotation",
+    "memo"
+  ]
+}

@@ -34,8 +34,8 @@ import traceback
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'apps' / 'api'))
 
-from domain_microactions import detect_domain_from_query, detect_intent_from_query, get_microactions_for_query
-from action_surfacing import get_fusion_params_for_query
+from services.domain_microactions import detect_domain_from_query, detect_intent_from_query, get_microactions_for_query
+from services.action_surfacing import get_fusion_params_for_query
 from rag.normalizer import normalize_query
 from rag.context_builder import generate_query_embedding
 

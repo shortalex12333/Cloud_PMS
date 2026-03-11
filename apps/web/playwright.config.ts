@@ -27,8 +27,9 @@ export default defineConfig({
     timeout: 10_000,  // 10 seconds for assertions
   },
 
-  // Retry failed tests (F1 search has cold-start latency that causes flaky first requests)
-  retries: IS_CI ? 2 : 1,
+  // STRICT MODE: No retries allowed - tests must pass first time
+  // Previously: retries: IS_CI ? 2 : 1 (for cold-start latency)
+  retries: 0,
 
   // LAW 11: Strict worker limits to prevent memory exhaustion
   workers: IS_CI ? 1 : 2,
@@ -37,11 +38,12 @@ export default defineConfig({
   // Fail fast in CI
   forbidOnly: IS_CI,
 
-  // Reporter configuration
+  // Reporter configuration - includes strict reporter for skip/console error detection
   reporter: [
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['json', { outputFile: 'playwright-report/results.json' }],
     ['list'],  // Console output
+    ['./e2e/strict-reporter.ts'],  // Custom strict reporter - fails on skipped tests and console errors
   ],
 
   // Global setup - authentication state
@@ -226,6 +228,19 @@ export default defineConfig({
     {
       name: 'shard-31-fragmented-routes',
       testDir: './e2e/shard-31-fragmented-routes',
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+
+    // =========================================================================
+    // SHARD 12: Action Coverage - Comprehensive tests for all 105+ actions
+    // Tests all action wiring, RBAC denial, and signed action requirements
+    // =========================================================================
+    {
+      name: 'shard-12-action-coverage',
+      testDir: './e2e/shard-12-action-coverage',
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],

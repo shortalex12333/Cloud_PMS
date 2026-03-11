@@ -368,9 +368,10 @@ async function getAuthToken(page: Page): Promise<string> {
         return null;
       }
     }
-    // Try alternate storage key
+    // Try alternate storage keys - Supabase uses "sb-" prefix and "auth" in key name
     for (const key of Object.keys(localStorage)) {
-      if (key.includes('supabase') && key.includes('auth')) {
+      // Match keys like "sb-qvzmkaamzaqxpzbewjxe-auth-token" (Supabase format)
+      if ((key.startsWith('sb-') || key.includes('supabase')) && key.includes('auth')) {
         try {
           const data = JSON.parse(localStorage.getItem(key) || '{}');
           if (data.access_token) return data.access_token;
