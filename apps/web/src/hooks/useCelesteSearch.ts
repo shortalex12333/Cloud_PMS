@@ -1390,7 +1390,7 @@ async function* streamSearch(
         const backendResult = result as {
           object_id?: string;
           object_type?: string;
-          payload?: { name?: string; title?: string; part_name?: string; code?: string; status?: string; source_table?: string };
+          payload?: { label?: string; subject?: string; name?: string; title?: string; part_name?: string; description?: string; code?: string; status?: string; source_table?: string; from_display_name?: string };
           fused_score?: number;
           // Legacy field names (fallback)
           primary_id?: string;
@@ -1400,13 +1400,15 @@ async function* streamSearch(
         } & SearchResult;
 
         const payload = backendResult.payload || {};
+        // Remove search_text before spread to prevent keyword padding leaking into subtitle fallbacks
+        const { search_text: _searchText, ...cleanResult } = backendResult as any;
         return {
-          ...backendResult,
+          ...cleanResult,
           id: backendResult.object_id || backendResult.primary_id || backendResult.id,
           type: (backendResult.object_type || payload.source_table || backendResult.source_table || backendResult.type) as SearchResult['type'],
-          title: payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
-          subtitle: payload.code || payload.status || backendResult.subtitle,
-          snippet: backendResult.snippet || (payload as any).snippet,
+          title: payload.label || payload.subject || payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
+          subtitle: payload.code || payload.status || payload.from_display_name || backendResult.subtitle,
+          snippet: backendResult.snippet || payload.description || (payload as any).snippet || '',
           score: backendResult.fused_score ?? backendResult.rrf_score ?? backendResult.score ?? 0,
           actions: backendResult.actions || [],
           metadata: { ...backendResult.metadata, payload },
@@ -1543,7 +1545,7 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
         const backendResult = result as {
           object_id?: string;
           object_type?: string;
-          payload?: { name?: string; title?: string; part_name?: string; code?: string; status?: string; source_table?: string };
+          payload?: { label?: string; subject?: string; name?: string; title?: string; part_name?: string; description?: string; code?: string; status?: string; source_table?: string; from_display_name?: string };
           fused_score?: number;
           primary_id?: string;
           source_table?: string;
@@ -1552,13 +1554,15 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
         } & SearchResult;
 
         const payload = backendResult.payload || {};
+        // Remove search_text before spread to prevent keyword padding leaking into subtitle fallbacks
+        const { search_text: _searchText, ...cleanResult } = backendResult as any;
         return {
-          ...backendResult,
+          ...cleanResult,
           id: backendResult.object_id || backendResult.primary_id || backendResult.id,
           type: (backendResult.object_type || payload.source_table || backendResult.source_table || backendResult.type) as SearchResult['type'],
-          title: payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
-          subtitle: payload.code || payload.status || backendResult.subtitle,
-          snippet: backendResult.snippet || (payload as any).snippet,
+          title: payload.label || payload.subject || payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
+          subtitle: payload.code || payload.status || payload.from_display_name || backendResult.subtitle,
+          snippet: backendResult.snippet || payload.description || (payload as any).snippet || '',
           score: backendResult.fused_score ?? backendResult.rrf_score ?? backendResult.score ?? 0,
           actions: backendResult.actions || [],
           metadata: { ...backendResult.metadata, payload },

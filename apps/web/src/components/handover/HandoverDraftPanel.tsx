@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { X, FileText, Edit3, Trash2, Send, AlertTriangle, Clock, Loader2, CheckCircle2, Package, Wrench, File, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, FileText, Edit3, Trash2, Send, AlertTriangle, Clock, Loader2, CheckCircle2, Package, Wrench, File, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -266,6 +266,113 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
 }
 
 // ============================================================================
+// ADD NOTE MODAL
+// ============================================================================
+
+interface AddNoteModalProps {
+  onSave: (summary: string, category: string, isCritical: boolean, requiresAction: boolean) => Promise<void>;
+  onClose: () => void;
+}
+
+function AddNoteModal({ onSave, onClose }: AddNoteModalProps) {
+  const [summary, setSummary] = useState('');
+  const [category, setCategory] = useState('fyi');
+  const [isCritical, setIsCritical] = useState(false);
+  const [requiresAction, setRequiresAction] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!summary.trim()) {
+      toast.error('Please enter a summary');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(summary, category, isCritical, requiresAction);
+      onClose();
+    } catch (err) {
+      toast.error('Failed to add note');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-modal flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative bg-surface-elevated border border-surface-border rounded-lg shadow-modal w-full max-w-md mx-4 p-6">
+        <h3 className="typo-title font-semibold text-txt-primary mb-4">Add Handover Note</h3>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <div>
+              <label className="block typo-body font-medium text-txt-secondary mb-1">Summary *</label>
+              <textarea
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-md text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
+                placeholder="What needs to be handed over?"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block typo-body font-medium text-txt-secondary mb-1">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-md text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
+              >
+                <option value="fyi">FYI</option>
+                <option value="urgent">Urgent</option>
+                <option value="in_progress">In Progress</option>
+                <option value="watch">Watch</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isCritical}
+                  onChange={(e) => setIsCritical(e.target.checked)}
+                  className="w-4 h-4 rounded border-surface-border text-status-critical focus:ring-status-critical"
+                />
+                <span className="typo-body text-txt-secondary">Critical</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={requiresAction}
+                  onChange={(e) => setRequiresAction(e.target.checked)}
+                  className="w-4 h-4 rounded border-surface-border text-status-warning focus:ring-status-warning"
+                />
+                <span className="typo-body text-txt-secondary">Requires Action</span>
+              </label>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 typo-body font-medium text-txt-secondary hover:text-txt-primary transition-colors duration-fast"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !summary.trim()}
+              className="px-4 py-2 typo-body font-medium bg-brand-interactive text-white rounded-md hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
+            >
+              {saving ? 'Adding...' : 'Add Note'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -277,6 +384,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
   const [exporting, setExporting] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [editingItem, setEditingItem] = useState<HandoverItem | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch user's handover items
@@ -367,6 +475,33 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     toast.success('Handover note updated');
     fetchItems();
   }, [user?.id, fetchItems]);
+
+  // Handle add new note
+  const handleAddNote = useCallback(async (summary: string, category: string, isCritical: boolean, requiresAction: boolean) => {
+    if (!user?.id || !user?.yachtId) return;
+
+    const { error } = await supabase
+      .from('handover_items')
+      .insert({
+        yacht_id: user.yachtId,
+        entity_id: crypto.randomUUID(), // Self-referential for free-form notes
+        entity_type: 'note',
+        summary,
+        category,
+        is_critical: isCritical,
+        requires_action: requiresAction,
+        added_by: user.id,
+        status: 'draft',
+      });
+
+    if (error) {
+      console.error('[HandoverDraftPanel] Add error:', error);
+      throw error;
+    }
+
+    toast.success('Handover note added');
+    fetchItems();
+  }, [user?.id, user?.yachtId, fetchItems]);
 
   // Handle delete
   const handleDelete = useCallback(async (item: HandoverItem) => {
@@ -543,13 +678,23 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="btn-icon h-8 w-8"
-            aria-label="Close"
-          >
-            <X className="w-[18px] h-[18px]" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn-icon h-8 w-8 text-brand-interactive hover:bg-brand-interactive/10"
+              aria-label="Add handover note"
+              title="Add Note"
+            >
+              <Plus className="w-[18px] h-[18px]" />
+            </button>
+            <button
+              onClick={onClose}
+              className="btn-icon h-8 w-8"
+              aria-label="Close"
+            >
+              <X className="w-[18px] h-[18px]" />
+            </button>
+          </div>
         </div>
 
         {/* Export Button */}
@@ -713,6 +858,14 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
           item={editingItem}
           onSave={handleEdit}
           onClose={() => setEditingItem(null)}
+        />
+      )}
+
+      {/* Add Note Modal */}
+      {showAddModal && (
+        <AddNoteModal
+          onSave={handleAddNote}
+          onClose={() => setShowAddModal(false)}
         />
       )}
     </>

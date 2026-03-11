@@ -3,13 +3,15 @@
  *
  * Core infrastructure for executing all 67 micro-actions
  * Handles:
- * - Action dispatching
+ * - Action dispatching via unified Action Router (/api/v1/actions/execute)
  * - Confirmation dialogs for mutation_heavy actions
  * - Reason prompts for audit-sensitive actions
  * - Loading states
  * - Error handling
  * - Success notifications
- * - API integration with n8n webhooks
+ *
+ * NOTE: All actions route through the internal Action Router endpoint.
+ * The useWorklistActions hook also uses this same routing via actionClient.ts.
  */
 
 import { useState, useCallback } from 'react';

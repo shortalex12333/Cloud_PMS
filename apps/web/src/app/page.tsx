@@ -32,7 +32,6 @@ import { NavigationProvider } from '@/contexts/NavigationContext';
 import SpotlightSearch from '@/components/spotlight/SpotlightSearch';
 import ContextPanel from './app/ContextPanel';
 import { DeepLinkHandler } from './app/DeepLinkHandler';
-import { AuthProvider } from '@/contexts/AuthContext';
 
 // Dynamic import with SSR disabled for portal-based overlay
 const EmailOverlay = nextDynamic(() => import('./app/EmailOverlay'), { ssr: false });
@@ -76,12 +75,10 @@ function SurfaceContent() {
 
 export default function RootSurface() {
   return (
-    <AuthProvider>
-      <SurfaceProvider>
-        <NavigationProvider>
-          <SurfaceContent />
-        </NavigationProvider>
-      </SurfaceProvider>
-    </AuthProvider>
+    <SurfaceProvider>
+      <NavigationProvider>
+        <SurfaceContent />
+      </NavigationProvider>
+    </SurfaceProvider>
   );
 }

@@ -1,36 +1,30 @@
 'use client';
 
 /**
- * usePartActions — Parts/Inventory action hook (FE-02-03)
+ * usePartActions — Unified Parts/Inventory action hook
  *
- * Wires all parts action registry calls to typed helper methods.
- * Uses the unified action API endpoint per the action router spec.
+ * Consolidated from usePartActions + usePartsActions into a single canonical hook.
+ * Uses actionClient for standardized auth (Supabase session management).
  *
  * Action IDs map 1:1 to registry.py keys:
  *   view_part, consume_part, receive_part, transfer_part,
- *   adjust_stock_quantity, write_off_part, create_shopping_list_item
+ *   adjust_stock_quantity, write_off_part, create_shopping_list_item,
+ *   generate_part_labels, view_part_details, check_stock_level,
+ *   log_part_usage, view_low_stock
  *
  * Role-based access is enforced at the API level; visibility gates live in
- * PartsLens (hide, not disable — per UI_SPEC.md pattern).
- *
- * Role matrix:
- * - view_part:            all authenticated users
- * - consume_part:         crew, HOD, captain (everyone with vessel access)
- * - receive_part:         HOD+ (chief_engineer, chief_officer, captain, manager)
- * - transfer_part:        HOD+
- * - adjust_stock_quantity: captain, manager (SIGNED action)
- * - write_off:            HOD+
- * - create_shopping_list_item: crew, HOD, captain
+ * the lens components (hide, not disable — per UI_SPEC.md pattern).
  */
 
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { executeAction, type ActionResult } from '@/lib/actionClient';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface ActionResult {
+export interface PartActionResult {
   success: boolean;
   message?: string;
   data?: Record<string, unknown>;
@@ -42,9 +36,6 @@ export interface PartActionsState {
   error: string | null;
 }
 
-// API URL — same origin Next.js API route proxied to Render backend
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
-
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
@@ -52,13 +43,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.c
 /**
  * usePartActions
  *
- * Returns typed action helpers for all parts/inventory operations.
- * Each helper calls POST /v1/actions/execute with action name and JWT auth.
+ * Returns typed action helpers for ALL parts/inventory operations.
+ * Each helper calls POST /v1/actions/execute via actionClient.
  *
  * @param partId - UUID of the part in scope
  */
 export function usePartActions(partId: string) {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,48 +58,34 @@ export function usePartActions(partId: string) {
   // -------------------------------------------------------------------------
 
   const execute = useCallback(
-    async (actionName: string, payload: Record<string, unknown>): Promise<ActionResult> => {
-      if (!session?.access_token) {
-        return { success: false, error: 'Not authenticated' };
+    async (actionName: string, payload: Record<string, unknown>): Promise<PartActionResult> => {
+      if (!user?.yachtId) {
+        return { success: false, error: 'No yacht context available' };
       }
 
       setIsLoading(true);
       setError(null);
 
       try {
-        // Use unified action router endpoint - /v1/actions/execute
-        // IMPORTANT: part_id must be in payload (backend validation checks payload, not context)
-        const response = await fetch(`${API_BASE}/v1/actions/execute`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
+        const result = await executeAction(
+          actionName,
+          {
+            yacht_id: user.yachtId,
+            part_id: partId,
           },
-          body: JSON.stringify({
-            action: actionName,
-            context: {
-              yacht_id: user?.yachtId,
-              part_id: partId,
-            },
-            payload: {
-              part_id: partId,
-              ...payload,
-            },
-          }),
-        });
+          {
+            part_id: partId,
+            ...payload,
+          }
+        );
 
-        const json = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          const msg =
-            (json as { error?: string; detail?: string }).error ||
-            (json as { error?: string; detail?: string }).detail ||
-            `Request failed (${response.status})`;
+        if (result.status === 'error') {
+          const msg = result.message || result.error_code || 'Action failed';
           setError(msg);
           return { success: false, error: msg };
         }
 
-        return { success: true, ...(json as object) };
+        return { success: true, data: result.result, message: result.message };
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
         setError(msg);
@@ -117,11 +94,11 @@ export function usePartActions(partId: string) {
         setIsLoading(false);
       }
     },
-    [session, user, partId]
+    [user, partId]
   );
 
   // -------------------------------------------------------------------------
-  // Typed action helpers — one per registry action
+  // Core part actions (from original usePartActions)
   // -------------------------------------------------------------------------
 
   /** view_part — fetch part details (read-only) */
@@ -130,45 +107,120 @@ export function usePartActions(partId: string) {
     [execute]
   );
 
-  /** consume_part — record stock consumption (crew can do this) */
+  /** consume_part — record stock consumption */
   const consumePart = useCallback(
-    (quantity: number, notes?: string) =>
-      execute('consume_part', { quantity, notes }),
+    (quantity: number, workOrderId?: string, notes?: string) =>
+      execute('consume_part', {
+        quantity,
+        ...(workOrderId && { work_order_id: workOrderId }),
+        ...(notes && { notes }),
+      }),
     [execute]
   );
 
   /** receive_part — add incoming stock (HOD+) */
   const receivePart = useCallback(
     (quantity: number, notes?: string) =>
-      execute('receive_part', { quantity, notes }),
+      execute('receive_part', { quantity, ...(notes && { notes }) }),
     [execute]
   );
 
   /** transfer_part — move stock between locations (HOD+) */
   const transferPart = useCallback(
     (quantity: number, fromLocation: string, toLocation: string, notes?: string) =>
-      execute('transfer_part', { quantity, from_location: fromLocation, to_location: toLocation, notes }),
+      execute('transfer_part', {
+        quantity,
+        from_location: fromLocation,
+        to_location: toLocation,
+        ...(notes && { notes }),
+      }),
     [execute]
   );
 
-  /** adjust_stock_quantity — manual correction of stock level (captain, manager - SIGNED) */
+  /** adjust_stock_quantity — manual correction (captain, manager - SIGNED) */
   const adjustStock = useCallback(
-    (newQuantity: number, reason: string, signature?: Record<string, unknown>) =>
-      execute('adjust_stock_quantity', { new_quantity: newQuantity, reason, signature }),
+    (newQuantity: number, reason: string, locationId?: string) =>
+      execute('adjust_stock_quantity', {
+        new_quantity: newQuantity,
+        reason,
+        ...(locationId && { location_id: locationId }),
+      }),
     [execute]
   );
 
-  /** write_off — write off damaged/expired stock (HOD+) */
+  /** write_off_part — write off damaged/expired stock (HOD+) */
   const writeOff = useCallback(
     (quantity: number, reason: string) =>
       execute('write_off_part', { quantity, reason }),
     [execute]
   );
 
-  /** create_shopping_list_item — add this part to the procurement shopping list */
+  /** create_shopping_list_item — add to procurement list */
   const addToShoppingList = useCallback(
-    (quantity?: number, notes?: string) =>
-      execute('create_shopping_list_item', { quantity_requested: quantity, source_notes: notes, source_type: 'manual_add' }),
+    (quantity?: number, priority?: string, notes?: string, sourceWorkOrderId?: string) =>
+      execute('create_shopping_list_item', {
+        ...(quantity !== undefined && { quantity_requested: quantity }),
+        ...(priority && { priority }),
+        ...(notes && { source_notes: notes }),
+        ...(sourceWorkOrderId && { source_work_order_id: sourceWorkOrderId }),
+        source_type: 'manual_add',
+      }),
+    [execute]
+  );
+
+  // -------------------------------------------------------------------------
+  // Extended part actions (from original usePartsActions)
+  // -------------------------------------------------------------------------
+
+  /** generate_part_labels — generate printable labels (barcode/QR) */
+  const generateLabels = useCallback(
+    (part_ids: string[], label_format?: 'barcode' | 'qr', include_location?: boolean) =>
+      execute('generate_part_labels', {
+        part_ids,
+        ...(label_format && { label_format }),
+        ...(include_location !== undefined && { include_location }),
+      }),
+    [execute]
+  );
+
+  /** view_part_details — detailed specs, BOM links, location */
+  const viewDetails = useCallback(
+    (include_bom?: boolean, include_history?: boolean) =>
+      execute('view_part_details', {
+        ...(include_bom !== undefined && { include_bom }),
+        ...(include_history !== undefined && { include_history }),
+      }),
+    [execute]
+  );
+
+  /** check_stock_level — current quantity on-hand and location */
+  const checkStockLevel = useCallback(
+    (part_id?: string) =>
+      execute('check_stock_level', {
+        ...(part_id && { part_id }),
+      }),
+    [execute]
+  );
+
+  /** log_part_usage — record consumption with context */
+  const logUsage = useCallback(
+    (quantity: number, workOrderId?: string, equipmentId?: string, notes?: string) =>
+      execute('log_part_usage', {
+        quantity,
+        ...(workOrderId && { work_order_id: workOrderId }),
+        ...(equipmentId && { equipment_id: equipmentId }),
+        ...(notes && { notes }),
+      }),
+    [execute]
+  );
+
+  /** view_low_stock — alert report for parts below threshold */
+  const viewLowStock = useCallback(
+    (threshold_percentage?: number, category_filter?: string[]) =>
+      execute('view_low_stock', {
+        ...(threshold_percentage !== undefined && { threshold_percentage }),
+        ...(category_filter && { category_filter }),
+      }),
     [execute]
   );
 
@@ -181,63 +233,91 @@ export function usePartActions(partId: string) {
     isLoading,
     error,
 
-    // Read-only
+    // Core actions
     viewPart,
-
-    // Stock movements
     consumePart,
     receivePart,
     transferPart,
-
-    // Privileged adjustments
     adjustStock,
     writeOff,
-
-    // Procurement
     addToShoppingList,
+
+    // Extended actions
+    generateLabels,
+    viewDetails,
+    checkStockLevel,
+    logUsage,
+    viewLowStock,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Re-export ActionResult for consumers that imported it from here
+// ---------------------------------------------------------------------------
+
+export type { ActionResult };
 
 // ---------------------------------------------------------------------------
 // Role permission helpers - DELEGATED TO CENTRALIZED SERVICE
 // ---------------------------------------------------------------------------
 
 import { usePartPermissions as useCentralizedPartPermissions } from '@/hooks/permissions/usePartPermissions';
+import { useInventoryPermissions as useCentralizedInventoryPermissions } from '@/hooks/permissions/useInventoryPermissions';
 
 export interface PartPermissions {
-  /** Can view part details (all authenticated users) */
   canView: boolean;
-  /** Can consume stock (all roles per lens_matrix) */
   canConsume: boolean;
-  /** Can receive stock (all roles per lens_matrix) */
   canReceive: boolean;
-  /** Can transfer stock between locations (all roles per lens_matrix) */
   canTransfer: boolean;
-  /** Can manually adjust stock level (chief_engineer, captain, manager) */
   canAdjustStock: boolean;
-  /** Can write off stock (chief_engineer, captain, manager) */
   canWriteOff: boolean;
-  /** Can add to shopping list (all roles per lens_matrix) */
   canAddToShoppingList: boolean;
+  canGenerateLabels: boolean;
+  canViewDetails: boolean;
+  canLogUsage: boolean;
+  canViewLowStock: boolean;
 }
 
 /**
  * usePartPermissions
  *
- * Derives a set of boolean capability flags from the current user's role.
+ * Unified permission flags for all part actions.
  * DELEGATED TO CENTRALIZED SERVICE - reads from lens_matrix.json
- * Per UI_SPEC.md: hide, not disable for role gates.
  */
 export function usePartPermissions(): PartPermissions {
-  const central = useCentralizedPartPermissions();
+  const partPerms = useCentralizedPartPermissions();
+  const invPerms = useCentralizedInventoryPermissions();
 
   return {
-    canView: true, // All authenticated users can view parts
-    canConsume: central.canConsumePart,
-    canReceive: central.canReceivePart,
-    canTransfer: central.canTransferPart,
-    canAdjustStock: central.canAdjustStockQuantity,
-    canWriteOff: central.canWriteOffPart,
-    canAddToShoppingList: central.canAddToShoppingList,
+    canView: true,
+    canConsume: partPerms.canConsumePart,
+    canReceive: partPerms.canReceivePart,
+    canTransfer: partPerms.canTransferPart,
+    canAdjustStock: partPerms.canAdjustStockQuantity,
+    canWriteOff: partPerms.canWriteOffPart,
+    canAddToShoppingList: partPerms.canAddToShoppingList,
+    canGenerateLabels: invPerms.canGeneratePartLabels,
+    canViewDetails: invPerms.canViewPartDetails,
+    canLogUsage: invPerms.canLogPartUsage,
+    canViewLowStock: invPerms.canViewLowStock,
+  };
+}
+
+/**
+ * usePartsPermissions — Backwards-compatible alias
+ *
+ * Maps the old usePartsPermissions interface to the unified usePartPermissions.
+ * Consumers: PartsLensContent.tsx
+ */
+export function usePartsPermissions() {
+  const perms = usePartPermissions();
+  return {
+    canConsume: perms.canConsume,
+    canAdjust: perms.canAdjustStock,
+    canAddToList: perms.canAddToShoppingList,
+    canGenerateLabels: perms.canGenerateLabels,
+    canViewDetails: perms.canViewDetails,
+    canLogUsage: perms.canLogUsage,
+    canViewLowStock: perms.canViewLowStock,
   };
 }
