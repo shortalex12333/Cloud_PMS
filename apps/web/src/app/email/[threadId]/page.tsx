@@ -12,7 +12,6 @@
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { RouteLayout } from '@/components/layout';
-import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import {
   useThread,
   useMessageContent,
@@ -24,18 +23,6 @@ import {
 import { StatusPill } from '@/components/ui/StatusPill';
 import { cn } from '@/lib/utils';
 import DOMPurify from 'isomorphic-dompurify';
-
-function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const params = useParams();
-  React.useEffect(() => {
-    if (!isFragmentedRoutesEnabled()) {
-      router.replace(`/app?openEmail=true&threadId=${params.threadId}`);
-    }
-  }, [router, params]);
-  if (!isFragmentedRoutesEnabled()) return <div className="h-screen flex items-center justify-center bg-surface-base"><p className="text-txt-secondary">Redirecting...</p></div>;
-  return <>{children}</>;
-}
 
 const SANITIZE_CONFIG = {
   ALLOWED_TAGS: [
@@ -234,7 +221,6 @@ function LinkedObjectsPanel({ links }: { links: ThreadLink[] }) {
   if (links.length === 0) return null;
 
   const getObjectRoute = (type: string, id: string) => {
-    if (!isFragmentedRoutesEnabled()) return `/app?entity=${type}&id=${id}`;
     switch (type) {
       case 'work_order': return `/work-orders/${id}`;
       case 'equipment': return `/equipment/${id}`;
@@ -390,10 +376,8 @@ function EmailThreadDetailPageContent() {
 
 export default function EmailThreadDetailPage() {
   return (
-    <FeatureFlagGuard>
-      <React.Suspense fallback={<LoadingState />}>
-        <EmailThreadDetailPageContent />
-      </React.Suspense>
-    </FeatureFlagGuard>
+    <React.Suspense fallback={<LoadingState />}>
+      <EmailThreadDetailPageContent />
+    </React.Suspense>
   );
 }

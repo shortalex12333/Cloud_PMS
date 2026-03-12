@@ -13,35 +13,10 @@ import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
-import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
 import { getEntityRoute } from '@/lib/featureFlags';
-
-// Feature flag guard
-function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const params = useParams();
-
-  React.useEffect(() => {
-    if (!isFragmentedRoutesEnabled()) {
-      // Redirect to legacy route with entity params
-      const id = params.id as string;
-      router.replace(`/app?entity=warranty&id=${id}`);
-    }
-  }, [router, params]);
-
-  if (!isFragmentedRoutesEnabled()) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-surface-base">
-        <p className="text-txt-primary/60">Redirecting...</p>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
 
 // Fetch warranty detail
 async function fetchWarrantyDetail(id: string, token: string): Promise<Record<string, unknown>> {
@@ -346,13 +321,11 @@ function WarrantyDetailPageContent() {
   );
 }
 
-// Export with feature flag guard
+// Export
 export default function WarrantyDetailPage() {
   return (
-    <FeatureFlagGuard>
-      <React.Suspense fallback={<LoadingState />}>
-        <WarrantyDetailPageContent />
-      </React.Suspense>
-    </FeatureFlagGuard>
+    <React.Suspense fallback={<LoadingState />}>
+      <WarrantyDetailPageContent />
+    </React.Suspense>
   );
 }

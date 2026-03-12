@@ -12,17 +12,9 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { RouteLayout } from '@/components/layout';
-import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useInboxThreads, useEmailSearch, type EmailThread } from '@/hooks/useEmailData';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { cn } from '@/lib/utils';
-
-function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  React.useEffect(() => { if (!isFragmentedRoutesEnabled()) router.replace('/app?openEmail=true'); }, [router]);
-  if (!isFragmentedRoutesEnabled()) return <div className="h-screen flex items-center justify-center bg-surface-base"><p className="text-txt-secondary">Redirecting...</p></div>;
-  return <>{children}</>;
-}
 
 type FilterState = 'all' | 'linked' | 'unlinked';
 
@@ -309,10 +301,8 @@ function EmailPageContent() {
 
 export default function EmailPage() {
   return (
-    <FeatureFlagGuard>
-      <React.Suspense fallback={<LoadingState />}>
-        <EmailPageContent />
-      </React.Suspense>
-    </FeatureFlagGuard>
+    <React.Suspense fallback={<LoadingState />}>
+      <EmailPageContent />
+    </React.Suspense>
   );
 }
