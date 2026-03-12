@@ -13,31 +13,9 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
-import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { cn } from '@/lib/utils';
-
-// Feature flag guard - redirect if disabled
-function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
-  React.useEffect(() => {
-    if (!isFragmentedRoutesEnabled()) {
-      router.replace('/app');
-    }
-  }, [router]);
-
-  if (!isFragmentedRoutesEnabled()) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-surface-base">
-        <p className="text-txt-secondary">Redirecting...</p>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
 
 // Purchase order item type
 interface PurchaseOrderItem {
@@ -392,13 +370,11 @@ function PurchasingPageContent() {
   );
 }
 
-// Export with feature flag guard
+// Export
 export default function PurchasingPage() {
   return (
-    <FeatureFlagGuard>
-      <React.Suspense fallback={<LoadingState />}>
-        <PurchasingPageContent />
-      </React.Suspense>
-    </FeatureFlagGuard>
+    <React.Suspense fallback={<LoadingState />}>
+      <PurchasingPageContent />
+    </React.Suspense>
   );
 }

@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { EntityList } from '@/features/entity-list/components/EntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
@@ -11,26 +10,6 @@ import { EquipmentLensContent } from '@/components/lens/EquipmentLensContent';
 import { fetchEquipment, fetchEquipmentItem } from '@/features/equipment/api';
 import { equipmentToListResult } from '@/features/equipment/adapter';
 import type { Equipment } from '@/features/equipment/types';
-
-function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
-  React.useEffect(() => {
-    if (!isFragmentedRoutesEnabled()) {
-      router.replace('/app');
-    }
-  }, [router]);
-
-  if (!isFragmentedRoutesEnabled()) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-surface-base">
-        <p className="text-white/60">Redirecting...</p>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
 
 function EquipmentPageContent() {
   const router = useRouter();
@@ -117,16 +96,14 @@ function EquipmentPageContent() {
 
 export default function EquipmentPage() {
   return (
-    <FeatureFlagGuard>
-      <React.Suspense
-        fallback={
-          <div className="h-screen flex items-center justify-center bg-surface-base">
-            <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
-          </div>
-        }
-      >
-        <EquipmentPageContent />
-      </React.Suspense>
-    </FeatureFlagGuard>
+    <React.Suspense
+      fallback={
+        <div className="h-screen flex items-center justify-center bg-surface-base">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <EquipmentPageContent />
+    </React.Suspense>
   );
 }

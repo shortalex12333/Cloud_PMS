@@ -13,33 +13,8 @@ import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
-import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
-
-// Feature flag guard
-function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const params = useParams();
-
-  React.useEffect(() => {
-    if (!isFragmentedRoutesEnabled()) {
-      // Redirect to legacy route with entity params
-      const id = params.id as string;
-      router.replace(`/app?entity=hours_of_rest&id=${id}`);
-    }
-  }, [router, params]);
-
-  if (!isFragmentedRoutesEnabled()) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-surface-base">
-        <p className="text-txt-primary/60">Redirecting...</p>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
 
 // Fetch hours of rest detail
 async function fetchHoursOfRestDetail(id: string, token: string): Promise<Record<string, unknown>> {
@@ -296,16 +271,12 @@ function HoursOfRestDetailPageContent() {
   // Handle cross-entity navigation
   const handleNavigate = React.useCallback(
     (entityType: string, entityId: string) => {
-      if (isFragmentedRoutesEnabled()) {
-        switch (entityType) {
-          case 'crew':
-            router.push(`/crew/${entityId}`);
-            break;
-          default:
-            router.push(`/app?entity=${entityType}&id=${entityId}`);
-        }
-      } else {
-        router.push(`/app?entity=${entityType}&id=${entityId}`);
+      switch (entityType) {
+        case 'crew':
+          router.push(`/crew/${entityId}`);
+          break;
+        default:
+          router.push(`/app?entity=${entityType}&id=${entityId}`);
       }
     },
     [router]
@@ -372,13 +343,11 @@ function HoursOfRestDetailPageContent() {
   );
 }
 
-// Export with feature flag guard
+// Export
 export default function HoursOfRestDetailPage() {
   return (
-    <FeatureFlagGuard>
-      <React.Suspense fallback={<LoadingState />}>
-        <HoursOfRestDetailPageContent />
-      </React.Suspense>
-    </FeatureFlagGuard>
+    <React.Suspense fallback={<LoadingState />}>
+      <HoursOfRestDetailPageContent />
+    </React.Suspense>
   );
 }

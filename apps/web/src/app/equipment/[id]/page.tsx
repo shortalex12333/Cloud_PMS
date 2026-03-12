@@ -12,19 +12,10 @@ import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
-import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
 import { getEntityRoute } from '@/lib/featureFlags';
-
-function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const params = useParams();
-  React.useEffect(() => { if (!isFragmentedRoutesEnabled()) router.replace(`/app?entity=equipment&id=${params.id}`); }, [router, params]);
-  if (!isFragmentedRoutesEnabled()) return <div className="h-screen flex items-center justify-center bg-surface-base"><p className="text-white/60">Redirecting...</p></div>;
-  return <>{children}</>;
-}
 
 async function fetchEquipmentDetail(id: string, token: string): Promise<Record<string, unknown>> {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
@@ -217,10 +208,8 @@ function EquipmentDetailPageContent() {
 
 export default function EquipmentDetailPage() {
   return (
-    <FeatureFlagGuard>
-      <React.Suspense fallback={<LoadingState />}>
-        <EquipmentDetailPageContent />
-      </React.Suspense>
-    </FeatureFlagGuard>
+    <React.Suspense fallback={<LoadingState />}>
+      <EquipmentDetailPageContent />
+    </React.Suspense>
   );
 }
