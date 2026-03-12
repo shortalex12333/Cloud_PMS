@@ -492,6 +492,12 @@ export default function SpotlightSearch({
    * Map result type to entity type for situation creation
    */
   const mapResultTypeToEntityType = useCallback((type: string): EntityType => {
+    if (type.includes('certificate')) return 'certificate';
+    if (type.includes('warranty')) return 'warranty';
+    if (type.includes('shopping_item') || type.includes('shopping_list')) return 'shopping_list';
+    if (type.includes('receiving')) return 'receiving';
+    if (type.includes('purchase_order')) return 'purchase_order';
+    if (type.includes('hours_of_rest')) return 'hours_of_rest';
     if (type.includes('document') || type === 'search_document_chunks') return 'document';
     if (type.includes('equipment') || type === 'pms_equipment') return 'equipment';
     if (type.includes('part') || type === 'pms_parts') return 'part';
@@ -508,8 +514,10 @@ export default function SpotlightSearch({
   const mapEntityTypeToDomain = useCallback((entityType: EntityType): SituationDomain => {
     if (entityType === 'document') return 'manuals';
     if (entityType === 'equipment' || entityType === 'work_order' || entityType === 'fault') return 'maintenance';
-    if (entityType === 'part' || entityType === 'inventory') return 'inventory';
+    if (entityType === 'part' || entityType === 'inventory' || entityType === 'shopping_list' || entityType === 'receiving' || entityType === 'purchase_order') return 'inventory';
     if (entityType === 'email_thread') return 'email';
+    if (entityType === 'certificate' || entityType === 'warranty') return 'maintenance';
+    if (entityType === 'hours_of_rest') return 'maintenance';
     return 'manuals'; // Default fallback
   }, []);
 

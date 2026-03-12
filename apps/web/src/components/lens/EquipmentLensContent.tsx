@@ -18,6 +18,7 @@ import { useEquipmentActions, useEquipmentPermissions, type EquipmentStatus, typ
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { SignatureCanvas } from '@/components/lens/handover-export-sections/SignatureCanvas';
 import { Flag, FileUp, Link, AlertTriangle, RefreshCw, StickyNote, Archive } from 'lucide-react';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from './sections';
 
 export interface EquipmentLensContentProps {
   id: string;
@@ -38,7 +39,7 @@ function mapStatusToColor(status: string): 'critical' | 'warning' | 'success' | 
   }
 }
 
-export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLensContentProps) {
+export function EquipmentLensContent({ id, data, onBack, onClose, onNavigate, onRefresh }: EquipmentLensContentProps) {
   const [reportFaultOpen, setReportFaultOpen] = useState(false);
   const [scheduleMaintenanceOpen, setScheduleMaintenanceOpen] = useState(false);
   const [createWorkOrderOpen, setCreateWorkOrderOpen] = useState(false);
@@ -54,6 +55,8 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
   const installation_date = data.installation_date as string | undefined;
   const last_maintenance = data.last_maintenance as string | undefined;
   const next_maintenance = data.next_maintenance as string | undefined;
+  const attachments = (data.attachments as Attachment[]) || [];
+  const related_entities = (data.related_entities as RelatedEntity[]) || [];
 
   const statusColor = mapStatusToColor(status);
 
@@ -89,6 +92,18 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
             </dl>
           </SectionContainer>
         </div>
+
+        {attachments.length > 0 && (
+          <div className="mt-6">
+            <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} stickyTop={56} />
+          </div>
+        )}
+
+        {related_entities.length > 0 && onNavigate && (
+          <div className="mt-6">
+            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
+          </div>
+        )}
       </main>
 
       <ReportFaultModal

@@ -12,6 +12,7 @@ import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from './sections';
 
 export interface WarrantyLensContentProps {
   id: string;
@@ -51,6 +52,8 @@ export function WarrantyLensContent({
   const status = (data.status as string) || 'active';
   const coverage = data.coverage as string | undefined;
   const terms = data.terms as string | undefined;
+  const attachments = (data.attachments as Attachment[]) || [];
+  const related_entities = (data.related_entities as RelatedEntity[]) || [];
 
   const statusColor = mapStatusToColor(status, expiry_date);
 
@@ -142,6 +145,18 @@ export function WarrantyLensContent({
             </dl>
           </SectionContainer>
         </div>
+
+        {attachments.length > 0 && (
+          <div className="mt-6">
+            <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} stickyTop={56} />
+          </div>
+        )}
+
+        {related_entities.length > 0 && onNavigate && (
+          <div className="mt-6">
+            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
+          </div>
+        )}
       </main>
     </div>
   );

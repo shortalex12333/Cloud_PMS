@@ -16,6 +16,8 @@ import { RouteLayout } from '@/components/layout';
 import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { getEntityRoute } from '@/lib/featureFlags';
 
 // Feature flag guard
 function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
@@ -172,6 +174,8 @@ function PurchaseOrderContent({
   const currency = (data?.currency || 'USD') as string;
   const items = (data?.items || []) as PurchaseOrderItem[];
   const notes = data?.notes as string;
+  const attachments = (data?.attachments as Attachment[]) || [];
+  const related_entities = (data?.related_entities as RelatedEntity[]) || [];
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -262,6 +266,16 @@ function PurchaseOrderContent({
         </div>
       )}
 
+      {/* Attachments */}
+      {attachments.length > 0 && (
+        <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} />
+      )}
+
+      {/* Related Entities */}
+      {related_entities.length > 0 && (
+        <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
+      )}
+
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-border-subtle">
         {status === 'draft' && (
@@ -330,21 +344,7 @@ function PurchaseOrderDetailPageContent() {
   // Handle cross-entity navigation
   const handleNavigate = React.useCallback(
     (entityType: string, entityId: string) => {
-      if (isFragmentedRoutesEnabled()) {
-        switch (entityType) {
-          case 'inventory':
-          case 'part':
-            router.push(`/inventory/${entityId}`);
-            break;
-          case 'work_order':
-            router.push(`/work-orders/${entityId}`);
-            break;
-          default:
-            router.push(`/app?entity=${entityType}&id=${entityId}`);
-        }
-      } else {
-        router.push(`/app?entity=${entityType}&id=${entityId}`);
-      }
+      router.push(getEntityRoute(entityType as any, entityId));
     },
     [router]
   );

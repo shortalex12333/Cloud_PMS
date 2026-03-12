@@ -16,6 +16,8 @@ import { RouteLayout } from '@/components/layout';
 import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { getEntityRoute } from '@/lib/featureFlags';
 
 // Feature flag guard
 function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
@@ -155,6 +157,8 @@ function WarrantyContent({
   const purchaseDate = data?.purchase_date as string;
   const expiryDate = data?.expiry_date as string;
   const linkedEquipmentId = data?.linked_equipment_id as string;
+  const attachments = (data?.attachments as Attachment[]) || [];
+  const related_entities = (data?.related_entities as RelatedEntity[]) || [];
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -214,6 +218,16 @@ function WarrantyContent({
         </div>
       )}
 
+      {/* Attachments */}
+      {attachments.length > 0 && (
+        <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} />
+      )}
+
+      {/* Related Entities */}
+      {related_entities.length > 0 && (
+        <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
+      )}
+
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-border-subtle">
         <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors">
@@ -268,20 +282,7 @@ function WarrantyDetailPageContent() {
   // Handle cross-entity navigation
   const handleNavigate = React.useCallback(
     (entityType: string, entityId: string) => {
-      if (isFragmentedRoutesEnabled()) {
-        switch (entityType) {
-          case 'equipment':
-            router.push(`/equipment/${entityId}`);
-            break;
-          case 'work_order':
-            router.push(`/work-orders/${entityId}`);
-            break;
-          default:
-            router.push(`/app?entity=${entityType}&id=${entityId}`);
-        }
-      } else {
-        router.push(`/app?entity=${entityType}&id=${entityId}`);
-      }
+      router.push(getEntityRoute(entityType as any, entityId));
     },
     [router]
   );

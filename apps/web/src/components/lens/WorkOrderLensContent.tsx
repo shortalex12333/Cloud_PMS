@@ -27,10 +27,12 @@ import {
   PartsSection,
   AttachmentsSection,
   HistorySection,
+  RelatedEntitiesSection,
   type WorkOrderNote,
   type WorkOrderPart,
   type Attachment,
   type AuditLogEntry,
+  type RelatedEntity,
 } from './sections';
 
 // Action modals
@@ -167,6 +169,7 @@ export function WorkOrderLensContent({
   const parts = (data.parts || payload.parts) as WorkOrderPart[] || [];
   const attachments = (data.attachments || payload.attachments) as Attachment[] || [];
   const history = (data.audit_history || payload.audit_history || data.history || payload.history) as AuditLogEntry[] || [];
+  const related_entities = (data.related_entities || payload.related_entities) as RelatedEntity[] || [];
 
   // Available options for modals
   const availableParts: PartOption[] = [];
@@ -402,6 +405,12 @@ export function WorkOrderLensContent({
         <div className="mt-6">
           <HistorySection history={history} stickyTop={56} />
         </div>
+
+        {related_entities.length > 0 && onNavigate && (
+          <div className="mt-6">
+            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
+          </div>
+        )}
       </main>
 
       {/* Action Modals */}

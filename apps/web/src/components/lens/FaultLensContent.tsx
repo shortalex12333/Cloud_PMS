@@ -20,6 +20,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { useFaultActions, useFaultPermissions } from '@/hooks/useFaultActions';
 import { toast } from 'sonner';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from './sections';
 
 export interface FaultLensContentProps {
   id: string;
@@ -90,6 +91,9 @@ export function FaultLensContent({
   const reported_by = data.reported_by as string | undefined;
   const reported_at = data.reported_at as string | undefined;
   const resolved_at = data.resolved_at as string | undefined;
+
+  const attachments = (data.attachments as Attachment[]) || [];
+  const related_entities = (data.related_entities as RelatedEntity[]) || [];
 
   const severityColor = mapSeverityToColor(severity);
   const statusColor = mapStatusToColor(status);
@@ -223,6 +227,18 @@ export function FaultLensContent({
               </SectionContainer>
             </div>
           )}
+
+        {attachments.length > 0 && (
+          <div className="mt-6">
+            <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} stickyTop={56} />
+          </div>
+        )}
+
+        {related_entities.length > 0 && onNavigate && (
+          <div className="mt-6">
+            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
+          </div>
+        )}
         </main>
       </div>
 

@@ -16,6 +16,8 @@ import { RouteLayout } from '@/components/layout';
 import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { getEntityRoute } from '@/lib/featureFlags';
 
 // Feature flag guard
 function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
@@ -165,6 +167,8 @@ function ReceivingContent({
   const receivedBy = data?.received_by as string;
   const receivedDate = data?.received_date as string;
   const items = (data?.items || []) as ReceivingItem[];
+  const attachments = (data?.attachments as Attachment[]) || [];
+  const related_entities = (data?.related_entities as RelatedEntity[]) || [];
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -226,6 +230,16 @@ function ReceivingContent({
             ))}
           </div>
         </div>
+      )}
+
+      {/* Attachments */}
+      {attachments.length > 0 && (
+        <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} />
+      )}
+
+      {/* Related Entities */}
+      {related_entities.length > 0 && (
+        <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
       )}
 
       {/* Actions */}
@@ -294,20 +308,7 @@ function ReceivingDetailPageContent() {
   // Handle cross-entity navigation
   const handleNavigate = React.useCallback(
     (entityType: string, entityId: string) => {
-      if (isFragmentedRoutesEnabled()) {
-        switch (entityType) {
-          case 'inventory':
-            router.push(`/inventory/${entityId}`);
-            break;
-          case 'purchase_order':
-            router.push(`/purchase-orders/${entityId}`);
-            break;
-          default:
-            router.push(`/app?entity=${entityType}&id=${entityId}`);
-        }
-      } else {
-        router.push(`/app?entity=${entityType}&id=${entityId}`);
-      }
+      router.push(getEntityRoute(entityType as any, entityId));
     },
     [router]
   );

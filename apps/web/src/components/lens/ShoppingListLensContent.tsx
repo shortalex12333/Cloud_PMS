@@ -13,6 +13,7 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
+import { RelatedEntitiesSection, type RelatedEntity } from './sections';
 
 export interface ShoppingListLensContentProps {
   id: string;
@@ -58,6 +59,8 @@ export function ShoppingListLensContent({
     status: string;
     urgency?: 'low' | 'normal' | 'high' | 'critical';
   }>) || [];
+
+  const related_entities = (data.related_entities as RelatedEntity[]) || [];
 
   const statusColor = mapStatusToColor(status);
   const statusLabel = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -158,6 +161,12 @@ export function ShoppingListLensContent({
                 {approver_name && ` by ${approver_name}`}
               </p>
             </SectionContainer>
+          </div>
+        )}
+
+        {related_entities.length > 0 && onNavigate && (
+          <div className="mt-6">
+            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
           </div>
         )}
       </main>
