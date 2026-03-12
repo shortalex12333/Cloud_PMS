@@ -33,37 +33,31 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        data, domain = None, "vessel"
-        r = supabase.table("pms_vessel_certificates").select("*") \
+        r = supabase.table("pms_certificates").select("*") \
             .eq("id", certificate_id).eq("yacht_id", yacht_id).maybe_single().execute()
-        if r is not None and r.data:
-            data = r.data
-        else:
-            r2 = supabase.table("pms_crew_certificates").select("*") \
-                .eq("id", certificate_id).eq("yacht_id", yacht_id).maybe_single().execute()
-            if r2.data:
-                data, domain = r2.data, "crew"
 
-        if not data:
+        if not r or not r.data:
             raise HTTPException(status_code=404, detail="Certificate not found")
 
-        props = data.get("properties") or {}
-        if isinstance(props, str):
+        data = r.data
+        metadata = data.get("metadata") or {}
+        if isinstance(metadata, str):
             import json as _j
-            props = _j.loads(props) if props else {}
+            metadata = _j.loads(metadata) if metadata else {}
 
         return {
             "id": data.get("id"),
-            "name": data.get("certificate_name") if domain == "vessel" else data.get("certificate_type", "Certificate"),
+            "name": data.get("certificate_name"),
             "certificate_type": data.get("certificate_type"),
+            "certificate_number": data.get("certificate_number"),
             "issuing_authority": data.get("issuing_authority"),
             "issue_date": data.get("issue_date"),
             "expiry_date": data.get("expiry_date"),
-            "status": data.get("status", "active"),
-            "certificate_number": data.get("certificate_number"),
-            "notes": props.get("notes") if isinstance(props, dict) else None,
-            "crew_member_id": data.get("person_node_id") if domain == "crew" else None,
-            "domain": domain,
+            "status": data.get("status", "valid"),
+            "equipment_id": data.get("equipment_id"),
+            "document_id": data.get("document_id"),
+            "notes": data.get("notes"),
+            "domain": "vessel",
             "yacht_id": data.get("yacht_id"),
             "created_at": data.get("created_at"),
         }
@@ -404,9 +398,9 @@ async def get_fault_entity(fault_id: str, auth: dict = Depends(get_authenticated
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        response = supabase.table('pms_faults').select('*').eq('id', fault_id).eq('yacht_id', yacht_id).single().execute()
+        response = supabase.table('pms_faults').select('*').eq('id', fault_id).eq('yacht_id', yacht_id).maybe_single().execute()
 
-        if not response.data:
+        if not response or not response.data:
             raise HTTPException(status_code=404, detail="Fault not found")
 
         data = response.data
@@ -565,9 +559,9 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        response = supabase.table('pms_equipment').select('*').eq('id', equipment_id).eq('yacht_id', yacht_id).single().execute()
+        response = supabase.table('pms_equipment').select('*').eq('id', equipment_id).eq('yacht_id', yacht_id).maybe_single().execute()
 
-        if not response.data:
+        if not response or not response.data:
             raise HTTPException(status_code=404, detail="Equipment not found")
 
         data = response.data
@@ -608,16 +602,16 @@ async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_u
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        response = supabase.table('pms_parts').select('*').eq('id', part_id).eq('yacht_id', yacht_id).single().execute()
+        response = supabase.table('pms_parts').select('*').eq('id', part_id).eq('yacht_id', yacht_id).maybe_single().execute()
 
-        if not response.data:
+        if not response or not response.data:
             raise HTTPException(status_code=404, detail="Part not found")
 
         data = response.data
         metadata = data.get('metadata') or {}
         return {
             "id": data.get('id'),
-            "name": data.get('name', 'Unknown Part'),
+            "name": data.get('name') or 'Unknown Part',
             "part_number": data.get('part_number', ''),
             "stock_quantity": data.get('quantity_on_hand', 0),
             "min_stock_level": data.get('minimum_quantity') or data.get('min_level', 0),
