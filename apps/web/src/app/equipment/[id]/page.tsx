@@ -15,6 +15,8 @@ import { RouteLayout } from '@/components/layout';
 import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { getEntityRoute } from '@/lib/featureFlags';
 
 function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -94,6 +96,8 @@ function EquipmentContent({ data, onNavigate }: { data: Record<string, unknown>;
   const location = data?.location as string;
   const linkedWorkOrders = (data?.work_orders || []) as Array<{ id: string; wo_number: string; title: string }>;
   const linkedFaults = (data?.faults || []) as Array<{ id: string; title: string }>;
+  const attachments = (data?.attachments as Attachment[]) || [];
+  const related_entities = (data?.related_entities as RelatedEntity[]) || [];
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -139,6 +143,16 @@ function EquipmentContent({ data, onNavigate }: { data: Record<string, unknown>;
         </div>
       )}
 
+      {/* Attachments */}
+      {attachments.length > 0 && (
+        <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} />
+      )}
+
+      {/* Related Entities */}
+      {related_entities.length > 0 && (
+        <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
+      )}
+
       <div className="flex gap-3 pt-4 border-t border-white/10">
         <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">Report Fault</button>
         <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">Create Work Order</button>
@@ -165,16 +179,7 @@ function EquipmentDetailPageContent() {
   const handleBack = React.useCallback(() => router.back(), [router]);
   const handleRefresh = React.useCallback(() => refetch(), [refetch]);
   const handleNavigate = React.useCallback((entityType: string, entityId: string) => {
-    if (isFragmentedRoutesEnabled()) {
-      switch (entityType) {
-        case 'work_order': router.push(`/work-orders/${entityId}`); break;
-        case 'fault': router.push(`/faults/${entityId}`); break;
-        case 'part': router.push(`/inventory/${entityId}`); break;
-        default: router.push(`/app?entity=${entityType}&id=${entityId}`);
-      }
-    } else {
-      router.push(`/app?entity=${entityType}&id=${entityId}`);
-    }
+    router.push(getEntityRoute(entityType as any, entityId));
   }, [router]);
 
   const name = (equipment?.name || 'Equipment') as string;

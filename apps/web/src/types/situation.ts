@@ -37,7 +37,13 @@ export type EntityType =
   | 'location'
   | 'person'
   | 'inventory'
-  | 'email_thread';
+  | 'email_thread'
+  | 'certificate'
+  | 'warranty'
+  | 'shopping_list'
+  | 'receiving'
+  | 'purchase_order'
+  | 'hours_of_rest';
 
 /**
  * Domain classification for different operational areas

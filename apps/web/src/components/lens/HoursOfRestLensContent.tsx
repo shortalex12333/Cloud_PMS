@@ -13,6 +13,7 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
+import { RelatedEntitiesSection, type RelatedEntity } from './sections';
 
 export interface HoursOfRestLensContentProps {
   id: string;
@@ -52,6 +53,8 @@ export function HoursOfRestLensContent({
     end_time: string;
     duration_hours: number;
   }>) || [];
+
+  const related_entities = (data.related_entities as RelatedEntity[]) || [];
 
   const complianceColor = mapComplianceToColor(is_compliant);
   const complianceLabel = is_compliant ? 'Compliant' : 'Non-Compliant';
@@ -119,6 +122,12 @@ export function HoursOfRestLensContent({
                 {verified_by && ` by ${verified_by}`}
               </p>
             </SectionContainer>
+          </div>
+        )}
+
+        {related_entities.length > 0 && onNavigate && (
+          <div className="mt-6">
+            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
           </div>
         )}
       </main>

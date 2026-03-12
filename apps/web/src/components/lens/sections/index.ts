@@ -30,3 +30,9 @@ export {
   type HistorySectionProps,
   type AuditLogEntry,
 } from './HistorySection';
+
+export {
+  RelatedEntitiesSection,
+  type RelatedEntitiesSectionProps,
+  type RelatedEntity,
+} from './RelatedEntitiesSection';

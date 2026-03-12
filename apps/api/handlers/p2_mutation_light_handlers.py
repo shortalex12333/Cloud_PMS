@@ -425,6 +425,7 @@ class P2MutationLightHandlers:
                 "original_filename": filename,
                 "mime_type": mime_type,
                 "storage_path": storage_path,
+                "storage_bucket": "pms-work-order-photos",
                 "category": category,
                 "description": description,
                 "uploaded_by": user_id,

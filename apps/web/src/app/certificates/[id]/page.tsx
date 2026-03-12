@@ -17,6 +17,8 @@ import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { executeAction } from '@/lib/actionClient';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { getEntityRoute } from '@/lib/featureFlags';
 
 // Feature flag guard
 function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
@@ -162,6 +164,9 @@ function CertificateContent({
   const linkedEquipmentId = data?.linked_equipment_id as string;
   const linkedEquipmentName = data?.linked_equipment_name as string;
 
+  const attachments = (data?.attachments as Attachment[]) || [];
+  const related_entities = (data?.related_entities as RelatedEntity[]) || [];
+
   // Action: Upload document for certificate
   const handleUploadDocument = React.useCallback(async () => {
     if (!certificateId || !user?.yachtId) return;
@@ -273,6 +278,16 @@ function CertificateContent({
         </div>
       )}
 
+      {/* Attachments */}
+      {attachments.length > 0 && (
+        <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} />
+      )}
+
+      {/* Related Entities */}
+      {related_entities.length > 0 && (
+        <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
+      )}
+
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-surface-border">
         <button
@@ -337,20 +352,7 @@ function CertificateDetailPageContent() {
   // Handle cross-entity navigation
   const handleNavigate = React.useCallback(
     (entityType: string, entityId: string) => {
-      if (isFragmentedRoutesEnabled()) {
-        switch (entityType) {
-          case 'equipment':
-            router.push(`/equipment/${entityId}`);
-            break;
-          case 'work_order':
-            router.push(`/work-orders/${entityId}`);
-            break;
-          default:
-            router.push(`/app?entity=${entityType}&id=${entityId}`);
-        }
-      } else {
-        router.push(`/app?entity=${entityType}&id=${entityId}`);
-      }
+      router.push(getEntityRoute(entityType as any, entityId));
     },
     [router]
   );

@@ -1091,6 +1091,7 @@ class FaultMutationHandlers:
                 "entity_type": "fault",
                 "entity_id": fault_id,
                 "storage_path": photo_url,
+                "storage_bucket": "pms-discrepancy-photos",
                 "filename": photo_url.split("/")[-1] if "/" in photo_url else photo_url,
                 "original_filename": photo_url.split("/")[-1] if "/" in photo_url else photo_url,
                 "mime_type": "image/jpeg",  # Assume JPEG, can be enhanced

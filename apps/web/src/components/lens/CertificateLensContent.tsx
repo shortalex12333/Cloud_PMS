@@ -12,6 +12,8 @@ import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { GhostButton } from '@/components/ui/GhostButton';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from './sections';
 
 export interface CertificateLensContentProps {
   id: string;
@@ -50,6 +52,9 @@ export function CertificateLensContent({
   const status = (data.status as string) || 'valid';
   const certificate_number = data.certificate_number as string | undefined;
   const notes = data.notes as string | undefined;
+  const document_url = data.document_url as string | undefined;
+  const attachments = (data.attachments as Attachment[]) || [];
+  const related_entities = (data.related_entities as RelatedEntity[]) || [];
 
   const statusColor = mapStatusToColor(status, expiry_date);
   const statusLabel = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -97,6 +102,13 @@ export function CertificateLensContent({
             <PrimaryButton onClick={() => console.log('[CertificateLens] Renew:', id)} className="text-[13px] min-h-9 px-4 py-2">Renew Certificate</PrimaryButton>
           </div>
         )}
+        {document_url && (
+          <div className={statusColor !== 'success' ? 'mt-2' : 'mt-4'}>
+            <GhostButton onClick={() => window.open(document_url, '_blank')} className="text-[13px] min-h-9 px-4 py-2">
+              View Certificate Document
+            </GhostButton>
+          </div>
+        )}
 
         <div className="mt-6 border-t border-surface-border" aria-hidden="true" />
 
@@ -138,6 +150,18 @@ export function CertificateLensContent({
             <SectionContainer title="Notes" stickyTop={56}>
               <p className="typo-body text-celeste-text-primary">{notes}</p>
             </SectionContainer>
+          </div>
+        )}
+
+        {attachments.length > 0 && (
+          <div className="mt-6">
+            <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} stickyTop={56} />
+          </div>
+        )}
+
+        {related_entities.length > 0 && onNavigate && (
+          <div className="mt-6">
+            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
           </div>
         )}
       </main>

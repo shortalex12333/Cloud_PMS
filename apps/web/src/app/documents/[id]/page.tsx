@@ -17,6 +17,8 @@ import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { executeAction } from '@/lib/actionClient';
+import { RelatedEntitiesSection, type RelatedEntity } from '@/components/lens/sections';
+import { getEntityRoute } from '@/lib/featureFlags';
 
 // Feature flag guard
 function FeatureFlagGuard({ children }: { children: React.ReactNode }) {
@@ -167,6 +169,7 @@ function DocumentContent({
   const description = data?.description as string;
   const equipmentId = data?.equipment_id as string;
   const equipmentName = data?.equipment_name as string;
+  const related_entities = (data?.related_entities as RelatedEntity[]) || [];
 
   // Action: Archive document
   const handleArchive = React.useCallback(async () => {
@@ -295,6 +298,11 @@ function DocumentContent({
         </div>
       )}
 
+      {/* Related Entities */}
+      {related_entities.length > 0 && (
+        <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
+      )}
+
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-surface-border">
         <button
@@ -359,20 +367,7 @@ function DocumentDetailPageContent() {
   // Handle cross-entity navigation
   const handleNavigate = React.useCallback(
     (entityType: string, entityId: string) => {
-      if (isFragmentedRoutesEnabled()) {
-        switch (entityType) {
-          case 'equipment':
-            router.push(`/equipment/${entityId}`);
-            break;
-          case 'work_order':
-            router.push(`/work-orders/${entityId}`);
-            break;
-          default:
-            router.push(`/app?entity=${entityType}&id=${entityId}`);
-        }
-      } else {
-        router.push(`/app?entity=${entityType}&id=${entityId}`);
-      }
+      router.push(getEntityRoute(entityType as any, entityId));
     },
     [router]
   );

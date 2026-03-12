@@ -17,6 +17,7 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { useDocumentActions, useDocumentPermissions } from '@/hooks/useDocumentActions';
 import { GhostButton } from '@/components/ui/GhostButton';
+import { RelatedEntitiesSection, type RelatedEntity } from './sections';
 
 export interface DocumentLensContentProps {
   id: string;
@@ -64,6 +65,7 @@ export function DocumentLensContent({
   const classification = data.classification as string | undefined;
   const equipment_id = data.equipment_id as string | undefined;
   const equipment_name = data.equipment_name as string | undefined;
+  const related_entities = (data.related_entities as RelatedEntity[]) || [];
 
   const docType = getDocumentTypeLabel(mime_type);
   const isMedia = isMediaType(mime_type);
@@ -196,6 +198,12 @@ export function DocumentLensContent({
             </dl>
           </SectionContainer>
         </div>
+
+        {related_entities.length > 0 && onNavigate && (
+          <div className="mt-6">
+            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
+          </div>
+        )}
       </main>
     </div>
   );

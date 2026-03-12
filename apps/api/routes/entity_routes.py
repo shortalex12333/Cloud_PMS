@@ -22,6 +22,72 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# ── Shared helpers (signed URLs + navigation links) ──────────────────────────
+
+# Fallback bucket map for pre-migration rows without storage_bucket column.
+# New rows store storage_bucket directly on pms_attachments.
+ATTACHMENT_BUCKET = {
+    "fault": "pms-discrepancy-photos",
+    "work_order": "pms-work-order-photos",
+    "checklist_item": "pms-work-order-photos",
+    "equipment": "pms-work-order-photos",
+    "purchase_order": "pms-finance-documents",
+    "warranty": "pms-finance-documents",
+    "receiving": "pms-receiving-images",
+}
+
+
+def _sign_url(supabase, bucket: str, path: str, expires_in: int = 3600):
+    """Sign a storage path. Returns URL string or None. Never raises."""
+    if not path:
+        return None
+    try:
+        result = supabase.storage.from_(bucket).create_signed_url(path, expires_in)
+        return result.get("signedURL") or result.get("signed_url")
+    except Exception as e:
+        logger.warning(f"Failed to sign {bucket}/{path}: {e}")
+        return None
+
+
+def _get_attachments(supabase, entity_type: str, entity_id: str, yacht_id: str) -> list:
+    """Query pms_attachments, sign each, return list matching frontend Attachment shape."""
+    try:
+        result = supabase.table("pms_attachments").select(
+            "id, filename, mime_type, storage_path, file_size, category, storage_bucket"
+        ).eq("entity_type", entity_type).eq("entity_id", entity_id).eq(
+            "yacht_id", yacht_id
+        ).is_("deleted_at", "null").execute()
+
+        attachments = []
+        fallback_bucket = ATTACHMENT_BUCKET.get(entity_type, "attachments")
+        for att in (result.data or []):
+            path = att.get("storage_path")
+            if not path:
+                continue
+            bucket = att.get("storage_bucket") or fallback_bucket
+            url = _sign_url(supabase, bucket, path)
+            if not url:
+                continue
+            attachments.append({
+                "id": att["id"],
+                "filename": att.get("filename", "file"),
+                "url": url,
+                "mime_type": att.get("mime_type", "application/octet-stream"),
+                "size_bytes": att.get("file_size") or 0,
+            })
+        return attachments
+    except Exception as e:
+        logger.warning(f"Failed to get attachments for {entity_type}/{entity_id}: {e}")
+        return []
+
+
+def _nav(entity_type: str, entity_id, label: str):
+    """Return {entity_type, entity_id, label} or None if entity_id is falsy."""
+    if not entity_id:
+        return None
+    return {"entity_type": entity_type, "entity_id": str(entity_id), "label": label}
+
+
 # ── Certificate ────────────────────────────────────────────────────────────────
 # Two-table lookup: vessel certificates first, crew certificates as fallback.
 # Returns domain="vessel" or domain="crew" so the frontend can adapt labels.
@@ -33,39 +99,57 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        data, domain = None, "vessel"
-        r = supabase.table("pms_vessel_certificates").select("*") \
+        r = supabase.table("pms_certificates").select("*") \
             .eq("id", certificate_id).eq("yacht_id", yacht_id).maybe_single().execute()
-        if r is not None and r.data:
-            data = r.data
-        else:
-            r2 = supabase.table("pms_crew_certificates").select("*") \
-                .eq("id", certificate_id).eq("yacht_id", yacht_id).maybe_single().execute()
-            if r2.data:
-                data, domain = r2.data, "crew"
 
-        if not data:
+        if not r or not r.data:
             raise HTTPException(status_code=404, detail="Certificate not found")
 
-        props = data.get("properties") or {}
-        if isinstance(props, str):
+        data = r.data
+        metadata = data.get("metadata") or {}
+        if isinstance(metadata, str):
             import json as _j
-            props = _j.loads(props) if props else {}
+            metadata = _j.loads(metadata) if metadata else {}
+
+        # Sign document URL if linked
+        document_url = None
+        doc_id = data.get("document_id")
+        if doc_id:
+            try:
+                doc_r = supabase.table("doc_metadata").select(
+                    "storage_path, storage_bucket"
+                ).eq("id", doc_id).maybe_single().execute()
+                if doc_r and doc_r.data:
+                    bucket = doc_r.data.get("storage_bucket") or "documents"
+                    document_url = _sign_url(supabase, bucket, doc_r.data.get("storage_path"))
+            except Exception:
+                pass
+
+        attachments = _get_attachments(supabase, "certificate", certificate_id, yacht_id)
+
+        nav = [n for n in [
+            _nav("equipment", data.get("equipment_id"), "Equipment"),
+            _nav("document", doc_id, "Document"),
+        ] if n]
 
         return {
             "id": data.get("id"),
-            "name": data.get("certificate_name") if domain == "vessel" else data.get("certificate_type", "Certificate"),
+            "name": data.get("certificate_name"),
             "certificate_type": data.get("certificate_type"),
+            "certificate_number": data.get("certificate_number"),
             "issuing_authority": data.get("issuing_authority"),
             "issue_date": data.get("issue_date"),
             "expiry_date": data.get("expiry_date"),
-            "status": data.get("status", "active"),
-            "certificate_number": data.get("certificate_number"),
-            "notes": props.get("notes") if isinstance(props, dict) else None,
-            "crew_member_id": data.get("person_node_id") if domain == "crew" else None,
-            "domain": domain,
+            "status": data.get("status", "valid"),
+            "equipment_id": data.get("equipment_id"),
+            "document_id": data.get("document_id"),
+            "document_url": document_url,
+            "notes": data.get("notes"),
+            "domain": "vessel",
             "yacht_id": data.get("yacht_id"),
             "created_at": data.get("created_at"),
+            "attachments": attachments,
+            "related_entities": nav,
         }
     except HTTPException:
         raise
@@ -94,13 +178,22 @@ async def get_document_entity(document_id: str, auth: dict = Depends(get_authent
             raise HTTPException(status_code=404, detail="Document not found")
 
         data = r.data
+
+        # Sign the document URL (fixes raw-path bug for private buckets)
+        bucket = data.get("storage_bucket") or "documents"
+        signed_url = _sign_url(supabase, bucket, data.get("storage_path"))
+
+        nav = [n for n in [
+            _nav("equipment", data.get("equipment_id"), "Equipment"),
+        ] if n]
+
         return {
             "id": data.get("id"),
             "filename": data.get("filename"),
             "title": data.get("title") or data.get("filename"),
             "description": data.get("description"),
             "mime_type": data.get("content_type"),
-            "url": data.get("storage_path"),
+            "url": signed_url,
             "classification": data.get("classification"),
             "equipment_id": data.get("equipment_id"),
             "equipment_name": data.get("equipment_name"),
@@ -108,6 +201,8 @@ async def get_document_entity(document_id: str, auth: dict = Depends(get_authent
             "created_at": data.get("created_at"),
             "created_by": data.get("created_by"),
             "yacht_id": data.get("yacht_id"),
+            "attachments": [],
+            "related_entities": nav,
         }
     except HTTPException:
         raise
@@ -178,6 +273,10 @@ async def get_hours_of_rest_entity(record_id: str, auth: dict = Depends(get_auth
             "yacht_id": data.get("yacht_id"),
             "created_at": data.get("created_at"),
             "updated_at": data.get("updated_at"),
+            "attachments": [],
+            "related_entities": [n for n in [
+                _nav("crew", data.get("user_id"), "Crew Member"),
+            ] if n],
         }
     except HTTPException:
         raise
@@ -216,6 +315,10 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             "required_by_date": data.get("required_by_date"),
             "is_candidate_part": data.get("is_candidate_part", False),
         }
+        nav = [n for n in [
+            _nav("part", data.get("part_id"), "Part"),
+        ] if n]
+
         return {
             "id": data.get("id"),
             "title": data.get("part_name"),
@@ -225,6 +328,8 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             "created_at": data.get("created_at"),
             "items": [item],
             "yacht_id": data.get("yacht_id"),
+            "attachments": [],
+            "related_entities": nav,
         }
     except HTTPException:
         raise
@@ -254,6 +359,13 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
         data = r.data
         title = data.get("title") or data.get("claim_number") or (data.get("id", "")[:8])
 
+        attachments = _get_attachments(supabase, "warranty", warranty_id, yacht_id)
+        nav = [n for n in [
+            _nav("equipment", data.get("equipment_id"), "Equipment"),
+            _nav("fault", data.get("fault_id"), "Fault"),
+            _nav("work_order", data.get("work_order_id"), "Work Order"),
+        ] if n]
+
         return {
             "id": data.get("id"),
             "title": title,
@@ -275,6 +387,8 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             "claim_type": data.get("claim_type"),
             "created_at": data.get("created_at"),
             "yacht_id": data.get("yacht_id"),
+            "attachments": attachments,
+            "related_entities": nav,
         }
     except HTTPException:
         raise
@@ -313,6 +427,15 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
         else:
             sections = []
 
+        # Sign the export file URL
+        file_name = data.get("file_name")
+        export_path = file_name or f"handovers/{yacht_id}/{export_id}.html"
+        export_url = _sign_url(supabase, "handover-exports", export_path)
+
+        nav = [n for n in [
+            _nav("handover_export", data.get("draft_id"), "Source Draft"),
+        ] if n]
+
         user_sig = data.get("user_signature")
         return {
             "id": data.get("id"),
@@ -320,7 +443,8 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
             "review_status": data.get("review_status"),
             "export_type": data.get("export_type"),
             "export_status": data.get("export_status"),
-            "file_name": data.get("file_name"),
+            "file_name": file_name,
+            "export_url": export_url,
             "sections": sections,
             "user_signature": user_sig,
             "userSignature": user_sig,
@@ -328,6 +452,8 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
             "submitted_at": data.get("exported_at"),
             "created_at": data.get("created_at"),
             "draft_id": data.get("draft_id"),
+            "attachments": [],
+            "related_entities": nav,
         }
     except HTTPException:
         raise
@@ -373,6 +499,15 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
             for item in raw_items
         ]
 
+        attachments = _get_attachments(supabase, "purchase_order", po_id, yacht_id)
+
+        # Nav to parts from line items (limit 5)
+        nav = []
+        for it in raw_items[:5]:
+            n = _nav("part", it.get("part_id"), it.get("name") or "Part")
+            if n:
+                nav.append(n)
+
         return {
             "id": data.get("id"),
             "po_number": data.get("po_number"),
@@ -386,6 +521,8 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
             "items": items,
             "created_at": data.get("created_at"),
             "yacht_id": data.get("yacht_id"),
+            "attachments": attachments,
+            "related_entities": nav,
         }
     except HTTPException:
         raise
@@ -404,12 +541,30 @@ async def get_fault_entity(fault_id: str, auth: dict = Depends(get_authenticated
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        response = supabase.table('pms_faults').select('*').eq('id', fault_id).eq('yacht_id', yacht_id).single().execute()
+        response = supabase.table('pms_faults').select('*').eq('id', fault_id).eq('yacht_id', yacht_id).maybe_single().execute()
 
-        if not response.data:
+        if not response or not response.data:
             raise HTTPException(status_code=404, detail="Fault not found")
 
         data = response.data
+
+        attachments = _get_attachments(supabase, "fault", fault_id, yacht_id)
+
+        # Find linked work orders
+        nav = [n for n in [
+            _nav("equipment", data.get("equipment_id"), "Equipment"),
+        ] if n]
+        try:
+            wo_r = supabase.table("pms_work_orders").select("id, title").eq(
+                "fault_id", fault_id
+            ).eq("yacht_id", yacht_id).limit(5).execute()
+            for wo in (wo_r.data or []):
+                n = _nav("work_order", wo.get("id"), wo.get("title") or "Work Order")
+                if n:
+                    nav.append(n)
+        except Exception:
+            pass
+
         return {
             "id": data.get('id'),
             "title": data.get('title') or data.get('fault_code', 'Unknown Fault'),
@@ -424,6 +579,8 @@ async def get_fault_entity(fault_id: str, auth: dict = Depends(get_authenticated
             "ai_diagnosis": data.get('ai_diagnosis'),
             "created_at": data.get('created_at'),
             "updated_at": data.get('updated_at'),
+            "attachments": attachments,
+            "related_entities": nav,
         }
     except HTTPException:
         raise
@@ -520,6 +677,12 @@ async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_aut
         is_hod = await _is_user_hod(user_id, yacht_id, supabase)
         available_actions = _determine_available_actions(work_order=data, user_role=user_role, is_hod=is_hod)
 
+        attachments = _get_attachments(supabase, "work_order", wo_id, yacht_id)
+        nav = [n for n in [
+            _nav("equipment", data.get("equipment_id"), "Equipment"),
+            _nav("fault", data.get("fault_id"), "Fault"),
+        ] if n]
+
         return {
             "id": wo_id,
             "wo_number": data.get('wo_number'),
@@ -547,6 +710,8 @@ async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_aut
             "checklist_count": len(checklist),
             "checklist_completed": len([c for c in checklist if c.get('is_completed')]),
             "available_actions": available_actions,
+            "attachments": attachments,
+            "related_entities": nav,
         }
     except HTTPException:
         raise
@@ -565,13 +730,39 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        response = supabase.table('pms_equipment').select('*').eq('id', equipment_id).eq('yacht_id', yacht_id).single().execute()
+        response = supabase.table('pms_equipment').select('*').eq('id', equipment_id).eq('yacht_id', yacht_id).maybe_single().execute()
 
-        if not response.data:
+        if not response or not response.data:
             raise HTTPException(status_code=404, detail="Equipment not found")
 
         data = response.data
         metadata = data.get('metadata') or {}
+
+        attachments = _get_attachments(supabase, "equipment", equipment_id, yacht_id)
+
+        # Find linked work orders and faults
+        nav = []
+        try:
+            wo_r = supabase.table("pms_work_orders").select("id, title").eq(
+                "equipment_id", equipment_id
+            ).eq("yacht_id", yacht_id).limit(3).execute()
+            for wo in (wo_r.data or []):
+                n = _nav("work_order", wo.get("id"), wo.get("title") or "Work Order")
+                if n:
+                    nav.append(n)
+        except Exception:
+            pass
+        try:
+            f_r = supabase.table("pms_faults").select("id, title").eq(
+                "equipment_id", equipment_id
+            ).eq("yacht_id", yacht_id).limit(3).execute()
+            for f in (f_r.data or []):
+                n = _nav("fault", f.get("id"), f.get("title") or "Fault")
+                if n:
+                    nav.append(n)
+        except Exception:
+            pass
+
         return {
             "id": data.get('id'),
             "name": data.get('name', 'Unknown Equipment'),
@@ -590,6 +781,8 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
             "attention_reason": data.get('attention_reason'),
             "created_at": data.get('created_at'),
             "updated_at": data.get('updated_at'),
+            "attachments": attachments,
+            "related_entities": nav,
         }
     except HTTPException:
         raise
@@ -608,16 +801,23 @@ async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_u
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        response = supabase.table('pms_parts').select('*').eq('id', part_id).eq('yacht_id', yacht_id).single().execute()
+        response = supabase.table('pms_parts').select('*').eq('id', part_id).eq('yacht_id', yacht_id).maybe_single().execute()
 
-        if not response.data:
+        if not response or not response.data:
             raise HTTPException(status_code=404, detail="Part not found")
 
         data = response.data
         metadata = data.get('metadata') or {}
+
+        # Hero photo (image_storage_path + image_bucket confirmed in pms_parts)
+        image_bucket = data.get('image_bucket') or 'pms-work-order-photos'
+        image_url = _sign_url(supabase, image_bucket, data.get('image_storage_path'))
+
+        attachments = _get_attachments(supabase, "part", part_id, yacht_id)
+
         return {
             "id": data.get('id'),
-            "name": data.get('name', 'Unknown Part'),
+            "name": data.get('name') or 'Unknown Part',
             "part_number": data.get('part_number', ''),
             "stock_quantity": data.get('quantity_on_hand', 0),
             "min_stock_level": data.get('minimum_quantity') or data.get('min_level', 0),
@@ -632,6 +832,9 @@ async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_u
             "last_counted_by": data.get('last_counted_by'),
             "created_at": data.get('created_at'),
             "updated_at": data.get('updated_at'),
+            "image_url": image_url,
+            "attachments": attachments,
+            "related_entities": [],
         }
     except HTTPException:
         raise
@@ -667,21 +870,52 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
             .eq('receiving_id', receiving_id) \
             .eq('yacht_id', yacht_id) \
             .execute()
+        raw_items = items_response.data or []
+
+        attachments = _get_attachments(supabase, "receiving", receiving_id, yacht_id)
+
+        # Invoice images = attachments with image MIME types
+        invoice_images = [
+            a for a in attachments
+            if (a.get("mime_type") or "").startswith("image/")
+        ]
+
+        # Nav links: items' part_id → Part, po_number → Purchase Order
+        nav = []
+        for it in raw_items[:5]:
+            n = _nav("part", it.get("part_id"), it.get("description") or "Part")
+            if n:
+                nav.append(n)
+        po_num = data.get("po_number")
+        if po_num:
+            try:
+                po_r = supabase.table("pms_purchase_orders").select("id").eq(
+                    "po_number", po_num
+                ).eq("yacht_id", yacht_id).maybe_single().execute()
+                if po_r and po_r.data:
+                    n = _nav("purchase_order", po_r.data["id"], f"PO {po_num}")
+                    if n:
+                        nav.append(n)
+            except Exception:
+                pass
 
         return {
             "id": data.get('id'),
             "vendor_name": data.get('vendor_name'),
             "vendor_reference": data.get('vendor_reference'),
-            "po_number": data.get('po_number'),
+            "po_number": po_num,
             "received_date": data.get('received_date'),
             "status": data.get('status', 'draft'),
             "total": data.get('total'),
             "currency": data.get('currency'),
             "notes": data.get('notes'),
             "received_by": data.get('received_by'),
-            "items": items_response.data or [],
+            "items": raw_items,
             "created_at": data.get('created_at'),
             "updated_at": data.get('updated_at'),
+            "invoice_images": invoice_images,
+            "attachments": attachments,
+            "related_entities": nav,
         }
     except HTTPException:
         raise

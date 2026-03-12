@@ -13,6 +13,7 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
+import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from './sections';
 
 export interface PartsLensContentProps {
   id: string;
@@ -50,6 +51,9 @@ export function PartsLensContent({
   const supplier = data.supplier as string | undefined;
   const category = data.category as string | undefined;
   const last_counted_at = data.last_counted_at as string | undefined;
+  const image_url = data.image_url as string | undefined;
+  const attachments = (data.attachments as Attachment[]) || [];
+  const related_entities = (data.related_entities as RelatedEntity[]) || [];
 
   const stockColor = mapStockStatus(stock_quantity, min_stock_level);
   const stockLabel = stock_quantity <= 0 ? 'Out of Stock' :
@@ -85,6 +89,12 @@ export function PartsLensContent({
           <VitalSignsRow signs={vitalSigns} />
         </div>
 
+        {image_url && (
+          <div className="mt-4 rounded-lg overflow-hidden">
+            <img src={image_url} alt={part_name} className="w-full max-h-[300px] object-contain bg-surface-secondary" />
+          </div>
+        )}
+
         <div className="mt-4 flex items-center gap-2">
           <PrimaryButton onClick={() => console.log('[PartsLens] Log usage:', id)} className="text-[13px] min-h-9 px-4 py-2">Log Usage</PrimaryButton>
           <GhostButton onClick={() => console.log('[PartsLens] Count stock:', id)} className="text-[13px] min-h-9 px-4 py-2">Count Stock</GhostButton>
@@ -113,7 +123,7 @@ export function PartsLensContent({
                   <dd className="text-celeste-text-primary">{supplier}</dd>
                 </>
               )}
-              {unit_cost !== undefined && (
+              {unit_cost != null && (
                 <>
                   <dt className="text-celeste-text-muted">Unit Cost</dt>
                   <dd className="text-celeste-text-primary">${unit_cost.toFixed(2)}</dd>
@@ -122,6 +132,18 @@ export function PartsLensContent({
             </dl>
           </SectionContainer>
         </div>
+
+        {attachments.length > 0 && (
+          <div className="mt-6">
+            <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} stickyTop={56} />
+          </div>
+        )}
+
+        {related_entities.length > 0 && onNavigate && (
+          <div className="mt-6">
+            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
+          </div>
+        )}
       </main>
     </div>
   );

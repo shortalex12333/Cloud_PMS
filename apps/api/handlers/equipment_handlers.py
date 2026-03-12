@@ -865,6 +865,7 @@ def _attach_file_to_equipment_adapter(handlers: EquipmentHandlers):
             }
 
         # Insert attachment
+        bucket = handlers._get_bucket_for_attachment("equipment", None, mime_type)
         attachment_payload = {
             "yacht_id": yacht_id,
             "entity_type": "equipment",
@@ -874,6 +875,7 @@ def _attach_file_to_equipment_adapter(handlers: EquipmentHandlers):
             "mime_type": mime_type,
             "file_size": file_size,
             "storage_path": storage_path,
+            "storage_bucket": bucket,
             "description": description,
             "tags": tags if tags else None,
             "uploaded_by": user_id,
