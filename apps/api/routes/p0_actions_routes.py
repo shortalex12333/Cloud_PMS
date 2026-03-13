@@ -63,7 +63,10 @@ def build_ledger_event(
     action: str,  # e.g., 'add_note', 'add_checklist_item'
     user_role: str = None,
     change_summary: str = None,
-    metadata: dict = None
+    metadata: dict = None,
+    department: str = None,
+    actor_name: str = None,
+    event_category: str = "write"
 ) -> dict:
     """Build a ledger event with correct schema for ledger_events table.
 
@@ -89,6 +92,11 @@ def build_ledger_event(
         event_data["user_role"] = user_role
     if change_summary:
         event_data["change_summary"] = change_summary
+    if department:
+        event_data["department"] = department
+    if actor_name:
+        event_data["actor_name"] = actor_name
+    event_data["event_category"] = event_category or "write"
 
     # Generate proof_hash (SHA-256 of event data)
     hash_input = json.dumps({
@@ -103,6 +111,44 @@ def build_ledger_event(
     event_data["proof_hash"] = hashlib.sha256(hash_input.encode()).hexdigest()
 
     return event_data
+
+
+# Maps action name → (entity_type, payload_key_for_entity_id)
+_ACTION_ENTITY_MAP = {
+    "start_work_order":            ("work_order", "work_order_id"),
+    "complete_work_order":         ("work_order", "work_order_id"),
+    "close_work_order":            ("work_order", "work_order_id"),
+    "assign_work_order":           ("work_order", "work_order_id"),
+    "add_note_to_work_order":      ("work_order", "work_order_id"),
+    "add_part_to_work_order":      ("work_order", "work_order_id"),
+    "update_work_order":           ("work_order", "work_order_id"),
+    "report_fault":                ("fault", "fault_id"),
+    "acknowledge_fault":           ("fault", "fault_id"),
+    "close_fault":                 ("fault", "fault_id"),
+    "diagnose_fault":              ("fault", "fault_id"),
+    "reopen_fault":                ("fault", "fault_id"),
+    "update_fault":                ("fault", "fault_id"),
+    "add_fault_note":              ("fault", "fault_id"),
+    "update_equipment_status":     ("equipment", "equipment_id"),
+    "add_equipment_note":          ("equipment", "equipment_id"),
+    "update_running_hours":        ("equipment", "equipment_id"),
+    "log_part_usage":              ("part", "part_id"),
+    "adjust_stock_quantity":       ("part", "part_id"),
+    "write_off_part":              ("part", "part_id"),
+    "create_shopping_list_item":   ("shopping_list_item", "item_id"),
+    "approve_shopping_list_item":  ("shopping_list_item", "item_id"),
+    "reject_shopping_list_item":   ("shopping_list_item", "item_id"),
+    "mark_shopping_list_ordered":  ("shopping_list_item", "item_id"),
+    "promote_candidate_to_part":   ("shopping_list_item", "item_id"),
+    "edit_receiving":              ("receiving", "receiving_id"),
+    "submit_receiving_for_review": ("receiving", "receiving_id"),
+    "accept_receiving":            ("receiving", "receiving_id"),
+    "reject_receiving":            ("receiving", "receiving_id"),
+    "submit_purchase_order":       ("purchase_order", "purchase_order_id"),
+    "approve_purchase_order":      ("purchase_order", "purchase_order_id"),
+    "mark_po_received":            ("purchase_order", "purchase_order_id"),
+    "cancel_purchase_order":       ("purchase_order", "purchase_order_id"),
+}
 
 
 # ============================================================================
@@ -6407,6 +6453,45 @@ async def execute_action(
             error_response["hint"] = result["hint"]
 
         return JSONResponse(status_code=status_code, content=error_response)
+
+    # ── Centralised ledger write (non-fatal) ─────────────────────────────────
+    # Captures every successful mutation automatically. Failures are logged only.
+    try:
+        _resp_dict = result if isinstance(result, dict) else {}
+        if _resp_dict.get("status") == "success" or _resp_dict.get("success") is True:
+            _entity_type, _entity_key = _ACTION_ENTITY_MAP.get(action, ("unknown", None))
+            _entity_id = str(payload.get(_entity_key, "")) if _entity_key else ""
+
+            if any(w in action for w in ("create", "report", "add", "log")):
+                _ev_type = "create"
+            elif any(w in action for w in ("approve", "accept")):
+                _ev_type = "approval"
+            elif any(w in action for w in ("reject", "cancel", "close", "write_off")):
+                _ev_type = "rejection"
+            elif any(w in action for w in ("complete", "start", "submit")):
+                _ev_type = "status_change"
+            else:
+                _ev_type = "update"
+
+            _ledger_ev = build_ledger_event(
+                yacht_id=str(yacht_id),
+                user_id=str(user_id),
+                event_type=_ev_type,
+                entity_type=_entity_type,
+                entity_id=_entity_id or "00000000-0000-0000-0000-000000000000",
+                action=action,
+                user_role=user_role or "",
+                change_summary=_resp_dict.get("message", action.replace("_", " ").title()),
+                actor_name=user_context.get("email", ""),
+                event_category="write",
+            )
+            _ledger_tenant_alias = user_context.get("tenant_key_alias", "")
+            if _ledger_tenant_alias:
+                _ledger_db = get_tenant_supabase_client(_ledger_tenant_alias)
+                _ledger_db.table("ledger_events").insert(_ledger_ev).execute()
+    except Exception as _le:
+        logger.warning(f"[Ledger] Non-fatal post-action write failed for '{action}': {_le}")
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Add execution_id to response for E2E test tracing
     import uuid
