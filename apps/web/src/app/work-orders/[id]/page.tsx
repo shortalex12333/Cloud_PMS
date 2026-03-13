@@ -15,8 +15,13 @@ import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { AttachmentsSection, RelatedEntitiesSection, HistorySection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { useEntityLedger } from '@/hooks/useEntityLedger';
+import { useReadBeacon } from '@/hooks/useReadBeacon';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { useWorkOrderActions } from '@/hooks/useWorkOrderActions';
+import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
+import { MarkCompleteModal } from '@/components/lens/actions/MarkCompleteModal';
 
 // Fetch work order detail
 async function fetchWorkOrderDetail(id: string, token: string): Promise<Record<string, unknown>> {
@@ -116,10 +121,12 @@ function WorkOrderContent({
   data,
   onBack,
   onNavigate,
+  onRefresh,
 }: {
   data: Record<string, unknown>;
   onBack: () => void;
   onNavigate: (entityType: string, entityId: string) => void;
+  onRefresh?: () => void;
 }) {
   const title = (data?.title || 'Work Order') as string;
   const woNumber = data?.wo_number as string;
@@ -133,6 +140,13 @@ function WorkOrderContent({
   const notes = (data?.notes || []) as Array<{ id: string; note_text: string; created_at: string }>;
   const attachments = (data?.attachments as Attachment[]) || [];
   const related_entities = (data?.related_entities as RelatedEntity[]) || [];
+
+  const { addNote, closeWorkOrder, isLoading: actionsLoading } = useWorkOrderActions(data.id as string);
+  const [showNoteModal, setShowNoteModal] = React.useState(false);
+  const [showCompleteModal, setShowCompleteModal] = React.useState(false);
+
+  const { data: history = [] } = useEntityLedger('work_order', data.id as string);
+  useReadBeacon('work_order', data.id as string);
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -215,15 +229,55 @@ function WorkOrderContent({
         <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
       )}
 
+      {/* History */}
+      {history.length > 0 && (
+        <HistorySection history={history} />
+      )}
+
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-white/10">
-        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">
+        <button
+          className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors"
+          onClick={() => setShowNoteModal(true)}
+        >
           Add Note
         </button>
-        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">
+        <button
+          className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors"
+          onClick={() => setShowCompleteModal(true)}
+        >
           Mark Complete
         </button>
       </div>
+
+      <AddNoteModal
+        open={showNoteModal}
+        onClose={() => setShowNoteModal(false)}
+        onSubmit={async (noteText) => {
+          const result = await addNote(noteText);
+          if (result.success) {
+            setShowNoteModal(false);
+            onRefresh?.();
+          }
+          return result;
+        }}
+        isLoading={actionsLoading}
+      />
+
+      <MarkCompleteModal
+        open={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        onSubmit={async (completionNotes) => {
+          const result = await closeWorkOrder(completionNotes);
+          if (result.success) {
+            setShowCompleteModal(false);
+            onRefresh?.();
+          }
+          return result;
+        }}
+        isLoading={actionsLoading}
+        workOrderTitle={title}
+      />
     </div>
   );
 }
@@ -299,6 +353,7 @@ function WorkOrderDetailPageContent() {
         data={workOrder}
         onBack={handleBack}
         onNavigate={handleNavigate}
+        onRefresh={handleRefresh}
       />
     );
   }
