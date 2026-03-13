@@ -288,6 +288,7 @@ async def record_read_event(
     user_id       = user_context.get("user_id") or user_context.get("sub")
     user_role     = user_context.get("role", "")
     actor_name    = user_context.get("email", "")
+    department    = user_context.get("department", "")
     tenant_alias  = user_context.get("tenant_key_alias", "")
 
     if not yacht_id or not entity_id:
@@ -300,6 +301,7 @@ async def record_read_event(
             "user_id":        str(user_id),
             "user_role":      user_role,
             "actor_name":     actor_name,
+            "department":     department,
             "event_category": "read",
             "event_type":     "update",
             "action":         f"view_{entity_type}",
