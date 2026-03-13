@@ -24,6 +24,9 @@ export const RBAC_CONFIG = {
   apiUrl: process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai',
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzsohavtuotocgrfkfyd.supabase.co',
   // Service role key for database verification (bypasses RLS)
+  // TODO SECURITY: This service_role JWT is baked into source for local test convenience.
+  // Move to SUPABASE_SERVICE_KEY env var / CI secret and remove the literal fallback.
+  // Until then: never commit a rotation of this key without updating this fallback.
   supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzU5Mjg3NSwiZXhwIjoyMDc5MTY4ODc1fQ.fC7eC_4xGnCHIebPzfaJ18pFMPKgImE7BuN0I3A-pSY',
 };
 
@@ -145,8 +148,9 @@ export const test = base.extend<RBACFixtures>({
 
     await use(seedFault);
 
-    // Cleanup after test
+    // Cleanup after test — ledger_events first (references entity_id), then entity
     if (createdIds.length > 0) {
+      await supabaseAdmin.from('ledger_events').delete().in('entity_id', createdIds);
       await supabaseAdmin.from('pms_faults').delete().in('id', createdIds);
     }
   },
@@ -192,8 +196,9 @@ export const test = base.extend<RBACFixtures>({
 
     await use(seedWorkOrder);
 
-    // Cleanup after test
+    // Cleanup after test — ledger_events first (references entity_id), then entity
     if (createdIds.length > 0) {
+      await supabaseAdmin.from('ledger_events').delete().in('entity_id', createdIds);
       await supabaseAdmin.from('pms_work_orders').delete().in('id', createdIds);
     }
   },
