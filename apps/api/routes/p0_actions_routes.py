@@ -755,6 +755,7 @@ async def execute_action(
                     }
                 )
             user_context["role"] = tenant_info["role"]
+            user_context["department"] = tenant_info.get("department", "")
         else:
             raise HTTPException(
                 status_code=403,
@@ -764,6 +765,13 @@ async def execute_action(
                     "message": "User is not assigned to any yacht/tenant"
                 }
             )
+
+    # Enrich department from tenant lookup (validate_jwt already resolved yacht_id
+    # via a cached lookup, so this call is a cache hit — <1ms)
+    if not user_context.get("department") and lookup_tenant_for_user:
+        _dept_tenant = lookup_tenant_for_user(user_context.get("user_id", ""))
+        if _dept_tenant:
+            user_context["department"] = _dept_tenant.get("department", "")
 
     # Populate context.yacht_id from server-resolved user_context (invariant #1)
     # SECURITY: Client cannot send yacht_id - always use server-resolved value
@@ -6483,6 +6491,7 @@ async def execute_action(
                 user_role=user_role or "",
                 change_summary=_resp_dict.get("message", action.replace("_", " ").title()),
                 actor_name=user_context.get("email", ""),
+                department=user_context.get("department", ""),
                 event_category="write",
             )
             _ledger_tenant_alias = user_context.get("tenant_key_alias", "")
