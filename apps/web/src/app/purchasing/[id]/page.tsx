@@ -15,8 +15,12 @@ import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { AttachmentsSection, RelatedEntitiesSection, HistorySection } from '@/components/lens/sections';
+import { type Attachment, type RelatedEntity } from '@/components/lens/sections';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { executeAction } from '@/lib/actionClient';
+import { useEntityLedger } from '@/hooks/useEntityLedger';
+import { useReadBeacon } from '@/hooks/useReadBeacon';
 
 // Purchase order item type
 interface PurchaseOrderItem {
@@ -135,11 +139,32 @@ function PurchaseOrderContent({
   data,
   onBack,
   onNavigate,
+  onRefresh,
 }: {
   data: Record<string, unknown>;
   onBack: () => void;
   onNavigate: (entityType: string, entityId: string) => void;
+  onRefresh?: () => void;
 }) {
+  const { user } = useAuth();
+  const [isActionPending, setIsActionPending] = React.useState(false);
+  const purchaseOrderId = data?.id as string;
+  const { data: history = [] } = useEntityLedger('purchase_order', purchaseOrderId);
+  useReadBeacon('purchase_order', purchaseOrderId);
+
+  const runAction = React.useCallback(async (actionName: string) => {
+    if (!user?.yachtId || !purchaseOrderId) return;
+    setIsActionPending(true);
+    try {
+      await executeAction(actionName, { yacht_id: user.yachtId }, { purchase_order_id: purchaseOrderId });
+      onRefresh?.();
+    } catch (err) {
+      console.error(`[PurchaseOrderContent] ${actionName} failed:`, err);
+    } finally {
+      setIsActionPending(false);
+    }
+  }, [user?.yachtId, purchaseOrderId, onRefresh]);
+
   const supplierName = (data?.supplier_name || 'Purchase Order') as string;
   const poNumber = data?.po_number as string;
   const status = (data?.status || '') as string;
@@ -251,26 +276,46 @@ function PurchaseOrderContent({
         <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
       )}
 
+      {history.length > 0 && (
+        <HistorySection history={history} />
+      )}
+
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-border-subtle">
         {status === 'draft' && (
-          <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors">
-            Submit Order
+          <button
+            onClick={() => runAction('submit_purchase_order')}
+            disabled={isActionPending}
+            className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors disabled:opacity-50"
+          >
+            {isActionPending ? 'Submitting...' : 'Submit Order'}
           </button>
         )}
         {status === 'submitted' && (
-          <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors">
-            Approve
+          <button
+            onClick={() => runAction('approve_purchase_order')}
+            disabled={isActionPending}
+            className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors disabled:opacity-50"
+          >
+            {isActionPending ? 'Approving...' : 'Approve'}
           </button>
         )}
         {status === 'ordered' && (
-          <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors">
-            Mark Received
+          <button
+            onClick={() => runAction('mark_po_received')}
+            disabled={isActionPending}
+            className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors disabled:opacity-50"
+          >
+            {isActionPending ? 'Marking...' : 'Mark Received'}
           </button>
         )}
         {status !== 'cancelled' && status !== 'received' && (
-          <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-status-critical transition-colors">
-            Cancel Order
+          <button
+            onClick={() => runAction('cancel_purchase_order')}
+            disabled={isActionPending}
+            className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-status-critical transition-colors disabled:opacity-50"
+          >
+            {isActionPending ? 'Cancelling...' : 'Cancel Order'}
           </button>
         )}
       </div>
@@ -349,6 +394,7 @@ function PurchaseOrderDetailPageContent() {
         data={purchaseOrder}
         onBack={handleBack}
         onNavigate={handleNavigate}
+        onRefresh={handleRefresh}
       />
     );
   }

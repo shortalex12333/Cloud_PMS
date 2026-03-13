@@ -15,8 +15,12 @@ import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { AttachmentsSection, RelatedEntitiesSection, HistorySection } from '@/components/lens/sections';
+import { type Attachment, type RelatedEntity } from '@/components/lens/sections';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { executeAction } from '@/lib/actionClient';
+import { useEntityLedger } from '@/hooks/useEntityLedger';
+import { useReadBeacon } from '@/hooks/useReadBeacon';
 
 // Receiving item type
 interface ReceivingItem {
@@ -129,11 +133,19 @@ function ReceivingContent({
   data,
   onBack,
   onNavigate,
+  onRefresh,
 }: {
   data: Record<string, unknown>;
   onBack: () => void;
   onNavigate: (entityType: string, entityId: string) => void;
+  onRefresh?: () => void;
 }) {
+  const { user } = useAuth();
+  const [isActionPending, setIsActionPending] = React.useState(false);
+
+  const receivingId = data?.id as string;
+  const { data: history = [] } = useEntityLedger('receiving', receivingId);
+  useReadBeacon('receiving', receivingId);
   const vendorName = (data?.vendor_name || 'Receiving') as string;
   const poNumber = data?.po_number as string;
   const status = (data?.status || '') as string;
@@ -144,6 +156,47 @@ function ReceivingContent({
   const items = (data?.items || []) as ReceivingItem[];
   const attachments = (data?.attachments as Attachment[]) || [];
   const related_entities = (data?.related_entities as RelatedEntity[]) || [];
+
+  const runAction = React.useCallback(
+    async (action: string, payload: Record<string, unknown> = {}) => {
+      if (!receivingId || !user?.yachtId) return;
+      setIsActionPending(true);
+      try {
+        await executeAction(
+          action,
+          { yacht_id: user.yachtId, receiving_id: receivingId },
+          { receiving_id: receivingId, ...payload }
+        );
+        onRefresh?.();
+      } catch (error) {
+        console.error(`[ReceivingContent] Action ${action} failed:`, error);
+      } finally {
+        setIsActionPending(false);
+      }
+    },
+    [receivingId, user?.yachtId, onRefresh]
+  );
+
+  const handleEdit = React.useCallback(async () => {
+    if (!confirm('Edit this receiving record?')) return;
+    await runAction('edit_receiving');
+  }, [runAction]);
+
+  const handleSubmitForReview = React.useCallback(async () => {
+    if (!confirm('Submit this receiving record for review?')) return;
+    await runAction('submit_receiving_for_review');
+  }, [runAction]);
+
+  const handleAccept = React.useCallback(async () => {
+    if (!confirm('Accept this receiving record?')) return;
+    await runAction('accept_receiving');
+  }, [runAction]);
+
+  const handleReject = React.useCallback(async () => {
+    const reason = window.prompt('Reason for rejection:');
+    if (reason === null) return; // cancelled
+    await runAction('reject_receiving', { rejection_reason: reason || 'Rejected' });
+  }, [runAction]);
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -217,22 +270,46 @@ function ReceivingContent({
         <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
       )}
 
+      {history.length > 0 && (
+        <HistorySection history={history} />
+      )}
+
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-border-subtle">
-        <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors">
+        <button
+          onClick={handleEdit}
+          disabled={isActionPending}
+          className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors disabled:opacity-50"
+          data-action-id="edit_receiving"
+        >
           Edit
         </button>
         {status === 'draft' && (
-          <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors">
+          <button
+            onClick={handleSubmitForReview}
+            disabled={isActionPending}
+            className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors disabled:opacity-50"
+            data-action-id="submit_receiving_for_review"
+          >
             Submit for Review
           </button>
         )}
         {status === 'in_review' && (
           <>
-            <button className="px-4 py-2 bg-status-success/20 hover:bg-status-success/30 rounded-lg text-sm text-status-success transition-colors">
+            <button
+              onClick={handleAccept}
+              disabled={isActionPending}
+              className="px-4 py-2 bg-status-success/20 hover:bg-status-success/30 rounded-lg text-sm text-status-success transition-colors disabled:opacity-50"
+              data-action-id="accept_receiving"
+            >
               Accept
             </button>
-            <button className="px-4 py-2 bg-status-critical/20 hover:bg-status-critical/30 rounded-lg text-sm text-status-critical transition-colors">
+            <button
+              onClick={handleReject}
+              disabled={isActionPending}
+              className="px-4 py-2 bg-status-critical/20 hover:bg-status-critical/30 rounded-lg text-sm text-status-critical transition-colors disabled:opacity-50"
+              data-action-id="reject_receiving"
+            >
               Reject
             </button>
           </>
@@ -268,11 +345,6 @@ function ReceivingDetailPageContent() {
   // Handle back navigation
   const handleBack = React.useCallback(() => {
     router.back();
-  }, [router]);
-
-  // Handle close (go to list)
-  const handleClose = React.useCallback(() => {
-    router.push('/receiving');
   }, [router]);
 
   // Handle refresh
@@ -313,6 +385,7 @@ function ReceivingDetailPageContent() {
         data={receiving}
         onBack={handleBack}
         onNavigate={handleNavigate}
+        onRefresh={handleRefresh}
       />
     );
   }

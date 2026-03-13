@@ -14,8 +14,12 @@ import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { AttachmentsSection, RelatedEntitiesSection, HistorySection } from '@/components/lens/sections';
+import { type Attachment, type RelatedEntity } from '@/components/lens/sections';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { useEquipmentActions } from '@/hooks/useEquipmentActions';
+import { useEntityLedger } from '@/hooks/useEntityLedger';
+import { useReadBeacon } from '@/hooks/useReadBeacon';
 
 async function fetchEquipmentDetail(id: string, token: string): Promise<Record<string, unknown>> {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
@@ -77,7 +81,195 @@ function NotFoundState() {
   );
 }
 
-function EquipmentContent({ data, onNavigate }: { data: Record<string, unknown>; onNavigate: (type: string, id: string) => void }) {
+// ---------------------------------------------------------------------------
+// Inline modal: Report Fault
+// ---------------------------------------------------------------------------
+
+interface ReportFaultModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (title: string, description: string, severity: string) => void;
+  isLoading: boolean;
+}
+
+function ReportFaultModal({ open, onClose, onSubmit, isLoading }: ReportFaultModalProps) {
+  const [title, setTitle] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [severity, setSeverity] = React.useState('minor');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onSubmit(title.trim(), description.trim(), severity);
+  };
+
+  const handleClose = () => {
+    setTitle('');
+    setDescription('');
+    setSeverity('minor');
+    onClose();
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose} />
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#1a1a2e] border border-white/10 rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <h2 className="text-base font-semibold text-white">Report Fault</h2>
+          <button onClick={handleClose} className="p-1 hover:bg-white/10 rounded transition-colors" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/60"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs text-white/50 uppercase tracking-wider">Title <span className="text-red-400">*</span></label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Engine oil leak on port side"
+              required
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-white/50 uppercase tracking-wider">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the fault in detail..."
+              rows={3}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors resize-none"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-white/50 uppercase tracking-wider">Severity</label>
+            <select
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
+            >
+              <option value="cosmetic">Cosmetic</option>
+              <option value="minor">Minor</option>
+              <option value="major">Major</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={handleClose} disabled={isLoading} className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors disabled:opacity-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={isLoading || !title.trim()} className="flex-1 px-4 py-2 bg-red-500/80 hover:bg-red-500 rounded-lg text-sm text-white font-medium transition-colors disabled:opacity-50">
+              {isLoading ? 'Submitting…' : 'Report Fault'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline modal: Create Work Order
+// ---------------------------------------------------------------------------
+
+interface CreateWorkOrderModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (title: string, description: string, priority: 'routine' | 'important' | 'critical') => void;
+  isLoading: boolean;
+}
+
+function CreateWorkOrderModal({ open, onClose, onSubmit, isLoading }: CreateWorkOrderModalProps) {
+  const [title, setTitle] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [priority, setPriority] = React.useState<'routine' | 'important' | 'critical'>('routine');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onSubmit(title.trim(), description.trim(), priority);
+  };
+
+  const handleClose = () => {
+    setTitle('');
+    setDescription('');
+    setPriority('routine');
+    onClose();
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/60" onClick={handleClose} />
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#1a1a2e] border border-white/10 rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <h2 className="text-base font-semibold text-white">Create Work Order</h2>
+          <button onClick={handleClose} className="p-1 hover:bg-white/10 rounded transition-colors" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/60"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs text-white/50 uppercase tracking-wider">Title <span className="text-red-400">*</span></label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Replace fuel filter"
+              required
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-white/50 uppercase tracking-wider">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the work required..."
+              rows={3}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors resize-none"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-white/50 uppercase tracking-wider">Priority</label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as 'routine' | 'important' | 'critical')}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
+            >
+              <option value="routine">Routine</option>
+              <option value="important">Important</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={handleClose} disabled={isLoading} className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors disabled:opacity-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={isLoading || !title.trim()} className="flex-1 px-4 py-2 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-sm text-white font-medium transition-colors disabled:opacity-50">
+              {isLoading ? 'Creating…' : 'Create Work Order'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Equipment content
+// ---------------------------------------------------------------------------
+
+function EquipmentContent({ data, onNavigate, onRefresh }: { data: Record<string, unknown>; onNavigate: (type: string, id: string) => void; onRefresh?: () => void }) {
+  const equipmentEntityId = data?.id as string;
+  const { reportFault, createWorkOrderForEquipment, isLoading: actionsLoading } = useEquipmentActions(equipmentEntityId);
+  const { data: history = [] } = useEntityLedger('equipment', equipmentEntityId);
+  useReadBeacon('equipment', equipmentEntityId);
+  const [showReportFaultModal, setShowReportFaultModal] = React.useState(false);
+  const [showCreateWOModal, setShowCreateWOModal] = React.useState(false);
+
   const name = (data?.name || 'Equipment') as string;
   const equipmentType = (data?.equipment_type || '') as string;
   const status = (data?.status || '') as string;
@@ -89,6 +281,22 @@ function EquipmentContent({ data, onNavigate }: { data: Record<string, unknown>;
   const linkedFaults = (data?.faults || []) as Array<{ id: string; title: string }>;
   const attachments = (data?.attachments as Attachment[]) || [];
   const related_entities = (data?.related_entities as RelatedEntity[]) || [];
+
+  const handleReportFaultSubmit = async (title: string, description: string, severity: string) => {
+    const result = await reportFault(data.id as string, { title, description, severity });
+    if (result.success) {
+      setShowReportFaultModal(false);
+      onRefresh?.();
+    }
+  };
+
+  const handleCreateWOSubmit = async (title: string, description: string, priority: 'routine' | 'important' | 'critical') => {
+    const result = await createWorkOrderForEquipment(title, description, priority, 'corrective');
+    if (result.success) {
+      setShowCreateWOModal(false);
+      onRefresh?.();
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -144,10 +352,37 @@ function EquipmentContent({ data, onNavigate }: { data: Record<string, unknown>;
         <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
       )}
 
+      {history.length > 0 && (
+        <HistorySection history={history} />
+      )}
+
       <div className="flex gap-3 pt-4 border-t border-white/10">
-        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">Report Fault</button>
-        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">Create Work Order</button>
+        <button
+          onClick={() => setShowReportFaultModal(true)}
+          className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors"
+        >
+          Report Fault
+        </button>
+        <button
+          onClick={() => setShowCreateWOModal(true)}
+          className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors"
+        >
+          Create Work Order
+        </button>
       </div>
+
+      <ReportFaultModal
+        open={showReportFaultModal}
+        onClose={() => setShowReportFaultModal(false)}
+        onSubmit={handleReportFaultSubmit}
+        isLoading={actionsLoading}
+      />
+      <CreateWorkOrderModal
+        open={showCreateWOModal}
+        onClose={() => setShowCreateWOModal(false)}
+        onSubmit={handleCreateWOSubmit}
+        isLoading={actionsLoading}
+      />
     </div>
   );
 }
@@ -183,7 +418,7 @@ function EquipmentDetailPageContent() {
     content = msg.includes('404') ? <NotFoundState /> : <ErrorState message={msg} onRetry={handleRefresh} />;
   }
   else if (!equipment) content = <NotFoundState />;
-  else content = <EquipmentContent data={equipment} onNavigate={handleNavigate} />;
+  else content = <EquipmentContent data={equipment} onNavigate={handleNavigate} onRefresh={handleRefresh} />;
 
   return (
     <RouteLayout

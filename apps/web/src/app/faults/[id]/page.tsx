@@ -13,9 +13,13 @@ import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
+import { useFaultActions } from '@/hooks/useFaultActions';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { AttachmentsSection, RelatedEntitiesSection, HistorySection } from '@/components/lens/sections';
+import { type Attachment, type RelatedEntity } from '@/components/lens/sections';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { useEntityLedger } from '@/hooks/useEntityLedger';
+import { useReadBeacon } from '@/hooks/useReadBeacon';
 
 async function fetchFaultDetail(id: string, token: string): Promise<Record<string, unknown>> {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
@@ -86,7 +90,7 @@ function NotFoundState() {
   );
 }
 
-function FaultContent({ data, onNavigate }: { data: Record<string, unknown>; onNavigate: (type: string, id: string) => void }) {
+function FaultContent({ data, onNavigate, onRefresh }: { data: Record<string, unknown>; onNavigate: (type: string, id: string) => void; onRefresh?: () => void }) {
   const title = (data?.title || 'Fault') as string;
   const severity = (data?.severity || '') as string;
   const status = (data?.status || '') as string;
@@ -97,6 +101,62 @@ function FaultContent({ data, onNavigate }: { data: Record<string, unknown>; onN
   const reportedAt = data?.reported_at as string;
   const attachments = (data?.attachments as Attachment[]) || [];
   const related_entities = (data?.related_entities as RelatedEntity[]) || [];
+
+  const faultId = data?.id as string;
+  const { session } = useAuth();
+  const { isLoading, acknowledgeFault, closeFault, reopenFault, markFalseAlarm } = useFaultActions(faultId);
+  const { data: history = [] } = useEntityLedger('fault', faultId);
+  useReadBeacon('fault', faultId);
+  const [creatingWO, setCreatingWO] = React.useState(false);
+
+  const handleAcknowledge = React.useCallback(async () => {
+    const result = await acknowledgeFault();
+    if (result.success) onRefresh?.();
+  }, [acknowledgeFault, onRefresh]);
+
+  const handleClose = React.useCallback(async () => {
+    const result = await closeFault();
+    if (result.success) onRefresh?.();
+  }, [closeFault, onRefresh]);
+
+  const handleMarkFalseAlarm = React.useCallback(async () => {
+    const result = await markFalseAlarm();
+    if (result.success) onRefresh?.();
+  }, [markFalseAlarm, onRefresh]);
+
+  const handleReopen = React.useCallback(async () => {
+    const result = await reopenFault();
+    if (result.success) onRefresh?.();
+  }, [reopenFault, onRefresh]);
+
+  const handleCreateWorkOrder = React.useCallback(async () => {
+    if (!session?.access_token) return;
+    setCreatingWO(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+      const response = await fetch(`${baseUrl}/v1/actions/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'create_work_order_from_fault',
+          context: {},
+          payload: { fault_id: data.id as string },
+        }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error((json as { error?: string; detail?: string }).error || (json as { error?: string; detail?: string }).detail || `${response.status}`);
+      onRefresh?.();
+    } catch (err) {
+      console.error('[FaultContent] create_work_order_from_fault failed:', err);
+    } finally {
+      setCreatingWO(false);
+    }
+  }, [session, data.id, onRefresh]);
+
+  const statusLower = status.toLowerCase();
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -148,9 +208,59 @@ function FaultContent({ data, onNavigate }: { data: Record<string, unknown>; onN
         <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
       )}
 
-      <div className="flex gap-3 pt-4 border-t border-white/10">
-        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">Update Status</button>
-        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition-colors">Create Work Order</button>
+      {history.length > 0 && (
+        <HistorySection history={history} />
+      )}
+
+      <div className="flex gap-3 pt-4 border-t border-white/10 flex-wrap">
+        {(statusLower === 'open' || statusLower === 'reported') && (
+          <button
+            onClick={handleAcknowledge}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-white transition-colors"
+          >
+            {isLoading && <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />}
+            Acknowledge
+          </button>
+        )}
+        {(statusLower === 'investigating' || statusLower === 'acknowledged' || statusLower === 'diagnosed') && (
+          <>
+            <button
+              onClick={handleClose}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-white transition-colors"
+            >
+              {isLoading && <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />}
+              Close Fault
+            </button>
+            <button
+              onClick={handleMarkFalseAlarm}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-white transition-colors"
+            >
+              {isLoading && <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />}
+              Mark False Alarm
+            </button>
+          </>
+        )}
+        {(statusLower === 'closed' || statusLower === 'false_alarm') && (
+          <button
+            onClick={handleReopen}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-white transition-colors"
+          >
+            {isLoading && <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />}
+            Reopen
+          </button>
+        )}
+        <button
+          onClick={handleCreateWorkOrder}
+          disabled={creatingWO}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-white transition-colors"
+        >
+          {creatingWO && <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />}
+          {creatingWO ? 'Creating...' : 'Create Work Order'}
+        </button>
       </div>
     </div>
   );
@@ -186,7 +296,7 @@ function FaultDetailPageContent() {
     content = msg.includes('404') ? <NotFoundState /> : <ErrorState message={msg} onRetry={handleRefresh} />;
   }
   else if (!fault) content = <NotFoundState />;
-  else content = <FaultContent data={fault} onNavigate={handleNavigate} />;
+  else content = <FaultContent data={fault} onNavigate={handleNavigate} onRefresh={handleRefresh} />;
 
   return (
     <RouteLayout

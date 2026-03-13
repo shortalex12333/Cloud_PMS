@@ -14,8 +14,12 @@ import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from '@/components/lens/sections';
+import { AttachmentsSection, RelatedEntitiesSection, HistorySection } from '@/components/lens/sections';
+import { type Attachment, type RelatedEntity } from '@/components/lens/sections';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { usePartActions, usePartPermissions } from '@/hooks/usePartActions';
+import { useEntityLedger } from '@/hooks/useEntityLedger';
+import { useReadBeacon } from '@/hooks/useReadBeacon';
 
 async function fetchPartDetail(id: string, token: string): Promise<Record<string, unknown>> {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
@@ -80,7 +84,139 @@ function NotFoundState() {
   );
 }
 
-function PartContent({ data, onNavigate }: { data: Record<string, unknown>; onNavigate: (type: string, id: string) => void }) {
+// Inline modal for quantity-based actions
+function QuantityModal({
+  title,
+  label,
+  onConfirm,
+  onCancel,
+  isLoading,
+}: {
+  title: string;
+  label: string;
+  onConfirm: (qty: number, notes: string) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [qty, setQty] = React.useState(1);
+  const [notes, setNotes] = React.useState('');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
+      <div className="bg-[#1a1a2e] border border-white/10 rounded-xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-base font-semibold text-white">{title}</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-white/50 mb-1 block">{label}</label>
+            <input
+              type="number"
+              min={1}
+              value={qty}
+              onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-white/30"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-white/50 mb-1 block">Notes (optional)</label>
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add a note..."
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/30"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white/70 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(qty, notes)}
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+          >
+            {isLoading ? 'Saving...' : 'Confirm'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Inline modal for stock count (adjust stock)
+function AdjustStockModal({
+  currentQty,
+  onConfirm,
+  onCancel,
+  isLoading,
+}: {
+  currentQty: number;
+  onConfirm: (newQty: number, reason: string) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [newQty, setNewQty] = React.useState(currentQty);
+  const [reason, setReason] = React.useState('');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
+      <div className="bg-[#1a1a2e] border border-white/10 rounded-xl p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-base font-semibold text-white">Count Stock</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-white/50 mb-1 block">Actual Count</label>
+            <input
+              type="number"
+              min={0}
+              value={newQty}
+              onChange={(e) => setNewQty(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-white/30"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-white/50 mb-1 block">Reason *</label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Physical stock count"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/30"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white/70 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => reason.trim() && onConfirm(newQty, reason)}
+            disabled={isLoading || !reason.trim()}
+            className="flex-1 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+          >
+            {isLoading ? 'Saving...' : 'Save Count'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PartContent({
+  data,
+  onNavigate,
+  onRefresh,
+}: {
+  data: Record<string, unknown>;
+  onNavigate: (type: string, id: string) => void;
+  onRefresh?: () => void;
+}) {
   const name = (data?.name || data?.part_name || 'Part') as string;
   const partNumber = data?.part_number as string;
   const qty = (data?.quantity_on_hand || data?.stock_quantity || 0) as number;
@@ -93,9 +229,60 @@ function PartContent({ data, onNavigate }: { data: Record<string, unknown>; onNa
   const linkedEquipment = (data?.equipment || []) as Array<{ id: string; name: string }>;
   const attachments = (data?.attachments as Attachment[]) || [];
   const related_entities = (data?.related_entities as RelatedEntity[]) || [];
+  const partId = data?.id as string;
+
+  const { consumePart, adjustStock, addToShoppingList, isLoading } = usePartActions(partId);
+  const permissions = usePartPermissions();
+  const { data: history = [] } = useEntityLedger('part', partId);
+  useReadBeacon('part', partId);
+
+  const [showConsumeModal, setShowConsumeModal] = React.useState(false);
+  const [showCountModal, setShowCountModal] = React.useState(false);
+
+  const handleConsume = async (quantity: number, notes: string) => {
+    const result = await consumePart(quantity, notes || undefined);
+    if (result.success) {
+      setShowConsumeModal(false);
+      onRefresh?.();
+    }
+  };
+
+  const handleAdjustStock = async (newQuantity: number, reason: string) => {
+    const result = await adjustStock(newQuantity, reason);
+    if (result.success) {
+      setShowCountModal(false);
+      onRefresh?.();
+    }
+  };
+
+  const handleAddToShoppingList = async () => {
+    if (!confirm(`Add "${name}" to shopping list?`)) return;
+    const result = await addToShoppingList(undefined, undefined);
+    if (result.success) {
+      onRefresh?.();
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
+      {showConsumeModal && (
+        <QuantityModal
+          title="Log Usage"
+          label="Quantity Used"
+          onConfirm={handleConsume}
+          onCancel={() => setShowConsumeModal(false)}
+          isLoading={isLoading}
+        />
+      )}
+      {showCountModal && (
+        <AdjustStockModal
+          currentQty={qty}
+          onConfirm={handleAdjustStock}
+          onCancel={() => setShowCountModal(false)}
+          isLoading={isLoading}
+        />
+      )}
+
       <div className="space-y-2">
         {partNumber && <p className="text-xs text-white/40 font-mono">{partNumber}</p>}
         <h1 className="text-2xl font-semibold text-white">{name}</h1>
@@ -166,11 +353,40 @@ function PartContent({ data, onNavigate }: { data: Record<string, unknown>; onNa
         <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
       )}
 
+      {history.length > 0 && (
+        <HistorySection history={history} />
+      )}
+
       <div className="flex gap-3 pt-4 border-t border-white/10">
-        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">Log Usage</button>
-        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors">Count Stock</button>
-        {qty < minQty && (
-          <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition-colors">Add to Shopping List</button>
+        {permissions.canConsume && (
+          <button
+            onClick={() => setShowConsumeModal(true)}
+            disabled={isLoading}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+            data-action-id="consume_part"
+          >
+            Log Usage
+          </button>
+        )}
+        {permissions.canAdjustStock && (
+          <button
+            onClick={() => setShowCountModal(true)}
+            disabled={isLoading}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+            data-action-id="adjust_stock_quantity"
+          >
+            Count Stock
+          </button>
+        )}
+        {qty < minQty && permissions.canAddToShoppingList && (
+          <button
+            onClick={handleAddToShoppingList}
+            disabled={isLoading}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition-colors disabled:opacity-50"
+            data-action-id="create_shopping_list_item"
+          >
+            Add to Shopping List
+          </button>
         )}
       </div>
     </div>
@@ -208,7 +424,7 @@ function InventoryDetailPageContent() {
     content = msg.includes('404') ? <NotFoundState /> : <ErrorState message={msg} onRetry={handleRefresh} />;
   }
   else if (!part) content = <NotFoundState />;
-  else content = <PartContent data={part} onNavigate={handleNavigate} />;
+  else content = <PartContent data={part} onNavigate={handleNavigate} onRefresh={handleRefresh} />;
 
   return (
     <RouteLayout

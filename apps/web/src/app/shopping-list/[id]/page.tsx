@@ -15,8 +15,13 @@ import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { RelatedEntitiesSection, type RelatedEntity } from '@/components/lens/sections';
+import { RelatedEntitiesSection, HistorySection } from '@/components/lens/sections';
+import { type RelatedEntity } from '@/components/lens/sections';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { useEntityLedger } from '@/hooks/useEntityLedger';
+import { useReadBeacon } from '@/hooks/useReadBeacon';
+import { executeAction } from '@/lib/actionClient';
+import { useShoppingListActions } from '@/features/shopping-list/hooks/useShoppingListActions';
 
 // Fetch shopping list detail
 async function fetchShoppingListDetail(id: string, token: string): Promise<Record<string, unknown>> {
@@ -128,18 +133,96 @@ function ShoppingListContent({
   data,
   onBack,
   onNavigate,
+  onRefresh,
 }: {
   data: Record<string, unknown>;
   onBack: () => void;
   onNavigate: (entityType: string, entityId: string) => void;
+  onRefresh?: () => void;
 }) {
+  const { user } = useAuth();
+  const [isActionPending, setIsActionPending] = React.useState(false);
+
+  const shoppingListId = data?.id as string;
   const title = (data?.title || 'Shopping List') as string;
   const status = (data?.status || '') as string;
   const requesterName = data?.requester_name as string;
   const approverName = data?.approver_name as string;
   const createdAt = data?.created_at as string;
-  const items = (data?.items || []) as Array<{ part_name: string; quantity_requested: number; urgency: string; part_id?: string }>;
+  const items = (data?.items || []) as Array<{ id?: string; status?: string; part_name: string; quantity_requested: number; urgency: string; part_id?: string }>;
   const related_entities = (data?.related_entities as RelatedEntity[]) || [];
+
+  const { approveItem, rejectItem, promoteToPart, canApproveReject, canPromoteToPart } = useShoppingListActions({ onSuccess: onRefresh });
+  const { data: history = [] } = useEntityLedger('shopping_list_item', shoppingListId);
+  useReadBeacon('shopping_list_item', shoppingListId);
+  const [actionLoading, setActionLoading] = React.useState<string | null>(null);
+
+  const handleApprove = React.useCallback(async (itemId: string) => {
+    setActionLoading(itemId);
+    try { await approveItem(itemId); } finally { setActionLoading(null); }
+  }, [approveItem]);
+
+  const handleReject = React.useCallback(async (itemId: string) => {
+    const reason = window.prompt('Rejection reason:');
+    if (reason === null) return;
+    setActionLoading(itemId);
+    try { await rejectItem(itemId, reason || 'Rejected'); } finally { setActionLoading(null); }
+  }, [rejectItem]);
+
+  const handlePromote = React.useCallback(async (itemId: string) => {
+    setActionLoading(itemId);
+    try { await promoteToPart(itemId); } finally { setActionLoading(null); }
+  }, [promoteToPart]);
+
+  const runListAction = React.useCallback(
+    async (action: string, payload: Record<string, unknown> = {}) => {
+      if (!shoppingListId || !user?.yachtId) return;
+      setIsActionPending(true);
+      try {
+        await executeAction(
+          action,
+          { yacht_id: user.yachtId, shopping_list_id: shoppingListId },
+          { shopping_list_id: shoppingListId, ...payload }
+        );
+        onRefresh?.();
+      } catch (error) {
+        console.error(`[ShoppingListContent] Action ${action} failed:`, error);
+      } finally {
+        setIsActionPending(false);
+      }
+    },
+    [shoppingListId, user?.yachtId, onRefresh]
+  );
+
+  const handleMarkAsOrdered = React.useCallback(async () => {
+    if (!confirm('Mark this shopping list as ordered?')) return;
+    await runListAction('mark_shopping_list_ordered');
+  }, [runListAction]);
+
+  const handleAddItem = React.useCallback(async () => {
+    const partName = window.prompt('Part name to add:');
+    if (!partName) return;
+    const qtyStr = window.prompt('Quantity requested:', '1');
+    const quantity = Math.max(1, parseInt(qtyStr || '1') || 1);
+    setIsActionPending(true);
+    try {
+      await executeAction(
+        'create_shopping_list_item',
+        { yacht_id: user?.yachtId, shopping_list_id: shoppingListId },
+        {
+          shopping_list_id: shoppingListId,
+          part_name: partName,
+          quantity_requested: quantity,
+          source_type: 'manual_add',
+        }
+      );
+      onRefresh?.();
+    } catch (error) {
+      console.error('[ShoppingListContent] Add item failed:', error);
+    } finally {
+      setIsActionPending(false);
+    }
+  }, [shoppingListId, user?.yachtId, onRefresh]);
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -200,6 +283,37 @@ function ShoppingListContent({
                     <StatusPill status={getUrgencyColor(item.urgency)} label={item.urgency} />
                   </div>
                 </div>
+                {item.id && (canApproveReject || canPromoteToPart) && (
+                  <div className="flex gap-2 mt-2 pt-2 border-t border-border-subtle/50">
+                    {canApproveReject && item.status !== 'approved' && item.status !== 'rejected' && (
+                      <>
+                        <button
+                          onClick={() => handleApprove(item.id!)}
+                          disabled={actionLoading === item.id}
+                          className="px-3 py-1 text-xs bg-status-success/20 hover:bg-status-success/30 text-status-success rounded-md transition-colors disabled:opacity-50"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReject(item.id!)}
+                          disabled={actionLoading === item.id}
+                          className="px-3 py-1 text-xs bg-status-critical/20 hover:bg-status-critical/30 text-status-critical rounded-md transition-colors disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    {canPromoteToPart && item.status === 'approved' && (
+                      <button
+                        onClick={() => handlePromote(item.id!)}
+                        disabled={actionLoading === item.id}
+                        className="px-3 py-1 text-xs bg-surface-elevated hover:bg-surface-active text-txt-secondary rounded-md transition-colors disabled:opacity-50"
+                      >
+                        Promote to Part
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -218,24 +332,28 @@ function ShoppingListContent({
         <RelatedEntitiesSection entities={related_entities} onNavigate={(type, id) => onNavigate(type, id)} />
       )}
 
+      {history.length > 0 && (
+        <HistorySection history={history} />
+      )}
+
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-border-subtle">
-        {status === 'pending' && (
-          <>
-            <button className="px-4 py-2 bg-status-success/20 hover:bg-status-success/30 rounded-lg text-sm text-status-success transition-colors">
-              Approve
-            </button>
-            <button className="px-4 py-2 bg-status-critical/20 hover:bg-status-critical/30 rounded-lg text-sm text-status-critical transition-colors">
-              Reject
-            </button>
-          </>
-        )}
         {status === 'approved' && (
-          <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-active rounded-lg text-sm text-txt-primary transition-colors">
+          <button
+            onClick={handleMarkAsOrdered}
+            disabled={isActionPending}
+            className="px-4 py-2 bg-surface-elevated hover:bg-surface-active rounded-lg text-sm text-txt-primary transition-colors disabled:opacity-50"
+            data-action-id="mark_shopping_list_ordered"
+          >
             Mark as Ordered
           </button>
         )}
-        <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-active rounded-lg text-sm text-txt-primary transition-colors">
+        <button
+          onClick={handleAddItem}
+          disabled={isActionPending}
+          className="px-4 py-2 bg-surface-elevated hover:bg-surface-active rounded-lg text-sm text-txt-primary transition-colors disabled:opacity-50"
+          data-action-id="create_shopping_list_item"
+        >
           Add Item
         </button>
       </div>
@@ -269,11 +387,6 @@ function ShoppingListDetailPageContent() {
   // Handle back navigation
   const handleBack = React.useCallback(() => {
     router.back();
-  }, [router]);
-
-  // Handle close (go to list)
-  const handleClose = React.useCallback(() => {
-    router.push('/shopping-list');
   }, [router]);
 
   // Handle refresh
@@ -313,6 +426,7 @@ function ShoppingListDetailPageContent() {
         data={shoppingList}
         onBack={handleBack}
         onNavigate={handleNavigate}
+        onRefresh={handleRefresh}
       />
     );
   }
