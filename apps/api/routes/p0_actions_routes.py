@@ -926,7 +926,7 @@ async def execute_action(
         "link_document_to_certificate": ["certificate_id", "document_id"],
         "supersede_certificate": ["certificate_id", "reason", "signature"],
         # Shopping List Actions (Shopping List Lens v1)
-        "create_shopping_list_item": ["part_name", "quantity_requested", "source_type"],
+        "create_shopping_list_item": ["source_type"],  # part_name auto-filled from part_id; quantity defaults to 1
         "approve_shopping_list_item": ["item_id", "quantity_approved"],
         "reject_shopping_list_item": ["item_id", "rejection_reason"],
         "promote_candidate_to_part": ["item_id"],
@@ -1253,6 +1253,23 @@ async def execute_action(
                         "work_order_id": wo_id,
                         "message": "Work order created from fault"
                     }
+                    try:
+                        ledger_event = build_ledger_event(
+                            yacht_id=yacht_id,
+                            user_id=user_id,
+                            event_type="create",
+                            entity_type="work_order",
+                            entity_id=wo_id,
+                            action="create_work_order_from_fault",
+                            user_role=user_context.get("role"),
+                            change_summary="Work order created from fault",
+                        )
+                        db_client.table("ledger_events").insert(ledger_event).execute()
+                    except Exception as ledger_err:
+                        if "204" in str(ledger_err):
+                            pass
+                        else:
+                            logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
                 else:
                     result = {
                         "status": "error",
@@ -1312,6 +1329,23 @@ async def execute_action(
                         "note_id": note_result.data[0]["id"],
                         "message": "Note added to work order successfully"
                     }
+                    try:
+                        ledger_event = build_ledger_event(
+                            yacht_id=yacht_id,
+                            user_id=user_id,
+                            event_type="update",
+                            entity_type="work_order",
+                            entity_id=work_order_id,
+                            action="add_note_to_work_order",
+                            user_role=user_context.get("role"),
+                            change_summary="Note added to work order",
+                        )
+                        db_client.table("ledger_events").insert(ledger_event).execute()
+                    except Exception as ledger_err:
+                        if "204" in str(ledger_err):
+                            pass
+                        else:
+                            logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
                 else:
                     result = {
                         "status": "error",
@@ -1672,6 +1706,23 @@ async def execute_action(
             # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
             if handler_result.get("status") == "success":
                 result = handler_result
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="part",
+                        entity_id=payload.get("part_id"),
+                        action="consume_part",
+                        user_role=user_context.get("role"),
+                        change_summary="Part consumed",
+                    )
+                    tenant_db.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
@@ -1743,6 +1794,23 @@ async def execute_action(
             # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
             if handler_result.get("status") == "success":
                 result = handler_result
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="part",
+                        entity_id=payload.get("part_id"),
+                        action="adjust_stock_quantity",
+                        user_role=user_context.get("role"),
+                        change_summary="Stock adjusted",
+                    )
+                    tenant_db.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
@@ -1947,6 +2015,23 @@ async def execute_action(
                     "fault_id": fault_result.data[0]["id"],
                     "message": "Fault reported successfully"
                 }
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="create",
+                        entity_type="fault",
+                        entity_id=fault_result.data[0]["id"],
+                        action="report_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault reported",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {
                     "status": "error",
@@ -2008,6 +2093,23 @@ async def execute_action(
                     "fault_id": fault_id,
                     "new_status": "investigating"
                 }
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="acknowledge_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault acknowledged",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to acknowledge fault"}
 
@@ -2065,6 +2167,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Diagnosis added"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="diagnose_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault diagnosed",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to add diagnosis"}
 
@@ -2103,6 +2222,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault closed"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="close_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault closed",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close fault"}
 
@@ -2133,6 +2269,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault updated"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="update_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault updated",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update fault"}
 
@@ -2173,6 +2326,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault reopened"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="reopen_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault reopened",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to reopen fault"}
 
@@ -2204,6 +2374,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault marked as false alarm"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="mark_fault_false_alarm",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault marked as false alarm",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to mark as false alarm"}
 
@@ -2286,6 +2473,16 @@ async def execute_action(
             }
             wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
             if wo_result.data:
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="assignment",
+                        entity_type="work_order", entity_id=work_order_id, action="assign_work_order",
+                        user_role=user_context.get("role"), change_summary="Work order assigned",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record assign_work_order: {ledger_err}")
                 result = {"status": "success", "message": "Work order assigned"}
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to assign work order"}
@@ -2396,6 +2593,23 @@ async def execute_action(
             note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
             if note_result.data:
                 result = {"status": "success", "message": "Note added to work order"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="work_order",
+                        entity_id=work_order_id,
+                        action="add_wo_note",
+                        user_role=user_context.get("role"),
+                        change_summary="Note added to work order",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to add note"}
 
@@ -2413,6 +2627,16 @@ async def execute_action(
             }
             wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
             if wo_result.data:
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+                        entity_type="work_order", entity_id=work_order_id, action="start_work_order",
+                        user_role=user_context.get("role"), change_summary="Work order started",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record start_work_order: {ledger_err}")
                 result = {"status": "success", "message": "Work order started"}
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to start work order"}
@@ -2431,6 +2655,16 @@ async def execute_action(
             }
             wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
             if wo_result.data:
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+                        entity_type="work_order", entity_id=work_order_id, action="cancel_work_order",
+                        user_role=user_context.get("role"), change_summary="Work order cancelled",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record cancel_work_order: {ledger_err}")
                 result = {"status": "success", "message": "Work order cancelled"}
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to cancel work order"}
@@ -2641,6 +2875,23 @@ async def execute_action(
                     "new_status": new_status,
                     "message": f"Equipment status updated from {old_status} to {new_status}"
                 }
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="equipment",
+                        entity_id=equipment_id,
+                        action="update_equipment_status",
+                        user_role=user_context.get("role"),
+                        change_summary="Equipment status updated",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             except Exception as db_err:
                 error_str = str(db_err)
                 if "status" in error_str.lower() and "column" in error_str.lower():
@@ -3425,6 +3676,23 @@ async def execute_action(
                 "message": "Note added to equipment",
                 "notes_count": len(notes)
             }
+            try:
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="update",
+                    entity_type="equipment",
+                    entity_id=payload.get("equipment_id"),
+                    action="add_equipment_note",
+                    user_role=user_context.get("role"),
+                    change_summary="Note added to equipment",
+                )
+                db_client.table("ledger_events").insert(ledger_event).execute()
+            except Exception as ledger_err:
+                if "204" in str(ledger_err):
+                    pass
+                else:
+                    logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
 
         # =====================================================================
         # TIER 3 HANDLERS - Inventory Views
@@ -5492,7 +5760,8 @@ async def execute_action(
 
             # STATE MACHINE: Validate transition for mutating actions (Security Fix 2026-02-10)
             if action in ("approve_shopping_list_item", "reject_shopping_list_item", "promote_candidate_to_part"):
-                item_id = payload.get("item_id")
+                item_id = (payload.get("item_id") or payload.get("shopping_list_item_id")
+                           or request.context.get("shopping_list_item_id"))
                 if item_id:
                     try:
                         tenant_alias = user_context.get("tenant_key_alias", "")
@@ -5520,7 +5789,8 @@ async def execute_action(
 
             # Call handler
             result = await handler_fn(
-                entity_id=payload.get("item_id"),
+                entity_id=(payload.get("item_id") or payload.get("shopping_list_item_id")
+                           or request.context.get("shopping_list_item_id")),
                 yacht_id=yacht_id,
                 params=payload
             )
@@ -5738,6 +6008,54 @@ async def execute_action(
         # See: apps/api/action_router/registry.py (lines 1764-1835)
         # See: apps/api/action_router/dispatchers/internal_dispatcher.py (lines 451-507)
 
+        # ===== RECEIVING INLINE ACTIONS (no dispatcher handler) =====
+        elif action in ("submit_receiving_for_review",):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            receiving_id = payload.get("receiving_id") or context.get("receiving_id")
+            if not receiving_id:
+                raise HTTPException(status_code=400, detail="receiving_id is required")
+            upd = db_client.table("pms_receiving").update({
+                "status": "in_review"
+            }).eq("id", receiving_id).eq("yacht_id", yacht_id).execute()
+            if upd.data:
+                try:
+                    db_client.table("ledger_events").insert(build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+                        entity_type="receiving", entity_id=receiving_id, action="submit_receiving_for_review",
+                        user_role=user_context.get("role"), change_summary="Receiving submitted for review",
+                    )).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record submit_receiving_for_review: {ledger_err}")
+                result = {"status": "success", "message": "Receiving submitted for review"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to submit receiving for review"}
+
+        elif action in ("edit_receiving",):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            receiving_id = payload.get("receiving_id") or context.get("receiving_id")
+            if not receiving_id:
+                raise HTTPException(status_code=400, detail="receiving_id is required")
+            # edit_receiving returns current record data so the UI can populate edit form
+            rec = db_client.table("pms_receiving").select("*").eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            if rec.data:
+                try:
+                    db_client.table("ledger_events").insert(build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="view",
+                        entity_type="receiving", entity_id=receiving_id, action="edit_receiving",
+                        user_role=user_context.get("role"), change_summary="Receiving record opened for editing",
+                    )).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record edit_receiving: {ledger_err}")
+                result = {"status": "success", "message": "Receiving record ready for editing", "data": rec.data}
+            else:
+                result = {"status": "error", "error_code": "NOT_FOUND", "message": "Receiving record not found"}
+
         # ===== RECEIVING LENS V1 ACTIONS =====
         elif action in ["create_receiving", "attach_receiving_image_with_comment",
                         "extract_receiving_candidates", "update_receiving_fields",
@@ -5777,6 +6095,204 @@ async def execute_action(
             except Exception as e:
                 logger.error(f"[RECEIVING] Action '{action}' failed: {type(e).__name__}: {e}")
                 raise
+
+        elif action in ("submit_purchase_order",):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            po_id = payload.get("purchase_order_id")
+            if not po_id:
+                raise HTTPException(status_code=400, detail="purchase_order_id is required")
+            result_data = db_client.table("pms_purchase_orders").update({
+                "status": "submitted", "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
+            if result_data.data:
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+                        entity_type="purchase_order", entity_id=po_id, action="submit_purchase_order",
+                        user_role=user_context.get("role"), change_summary="Purchase order submitted",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record submit_purchase_order: {ledger_err}")
+                result = {"status": "success", "message": "Purchase order submitted"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to submit purchase order"}
+
+        elif action in ("approve_purchase_order",):
+            # Role check — HOD only (canonical: LENS_TRUTH_SHEET.md)
+            _hod = ["chief_engineer", "captain", "manager"]
+            if user_context.get("role", "") not in _hod:
+                raise HTTPException(status_code=403, detail={
+                    "status": "error", "error_code": "FORBIDDEN",
+                    "message": f"Role '{user_context.get('role', '')}' is not permitted to perform '{action}'",
+                    "required_roles": _hod,
+                })
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            po_id = payload.get("purchase_order_id")
+            if not po_id:
+                raise HTTPException(status_code=400, detail="purchase_order_id is required")
+            result_data = db_client.table("pms_purchase_orders").update({
+                "status": "ordered", "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
+            if result_data.data:
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="approval",
+                        entity_type="purchase_order", entity_id=po_id, action="approve_purchase_order",
+                        user_role=user_context.get("role"), change_summary="Purchase order approved and ordered",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record approve_purchase_order: {ledger_err}")
+                result = {"status": "success", "message": "Purchase order approved and ordered"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to approve purchase order"}
+
+        elif action in ("mark_po_received",):
+            # Role check — HOD only (canonical: LENS_TRUTH_SHEET.md)
+            _hod = ["chief_engineer", "captain", "manager"]
+            if user_context.get("role", "") not in _hod:
+                raise HTTPException(status_code=403, detail={
+                    "status": "error", "error_code": "FORBIDDEN",
+                    "message": f"Role '{user_context.get('role', '')}' is not permitted to perform '{action}'",
+                    "required_roles": _hod,
+                })
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            po_id = payload.get("purchase_order_id")
+            if not po_id:
+                raise HTTPException(status_code=400, detail="purchase_order_id is required")
+            result_data = db_client.table("pms_purchase_orders").update({
+                "status": "received", "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
+            if result_data.data:
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+                        entity_type="purchase_order", entity_id=po_id, action="mark_po_received",
+                        user_role=user_context.get("role"), change_summary="Purchase order marked received",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record mark_po_received: {ledger_err}")
+                result = {"status": "success", "message": "Purchase order marked as received"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update purchase order"}
+
+        elif action in ("cancel_purchase_order",):
+            # Role check — HOD only (canonical: LENS_TRUTH_SHEET.md)
+            _hod = ["chief_engineer", "captain", "manager"]
+            if user_context.get("role", "") not in _hod:
+                raise HTTPException(status_code=403, detail={
+                    "status": "error", "error_code": "FORBIDDEN",
+                    "message": f"Role '{user_context.get('role', '')}' is not permitted to perform '{action}'",
+                    "required_roles": _hod,
+                })
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            po_id = payload.get("purchase_order_id")
+            if not po_id:
+                raise HTTPException(status_code=400, detail="purchase_order_id is required")
+            result_data = db_client.table("pms_purchase_orders").update({
+                "status": "cancelled", "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
+            if result_data.data:
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+                        entity_type="purchase_order", entity_id=po_id, action="cancel_purchase_order",
+                        user_role=user_context.get("role"), change_summary="Purchase order cancelled",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record cancel_purchase_order: {ledger_err}")
+                result = {"status": "success", "message": "Purchase order cancelled"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to cancel purchase order"}
+
+        elif action in ("create_work_order_for_equipment",):
+            from datetime import datetime, timezone
+            import uuid as uuid_module
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            equipment_id = payload.get("equipment_id") or context.get("equipment_id")
+            title = payload.get("title", "Work Order")
+            description = payload.get("description", "")
+            priority = payload.get("priority", "routine")
+            wo_type = payload.get("type", "corrective")
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+            wo_data = {
+                "id": str(uuid_module.uuid4()),
+                "yacht_id": yacht_id,
+                "equipment_id": equipment_id,
+                "title": title,
+                "description": description,
+                "priority": priority,
+                "type": wo_type,
+                "status": "planned",
+                "created_by": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            wo_result = db_client.table("pms_work_orders").insert(wo_data).execute()
+            if wo_result.data:
+                wo_id = wo_result.data[0]["id"]
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="create",
+                        entity_type="work_order", entity_id=wo_id, action="create_work_order_for_equipment",
+                        user_role=user_context.get("role"), change_summary=f"Work order created for equipment {equipment_id}",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record create_work_order_for_equipment: {ledger_err}")
+                result = {"status": "success", "work_order_id": wo_id, "message": "Work order created for equipment"}
+            else:
+                result = {"status": "error", "error_code": "CREATE_FAILED", "message": "Failed to create work order"}
+
+        elif action in ("mark_shopping_list_ordered",):
+            # Role check — HOD only (canonical: LENS_TRUTH_SHEET.md)
+            _hod = ["chief_engineer", "captain", "manager"]
+            if user_context.get("role", "") not in _hod:
+                raise HTTPException(status_code=403, detail={
+                    "status": "error", "error_code": "FORBIDDEN",
+                    "message": f"Role '{user_context.get('role', '')}' is not permitted to perform '{action}'",
+                    "required_roles": _hod,
+                })
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            item_id = (payload.get("item_id") or payload.get("shopping_list_item_id")
+                       or context.get("shopping_list_item_id") or context.get("shopping_list_id"))
+            if not item_id:
+                raise HTTPException(status_code=400, detail="item_id is required")
+            update_data = {"status": "ordered", "updated_at": datetime.now(timezone.utc).isoformat()}
+            upd = db_client.table("pms_shopping_list_items").update(update_data).eq("id", item_id).eq("yacht_id", yacht_id).execute()
+            if upd.data:
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+                        entity_type="shopping_list_item", entity_id=item_id, action="mark_shopping_list_ordered",
+                        user_role=user_context.get("role"), change_summary="Shopping list item marked as ordered",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" not in str(ledger_err):
+                        logger.warning(f"[Ledger] Failed to record mark_shopping_list_ordered: {ledger_err}")
+                result = {"status": "success", "message": "Shopping list item marked as ordered"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to mark shopping list item as ordered"}
 
         else:
             # Unknown action - return 400 (client error with invalid action name)
