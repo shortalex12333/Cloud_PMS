@@ -328,25 +328,47 @@ async def get_ledger_timeline(
     user_context: dict = Depends(get_authenticated_user),
 ):
     """
-    Role-scoped timeline:
-      captain/chief_engineer/manager -> all events on this yacht (MVP)
-      crew -> own events only
-    TODO: add department-based HoD scope when JWT carries department field
+    Three-tier role-scoped timeline:
+      captain             -> all events on this yacht (master of vessel)
+      chief_engineer      -> engineering department events (chief_engineer + eto)
+      manager             -> interior department events (manager + interior)
+      all other roles     -> own events only
     """
+    # Department → member roles mapping (deterministic, mirrors DB trigger)
+    # Only the two HoD-scoped departments are needed here.
+    # "deck"/"general" are intentionally absent: captain is handled by the
+    # `pass` branch (sees all), and deck/general crew fall into the `else` branch (self-only).
+    _DEPT_MEMBER_ROLES: dict = {
+        "engineering": ["chief_engineer", "eto"],
+        "interior":    ["manager", "interior"],
+    }
+
     tenant_alias = user_context.get("tenant_key_alias", "")
-    yacht_id  = user_context.get("yacht_id")
-    user_id   = user_context.get("user_id") or user_context.get("sub")
-    user_role = user_context.get("role", "")
+    yacht_id     = user_context.get("yacht_id")
+    user_id      = user_context.get("user_id") or user_context.get("sub")
+    user_role    = user_context.get("role", "")
+    department   = user_context.get("department", "")
 
     db_client = _get_tenant_client(tenant_alias)
 
     query = db_client.table("ledger_events") \
         .select("id, action, entity_type, entity_id, event_category, event_type, "
-                "change_summary, user_role, actor_name, metadata, created_at") \
+                "change_summary, user_role, actor_name, department, metadata, created_at") \
         .eq("yacht_id", str(yacht_id))
 
-    # Crew sees only their own events; captain/HoD see all yacht events (MVP)
-    if user_role not in ("captain", "chief_engineer", "manager"):
+    if user_role == "captain":
+        # Captain sees all yacht events — no further filter
+        pass
+    elif user_role in ("chief_engineer", "manager"):
+        # HoD sees their department only — filter by the roles in that department
+        dept_roles = _DEPT_MEMBER_ROLES.get(department, [])
+        if dept_roles:
+            query = query.in_("user_role", dept_roles)
+        else:
+            # Fallback: department unknown, show self only
+            query = query.eq("user_id", str(user_id))
+    else:
+        # All other roles: self only
         query = query.eq("user_id", str(user_id))
 
     if event_category:
