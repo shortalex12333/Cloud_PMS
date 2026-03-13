@@ -119,7 +119,7 @@ async def get_entity_ledger_events(
         ).eq(
             "entity_id", entity_id
         ).order(
-            "event_timestamp", desc=True
+            "created_at", desc=True
         ).limit(limit).execute()
 
         return {
