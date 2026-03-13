@@ -192,7 +192,9 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
         return;
       }
 
-      // Build query params - filter by user_id when viewMode is 'me'
+      // 'me' mode: explicit self-filter via /events (your actions regardless of role)
+      // 'department' mode: role-scoped via /timeline (captain=all, HoD=dept, crew=self)
+      const endpoint = viewMode === 'me' ? '/v1/ledger/events' : '/v1/ledger/timeline';
       const params = new URLSearchParams({
         limit: String(LIMIT),
         offset: String(offset),
@@ -203,7 +205,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
 
       // Call Render API (which has access to tenant DB)
       const response = await fetch(
-        `${RENDER_API_URL}/v1/ledger/events?${params.toString()}`,
+        `${RENDER_API_URL}${endpoint}?${params.toString()}`,
         {
           method: 'GET',
           headers: {
