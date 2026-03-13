@@ -15,11 +15,12 @@
  */
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, BookOpen, Edit3, Eye, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
-import { useSurface } from '@/contexts/SurfaceContext';
+import { getEntityRoute } from '@/lib/featureFlags';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -123,7 +124,7 @@ function groupEventsByDay(events: LedgerEvent[]): DayGroup[] {
 
 export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
   const { user } = useAuth();
-  const { showContext } = useSurface();
+  const router = useRouter();
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -164,16 +165,13 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
     // For child entities (notes, checklist items), use parent ID if available
     const entityId = event.metadata?.work_order_id || event.entity_id;
 
-    console.log('[LedgerPanel] Opening entity:', lensType, entityId);
+    console.log('[LedgerPanel] Navigating to:', lensType, entityId);
 
-    showContext(lensType, entityId, {
-      title: event.change_summary || event.metadata?.display_name || 'View Details',
-      type: lensType,
-    });
+    router.push(getEntityRoute(lensType as Parameters<typeof getEntityRoute>[0], entityId));
 
     // Close ledger panel after navigation
     onClose();
-  }, [showContext, onClose]);
+  }, [router, onClose]);
 
   const LIMIT = 50;
 
