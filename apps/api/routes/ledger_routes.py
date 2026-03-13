@@ -5,7 +5,7 @@ Provides endpoints for fetching ledger events from the tenant database.
 Frontend (Vercel) calls these endpoints since it only has access to Master DB.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from typing import Optional, List
 from datetime import datetime, date
 import logging
@@ -268,3 +268,89 @@ async def record_ledger_event(
     except Exception as e:
         logger.error(f"Failed to record ledger event: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to record ledger event: {str(e)}")
+
+
+@router.post("/read-event")
+async def record_read_event(
+    request: Request,
+    user_context: dict = Depends(get_authenticated_user),
+):
+    """
+    Frontend beacon: called fire-and-forget when a user opens an entity page or document.
+    Writes event_category='read' to ledger_events. Never blocks the caller.
+    """
+    body = await request.json()
+    entity_type = body.get("entity_type", "unknown")
+    entity_id   = body.get("entity_id", "")
+    metadata    = body.get("metadata", {})
+
+    yacht_id      = user_context.get("yacht_id")
+    user_id       = user_context.get("user_id") or user_context.get("sub")
+    user_role     = user_context.get("role", "")
+    actor_name    = user_context.get("email", "")
+    tenant_alias  = user_context.get("tenant_key_alias", "")
+
+    if not yacht_id or not entity_id:
+        return {"success": False, "error": "yacht_id and entity_id required"}
+
+    try:
+        now_iso = datetime.utcnow().isoformat()
+        ev = {
+            "yacht_id":       str(yacht_id),
+            "user_id":        str(user_id),
+            "user_role":      user_role,
+            "actor_name":     actor_name,
+            "event_category": "read",
+            "event_type":     "update",
+            "action":         f"view_{entity_type}",
+            "entity_type":    entity_type,
+            "entity_id":      str(entity_id),
+            "change_summary": f"Opened {entity_type.replace('_', ' ')}",
+            "source_context": "search",
+            "metadata":       metadata,
+            "proof_hash":     hashlib.sha256(
+                (f"{yacht_id}{user_id}view{entity_type}{entity_id}{now_iso}").encode()
+            ).hexdigest(),
+        }
+        db_client = _get_tenant_client(tenant_alias)
+        db_client.table("ledger_events").insert(ev).execute()
+        return {"success": True}
+    except Exception as e:
+        logger.warning(f"[Ledger] Read beacon failed: {e}")
+        return {"success": False}
+
+
+@router.get("/timeline")
+async def get_ledger_timeline(
+    limit: int = 50,
+    offset: int = 0,
+    event_category: Optional[str] = None,
+    user_context: dict = Depends(get_authenticated_user),
+):
+    """
+    Role-scoped timeline:
+      captain/chief_engineer/manager -> all events on this yacht (MVP)
+      crew -> own events only
+    TODO: add department-based HoD scope when JWT carries department field
+    """
+    tenant_alias = user_context.get("tenant_key_alias", "")
+    yacht_id  = user_context.get("yacht_id")
+    user_id   = user_context.get("user_id") or user_context.get("sub")
+    user_role = user_context.get("role", "")
+
+    db_client = _get_tenant_client(tenant_alias)
+
+    query = db_client.table("ledger_events") \
+        .select("id, action, entity_type, entity_id, event_category, event_type, "
+                "change_summary, user_role, actor_name, metadata, created_at") \
+        .eq("yacht_id", str(yacht_id))
+
+    # Crew sees only their own events; captain/HoD see all yacht events (MVP)
+    if user_role not in ("captain", "chief_engineer", "manager"):
+        query = query.eq("user_id", str(user_id))
+
+    if event_category:
+        query = query.eq("event_category", event_category)
+
+    result = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+    return {"success": True, "events": result.data, "total": len(result.data)}
