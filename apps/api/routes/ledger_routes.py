@@ -243,7 +243,7 @@ async def record_ledger_event(
             "entity_id": str(entity_id),
             "action": action_name,
             "user_role": user_context.get("role", "member"),
-            "source_context": "search",  # Frontend events come from search
+            "source_context": "microaction",  # Frontend read beacons
             "metadata": {
                 **metadata,
                 "user_role": user_context.get("role", "member"),
@@ -306,7 +306,7 @@ async def record_read_event(
             "entity_type":    entity_type,
             "entity_id":      str(entity_id),
             "change_summary": f"Opened {entity_type.replace('_', ' ')}",
-            "source_context": "search",
+            "source_context": "microaction",
             "metadata":       metadata,
             "proof_hash":     hashlib.sha256(
                 (f"{yacht_id}{user_id}view{entity_type}{entity_id}{now_iso}").encode()
