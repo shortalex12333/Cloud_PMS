@@ -1,0 +1,236 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPOTLIGHT COMPONENT STYLES
+   Raycast-inspired visual layer — references tokens only, zero raw hex.
+   Dark/light handled entirely via token switching in tokens.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── PANEL ─── */
+
+.spotlight-panel {
+  position: relative;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--spotlight-shadow);
+  animation: spotlight-in var(--duration-normal) var(--ease-out) forwards;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Shine sweep pseudo-element — dark mode only */
+.spotlight-panel::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    to right,
+    transparent 10%,
+    var(--surface-border) 30%,
+    rgba(255, 255, 255, 0.12) 50%,
+    var(--surface-border) 70%,
+    transparent 90%
+  );
+  background-size: 200% auto;
+  z-index: 10;
+  animation: spotlight-shine var(--spotlight-shine-duration) var(--ease-out) forwards 0.05s;
+  opacity: 0;
+}
+
+/* In dark mode: border is invisible — shine creates the border illusion */
+.dark .spotlight-panel,
+[data-theme="dark"] .spotlight-panel {
+  border-color: transparent;
+}
+
+/* ─── LOADER ─── */
+
+.spotlight-loader {
+  position: relative;
+  height: 1px;
+  width: 100%;
+  background: var(--surface-border-subtle);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.spotlight-loader::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--spotlight-loader-color) 50%,
+    transparent 100%
+  );
+  animation: spotlight-loader 1.4s var(--ease-out) infinite;
+}
+
+/* ─── FOOTER ─── */
+
+.spotlight-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--spotlight-footer-height);
+  padding: 0 var(--space-4);
+  border-top: 1px solid var(--spotlight-footer-border);
+  background: var(--spotlight-footer-bg);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  flex-shrink: 0;
+}
+
+.spotlight-footer-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+}
+
+.spotlight-footer-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--surface-border);
+  margin: 0 var(--space-2);
+  flex-shrink: 0;
+}
+
+.spotlight-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: var(--spotlight-kbd-radius);
+  background: var(--spotlight-kbd-bg);
+  color: var(--spotlight-kbd-color);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ─── RESULT ITEM ─── */
+
+.spotlight-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration-fast) var(--ease-out);
+  will-change: background;
+}
+
+.spotlight-item:hover {
+  background: var(--surface-hover);
+}
+
+.spotlight-item[data-selected='true'] {
+  background: var(--surface-active);
+}
+
+.spotlight-item-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.spotlight-item[data-selected='true'] .spotlight-item-icon {
+  color: var(--text-secondary);
+}
+
+.spotlight-item-hint {
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.spotlight-item[data-selected='true'] .spotlight-item-hint {
+  opacity: 1;
+}
+
+.spotlight-item[data-top-match='true']:not([data-selected='true']) {
+  background: var(--surface-primary);
+}
+
+/* ─── GROUP HEADER ─── */
+
+.spotlight-group-header {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  font-size: var(--font-size-overline);
+  font-weight: var(--font-weight-overline);
+  letter-spacing: var(--letter-spacing-overline);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
+/* ─── RESULTS CONTAINER ─── */
+
+.spotlight-results {
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  max-height: 60vh;
+  transition: height 100ms var(--ease-out);
+  scroll-padding-bottom: var(--spotlight-footer-height);
+}
+
+.spotlight-results::-webkit-scrollbar { width: 4px; }
+.spotlight-results::-webkit-scrollbar-track { background: transparent; }
+.spotlight-results::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 2px;
+}
+
+/* ─── MODAL OFFSET ─── */
+
+.spotlight-modal-offset {
+  padding-top: 8vh;
+}
+
+/* ─── UTILITY BUTTONS ─── */
+
+.spotlight-utility-btn {
+  width: 44px;
+  height: 44px;
+}
+
+/* ─── RESPONSIVE ─── */
+
+@media (min-width: 641px) {
+  .spotlight-modal-offset {
+    padding-top: 18vh;
+  }
+
+  .spotlight-item {
+    min-height: var(--touch-target-min); /* 44px — same on desktop */
+  }
+
+  .spotlight-utility-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 640px) {
+  .spotlight-item {
+    min-height: var(--touch-target-mobile); /* 48px on mobile */
+  }
+}

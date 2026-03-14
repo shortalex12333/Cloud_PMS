@@ -1,22 +1,57 @@
 'use client';
 
 /**
- * SpotlightResultRow
- * Apple Spotlight-inspired result row
- *
- * Design principles:
- * - No icons (typography carries hierarchy)
- * - Left accent bar for selection (OS feel, not SaaS)
- * - Subtle hover state
- * - Restraint and discipline
+ * SpotlightResultRow — Raycast-style
+ * Icon-left, full-row selection, ↵ kbd hint on selected.
  */
 
 import React from 'react';
-import { cn } from '@/lib/utils';
+import {
+  AlertTriangle, ClipboardList, Package, FileText, Mail,
+  Award, ArrowRightLeft, ShoppingCart, Receipt, Clock,
+  Settings, Shield, MoreHorizontal, type LucideIcon,
+} from 'lucide-react';
 
-// ============================================================================
-// TYPES
-// ============================================================================
+// ── Entity type → icon ──────────────────────────────────────────────────────
+
+const ENTITY_TYPE_ICONS: Record<string, LucideIcon> = {
+  work_order:             ClipboardList,
+  fault:                  AlertTriangle,
+  equipment:              Settings,
+  part:                   Package,
+  inventory:              Package,
+  document:               FileText,
+  search_document_chunks: FileText,
+  email_thread:           Mail,
+  email_threads:          Mail,
+  certificate:            Award,
+  warranty:               Shield,
+  shopping_list:          ShoppingCart,
+  shopping_list_item:     ShoppingCart,
+  receiving:              ArrowRightLeft,
+  purchase_order:         Receipt,
+  hours_of_rest:          Clock,
+};
+
+function getEntityIcon(type: string): LucideIcon {
+  if (ENTITY_TYPE_ICONS[type]) return ENTITY_TYPE_ICONS[type];
+  if (type.includes('fault'))       return AlertTriangle;
+  if (type.includes('work_order'))  return ClipboardList;
+  if (type.includes('equipment'))   return Settings;
+  if (type.includes('part'))        return Package;
+  if (type.includes('inventory'))   return Package;
+  if (type.includes('certificate')) return Award;
+  if (type.includes('warranty'))    return Shield;
+  if (type.includes('shopping'))    return ShoppingCart;
+  if (type.includes('receiving'))   return ArrowRightLeft;
+  if (type.includes('purchase'))    return Receipt;
+  if (type.includes('hours'))       return Clock;
+  if (type.includes('document'))    return FileText;
+  if (type.includes('email'))       return Mail;
+  return MoreHorizontal;
+}
+
+// ── Types ───────────────────────────────────────────────────────────────────
 
 interface SpotlightResult {
   id: string;
@@ -34,34 +69,21 @@ interface SpotlightResultRowProps {
   index: number;
   onClick?: () => void;
   onDoubleClick?: () => void;
-  /** Top Match gets slightly larger styling */
   isTopMatch?: boolean;
 }
 
-// ============================================================================
-// HELPERS
-// ============================================================================
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
-/**
- * Render text with **bold** markers converted to <strong> elements
- * Handles markdown-style bold syntax: **text** becomes <strong>text</strong>
- */
 function renderSnippetWithBold(text: string): React.ReactNode {
-  // Split on **text** pattern, capturing the content
   const parts = text.split(/\*\*([^*]+)\*\*/g);
-
-  return parts.map((part, index) => {
-    // Odd indices are the captured bold content
-    if (index % 2 === 1) {
-      return <strong key={index} className="font-semibold text-txt-primary">{part}</strong>;
-    }
-    return part;
-  });
+  return parts.map((part, index) =>
+    index % 2 === 1
+      ? <strong key={index} className="font-semibold text-txt-primary">{part}</strong>
+      : part
+  );
 }
 
-// ============================================================================
-// COMPONENT
-// ============================================================================
+// ── Component ────────────────────────────────────────────────────────────────
 
 export default function SpotlightResultRow({
   result,
@@ -71,75 +93,44 @@ export default function SpotlightResultRow({
   onDoubleClick,
   isTopMatch = false,
 }: SpotlightResultRowProps) {
+  const Icon = getEntityIcon(result.type);
+
   return (
     <div
       data-index={index}
       data-testid="search-result-item"
+      data-selected={isSelected ? 'true' : 'false'}
+      data-top-match={isTopMatch ? 'true' : 'false'}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
-      className={cn(
-        // Base row styling
-        'relative',
-        'cursor-pointer select-none',
-        'transition-colors duration-celeste-fast',
-        // Height and padding - tokenized
-        'min-h-11',
-        'py-ds-2 px-ds-3',
-        // Hover: very subtle
-        'hover:bg-celeste-bg-tertiary/40',
-        // Selected: subtle, not bold
-        isSelected && 'bg-celeste-bg-tertiary/60',
-        // Top match gets minimal distinction
-        isTopMatch && !isSelected && 'bg-celeste-bg-tertiary/20'
-      )}
+      className="spotlight-item"
     >
-      {/* Left accent bar - subtle, appears on selection (OS feel) */}
-      {isSelected && (
-        <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-celeste-accent rounded-r-sm"
-          aria-hidden="true"
-        />
-      )}
+      {/* Entity type icon */}
+      <Icon className="spotlight-item-icon" aria-hidden="true" />
 
-      {/* Content - typography carries hierarchy, no icons */}
-      <div className="flex flex-col gap-1">
-        <p
-          className={cn(
-            // Title: slightly larger, medium weight for clarity
-            'typo-body font-medium leading-snug',
-            'truncate',
-            isSelected
-              ? 'text-celeste-text-title'
-              : 'text-celeste-text-primary'
-          )}
-        >
+      {/* Text content */}
+      <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+        <p className="text-body font-medium leading-snug truncate text-txt-primary">
           {result.title}
         </p>
         {result.snippet && (
           <p
-            className={cn(
-              // Snippet: smaller, muted with bold highlights
-              'typo-meta font-normal leading-snug',
-              'line-clamp-2',
-              'text-txt-secondary'
-            )}
+            className="text-caption font-normal leading-snug line-clamp-2 text-txt-secondary"
             data-testid="search-result-snippet"
           >
             {renderSnippetWithBold(result.snippet)}
           </p>
         )}
         {result.subtitle && !result.snippet && (
-          <p
-            className={cn(
-              // Subtitle: smaller, muted - clear hierarchy (fallback when no snippet)
-              'typo-meta font-normal leading-snug',
-              'truncate',
-              'text-celeste-text-muted'
-            )}
-          >
+          <p className="text-caption font-normal leading-snug truncate text-txt-tertiary">
             {result.subtitle}
           </p>
         )}
+      </div>
+
+      {/* kbd hint — CSS controls visibility on selected state */}
+      <div className="spotlight-item-hint" aria-hidden="true">
+        <span className="spotlight-kbd">↵</span>
       </div>
     </div>
   );

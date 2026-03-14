@@ -862,7 +862,7 @@ export default function SpotlightSearch({
   return (
     <div
       className={cn(
-        isModal && 'fixed inset-0 z-search flex items-start justify-center pt-[18vh]',
+        isModal && 'fixed inset-0 z-search flex items-start justify-center spotlight-modal-offset',
         className
       )}
     >
@@ -888,14 +888,9 @@ export default function SpotlightSearch({
             ALL values tokenized via CSS custom properties */}
         <div
           className={cn(
-            // ChatGPT-style pill shape with tokenized dimensions
             'w-full font-body',
             'bg-surface-elevated',
-            'rounded-md',
-            // Border only - NO shadow (design spec)
-            'border border-surface-border',
-            'animate-spotlight-in',
-            // Email scope: accent ring only (no border)
+            'spotlight-panel',
             emailScopeActive && 'bg-brand-interactive/20 ring-2 ring-brand-interactive/40'
           )}
           data-email-scope={emailScopeActive}
@@ -998,7 +993,11 @@ export default function SpotlightSearch({
             </div>
           </div>
 
-          {/* Status Line - system transparency */}
+          {/* Loading sweep — visual indicator */}
+          {(effectiveLoading || isStreaming) && (
+            <div className="spotlight-loader" aria-hidden="true" />
+          )}
+          {/* Status Line — screen reader only */}
           <StatusLine
             message={
               emailScopeActive && emailLoading
@@ -1010,7 +1009,7 @@ export default function SpotlightSearch({
                     : ''
             }
             visible={effectiveLoading || isStreaming}
-            className="px-4 py-2"
+            className="sr-only"
           />
 
           {/* Entity Line removed - clutter that Apple wouldn't include */}
@@ -1055,7 +1054,7 @@ export default function SpotlightSearch({
           {hasQuery && (
             <div
               ref={resultsRef}
-              className="max-h-[60vh] overflow-y-auto overflow-x-hidden spotlight-scrollbar"
+              className="spotlight-results"
             >
               {/* Email scope uses flat list */}
               {emailScopeActive && hasResults && (
@@ -1080,7 +1079,7 @@ export default function SpotlightSearch({
                   {groupedResults.topMatch && (
                     <div className="sr-section">
                       <div className="sr-section-header-wrapper px-4">
-                        <span className="sr-top-label text-celeste-accent">
+                        <span className="spotlight-group-header text-brand-ambient">
                           Top Result
                         </span>
                       </div>
@@ -1154,7 +1153,7 @@ export default function SpotlightSearch({
                       <div key={group.domain} className="sr-section">
                         {/* Domain Header - no icons, no counts (discipline) */}
                         <div className="sr-section-header-wrapper">
-                          <span className="sr-section-header">
+                          <span className="spotlight-group-header">
                             {group.domain}
                           </span>
                         </div>
@@ -1231,6 +1230,24 @@ export default function SpotlightSearch({
               )}
             </div>
           )}
+          {/* Footer keyboard hint strip */}
+          <div className="spotlight-footer" aria-label="Keyboard shortcuts">
+            <div className="spotlight-footer-hint">
+              <span className="spotlight-kbd">↑</span>
+              <span className="spotlight-kbd">↓</span>
+              <span className="text-caption text-txt-tertiary ml-1">Navigate</span>
+            </div>
+            <div className="spotlight-footer-sep" aria-hidden="true" />
+            <div className="spotlight-footer-hint">
+              <span className="spotlight-kbd">↵</span>
+              <span className="text-caption text-txt-tertiary ml-1">Open</span>
+            </div>
+            <div className="spotlight-footer-sep" aria-hidden="true" />
+            <div className="spotlight-footer-hint">
+              <span className="spotlight-kbd">Esc</span>
+              <span className="text-caption text-txt-tertiary ml-1">Clear</span>
+            </div>
+          </div>
         </div>
 
 
