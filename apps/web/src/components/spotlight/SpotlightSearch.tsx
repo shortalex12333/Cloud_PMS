@@ -17,7 +17,8 @@
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, Menu, type LucideIcon } from 'lucide-react';
+import { X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, type LucideIcon } from 'lucide-react';
+import SplineIcon from '@/components/spline/SplineIcon';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -883,9 +884,7 @@ export default function SpotlightSearch({
         )}
         style={{ maxWidth: 'var(--celeste-spotlight-width)' }}
       >
-        {/* Main Spotlight Panel - ChatGPT-style pill shape
-            NO border, shadow only (per ChatGPT spec)
-            ALL values tokenized via CSS custom properties */}
+        {/* Main Spotlight Panel */}
         <div
           className={cn(
             'w-full font-body',
@@ -1043,7 +1042,7 @@ export default function SpotlightSearch({
               When SurfaceContext is available, EmailOverlay handles the email UI. */}
           {showEmailList && !hasQuery && !surfaceContext && (
             <div
-              className="max-h-celeste-search-results overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-surface-primary rounded-b-2xl"
+              className="max-h-celeste-search-results overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-surface-primary"
               data-testid="email-list-inline"
             >
               <EmailInboxView className="p-4" />
@@ -1277,8 +1276,7 @@ export default function SpotlightSearch({
             aria-label={emailScopeActive ? 'Exit Email' : 'Email'}
             data-testid="utility-email-button"
           >
-            <Mail className="w-5 h-5" strokeWidth={1.5} />
-            <Menu className="w-3 h-3" strokeWidth={2} />
+            <SplineIcon scene="/spline/icons/mail_icon_dark.splinecode" size={32} renderSize={504} cropX={344} cropY={178} cropSize={130} />
           </button>
 
           {/* Menu Button with hamburger icon */}
@@ -1297,8 +1295,7 @@ export default function SpotlightSearch({
                 aria-label="Menu"
                 data-testid="utility-menu-button"
               >
-                <BookOpen className="w-5 h-5" strokeWidth={1.5} />
-                <Menu className="w-3 h-3" strokeWidth={2} />
+                <SplineIcon scene="/spline/icons/3_lines_icon_dark.splinecode" size={32} renderSize={112} cropX={78} cropY={39} cropSize={20} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -1366,7 +1363,7 @@ export default function SpotlightSearch({
             aria-label="Settings"
             data-testid="utility-settings-button"
           >
-            <Settings className="w-5 h-5" strokeWidth={1.5} />
+            <SplineIcon scene="/spline/icons/setting_icon_dark.splinecode" size={32} renderSize={112} cropX={78} cropY={39} cropSize={20} />
           </button>
         </div>
       </div>
