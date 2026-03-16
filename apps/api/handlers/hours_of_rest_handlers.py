@@ -251,7 +251,7 @@ class HoursOfRestHandlers:
                 "yacht_id": yacht_id,
                 "user_id": user_id,
                 "record_date": record_date,
-                "rest_periods": json.dumps(rest_periods) if isinstance(rest_periods, list) else rest_periods,
+                "rest_periods": rest_periods,
                 "total_rest_hours": total_rest_hours,
                 "total_work_hours": total_work_hours,
                 "is_daily_compliant": is_daily_compliant and has_valid_rest_periods,
@@ -278,16 +278,24 @@ class HoursOfRestHandlers:
                 record_exists = False
 
             if record_exists and existing_id:
-                # Update existing record - .select("*") required to return data
-                result = self.db.table("pms_hours_of_rest").update(upsert_data).eq(
+                # Update existing record — separate SELECT after UPDATE
+                # (SyncQueryRequestBuilder doesn't support .select() after .update())
+                self.db.table("pms_hours_of_rest").update(upsert_data).eq(
                     "id", existing_id
-                ).select("*").execute()
+                ).execute()
+                result = self.db.table("pms_hours_of_rest").select("*").eq(
+                    "id", existing_id
+                ).execute()
                 record = result.data[0] if result.data else None
                 action_taken = "updated"
             else:
-                # Insert new record - .select("*") required to return data
+                # Insert new record — separate SELECT after INSERT
+                # (SyncQueryRequestBuilder doesn't support .select() after .insert())
                 upsert_data["created_at"] = datetime.now(timezone.utc).isoformat()
-                result = self.db.table("pms_hours_of_rest").insert(upsert_data).select("*").execute()
+                self.db.table("pms_hours_of_rest").insert(upsert_data).execute()
+                result = self.db.table("pms_hours_of_rest").select("*").eq(
+                    "yacht_id", yacht_id
+                ).eq("user_id", user_id).eq("record_date", record_date).execute()
                 record = result.data[0] if result.data else None
                 action_taken = "created"
 
@@ -379,7 +387,7 @@ class HoursOfRestHandlers:
                 "hod_signature, hod_signed_at, hod_signed_by, "
                 "master_signature, master_signed_at, master_signed_by, "
                 "total_rest_hours, total_work_hours, violation_count, "
-                "compliance_percentage, created_at, updated_at",
+                "created_at, updated_at",
                 count="exact"
             ).eq("yacht_id", yacht_id)
 
@@ -539,21 +547,27 @@ class HoursOfRestHandlers:
                 "yacht_id", yacht_id
             ).eq("user_id", user_id).eq("month", month).maybe_single().execute()
 
-            if existing.data:
-                builder.set_error("DUPLICATE_ERROR", f"Sign-off already exists for {month}")
+            if existing is not None and existing.data:
+                builder.set_error("DUPLICATE_ERROR", f"Sign-off already exists for {month}", status_code=409)
                 return builder.build()
 
-            # Calculate month summary
-            summary_result = self.db.rpc(
-                "calculate_month_summary",
-                {
-                    "p_yacht_id": yacht_id,
-                    "p_user_id": user_id,
-                    "p_month": month
-                }
-            ).execute()
+            # Calculate month summary via RPC (may not exist in DB — graceful fallback)
+            try:
+                summary_result = self.db.rpc(
+                    "calculate_month_summary",
+                    {
+                        "p_yacht_id": yacht_id,
+                        "p_user_id": user_id,
+                        "p_month": month
+                    }
+                ).execute()
+            except Exception as rpc_err:
+                logger.warning(f"calculate_month_summary RPC failed: {rpc_err}")
+                summary_result = None
 
-            summary = summary_result.data[0] if summary_result.data else {}
+            # RPC returns a single dict (not a list) — use .data directly
+            raw = summary_result.data if (summary_result is not None and hasattr(summary_result, 'data') and summary_result.data) else {}
+            summary = raw[0] if isinstance(raw, list) else raw if isinstance(raw, dict) else {}
             total_rest = summary.get("total_rest", 0)
             total_work = summary.get("total_work", 0)
             violations = summary.get("violations", 0)
@@ -569,13 +583,17 @@ class HoursOfRestHandlers:
                 "total_rest_hours": total_rest,
                 "total_work_hours": total_work,
                 "violation_count": violations,
-                "compliance_percentage": compliance_pct,
+                # compliance_percentage removed — column doesn't exist in DB schema
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            result = self.db.table("pms_hor_monthly_signoffs").insert(insert_data).select("*").execute()
-            signoff = result.data[0] if result.data else None
+            # Separate SELECT after INSERT (SyncQueryRequestBuilder doesn't support .select() after .insert())
+            self.db.table("pms_hor_monthly_signoffs").insert(insert_data).execute()
+            result = self.db.table("pms_hor_monthly_signoffs").select("*").eq(
+                "yacht_id", yacht_id
+            ).eq("user_id", user_id).eq("month", month).eq("department", department).execute()
+            signoff = result.data[0] if (result is not None and result.data) else None
 
             # Write audit log
             if signoff and signoff.get("id"):
@@ -653,7 +671,7 @@ class HoursOfRestHandlers:
 
             if signature_level == "crew":
                 update_data.update({
-                    "crew_signature": json.dumps(signature_data) if isinstance(signature_data, dict) else signature_data,
+                    "crew_signature": signature_data,
                     "crew_signed_at": datetime.now(timezone.utc).isoformat(),
                     "crew_signed_by": user_id,
                     "crew_declaration": notes,
@@ -661,7 +679,7 @@ class HoursOfRestHandlers:
                 })
             elif signature_level == "hod":
                 update_data.update({
-                    "hod_signature": json.dumps(signature_data) if isinstance(signature_data, dict) else signature_data,
+                    "hod_signature": signature_data,
                     "hod_signed_at": datetime.now(timezone.utc).isoformat(),
                     "hod_signed_by": user_id,
                     "hod_notes": notes,
@@ -669,7 +687,7 @@ class HoursOfRestHandlers:
                 })
             elif signature_level == "master":
                 update_data.update({
-                    "master_signature": json.dumps(signature_data) if isinstance(signature_data, dict) else signature_data,
+                    "master_signature": signature_data,
                     "master_signed_at": datetime.now(timezone.utc).isoformat(),
                     "master_signed_by": user_id,
                     "master_notes": notes,
@@ -744,7 +762,7 @@ class HoursOfRestHandlers:
 
             query = self.db.table("pms_crew_normal_hours").select(
                 "id, schedule_name, description, schedule_template, "
-                "is_active, applies_to, last_applied_at, created_at, updated_at"
+                "is_active, applies_to, created_at, updated_at"
             ).eq("yacht_id", yacht_id).eq("user_id", user_filter)
 
             if active_only:
@@ -839,14 +857,18 @@ class HoursOfRestHandlers:
                 "user_id": user_id,
                 "schedule_name": schedule_name,
                 "description": description,
-                "schedule_template": json.dumps(schedule_template) if isinstance(schedule_template, dict) else schedule_template,
+                "schedule_template": schedule_template,
                 "applies_to": applies_to,
                 "is_active": is_active,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            result = self.db.table("pms_crew_normal_hours").insert(insert_data).select("*").execute()
+            # Separate SELECT after INSERT (SyncQueryRequestBuilder doesn't support .select() after .insert())
+            self.db.table("pms_crew_normal_hours").insert(insert_data).execute()
+            result = self.db.table("pms_crew_normal_hours").select("*").eq(
+                "yacht_id", yacht_id
+            ).eq("user_id", user_id).eq("schedule_name", schedule_name).execute()
             template = result.data[0] if result.data else None
 
             # Write audit log
