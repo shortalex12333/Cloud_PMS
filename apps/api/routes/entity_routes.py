@@ -17,6 +17,7 @@ from typing import List, Dict
 
 from middleware.auth import get_authenticated_user
 from integrations.supabase import get_tenant_client, get_supabase_client
+from action_router.entity_actions import get_available_actions
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -132,7 +133,7 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
             _nav("document", doc_id, "Document"),
         ] if n]
 
-        return {
+        _entity_response = {
             "id": data.get("id"),
             "name": data.get("certificate_name"),
             "certificate_type": data.get("certificate_type"),
@@ -151,6 +152,10 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
             "attachments": attachments,
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "certificate", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -187,7 +192,7 @@ async def get_document_entity(document_id: str, auth: dict = Depends(get_authent
             _nav("equipment", data.get("equipment_id"), "Equipment"),
         ] if n]
 
-        return {
+        _entity_response = {
             "id": data.get("id"),
             "filename": data.get("filename"),
             "title": data.get("title") or data.get("filename"),
@@ -204,6 +209,10 @@ async def get_document_entity(document_id: str, auth: dict = Depends(get_authent
             "attachments": [],
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "document", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -242,7 +251,7 @@ async def get_hours_of_rest_entity(record_id: str, auth: dict = Depends(get_auth
         else:
             status = "unknown"
 
-        return {
+        _entity_response = {
             "id": data.get("id"),
             "crew_member_id": data.get("user_id"),
             "crew_name": None,
@@ -278,6 +287,10 @@ async def get_hours_of_rest_entity(record_id: str, auth: dict = Depends(get_auth
                 _nav("crew", data.get("user_id"), "Crew Member"),
             ] if n],
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "hours_of_rest", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -319,7 +332,7 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             _nav("part", data.get("part_id"), "Part"),
         ] if n]
 
-        return {
+        _entity_response = {
             "id": data.get("id"),
             "title": data.get("part_name"),
             "status": data.get("status"),
@@ -331,6 +344,10 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             "attachments": [],
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "shopping_list", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -366,7 +383,7 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             _nav("work_order", data.get("work_order_id"), "Work Order"),
         ] if n]
 
-        return {
+        _entity_response = {
             "id": data.get("id"),
             "title": title,
             "claim_number": data.get("claim_number"),
@@ -390,6 +407,10 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             "attachments": attachments,
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "warranty", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -437,7 +458,7 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
         ] if n]
 
         user_sig = data.get("user_signature")
-        return {
+        _entity_response = {
             "id": data.get("id"),
             "yacht_id": data.get("yacht_id"),
             "review_status": data.get("review_status"),
@@ -455,6 +476,10 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
             "attachments": [],
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "handover_export", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -508,7 +533,7 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
             if n:
                 nav.append(n)
 
-        return {
+        _entity_response = {
             "id": data.get("id"),
             "po_number": data.get("po_number"),
             "status": data.get("status"),
@@ -524,6 +549,10 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
             "attachments": attachments,
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "purchase_order", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -565,7 +594,7 @@ async def get_fault_entity(fault_id: str, auth: dict = Depends(get_authenticated
         except Exception:
             pass
 
-        return {
+        _entity_response = {
             "id": data.get('id'),
             "title": data.get('title') or data.get('fault_code', 'Unknown Fault'),
             "description": data.get('description', ''),
@@ -582,6 +611,10 @@ async def get_fault_entity(fault_id: str, auth: dict = Depends(get_authenticated
             "attachments": attachments,
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "fault", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -607,25 +640,6 @@ async def _is_user_hod(user_id: str, yacht_id: str, supabase) -> bool:
     except Exception as e:
         logger.warning(f"Failed to check HOD status for user {user_id}: {e}")
         return False
-
-
-def _determine_available_actions(work_order: Dict, user_role: str, is_hod: bool) -> List[Dict]:
-    """Determine which actions are available based on work order state."""
-    actions = []
-    status = work_order.get('status', '').lower()
-
-    if status == 'planned':
-        actions.append({"name": "Start Work Order", "endpoint": "/v1/actions/work_order/start", "requires_signature": False, "method": "POST"})
-        actions.append({"name": "Cancel", "endpoint": "/v1/actions/work_order/cancel", "requires_signature": False, "method": "POST"})
-    elif status == 'in_progress':
-        actions.append({"name": "Add Part", "endpoint": "/v1/actions/work_order/add_part", "requires_signature": False, "method": "POST"})
-        actions.append({"name": "Add Note", "endpoint": "/v1/actions/work_order/add_note", "requires_signature": False, "method": "POST"})
-        if is_hod:
-            actions.append({"name": "Complete", "endpoint": "/v1/actions/work_order/complete", "requires_signature": True, "method": "POST"})
-    elif status == 'completed':
-        actions.append({"name": "Reopen", "endpoint": "/v1/actions/work_order/reopen", "requires_signature": False, "method": "POST"})
-
-    return actions[:6]
 
 
 # ── Work Order ─────────────────────────────────────────────────────────────────
@@ -675,7 +689,6 @@ async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_aut
         audit_history = audit_response.data if audit_response.data else []
 
         is_hod = await _is_user_hod(user_id, yacht_id, supabase)
-        available_actions = _determine_available_actions(work_order=data, user_role=user_role, is_hod=is_hod)
 
         attachments = _get_attachments(supabase, "work_order", wo_id, yacht_id)
         nav = [n for n in [
@@ -683,7 +696,7 @@ async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_aut
             _nav("fault", data.get("fault_id"), "Fault"),
         ] if n]
 
-        return {
+        _entity_response = {
             "id": wo_id,
             "wo_number": data.get('wo_number'),
             "title": data.get('title', 'Untitled Work Order'),
@@ -709,10 +722,13 @@ async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_aut
             "parts_count": len(parts),
             "checklist_count": len(checklist),
             "checklist_completed": len([c for c in checklist if c.get('is_completed')]),
-            "available_actions": available_actions,
             "attachments": attachments,
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "work_order", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -763,7 +779,7 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
         except Exception:
             pass
 
-        return {
+        _entity_response = {
             "id": data.get('id'),
             "name": data.get('name', 'Unknown Equipment'),
             "equipment_type": data.get('system_type') or metadata.get('category', 'General'),
@@ -784,6 +800,10 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
             "attachments": attachments,
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "equipment", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -815,7 +835,7 @@ async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_u
 
         attachments = _get_attachments(supabase, "part", part_id, yacht_id)
 
-        return {
+        _entity_response = {
             "id": data.get('id'),
             "name": data.get('name') or 'Unknown Part',
             "part_number": data.get('part_number', ''),
@@ -836,6 +856,10 @@ async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_u
             "attachments": attachments,
             "related_entities": [],
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "part", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
@@ -899,7 +923,7 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
             except Exception:
                 pass
 
-        return {
+        _entity_response = {
             "id": data.get('id'),
             "vendor_name": data.get('vendor_name'),
             "vendor_reference": data.get('vendor_reference'),
@@ -917,6 +941,10 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
             "attachments": attachments,
             "related_entities": nav,
         }
+        _entity_response["available_actions"] = get_available_actions(
+            "receiving", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
     except HTTPException:
         raise
     except Exception as e:
