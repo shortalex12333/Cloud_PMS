@@ -205,6 +205,13 @@ export function useWorkOrderActions(workOrderId: string) {
     [execute]
   );
 
+  /** mark_checklist_item_complete — toggle a single checklist item done */
+  const markChecklistItemComplete = useCallback(
+    (checklistItemId: string) =>
+      execute('mark_checklist_item_complete', { checklist_item_id: checklistItemId }),
+    [execute]
+  );
+
   // -------------------------------------------------------------------------
   // Return
   // -------------------------------------------------------------------------
@@ -244,6 +251,9 @@ export function useWorkOrderActions(workOrderId: string) {
 
     // Read-only
     viewChecklist,
+
+    // Checklist mutations
+    markChecklistItemComplete,
   };
 }
 

@@ -1,16 +1,16 @@
 'use client';
 
 /**
- * WorkOrderLensContent - Inner content for Work Order lens (no LensContainer).
+ * WorkOrderLensContent - Work Order detail view (lens entity view).
  *
- * Designed to render inside ContextPanel following the 1-URL philosophy.
- * Per rules.md: No fragmented URLs, everything at app.celeste7.ai.
+ * Renders at /work-orders/{id} following fragmented URL architecture.
  *
  * This component contains:
  * - LensHeader with back/close callbacks
  * - Title block with status/priority pills
  * - VitalSignsRow (5 indicators)
- * - Action buttons (Mark Complete, Reassign, Archive)
+ * - Checklist section (progress bar + items from pms_checklist_items)
+ * - Primary action button + "More Actions" dropdown
  * - Sections: Notes, Parts, Attachments, History
  * - Action modals
  */
@@ -28,6 +28,7 @@ import {
   AttachmentsSection,
   HistorySection,
   RelatedEntitiesSection,
+  ChecklistSection,
   type WorkOrderNote,
   type WorkOrderPart,
   type Attachment,
@@ -54,6 +55,13 @@ import {
 import { useWorkOrderActions, useWorkOrderPermissions } from '@/hooks/useWorkOrderActions';
 import { GhostButton } from '@/components/ui/GhostButton';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Props interface
@@ -304,10 +312,19 @@ export function WorkOrderLensContent({
           <VitalSignsRow signs={vitalSigns} />
         </div>
 
-        {/* Action buttons */}
+        {/* Checklist Section — between vitals and actions */}
+        <div className="mt-4">
+          <ChecklistSection
+            workOrderId={id}
+            viewChecklist={actions.viewChecklist}
+            markComplete={actions.markChecklistItemComplete}
+          />
+        </div>
+
+        {/* Actions — primary CTA + dropdown for secondary */}
         {(perms.canStart || perms.canClose || perms.canUpdate || perms.canAddHours || perms.canAssign || perms.canArchive) && (
-          <div className="mt-4 flex items-center gap-2 flex-wrap">
-            {/* Start Work Order - primary action when WO is draft/planned */}
+          <div className="mt-4 flex items-center gap-2">
+            {/* Primary CTA — only one visible at a time */}
             {perms.canStart && canStart && (
               <PrimaryButton
                 onClick={handleStartWork}
@@ -317,7 +334,6 @@ export function WorkOrderLensContent({
                 {actions.isLoading ? 'Starting...' : 'Start Work'}
               </PrimaryButton>
             )}
-            {/* Mark Complete - primary action when WO is in progress */}
             {perms.canClose && isCloseable && !canStart && (
               <PrimaryButton
                 onClick={() => setMarkCompleteOpen(true)}
@@ -327,44 +343,54 @@ export function WorkOrderLensContent({
                 Mark Complete
               </PrimaryButton>
             )}
-            {/* Edit work order */}
-            {perms.canUpdate && isCloseable && (
-              <GhostButton
-                onClick={() => setEditOpen(true)}
-                disabled={actions.isLoading}
-                className="text-[13px] min-h-9 px-4 py-2"
-              >
-                Edit
-              </GhostButton>
-            )}
-            {/* Add Hours */}
-            {perms.canAddHours && status === 'in_progress' && (
-              <GhostButton
-                onClick={() => setAddHoursOpen(true)}
-                disabled={actions.isLoading}
-                className="text-[13px] min-h-9 px-4 py-2"
-              >
-                Log Hours
-              </GhostButton>
-            )}
-            {perms.canAssign && (
-              <GhostButton
-                onClick={() => setReassignOpen(true)}
-                disabled={actions.isLoading}
-                className="text-[13px] min-h-9 px-4 py-2"
-              >
-                Reassign
-              </GhostButton>
-            )}
-            {perms.canArchive && (
-              <GhostButton
-                onClick={() => setArchiveOpen(true)}
-                disabled={actions.isLoading}
-                className="text-[13px] min-h-9 px-4 py-2 text-status-critical hover:text-status-critical"
-              >
-                Archive
-              </GhostButton>
-            )}
+
+            {/* Secondary actions dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <GhostButton
+                  className="text-[13px] min-h-9 px-3 py-2"
+                  disabled={actions.isLoading}
+                  aria-label="More actions"
+                >
+                  <MoreHorizontal className="w-4 h-4" />
+                </GhostButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[180px]">
+                {perms.canUpdate && isCloseable && (
+                  <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {perms.canAddNote && (
+                  <DropdownMenuItem onClick={() => setAddNoteOpen(true)}>
+                    Add Note
+                  </DropdownMenuItem>
+                )}
+                {perms.canAddPart && (
+                  <DropdownMenuItem onClick={() => setAddPartOpen(true)}>
+                    Add Part
+                  </DropdownMenuItem>
+                )}
+                {perms.canAddHours && status === 'in_progress' && (
+                  <DropdownMenuItem onClick={() => setAddHoursOpen(true)}>
+                    Log Hours
+                  </DropdownMenuItem>
+                )}
+                {perms.canAssign && (
+                  <DropdownMenuItem onClick={() => setReassignOpen(true)}>
+                    Reassign
+                  </DropdownMenuItem>
+                )}
+                {perms.canArchive && (
+                  <DropdownMenuItem
+                    onClick={() => setArchiveOpen(true)}
+                    className="text-status-critical focus:text-status-critical"
+                  >
+                    Archive
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
 
