@@ -2,12 +2,11 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/useAuth';
 import { EntityList } from '@/features/entity-list/components/EntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
+import { EntityLensPage } from '@/components/lens/EntityLensPage';
 import { FaultLensContent } from '@/components/lens/FaultLensContent';
-import { fetchFaults, fetchFault } from '@/features/faults/api';
+import { fetchFaults } from '@/features/faults/api';
 import { faultToListResult } from '@/features/faults/adapter';
 import type { Fault } from '@/features/faults/types';
 
@@ -16,48 +15,8 @@ interface FaultDetailContentProps {
   onClose: () => void;
 }
 
-function FaultDetailContent({ id, onClose }: FaultDetailContentProps) {
-  const { session } = useAuth();
-  const token = session?.access_token;
-  const queryClient = useQueryClient();
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['fault', id],
-    queryFn: () => fetchFault(id, token || ''),
-    enabled: !!token,
-    staleTime: 30000,
-  });
-
-  const handleRefresh = React.useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['fault', id] });
-    queryClient.invalidateQueries({ queryKey: ['faults'] });
-  }, [queryClient, id]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-red-400">Failed to load fault</p>
-      </div>
-    );
-  }
-
-  return (
-    <FaultLensContent
-      id={id}
-      data={data as unknown as Record<string, unknown>}
-      onBack={onClose}
-      onClose={onClose}
-      onRefresh={handleRefresh}
-    />
-  );
+function FaultDetailContent({ id }: FaultDetailContentProps) {
+  return <EntityLensPage entityType="fault" entityId={id} content={FaultLensContent} />;
 }
 
 function FaultsPageContent() {

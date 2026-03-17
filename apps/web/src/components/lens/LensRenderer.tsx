@@ -115,7 +115,7 @@ export function LensRenderer({
     case 'work_order':
       return <EntityLensPage entityType="work_order" entityId={entityId} content={WorkOrderLensContent} />;
     case 'fault':
-      return <FaultLensContent {...commonProps} />;
+      return <EntityLensPage entityType="fault" entityId={entityId} content={FaultLensContent} />;
     case 'equipment':
       return <EquipmentLensContent {...commonProps} />;
     case 'part':
