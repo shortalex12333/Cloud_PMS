@@ -18,6 +18,12 @@ Deployment:
 - Render: uvicorn api.pipeline_service:app --host 0.0.0.0 --port $PORT
 """
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Must run before ALLOWED_ORIGINS and JWT secrets are evaluated
+except ImportError:
+    pass
+
 from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -81,11 +87,13 @@ ALLOWED_ORIGINS_STR = os.getenv(
 )
 
 # Normalize: strip whitespace, remove empties, deduplicate
+# Always include localhost for local dev regardless of env override
+_LOCAL_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:8000"]
 ALLOWED_ORIGINS = list(dict.fromkeys([
     origin.strip()
     for origin in ALLOWED_ORIGINS_STR.split(",")
-    if origin.strip()  # Drop empty strings
-]))
+    if origin.strip()
+] + _LOCAL_ORIGINS))
 
 # Log normalized origins on startup for verification
 logger.info(f"✅ [Pipeline] CORS ALLOWED_ORIGINS (normalized): {ALLOWED_ORIGINS}")
@@ -361,6 +369,14 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to register Show Related routes: {e}")
     logger.error("Show Related endpoints will not be available")
+
+try:
+    from routes.show_related_signal_routes import router as signal_related_router
+    app.include_router(signal_related_router)
+    logger.info("✅ Show Related Signal routes registered at /v1/show-related-signal/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Show Related Signal routes: {e}")
+    logger.error("Show Related Signal endpoints will not be available")
 
 try:
     from routes.search_streaming import router as search_streaming_router

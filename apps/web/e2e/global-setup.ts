@@ -1,108 +1,111 @@
-import { chromium, FullConfig } from '@playwright/test';
+// e2e/global-setup.ts
+//
+// Generates auth state files with self-minted JWTs so that Playwright
+// browser contexts have a valid Supabase session in localStorage.
+//
+// The JWT is signed with SUPABASE_JWT_SECRET (same key the API uses).
+// The frontend Supabase client reads it from localStorage on init and
+// uses the access_token for all /v1/ API calls via the Authorization header.
+//
+// All three role files (captain, hod, crew) currently use the same captain
+// user — role differentiation is resolved server-side from auth_users_roles,
+// not from the JWT claims. When dedicated role users are provisioned,
+// update the sub/email per role.
+
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 
-/**
- * Global Setup - Authenticates test users and saves session state
- *
- * This runs ONCE before all tests, creating authenticated browser states
- * that individual tests can reuse without re-logging in.
- *
- * Test Users:
- * - HOD (Head of Department): Full access to yacht data
- * - Crew: Limited access
- * - Captain: Administrative access
- */
-
-// Test credentials from environment
-const TEST_USERS = {
-  hod: {
-    email: process.env.TEST_HOD_USER_EMAIL || 'hod.test@alex-short.com',
-    password: process.env.TEST_USER_PASSWORD || 'Password2!',
-  },
-  crew: {
-    email: process.env.TEST_CREW_USER_EMAIL || 'crew.test@alex-short.com',
-    password: process.env.TEST_USER_PASSWORD || 'Password2!',
-  },
-  captain: {
-    email: process.env.TEST_CAPTAIN_USER_EMAIL || 'x@alex-short.com',
-    password: process.env.TEST_USER_PASSWORD || 'Password2!',
-  },
-};
-
-const BASE_URL = process.env.E2E_BASE_URL || 'https://app.celeste7.ai';
 const AUTH_DIR = path.join(__dirname, '../playwright/.auth');
+const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:3000';
 
-async function authenticateUser(
-  userType: 'hod' | 'crew' | 'captain',
-  baseURL: string
-): Promise<void> {
-  const user = TEST_USERS[userType];
-  const browser = await chromium.launch();
-  const context = await browser.newContext();
-  const page = await context.newPage();
+// Supabase project ref — extracted from NEXT_PUBLIC_SUPABASE_URL or hardcoded.
+// The localStorage key is `sb-{ref}-auth-token`.
+const SUPABASE_PROJECT_REF = 'vzsohavtuotocgrfkfyd';
+const STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
 
-  console.log(`[GlobalSetup] Authenticating ${userType}: ${user.email}`);
+// Captain user — all roles currently map to this user (see STAGE_3_HANDOVER.md §8)
+const CAPTAIN_SUB = 'a35cad0b-02ff-4287-b6e4-17c96fa6a424';
+const CAPTAIN_EMAIL = 'x@alex-short.com';
 
-  try {
-    // Navigate to login page
-    await page.goto(`${baseURL}/login`, { waitUntil: 'networkidle' });
-
-    // Fill login form
-    await page.fill('input[type="email"]', user.email);
-    await page.fill('input[type="password"]', user.password);
-
-    // Submit and wait for redirect
-    await page.click('button[type="submit"]');
-
-    // Wait for successful authentication (redirect to main app)
-    await page.waitForURL(`${baseURL}/`, { timeout: 30_000 });
-
-    // Verify we're logged in by checking for search input
-    await page.waitForSelector('[data-testid="search-input"]', { timeout: 10_000 });
-
-    console.log(`[GlobalSetup] ${userType} authenticated successfully`);
-
-    // Save storage state
-    const statePath = path.join(AUTH_DIR, `${userType}.json`);
-    await context.storageState({ path: statePath });
-
-    console.log(`[GlobalSetup] Saved auth state: ${statePath}`);
-  } catch (error) {
-    console.error(`[GlobalSetup] Failed to authenticate ${userType}:`, error);
-    throw error;
-  } finally {
-    await browser.close();
+function mintJwt(sub: string, email: string, expiresInSeconds = 8 * 3600): string {
+  const secretString = process.env.SUPABASE_JWT_SECRET;
+  if (!secretString) {
+    console.warn('[global-setup] SUPABASE_JWT_SECRET not set — writing empty auth state');
+    return '';
   }
+  const secretBytes = Buffer.from(secretString, 'utf8');
+  const now = Math.floor(Date.now() / 1000);
+
+  function b64url(obj: object | string): string {
+    const json = typeof obj === 'string' ? obj : JSON.stringify(obj);
+    return Buffer.from(json).toString('base64url');
+  }
+
+  const header = b64url({ alg: 'HS256', typ: 'JWT' });
+  const payload = b64url({
+    sub, aud: 'authenticated', role: 'authenticated',
+    email, iat: now, exp: now + expiresInSeconds,
+    iss: `https://${SUPABASE_PROJECT_REF}.supabase.co/auth/v1`,
+  });
+  const sig = crypto.createHmac('sha256', secretBytes)
+    .update(`${header}.${payload}`).digest('base64url');
+
+  return `${header}.${payload}.${sig}`;
 }
 
-async function globalSetup(config: FullConfig): Promise<void> {
-  console.log('[GlobalSetup] Starting authentication...');
-  console.log(`[GlobalSetup] Base URL: ${BASE_URL}`);
+function buildAuthState(jwt: string, sub: string, email: string): string {
+  if (!jwt) {
+    return JSON.stringify({ cookies: [], origins: [] });
+  }
 
+  // Playwright storageState format: origins[].localStorage[] entries
+  // are injected into the browser context before any page scripts run.
+  const sessionData = JSON.stringify({
+    access_token: jwt,
+    token_type: 'bearer',
+    expires_in: 28800,
+    expires_at: Math.floor(Date.now() / 1000) + 28800,
+    refresh_token: '',
+    user: {
+      id: sub,
+      email,
+      aud: 'authenticated',
+      role: 'authenticated',
+    },
+  });
+
+  return JSON.stringify({
+    cookies: [],
+    origins: [{
+      origin: BASE_URL,
+      localStorage: [
+        { name: STORAGE_KEY, value: sessionData },
+      ],
+    }],
+  }, null, 2);
+}
+
+async function globalSetup() {
   // Ensure auth directory exists
   if (!fs.existsSync(AUTH_DIR)) {
     fs.mkdirSync(AUTH_DIR, { recursive: true });
   }
 
-  // Authenticate all test users in sequence to avoid rate limiting
-  await authenticateUser('hod', BASE_URL);
-  await authenticateUser('crew', BASE_URL);
-  await authenticateUser('captain', BASE_URL);
+  // Mint a captain JWT (all roles use the same user for now)
+  const jwt = mintJwt(CAPTAIN_SUB, CAPTAIN_EMAIL);
 
-  // Create a symlink for default auth state (HOD)
-  const defaultStatePath = path.join(AUTH_DIR, 'user.json');
-  const hodStatePath = path.join(AUTH_DIR, 'hod.json');
-
-  if (fs.existsSync(hodStatePath)) {
-    if (fs.existsSync(defaultStatePath)) {
-      fs.unlinkSync(defaultStatePath);
-    }
-    fs.copyFileSync(hodStatePath, defaultStatePath);
-    console.log('[GlobalSetup] Created default auth state (HOD)');
+  // Write auth state files — always overwrite to ensure fresh JWTs
+  for (const role of ['captain', 'hod', 'crew', 'user']) {
+    const filePath = path.join(AUTH_DIR, `${role}.json`);
+    fs.writeFileSync(filePath, buildAuthState(jwt, CAPTAIN_SUB, CAPTAIN_EMAIL));
   }
 
-  console.log('[GlobalSetup] All users authenticated. Ready for tests.');
+  if (jwt) {
+    console.log(`[global-setup] Auth state written for captain/hod/crew/user (JWT valid 8h)`);
+  } else {
+    console.log(`[global-setup] Empty auth state — SUPABASE_JWT_SECRET not set`);
+  }
 }
 
 export default globalSetup;

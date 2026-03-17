@@ -10,9 +10,37 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { X, Package, AlertTriangle, Plus, Loader2, MapPin, Hash, DollarSign, ShoppingCart, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight } from 'lucide-react';
 import type { SituationContext } from '@/types/situation';
-import { usePartActions, usePartPermissions } from '@/hooks/usePartActions';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
+async function executePartAction(
+  partId: string,
+  actionName: string,
+  payload: Record<string, unknown>,
+  token: string,
+  yachtId?: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/v1/actions/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        action: actionName,
+        context: { yacht_id: yachtId, part_id: partId },
+        payload: { part_id: partId, ...payload },
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { success: false, error: (json as { error?: string; detail?: string }).error ?? (json as { error?: string; detail?: string }).detail ?? `Request failed (${res.status})` };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
 
 // ============================================================================
 // TYPES
@@ -53,13 +81,11 @@ export default function InventorySituationView({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const [actionLoading, setActionLoading] = useState(false);
   const partId = situation.primary_entity_id;
   const metadata = situation.evidence as any;
   const partTitle = metadata?.title || metadata?.name || 'Part';
-
-  const { isLoading: actionLoading, consumePart, receivePart, addToShoppingList } = usePartActions(partId);
-  const permissions = usePartPermissions();
 
   /**
    * Load part data on mount
@@ -115,19 +141,20 @@ export default function InventorySituationView({
     }
 
     const notes = prompt('Enter usage notes (optional):');
-    const result = await consumePart(quantity, notes || undefined);
+    setActionLoading(true);
+    const result = await executePartAction(partId, 'consume_part', { quantity, notes: notes || undefined }, session?.access_token ?? '', user?.yachtId ?? undefined);
+    setActionLoading(false);
 
     if (result.success) {
       if (onAction) {
-        onAction('part_consumed', result.data);
+        onAction('part_consumed', null);
       }
-      // Update local state
       setPart((prev) => prev ? { ...prev, quantity_on_hand: prev.quantity_on_hand - quantity } : null);
       alert('Stock consumed successfully');
     } else {
       alert(`Failed to consume stock: ${result.error}`);
     }
-  }, [consumePart, onAction]);
+  }, [partId, session, user, onAction]);
 
   /**
    * Handle receive part
@@ -143,19 +170,20 @@ export default function InventorySituationView({
     }
 
     const notes = prompt('Enter receiving notes (optional):');
-    const result = await receivePart(quantity, notes || undefined);
+    setActionLoading(true);
+    const result = await executePartAction(partId, 'receive_part', { quantity, notes: notes || undefined }, session?.access_token ?? '', user?.yachtId ?? undefined);
+    setActionLoading(false);
 
     if (result.success) {
       if (onAction) {
-        onAction('part_received', result.data);
+        onAction('part_received', null);
       }
-      // Update local state
       setPart((prev) => prev ? { ...prev, quantity_on_hand: prev.quantity_on_hand + quantity } : null);
       alert('Stock received successfully');
     } else {
       alert(`Failed to receive stock: ${result.error}`);
     }
-  }, [receivePart, onAction]);
+  }, [partId, session, user, onAction]);
 
   /**
    * Handle add to shopping list
@@ -170,17 +198,19 @@ export default function InventorySituationView({
     }
 
     const notes = prompt('Enter ordering notes (optional):');
-    const result = await addToShoppingList(quantity, notes || undefined);
+    setActionLoading(true);
+    const result = await executePartAction(partId, 'create_shopping_list_item', { quantity_requested: quantity, source_notes: notes || undefined, source_type: 'manual_add' }, session?.access_token ?? '', user?.yachtId ?? undefined);
+    setActionLoading(false);
 
     if (result.success) {
       if (onAction) {
-        onAction('added_to_shopping_list', result.data);
+        onAction('added_to_shopping_list', null);
       }
       alert('Added to shopping list');
     } else {
       alert(`Failed to add to shopping list: ${result.error}`);
     }
-  }, [addToShoppingList, onAction]);
+  }, [partId, session, user, onAction]);
 
   /**
    * Get stock level indicator
@@ -346,38 +376,32 @@ export default function InventorySituationView({
             </button>
 
             <div className="flex items-center gap-2">
-              {permissions.canAddToShoppingList && (
-                <button
-                  onClick={handleAddToShoppingList}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded-lg transition-colors text-zinc-700 dark:text-zinc-300"
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  Add to Shopping List
-                </button>
-              )}
+              <button
+                onClick={handleAddToShoppingList}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded-lg transition-colors text-zinc-700 dark:text-zinc-300"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Add to Shopping List
+              </button>
 
-              {permissions.canConsume && (
-                <button
-                  onClick={handleConsume}
-                  disabled={actionLoading || (part?.quantity_on_hand ?? 0) <= 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 rounded-lg transition-colors text-amber-700 dark:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ArrowUpFromLine className="h-4 w-4" />
-                  Consume
-                </button>
-              )}
+              <button
+                onClick={handleConsume}
+                disabled={actionLoading || (part?.quantity_on_hand ?? 0) <= 0}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 rounded-lg transition-colors text-amber-700 dark:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ArrowUpFromLine className="h-4 w-4" />
+                Consume
+              </button>
 
-              {permissions.canReceive && (
-                <button
-                  onClick={handleReceive}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors text-white"
-                >
-                  <ArrowDownToLine className="h-4 w-4" />
-                  Receive
-                </button>
-              )}
+              <button
+                onClick={handleReceive}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors text-white"
+              >
+                <ArrowDownToLine className="h-4 w-4" />
+                Receive
+              </button>
             </div>
           </div>
         </div>

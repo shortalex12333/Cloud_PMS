@@ -20,6 +20,7 @@ interface ActionModalProps {
   action: ActionSuggestion;
   yachtId: string | null;
   entityId?: string;
+  query?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -68,10 +69,42 @@ export default function ActionModal({
   action,
   yachtId,
   entityId,
+  query,
   onClose,
   onSuccess,
 }: ActionModalProps) {
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState<Record<string, string>>(() => {
+    const seed: Record<string, string> = {};
+
+    // Layer 1: query text for narrative fields (best-effort from search intent)
+    const trimmedQuery = query?.trim() ?? '';
+    if (trimmedQuery) {
+      const isNarrativeField = (name: string) =>
+        inferFieldType(name) === 'textarea' ||
+        name === 'title' ||
+        name === 'content' ||
+        name === 'summary' ||
+        name === 'text' ||
+        name === 'comment' ||
+        name === 'hod_justification';
+      for (const field of action.required_fields) {
+        if (isNarrativeField(field)) {
+          seed[field] = trimmedQuery;
+        }
+      }
+    }
+
+    // Layer 2: backend prefill overwrites query seed (entity-resolved values are precise)
+    if (action.prefill) {
+      for (const [field, value] of Object.entries(action.prefill)) {
+        if (value != null && value !== '') {
+          seed[field] = typeof value === 'string' ? value : String(value);
+        }
+      }
+    }
+
+    return seed;
+  });
   const [filename, setFilename] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

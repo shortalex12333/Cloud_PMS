@@ -341,7 +341,7 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
                 return None
 
             role_result = tenant_client.table('auth_users_roles').select(
-                'role, valid_from, valid_until'
+                'role, department, valid_from, valid_until'
             ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq('is_active', True).execute()
 
             if role_result.data and len(role_result.data) > 0:
@@ -353,7 +353,8 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
                     reverse=True
                 )
                 tenant_role = sorted_roles[0]['role']
-                logger.info(f"[Auth] Found yacht-specific role: {tenant_role} for user {user_id[:8]}... on yacht {yacht_id}")
+                tenant_dept = sorted_roles[0].get('department') or ''
+                logger.info(f"[Auth] Found yacht-specific role: {tenant_role} (dept: {tenant_dept}) for user {user_id[:8]}... on yacht {yacht_id}")
             else:
                 logger.error(f"[Auth] SECURITY: No active role in auth_users_roles for user {user_id[:8]}... on yacht {yacht_id}")
                 return None
@@ -366,6 +367,7 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
             'yacht_id': yacht_id,
             'tenant_key_alias': tenant_key_alias,
             'role': tenant_role,
+            'department': tenant_dept,
             'status': user_account['status'],
             'yacht_name': fleet.get('yacht_name'),
         }
@@ -559,6 +561,7 @@ async def get_authenticated_user(
         'yacht_id': tenant['yacht_id'],
         'tenant_key_alias': tenant['tenant_key_alias'],
         'role': tenant['role'],
+        'department': tenant.get('department', ''),
         'yacht_name': tenant.get('yacht_name'),
     }
 

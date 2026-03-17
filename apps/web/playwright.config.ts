@@ -231,6 +231,15 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
     },
+    // =========================================================================
+    {
+      name: 'shard-34-lens-actions',
+      testDir: './e2e/shard-34-lens-actions',
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
   ],
 
   // Web server configuration (if running locally)

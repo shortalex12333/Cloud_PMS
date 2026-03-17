@@ -13,6 +13,7 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { AttachmentsSection, RelatedEntitiesSection, type Attachment, type RelatedEntity } from './sections';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface HandoverLensContentProps {
   id: string;
@@ -55,6 +56,19 @@ export function HandoverLensContent({
   const attachments = (data.attachments as Attachment[]) || [];
   const related_entities = (data.related_entities as RelatedEntity[]) || [];
 
+  const { session } = useAuth();
+  // Inline acknowledge action — useHandoverActions was deleted in Phase 3 Task 17.
+  // HandoverLensContent is pre-Phase3 ContextPanel-only code; full migration is deferred.
+  const acknowledgeHandover = React.useCallback(async () => {
+    if (!session?.access_token) return;
+    await fetch('/api/v1/actions/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ action: 'add_to_handover', context: { handover_id: id }, payload: { title: 'Acknowledged', entity_type: 'acknowledgement', category: department } }),
+    });
+    onRefresh?.();
+  }, [session, id, department, onRefresh]);
+
   const statusColor = mapStatusToColor(status);
   const statusLabel = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
@@ -85,7 +99,7 @@ export function HandoverLensContent({
 
         {status === 'pending' && (
           <div className="mt-4">
-            <PrimaryButton onClick={() => console.log('[HandoverLens] Acknowledge:', id)} className="text-[13px] min-h-9 px-4 py-2">Acknowledge Handover</PrimaryButton>
+            <PrimaryButton onClick={acknowledgeHandover} className="text-[13px] min-h-9 px-4 py-2">Acknowledge Handover</PrimaryButton>
           </div>
         )}
 

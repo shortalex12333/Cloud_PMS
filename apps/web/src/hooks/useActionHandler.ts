@@ -15,19 +15,11 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner'; // Using sonner for toast notifications
-import {
-  MicroAction,
-  ActionPayload,
-  ActionResponse,
-  ACTION_REGISTRY,
-  requiresConfirmation,
-  requiresReason,
-  canPerformAction,
-  getActionMetadata,
-} from '@/types/actions';
-// Removed workflow-archetypes import - using Action Router instead
-import { callCelesteApi } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
+
+// types/actions.ts (Phase 3) exports only ACTION_DISPLAY/getActionDisplay — not imported here
+// MicroAction is a plain string action ID; backend owns all eligibility checks.
+type MicroAction = string;
 
 // ============================================================================
 // TYPES
@@ -41,7 +33,7 @@ interface ActionHandlerOptions {
   /** Custom error message */
   errorMessage?: string;
   /** Callback after successful action */
-  onSuccess?: (response: ActionResponse) => void;
+  onSuccess?: (response: Record<string, unknown>) => void;
   /** Callback after action error */
   onError?: (error: Error) => void;
   /** Refresh data after mutation */
@@ -54,7 +46,7 @@ interface ActionHandlerState {
   /** Error from last action */
   error: Error | null;
   /** Response from last action */
-  response: ActionResponse | null;
+  response: Record<string, unknown> | null;
 }
 
 // ============================================================================
@@ -78,37 +70,12 @@ export function useActionHandler() {
       action: MicroAction,
       context: Record<string, any> = {},
       options: ActionHandlerOptions = {}
-    ): Promise<ActionResponse | null> => {
+    ): Promise<Record<string, unknown> | null> => {
       try {
-        // Get action metadata
-        const metadata = getActionMetadata(action);
-
-        // Check user permissions
+        // Phase 3: backend validates permissions and action eligibility.
+        // Frontend only checks that the user session exists.
         if (!user || !session?.access_token) {
           throw new Error('User not authenticated');
-        }
-
-        if (!canPerformAction(action, user.role as 'chief_engineer' | 'eto' | 'captain' | 'manager' | 'vendor' | 'crew' | 'deck' | 'interior')) {
-          toast.error('Permission Denied', {
-            description: `You don't have permission to perform this action.`,
-          });
-          return null;
-        }
-
-        // For mutation_heavy actions, show confirmation
-        if (requiresConfirmation(action) && !options.skipConfirmation) {
-          // This will be handled by the ConfirmationDialog component
-          // For now, we'll skip auto-confirmation in the hook
-          // The UI layer will call executeAction with skipConfirmation=true after user confirms
-          return null;
-        }
-
-        // For actions requiring reason, ensure reason is provided
-        if (requiresReason(action) && !context.reason) {
-          toast.error('Reason Required', {
-            description: 'This action requires a justification reason.',
-          });
-          return null;
         }
 
         // Set loading state
@@ -140,7 +107,6 @@ export function useActionHandler() {
           action,
           endpoint,
           payload,
-          metadata,
         });
 
         // Call Next.js API route directly (not external API)
@@ -158,19 +124,7 @@ export function useActionHandler() {
           throw new Error(errorData.error || `API Error: ${apiResponse.statusText}`);
         }
 
-        const response = await apiResponse.json() as ActionResponse;
-
-        // Original implementation used callCelesteApi, but Action Router is a Next.js API route
-        // so we call it directly with fetch() instead
-        /* Old code - replaced with direct fetch() above:
-        const response = await callCelesteApi<ActionResponse>(
-          endpoint,
-          {
-            method: 'POST',
-            body: JSON.stringify(payload),
-          }
-        );
-        */
+        const response = await apiResponse.json();
 
         // Update state with success
         setState((prev) => ({
@@ -182,8 +136,8 @@ export function useActionHandler() {
         // Show success toast
         const successMsg =
           options.successMessage ||
-          response.message ||
-          `${metadata.label} completed successfully`;
+          (response.message as string | undefined) ||
+          'Action completed successfully';
 
         toast.success('Success', {
           description: successMsg,
@@ -194,8 +148,8 @@ export function useActionHandler() {
           options.onSuccess(response);
         }
 
-        // Refresh data if needed (for mutations)
-        if (options.refreshData && metadata.side_effect_type !== 'read_only') {
+        // Refresh data if requested
+        if (options.refreshData) {
           router.refresh();
         }
 

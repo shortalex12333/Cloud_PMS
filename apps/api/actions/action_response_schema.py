@@ -161,13 +161,17 @@ class AvailableAction:
     """
     action_id: str
     label: str
-    variant: Literal["READ", "MUTATE"]
+    variant: Literal["READ", "MUTATE", "SIGNED"]
     icon: str = ""
     is_primary: bool = False
     requires_signature: bool = False
     confirmation_message: Optional[str] = None
     disabled: bool = False
     disabled_reason: Optional[str] = None
+    # Phase 2 additions — additive, all callers unaffected (default values provided)
+    prefill: Dict[str, Any] = field(default_factory=dict)
+    required_fields: List[str] = field(default_factory=list)
+    optional_fields: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict:
         return {
@@ -179,7 +183,10 @@ class AvailableAction:
             "requires_signature": self.requires_signature,
             "confirmation_message": self.confirmation_message,
             "disabled": self.disabled,
-            "disabled_reason": self.disabled_reason
+            "disabled_reason": self.disabled_reason,
+            "prefill": self.prefill,
+            "required_fields": self.required_fields,
+            "optional_fields": self.optional_fields,
         }
 
 
@@ -783,33 +790,17 @@ class SignedUrlGenerator:
 
 def get_available_actions_for_entity(
     entity_type: str,
-    entity_id: str,
-    user_role: str = "crew"
-) -> List[AvailableAction]:
+    entity_id: str,         # retained for backward-compat signature only; NOT used for lookup
+    user_role: str = "crew",
+    entity_data: dict = None,
+) -> List[dict]:
     """
-    Get available actions for an entity based on type and user role.
-
-    This is called by handlers to attach appropriate actions to responses.
+    Wrapper retained for backward compatibility.
+    entity_id is kept in the signature only — entity_data already contains the ID.
+    Callers passing entity_id without entity_data will receive empty prefill dicts.
     """
-    from action_registry import get_registry, ActionVariant
-
-    registry = get_registry()
-    actions = registry.get_actions_for_entity(entity_type)
-
-    available = []
-    for action in actions:
-        # In future: filter by user role/permissions
-        available.append(AvailableAction(
-            action_id=action.action_id,
-            label=action.label,
-            variant="READ" if action.variant == ActionVariant.READ else "MUTATE",
-            icon=action.ui.icon if action.ui else "",
-            is_primary=action.ui.primary if action.ui else False,
-            requires_signature=action.mutation.requires_signature if action.mutation else False,
-            confirmation_message=action.mutation.confirmation_message if action.mutation else None
-        ))
-
-    return available
+    from action_router.entity_actions import get_available_actions
+    return get_available_actions(entity_type, entity_data or {}, user_role)
 
 
 # =============================================================================

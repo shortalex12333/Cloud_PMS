@@ -10,7 +10,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { X, ClipboardList, AlertTriangle, Play, CheckCircle, Loader2, Calendar, User, Wrench, MessageSquare } from 'lucide-react';
 import type { SituationContext } from '@/types/situation';
-import { useWorkOrderActions, useWorkOrderPermissions } from '@/hooks/useWorkOrderActions';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -53,13 +52,60 @@ export default function WorkOrderSituationView({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const workOrderId = situation.primary_entity_id;
   const metadata = situation.evidence as any;
   const workOrderTitle = metadata?.title || metadata?.name || 'Work Order';
 
-  const { isLoading: actionLoading, startWorkOrder, closeWorkOrder, addNote } = useWorkOrderActions(workOrderId);
-  const permissions = useWorkOrderPermissions();
+  const [actionLoading, setActionLoading] = React.useState(false);
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
+  // Inline action executor — mirrors the deleted useWorkOrderActions hook
+  const executeAction = useCallback(
+    async (actionName: string, payload: Record<string, unknown> = {}): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> => {
+      if (!session?.access_token) return { success: false, error: 'Not authenticated' };
+      setActionLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/v1/actions/execute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            action: actionName,
+            context: { yacht_id: (user as any)?.yachtId, work_order_id: workOrderId },
+            payload: { work_order_id: workOrderId, ...payload },
+          }),
+        });
+        const json = await res.json().catch(() => ({})) as Record<string, unknown>;
+        if (!res.ok) {
+          const msg = (json.error as string | undefined) || (json.detail as string | undefined) || `Request failed (${res.status})`;
+          return { success: false, error: msg };
+        }
+        return { success: true, data: json };
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [session, user, workOrderId, API_BASE]
+  );
+
+  const startWorkOrder = useCallback(() => executeAction('start_work_order'), [executeAction]);
+  const closeWorkOrder = useCallback(
+    (completionNotes?: string) => executeAction('mark_work_order_complete', { completion_notes: completionNotes }),
+    [executeAction]
+  );
+  const addNote = useCallback(
+    (noteText: string) => executeAction('add_wo_note', { note_text: noteText }),
+    [executeAction]
+  );
+
+  // Situation views show all action buttons — enforcement is at the API level
+  const permissions = { canAddNote: true, canStart: true, canClose: true };
 
   /**
    * Load work order data on mount

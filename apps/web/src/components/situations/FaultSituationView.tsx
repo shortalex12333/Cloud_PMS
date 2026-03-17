@@ -10,7 +10,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { X, AlertTriangle, CheckCircle, Loader2, Calendar, Wrench, MessageSquare, Camera, Search, RotateCcw } from 'lucide-react';
 import type { SituationContext } from '@/types/situation';
-import { useFaultActions, useFaultPermissions } from '@/hooks/useFaultActions';
+// useFaultActions was deleted — inline the action executor and permission logic here.
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -53,13 +53,54 @@ export default function FaultSituationView({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const faultId = situation.primary_entity_id;
   const metadata = situation.evidence as any;
   const faultTitle = metadata?.title || metadata?.name || 'Fault';
 
-  const { isLoading: actionLoading, acknowledgeFault, closeFault, diagnoseFault, reopenFault, addNote } = useFaultActions(faultId);
-  const permissions = useFaultPermissions();
+  // Inline action executor (replaces deleted useFaultActions hook)
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const executeAction = useCallback(
+    async (actionName: string, payload: Record<string, unknown>) => {
+      if (!session?.access_token) return { success: false, error: 'Not authenticated' };
+      setActionLoading(true);
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+        const res = await fetch(`${baseUrl}/v1/actions/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ action: actionName, context: { fault_id: faultId }, payload: { fault_id: faultId, ...payload } }),
+        });
+        const json = await res.json().catch(() => ({})) as { error?: string; detail?: string };
+        if (!res.ok) return { success: false, error: json.error || json.detail || `${res.status}` };
+        return { success: true, data: json };
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [session, faultId]
+  );
+
+  const acknowledgeFault = useCallback(() => executeAction('acknowledge_fault', {}), [executeAction]);
+  const closeFault = useCallback((notes?: string) => executeAction('close_fault', { resolution_notes: notes }), [executeAction]);
+  const diagnoseFault = useCallback((diagnosis: string, recommendedAction?: string) => executeAction('diagnose_fault', { diagnosis, recommended_action: recommendedAction }), [executeAction]);
+  const reopenFault = useCallback((reason?: string) => executeAction('reopen_fault', { reason }), [executeAction]);
+  const addNote = useCallback((noteText: string) => executeAction('add_fault_note', { text: noteText }), [executeAction]);
+
+  // Inline permission derivation (replaces deleted useFaultPermissions hook)
+  const ENGINEER_PLUS = ['eto', 'engineer', 'chief_engineer', 'chief_officer', 'captain', 'manager'];
+  const ALL_CREW = ['crew', 'deckhand', 'steward', 'chef', ...ENGINEER_PLUS];
+  const role = user?.role ?? '';
+  const permissions = {
+    canAcknowledge: ENGINEER_PLUS.includes(role),
+    canClose: ENGINEER_PLUS.includes(role),
+    canDiagnose: ENGINEER_PLUS.includes(role),
+    canReopen: ENGINEER_PLUS.includes(role),
+    canAddNote: ALL_CREW.includes(role),
+  };
 
   /**
    * Load fault data on mount

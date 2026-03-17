@@ -17,6 +17,7 @@ import { useSurface } from '@/contexts/SurfaceContext';
 import { useNavigationContextSafe } from '@/contexts/NavigationContext';
 
 // Lens content components
+import { EntityLensPage } from './EntityLensPage';
 import { WorkOrderLensContent } from './WorkOrderLensContent';
 import { FaultLensContent } from './FaultLensContent';
 import { EquipmentLensContent } from './EquipmentLensContent';
@@ -112,32 +113,32 @@ export function LensRenderer({
   // Render the appropriate lens content based on entity type
   switch (entityType) {
     case 'work_order':
-      return <WorkOrderLensContent {...commonProps} />;
+      return <EntityLensPage entityType="work_order" entityId={entityId} content={WorkOrderLensContent} />;
     case 'fault':
-      return <FaultLensContent {...commonProps} />;
+      return <EntityLensPage entityType="fault" entityId={entityId} content={FaultLensContent} />;
     case 'equipment':
-      return <EquipmentLensContent {...commonProps} />;
+      return <EntityLensPage entityType="equipment" entityId={entityId} content={EquipmentLensContent} />;
     case 'part':
     case 'inventory':
-      return <PartsLensContent {...commonProps} entityType={entityType} />;
+      return <EntityLensPage entityType="part" entityId={entityId} content={PartsLensContent} />;
     case 'receiving':
-      return <ReceivingLensContent {...commonProps} />;
+      return <EntityLensPage entityType="receiving" entityId={entityId} content={ReceivingLensContent} />;
     case 'certificate':
-      return <CertificateLensContent {...commonProps} />;
+      return <EntityLensPage entityType="certificate" entityId={entityId} content={CertificateLensContent} />;
     case 'handover':
       return <HandoverLensContent {...commonProps} />;
     case 'handover_export':
-      return <HandoverExportLensContent {...commonProps} />;
+      return <EntityLensPage entityType="handover_export" entityId={entityId} content={HandoverExportLensContent} />;
     case 'hours_of_rest':
-      return <HoursOfRestLensContent {...commonProps} />;
+      return <EntityLensPage entityType="hours_of_rest" entityId={entityId} content={HoursOfRestLensContent} />;
     case 'warranty':
-      return <WarrantyLensContent {...commonProps} />;
+      return <EntityLensPage entityType="warranty" entityId={entityId} content={WarrantyLensContent} />;
     case 'shopping_list':
-      return <ShoppingListLensContent {...commonProps} />;
+      return <EntityLensPage entityType="shopping_list" entityId={entityId} content={ShoppingListLensContent} />;
     case 'document':
-      return <DocumentLensContent {...commonProps} />;
+      return <EntityLensPage entityType="document" entityId={entityId} content={DocumentLensContent} />;
     case 'purchase_order':
-      return <PurchaseOrderLensContent {...commonProps} />;
+      return <EntityLensPage entityType="purchase_order" entityId={entityId} content={PurchaseOrderLensContent} />;
     default:
       return (
         <div className="p-6 text-celeste-text-muted">

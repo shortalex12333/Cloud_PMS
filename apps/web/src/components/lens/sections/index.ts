@@ -36,3 +36,8 @@ export {
   type RelatedEntitiesSectionProps,
   type RelatedEntity,
 } from './RelatedEntitiesSection';
+
+export {
+  ChecklistSection,
+  type ChecklistSectionProps,
+} from './ChecklistSection';

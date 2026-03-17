@@ -17,6 +17,8 @@ export interface AuditLogEntry {
   details?: Record<string, unknown>;
   /** Human-readable description of what changed */
   description?: string;
+  /** Frontend route for clickthrough navigation (e.g. /work-orders/123) */
+  navigation_url?: string;
 }
 
 export interface HistorySectionProps {
@@ -99,15 +101,8 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
     entry.description ||
     (entry.details && Object.keys(entry.details).length > 0);
 
-  return (
-    <div
-      className={cn(
-        // Row layout: 20px horizontal, 12px vertical per UI_SPEC.md
-        'px-5 py-3 min-h-11',
-        // Subtle internal divider (not full-width per Apple pattern)
-        'border-b border-surface-border-subtle last:border-b-0'
-      )}
-    >
+  const rowContent = (
+    <>
       {/* Primary row: action label + actor + timestamp */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -135,7 +130,7 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
       {hasDetails && (
         <>
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={(e) => { e.preventDefault(); setIsExpanded(!isExpanded); }}
             className={cn(
               'mt-1 text-caption font-medium text-txt-tertiary',
               'hover:text-txt-secondary transition-colors duration-fast',
@@ -176,6 +171,31 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
           )}
         </>
       )}
+    </>
+  );
+
+  const rowClassName = cn(
+    // Row layout: 20px horizontal, 12px vertical per UI_SPEC.md
+    'px-5 py-3 min-h-11',
+    // Subtle internal divider (not full-width per Apple pattern)
+    'border-b border-surface-border-subtle last:border-b-0'
+  );
+
+  if (entry.navigation_url) {
+    return (
+      <a
+        href={entry.navigation_url}
+        className={cn(rowClassName, 'block hover:bg-surface-hover cursor-pointer')}
+        style={{ textDecoration: 'none', color: 'inherit' }}
+      >
+        {rowContent}
+      </a>
+    );
+  }
+
+  return (
+    <div className={rowClassName}>
+      {rowContent}
     </div>
   );
 }

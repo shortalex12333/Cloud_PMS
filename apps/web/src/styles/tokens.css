@@ -866,3 +866,57 @@
   height: var(--pill-height);
   border-radius: var(--radius-pill);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPOTLIGHT TOKENS — Raycast-inspired panel (additive, zero overrides)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root, [data-theme="dark"] {
+  /* Panel elevation — deeper than modal-shadow to float off dark backgrounds */
+  --spotlight-shadow: 0 16px 70px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.35);
+  /* Shine sweep — visible only in dark mode */
+  --spotlight-shine-opacity: 1;
+  --spotlight-shine-duration: 2s;
+  /* Loader sweep color — brand teal */
+  --spotlight-loader-color: var(--brand-interactive);
+  /* Footer bar */
+  --spotlight-footer-height: 40px;
+  --spotlight-footer-bg: var(--surface-elevated);
+  --spotlight-footer-border: var(--surface-border);
+  /* kbd badge */
+  --spotlight-kbd-bg: var(--surface-active);
+  --spotlight-kbd-color: var(--text-secondary);
+  --spotlight-kbd-radius: 4px;
+}
+
+[data-theme="light"] {
+  /* Lighter shadow in light mode (Apple barely-there) */
+  --spotlight-shadow: 0 16px 70px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
+  /* No shine in light mode */
+  --spotlight-shine-opacity: 0;
+  --spotlight-shine-duration: 0s;
+  --spotlight-footer-bg: var(--surface-elevated);
+  --spotlight-footer-border: var(--surface-border);
+  --spotlight-kbd-bg: var(--surface-hover);
+  --spotlight-kbd-color: var(--text-tertiary);
+}
+
+/* ─── Spotlight keyframes ─── */
+
+@keyframes spotlight-shine {
+  0%   { background-position: -200% center; opacity: var(--spotlight-shine-opacity); }
+  60%  { opacity: var(--spotlight-shine-opacity); }
+  100% { background-position: 200% center;  opacity: 0; }
+}
+
+@keyframes spotlight-loader {
+  0%   { opacity: 0; transform: translateX(-100%); }
+  40%  { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(200%); }
+}
+
+@keyframes spotlight-in {
+  0%   { opacity: 0; transform: translateY(-4px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    }
+}

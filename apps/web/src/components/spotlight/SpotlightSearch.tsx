@@ -17,7 +17,8 @@
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, Menu, type LucideIcon } from 'lucide-react';
+import { X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, type LucideIcon } from 'lucide-react';
+import SplineIcon from '@/components/spline/SplineIcon';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -862,7 +863,7 @@ export default function SpotlightSearch({
   return (
     <div
       className={cn(
-        isModal && 'fixed inset-0 z-search flex items-start justify-center pt-[18vh]',
+        isModal && 'fixed inset-0 z-search flex items-start justify-center spotlight-modal-offset',
         className
       )}
     >
@@ -883,20 +884,12 @@ export default function SpotlightSearch({
         )}
         style={{ maxWidth: 'var(--celeste-spotlight-width)' }}
       >
-        {/* Main Spotlight Panel - ChatGPT-style pill shape
-            NO border, shadow only (per ChatGPT spec)
-            ALL values tokenized via CSS custom properties */}
+        {/* Main Spotlight Panel */}
         <div
           className={cn(
-            // ChatGPT-style pill shape with tokenized dimensions
             'w-full font-body',
-            'bg-surface-elevated',
-            'rounded-md',
-            // Border only - NO shadow (design spec)
-            'border border-surface-border',
-            'animate-spotlight-in',
-            // Email scope: accent ring only (no border)
-            emailScopeActive && 'bg-brand-interactive/20 ring-2 ring-brand-interactive/40'
+            'spotlight-panel',
+            emailScopeActive && 'ring-2 ring-brand-interactive/40'
           )}
           data-email-scope={emailScopeActive}
         >
@@ -998,7 +991,11 @@ export default function SpotlightSearch({
             </div>
           </div>
 
-          {/* Status Line - system transparency */}
+          {/* Loading sweep — visual indicator */}
+          {(effectiveLoading || isStreaming) && (
+            <div className="spotlight-loader" aria-hidden="true" />
+          )}
+          {/* Status Line — screen reader only */}
           <StatusLine
             message={
               emailScopeActive && emailLoading
@@ -1010,7 +1007,7 @@ export default function SpotlightSearch({
                     : ''
             }
             visible={effectiveLoading || isStreaming}
-            className="px-4 py-2"
+            className="sr-only"
           />
 
           {/* Entity Line removed - clutter that Apple wouldn't include */}
@@ -1020,6 +1017,7 @@ export default function SpotlightSearch({
             <SuggestedActions
               actions={actionSuggestions}
               yachtId={user?.yachtId ?? null}
+              query={query}
               onActionComplete={refetch}
             />
           )}
@@ -1044,7 +1042,7 @@ export default function SpotlightSearch({
               When SurfaceContext is available, EmailOverlay handles the email UI. */}
           {showEmailList && !hasQuery && !surfaceContext && (
             <div
-              className="max-h-celeste-search-results overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-surface-primary rounded-b-2xl"
+              className="max-h-celeste-search-results overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-surface-primary"
               data-testid="email-list-inline"
             >
               <EmailInboxView className="p-4" />
@@ -1055,7 +1053,7 @@ export default function SpotlightSearch({
           {hasQuery && (
             <div
               ref={resultsRef}
-              className="max-h-[60vh] overflow-y-auto overflow-x-hidden spotlight-scrollbar"
+              className="spotlight-results"
             >
               {/* Email scope uses flat list */}
               {emailScopeActive && hasResults && (
@@ -1080,7 +1078,7 @@ export default function SpotlightSearch({
                   {groupedResults.topMatch && (
                     <div className="sr-section">
                       <div className="sr-section-header-wrapper px-4">
-                        <span className="sr-top-label text-celeste-accent">
+                        <span className="spotlight-group-header text-brand-ambient">
                           Top Result
                         </span>
                       </div>
@@ -1154,7 +1152,7 @@ export default function SpotlightSearch({
                       <div key={group.domain} className="sr-section">
                         {/* Domain Header - no icons, no counts (discipline) */}
                         <div className="sr-section-header-wrapper">
-                          <span className="sr-section-header">
+                          <span className="spotlight-group-header">
                             {group.domain}
                           </span>
                         </div>
@@ -1231,6 +1229,24 @@ export default function SpotlightSearch({
               )}
             </div>
           )}
+          {/* Footer keyboard hint strip */}
+          <div className="spotlight-footer" aria-label="Keyboard shortcuts">
+            <div className="spotlight-footer-hint">
+              <span className="spotlight-kbd">↑</span>
+              <span className="spotlight-kbd">↓</span>
+              <span className="text-caption text-txt-tertiary ml-1">Navigate</span>
+            </div>
+            <div className="spotlight-footer-sep" aria-hidden="true" />
+            <div className="spotlight-footer-hint">
+              <span className="spotlight-kbd">↵</span>
+              <span className="text-caption text-txt-tertiary ml-1">Open</span>
+            </div>
+            <div className="spotlight-footer-sep" aria-hidden="true" />
+            <div className="spotlight-footer-hint">
+              <span className="spotlight-kbd">Esc</span>
+              <span className="text-caption text-txt-tertiary ml-1">Clear</span>
+            </div>
+          </div>
         </div>
 
 
@@ -1260,8 +1276,7 @@ export default function SpotlightSearch({
             aria-label={emailScopeActive ? 'Exit Email' : 'Email'}
             data-testid="utility-email-button"
           >
-            <Mail className="w-5 h-5" strokeWidth={1.5} />
-            <Menu className="w-3 h-3" strokeWidth={2} />
+            <SplineIcon scene="/spline/icons/mail_icon_v2.splinecode" size={32} renderSize={512} />
           </button>
 
           {/* Menu Button with hamburger icon */}
@@ -1280,8 +1295,7 @@ export default function SpotlightSearch({
                 aria-label="Menu"
                 data-testid="utility-menu-button"
               >
-                <BookOpen className="w-5 h-5" strokeWidth={1.5} />
-                <Menu className="w-3 h-3" strokeWidth={2} />
+                <SplineIcon scene="/spline/icons/3_lines_icon_dark.splinecode" size={32} renderSize={112} cropX={78} cropY={39} cropSize={20} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -1349,7 +1363,7 @@ export default function SpotlightSearch({
             aria-label="Settings"
             data-testid="utility-settings-button"
           >
-            <Settings className="w-5 h-5" strokeWidth={1.5} />
+            <SplineIcon scene="/spline/icons/setting_icon_dark.splinecode" size={32} renderSize={112} cropX={78} cropY={39} cropSize={20} />
           </button>
         </div>
       </div>

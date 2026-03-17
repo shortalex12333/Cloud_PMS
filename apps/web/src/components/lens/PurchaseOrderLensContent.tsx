@@ -1,13 +1,21 @@
 'use client';
 
 /**
- * PurchaseOrderLensContent - Inner content for Purchase Order lens (no LensContainer).
- * Renders inside ContextPanel following the 1-URL philosophy.
+ * PurchaseOrderLensContent - Purchase Order detail view (lens entity view).
+ *
+ * Renders inside EntityLensPage at /purchasing/{id}.
+ * Reads all data and actions from useEntityLensContext() — zero props.
+ *
+ * No p0 actions are registered for purchase_order yet — available_actions
+ * returns []. The shell action bar will be empty. The addAttachmentAction
+ * const is a forward-compatibility placeholder that makes canAddFile reactive
+ * the moment the backend adds the action.
  */
 
 import * as React from 'react';
-import { cn } from '@/lib/utils';
-import { LensHeader, LensTitleBlock } from './LensHeader';
+import { useRouter } from 'next/navigation';
+import { LensTitleBlock } from './LensHeader';
+// EntityLensPage's RouteLayout owns back/close navigation — LensHeader is NOT used here.
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
@@ -17,15 +25,12 @@ import {
   type Attachment,
   type RelatedEntity,
 } from './sections';
+import { useEntityLensContext } from '@/contexts/EntityLensContext';
+import { getEntityRoute } from '@/lib/featureFlags';
 
-export interface PurchaseOrderLensContentProps {
-  id: string;
-  data: Record<string, unknown>;
-  onBack: () => void;
-  onClose: () => void;
-  onNavigate?: (entityType: string, entityId: string) => void;
-  onRefresh?: () => void;
-}
+// ---------------------------------------------------------------------------
+// Colour helpers
+// ---------------------------------------------------------------------------
 
 function mapStatusToColor(status: string): 'critical' | 'warning' | 'success' | 'neutral' {
   switch (status) {
@@ -42,39 +47,45 @@ function mapStatusToColor(status: string): 'critical' | 'warning' | 'success' | 
   }
 }
 
-export function PurchaseOrderLensContent({
-  id,
-  data,
-  onBack,
-  onClose,
-  onNavigate,
-  onRefresh,
-}: PurchaseOrderLensContentProps) {
-  // Map data
-  const po_number = (data.po_number as string) || `PO-${id.slice(0, 8)}`;
-  const status = (data.status as string) || 'draft';
-  const supplier_name = (data.supplier_name as string) || (data.vendor_name as string) || 'Unknown Supplier';
-  const order_date = data.order_date as string | undefined;
-  const expected_delivery = data.expected_delivery as string | undefined;
-  const total_amount = data.total_amount as number | null | undefined;
-  const currency = (data.currency as string) || 'USD';
+// ---------------------------------------------------------------------------
+// PurchaseOrderLensContent — zero props
+// ---------------------------------------------------------------------------
 
-  // Items from child table
-  const items = (data.items as Array<{
-    id: string;
+export function PurchaseOrderLensContent() {
+  const router = useRouter();
+  const { entity, getAction } = useEntityLensContext();
+
+  // Forward-compatibility placeholder — will be non-null once the backend
+  // registers the action for this entity type.
+  const addAttachmentAction = getAction('add_purchase_order_attachment');
+
+  // Map entity fields — access via entity?.field ?? payload fallback ?? default
+  const payload = (entity?.payload as Record<string, unknown>) ?? {};
+  const po_number = ((entity?.po_number ?? payload.po_number) as string | undefined) ?? `PO-${(entity?.id as string | undefined)?.slice(0, 8) ?? 'unknown'}`;
+  const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
+  const supplier_name = ((entity?.supplier_name ?? entity?.vendor_name ?? payload.supplier_name ?? payload.vendor_name) as string | undefined) ?? 'Unknown Supplier';
+  const order_date = (entity?.order_date ?? payload.order_date) as string | undefined;
+  const expected_delivery = (entity?.expected_delivery ?? payload.expected_delivery) as string | undefined;
+  const total_amount = (entity?.total_amount ?? payload.total_amount) as number | null | undefined;
+  const currency = ((entity?.currency ?? payload.currency) as string | undefined) ?? 'USD';
+
+  const items = ((entity?.items ?? payload.items) as Array<{
+    id?: string;
     description?: string;
     part_name?: string;
     quantity: number;
     unit_price?: number | null;
-  }>) || [];
+  }> | undefined) ?? [];
 
-  // Attachments and related entities
-  const attachments = (data.attachments as Attachment[]) || [];
-  const related_entities = (data.related_entities as RelatedEntity[]) || [];
+  const attachments = ((entity?.attachments ?? payload.attachments) as Attachment[] | undefined) ?? [];
+  const related_entities = ((entity?.related_entities ?? payload.related_entities) as RelatedEntity[] | undefined) ?? [];
 
   const statusColor = mapStatusToColor(status);
-  const statusLabel = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const statusLabel = status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
+  // ---------------------------------------------------------------------------
+  // Vital signs
+  // ---------------------------------------------------------------------------
   const vitalSigns: VitalSign[] = [
     { label: 'Status', value: statusLabel, color: statusColor },
     { label: 'Supplier', value: supplier_name },
@@ -83,67 +94,72 @@ export function PurchaseOrderLensContent({
     { label: 'Ordered', value: order_date ? formatRelativeTime(order_date) : '—' },
   ];
 
+  // ---------------------------------------------------------------------------
+  // Navigation
+  // ---------------------------------------------------------------------------
+  const handleNavigate = React.useCallback(
+    (entityType: string, entityId: string) =>
+      router.push(getEntityRoute(entityType as Parameters<typeof getEntityRoute>[0], entityId)),
+    [router]
+  );
+
   return (
-    <div className="flex flex-col h-full">
-      <LensHeader entityType="Purchase Order" title={po_number} onBack={onBack} onClose={onClose} />
+    <div className="space-y-6">
+      <LensTitleBlock
+        title={po_number}
+        subtitle={supplier_name}
+        status={{ label: statusLabel, color: statusColor }}
+      />
 
-      <main className={cn('flex-1 overflow-y-auto pt-14 px-10 md:px-6 sm:px-4 max-w-[800px] mx-auto w-full pb-12')}>
-        <div className="mt-6">
-          <LensTitleBlock
-            title={po_number}
-            subtitle={supplier_name}
-            status={{ label: statusLabel, color: statusColor }}
-          />
-        </div>
+      <VitalSignsRow signs={vitalSigns} />
 
-        <div className="mt-3">
-          <VitalSignsRow signs={vitalSigns} />
-        </div>
+      {expected_delivery && (
+        <p className="typo-body text-celeste-text-muted">
+          Expected delivery: {new Date(expected_delivery).toLocaleDateString()}
+        </p>
+      )}
 
-        {expected_delivery && (
-          <div className="mt-3">
-            <p className="typo-body text-celeste-text-muted">
-              Expected delivery: {new Date(expected_delivery).toLocaleDateString()}
-            </p>
-          </div>
+      <div className="border-t border-surface-border" aria-hidden="true" />
+
+      <SectionContainer title={`Items (${items.length})`} stickyTop={56}>
+        {items.length === 0 ? (
+          <p className="typo-body text-celeste-text-muted">No items on this order.</p>
+        ) : (
+          <ul className="space-y-3">
+            {items.map((item, index) => (
+              <li
+                key={item.id ?? index}
+                className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg"
+              >
+                <span className="typo-body text-celeste-text-primary">
+                  {item.description ?? item.part_name ?? `Item ${index + 1}`}
+                </span>
+                <span className="typo-body text-celeste-text-muted">
+                  Qty: {item.quantity}
+                  {item.unit_price != null && ` @ ${currency} ${item.unit_price.toFixed(2)}`}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
+      </SectionContainer>
 
-        <div className="mt-6 border-t border-surface-border" aria-hidden="true" />
+      {attachments.length > 0 && (
+        <AttachmentsSection
+          attachments={attachments}
+          onAddFile={() => {}}
+          canAddFile={addAttachmentAction !== null}
+          stickyTop={56}
+        />
+      )}
 
-        <div className="mt-6">
-          <SectionContainer title={`Items (${items.length})`} stickyTop={56}>
-            {items.length === 0 ? (
-              <p className="typo-body text-celeste-text-muted">No items on this order.</p>
-            ) : (
-              <ul className="space-y-3">
-                {items.map((item, index) => (
-                  <li key={item.id || index} className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg">
-                    <span className="typo-body text-celeste-text-primary">
-                      {item.description || item.part_name || `Item ${index + 1}`}
-                    </span>
-                    <span className="typo-body text-celeste-text-muted">
-                      Qty: {item.quantity}
-                      {item.unit_price != null && ` @ ${currency} ${item.unit_price.toFixed(2)}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </SectionContainer>
-        </div>
-
-        {attachments.length > 0 && (
-          <div className="mt-6">
-            <AttachmentsSection attachments={attachments} onAddFile={() => {}} canAddFile={false} stickyTop={56} />
-          </div>
-        )}
-
-        {related_entities.length > 0 && onNavigate && (
-          <div className="mt-6">
-            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
-          </div>
-        )}
-      </main>
+      {related_entities.length > 0 && (
+        <RelatedEntitiesSection
+          entities={related_entities}
+          onNavigate={handleNavigate}
+          stickyTop={56}
+        />
+      )}
     </div>
   );
 }

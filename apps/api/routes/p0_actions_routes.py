@@ -51,58 +51,48 @@ from middleware.auth import lookup_tenant_for_user
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# LEDGER HELPER
+# LEDGER HELPER (moved to handlers/ledger_utils.py — imported here for backward compat)
 # ============================================================================
+from routes.handlers.ledger_utils import build_ledger_event
+from routes.handlers import HANDLERS as _ACTION_HANDLERS
 
-def build_ledger_event(
-    yacht_id: str,
-    user_id: str,
-    event_type: str,  # Must be: create, update, delete, status_change, assignment, etc.
-    entity_type: str,  # e.g., 'work_order', 'fault', 'equipment'
-    entity_id: str,
-    action: str,  # e.g., 'add_note', 'add_checklist_item'
-    user_role: str = None,
-    change_summary: str = None,
-    metadata: dict = None
-) -> dict:
-    """Build a ledger event with correct schema for ledger_events table.
 
-    Required columns (NOT NULL):
-    - yacht_id, event_type, entity_type, entity_id, action, user_id, proof_hash
-
-    event_type must be one of:
-    - create, update, delete, status_change, assignment, approval, rejection,
-      escalation, handover, import, export
-    """
-    event_data = {
-        "yacht_id": str(yacht_id),
-        "user_id": str(user_id),
-        "event_type": event_type,
-        "entity_type": entity_type,
-        "entity_id": str(entity_id),
-        "action": action,
-        "source_context": "microaction",
-        "metadata": metadata or {},
-    }
-
-    if user_role:
-        event_data["user_role"] = user_role
-    if change_summary:
-        event_data["change_summary"] = change_summary
-
-    # Generate proof_hash (SHA-256 of event data)
-    hash_input = json.dumps({
-        "yacht_id": event_data["yacht_id"],
-        "user_id": event_data["user_id"],
-        "event_type": event_type,
-        "entity_type": entity_type,
-        "entity_id": str(entity_id),
-        "action": action,
-        "timestamp": datetime.utcnow().isoformat()
-    }, sort_keys=True)
-    event_data["proof_hash"] = hashlib.sha256(hash_input.encode()).hexdigest()
-
-    return event_data
+# Maps action name → (entity_type, payload_key_for_entity_id)
+_ACTION_ENTITY_MAP = {
+    "start_work_order":            ("work_order", "work_order_id"),
+    "complete_work_order":         ("work_order", "work_order_id"),
+    "close_work_order":            ("work_order", "work_order_id"),
+    "assign_work_order":           ("work_order", "work_order_id"),
+    "add_note_to_work_order":      ("work_order", "work_order_id"),
+    "add_part_to_work_order":      ("work_order", "work_order_id"),
+    "update_work_order":           ("work_order", "work_order_id"),
+    "report_fault":                ("fault", "fault_id"),
+    "acknowledge_fault":           ("fault", "fault_id"),
+    "close_fault":                 ("fault", "fault_id"),
+    "diagnose_fault":              ("fault", "fault_id"),
+    "reopen_fault":                ("fault", "fault_id"),
+    "update_fault":                ("fault", "fault_id"),
+    "add_fault_note":              ("fault", "fault_id"),
+    "update_equipment_status":     ("equipment", "equipment_id"),
+    "add_equipment_note":          ("equipment", "equipment_id"),
+    "update_running_hours":        ("equipment", "equipment_id"),
+    "log_part_usage":              ("part", "part_id"),
+    "adjust_stock_quantity":       ("part", "part_id"),
+    "write_off_part":              ("part", "part_id"),
+    "create_shopping_list_item":   ("shopping_list_item", "item_id"),
+    "approve_shopping_list_item":  ("shopping_list_item", "item_id"),
+    "reject_shopping_list_item":   ("shopping_list_item", "item_id"),
+    "mark_shopping_list_ordered":  ("shopping_list_item", "item_id"),
+    "promote_candidate_to_part":   ("shopping_list_item", "item_id"),
+    "edit_receiving":              ("receiving", "receiving_id"),
+    "submit_receiving_for_review": ("receiving", "receiving_id"),
+    "accept_receiving":            ("receiving", "receiving_id"),
+    "reject_receiving":            ("receiving", "receiving_id"),
+    "submit_purchase_order":       ("purchase_order", "purchase_order_id"),
+    "approve_purchase_order":      ("purchase_order", "purchase_order_id"),
+    "mark_po_received":            ("purchase_order", "purchase_order_id"),
+    "cancel_purchase_order":       ("purchase_order", "purchase_order_id"),
+}
 
 
 # ============================================================================
@@ -662,6 +652,90 @@ async def create_work_order_from_fault_preview(
     return result
 
 
+# ---------------------------------------------------------------------------
+# ENTITY CONTEXT NORMALISATION (Phase 4)
+# Maps generic entity_id → domain-specific keys based on action name.
+# useEntityLens surfaces always send entity_id; standalone forms send
+# domain keys (equipment_id, fault_id, etc.) directly.
+# Uses setdefault — if the domain key is already present it is NOT overwritten.
+# ---------------------------------------------------------------------------
+
+_EQUIPMENT_ACTIONS = frozenset({
+    "create_work_order_for_equipment", "update_equipment_status",
+    "flag_equipment_attention", "add_equipment_note",
+    "show_manual_section", "view_equipment_details",
+    "view_equipment_history", "view_equipment_parts",
+    "view_linked_faults", "view_equipment_manual",
+    "view_fault_history", "view_work_order_history",
+    "suggest_parts",
+})
+
+_FAULT_ACTIONS = frozenset({
+    "close_fault", "diagnose_fault", "acknowledge_fault", "resolve_fault",
+    "reopen_fault", "mark_fault_false_alarm", "create_work_order_from_fault",
+    "update_fault", "add_fault_photo", "view_fault_detail",
+    "add_fault_note", "report_fault",
+})
+
+_WORK_ORDER_ACTIONS = frozenset({
+    "update_work_order", "update_wo", "assign_work_order", "assign_wo",
+    "close_work_order", "complete_work_order", "add_wo_hours", "log_work_hours",
+    "add_wo_part", "add_part_to_wo", "add_wo_note", "add_note_to_wo",
+    "start_work_order", "begin_wo", "cancel_work_order", "cancel_wo",
+    "view_work_order_detail", "view_work_order", "get_work_order",
+    "add_work_order_photo", "mark_work_order_complete",
+    "add_note_to_work_order", "add_part_to_work_order",
+    "reassign_work_order", "archive_work_order",
+    "add_parts_to_work_order", "view_work_order_checklist", "add_work_order_note",
+})
+
+_PART_ACTIONS = frozenset({
+    "consume_part", "receive_part", "transfer_part", "adjust_stock_quantity",
+    "write_off_part", "add_to_shopping_list", "view_part_stock",
+    "view_part_location", "view_part_usage", "view_linked_equipment",
+    "view_part_details", "check_stock_level", "log_part_usage",
+})
+
+_PO_ACTIONS = frozenset({
+    "submit_purchase_order", "approve_purchase_order",
+    "mark_po_received", "cancel_purchase_order",
+})
+
+_RECEIVING_ACTIONS = frozenset({
+    "submit_receiving_for_review", "edit_receiving",
+})
+
+
+def resolve_entity_context(action: str, context: dict) -> dict:
+    """
+    Normalise incoming context so handlers receive domain-specific keys.
+
+    Callers from useEntityLens surfaces send `entity_id`.
+    Callers from standalone forms send `equipment_id`, `fault_id`, etc. directly.
+    After this function, both paths produce the same context shape for handlers.
+
+    Uses setdefault — existing domain keys are never overwritten.
+    """
+    ctx = dict(context)
+    entity_id = ctx.get("entity_id")
+
+    if entity_id:
+        if action in _EQUIPMENT_ACTIONS:
+            ctx.setdefault("equipment_id", entity_id)
+        elif action in _FAULT_ACTIONS:
+            ctx.setdefault("fault_id", entity_id)
+        elif action in _WORK_ORDER_ACTIONS:
+            ctx.setdefault("work_order_id", entity_id)
+        elif action in _PART_ACTIONS:
+            ctx.setdefault("part_id", entity_id)
+        elif action in _PO_ACTIONS:
+            ctx.setdefault("purchase_order_id", entity_id)
+        elif action in _RECEIVING_ACTIONS:
+            ctx.setdefault("receiving_id", entity_id)
+
+    return ctx
+
+
 # ============================================================================
 # EXECUTE ENDPOINT (All Actions)
 # ============================================================================
@@ -709,6 +783,7 @@ async def execute_action(
                     }
                 )
             user_context["role"] = tenant_info["role"]
+            user_context["department"] = tenant_info.get("department", "")
         else:
             raise HTTPException(
                 status_code=403,
@@ -718,6 +793,13 @@ async def execute_action(
                     "message": "User is not assigned to any yacht/tenant"
                 }
             )
+
+    # Enrich department from tenant lookup (validate_jwt already resolved yacht_id
+    # via a cached lookup, so this call is a cache hit — <1ms)
+    if not user_context.get("department") and lookup_tenant_for_user:
+        _dept_tenant = lookup_tenant_for_user(user_context.get("user_id", ""))
+        if _dept_tenant:
+            user_context["department"] = _dept_tenant.get("department", "")
 
     # Populate context.yacht_id from server-resolved user_context (invariant #1)
     # SECURITY: Client cannot send yacht_id - always use server-resolved value
@@ -926,7 +1008,7 @@ async def execute_action(
         "link_document_to_certificate": ["certificate_id", "document_id"],
         "supersede_certificate": ["certificate_id", "reason", "signature"],
         # Shopping List Actions (Shopping List Lens v1)
-        "create_shopping_list_item": ["part_name", "quantity_requested", "source_type"],
+        "create_shopping_list_item": ["source_type"],  # part_name auto-filled from part_id; quantity defaults to 1
         "approve_shopping_list_item": ["item_id", "quantity_approved"],
         "reject_shopping_list_item": ["item_id", "rejection_reason"],
         "promote_candidate_to_part": ["item_id"],
@@ -1132,7 +1214,27 @@ async def execute_action(
                 }
             )
 
-    # Route to handler based on action name
+    # ========================================================================
+    # ENTITY CONTEXT NORMALISATION + HANDLER DISPATCH (Phase 4)
+    # resolve_entity_context maps entity_id → domain key once for all handlers.
+    # Registered handlers return here. Unregistered actions fall through to the
+    # legacy try/elif chain below. Delete the chain only after all actions migrated.
+    # ========================================================================
+    resolved_context = resolve_entity_context(action, request.context)
+
+    if action in _ACTION_HANDLERS:
+        tenant_alias = user_context.get("tenant_key_alias", "")
+        db_client = get_tenant_supabase_client(tenant_alias)
+        return await _ACTION_HANDLERS[action](
+            payload=payload,
+            context=resolved_context,
+            yacht_id=yacht_id,
+            user_id=user_id,
+            user_context=user_context,
+            db_client=db_client,
+        )
+
+    # Legacy elif chain — handles all actions not yet migrated to HANDLERS
     try:
         # ===== WORK ORDER ACTIONS (P0 Actions 2-5) =====
         if action == "create_work_order_from_fault":
@@ -1253,6 +1355,23 @@ async def execute_action(
                         "work_order_id": wo_id,
                         "message": "Work order created from fault"
                     }
+                    try:
+                        ledger_event = build_ledger_event(
+                            yacht_id=yacht_id,
+                            user_id=user_id,
+                            event_type="create",
+                            entity_type="work_order",
+                            entity_id=wo_id,
+                            action="create_work_order_from_fault",
+                            user_role=user_context.get("role"),
+                            change_summary="Work order created from fault",
+                        )
+                        db_client.table("ledger_events").insert(ledger_event).execute()
+                    except Exception as ledger_err:
+                        if "204" in str(ledger_err):
+                            pass
+                        else:
+                            logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
                 else:
                     result = {
                         "status": "error",
@@ -1312,6 +1431,23 @@ async def execute_action(
                         "note_id": note_result.data[0]["id"],
                         "message": "Note added to work order successfully"
                     }
+                    try:
+                        ledger_event = build_ledger_event(
+                            yacht_id=yacht_id,
+                            user_id=user_id,
+                            event_type="update",
+                            entity_type="work_order",
+                            entity_id=work_order_id,
+                            action="add_note_to_work_order",
+                            user_role=user_context.get("role"),
+                            change_summary="Note added to work order",
+                        )
+                        db_client.table("ledger_events").insert(ledger_event).execute()
+                    except Exception as ledger_err:
+                        if "204" in str(ledger_err):
+                            pass
+                        else:
+                            logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
                 else:
                     result = {
                         "status": "error",
@@ -1672,6 +1808,23 @@ async def execute_action(
             # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
             if handler_result.get("status") == "success":
                 result = handler_result
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="part",
+                        entity_id=payload.get("part_id"),
+                        action="consume_part",
+                        user_role=user_context.get("role"),
+                        change_summary="Part consumed",
+                    )
+                    tenant_db.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
@@ -1743,6 +1896,23 @@ async def execute_action(
             # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
             if handler_result.get("status") == "success":
                 result = handler_result
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="part",
+                        entity_id=payload.get("part_id"),
+                        action="adjust_stock_quantity",
+                        user_role=user_context.get("role"),
+                        change_summary="Stock adjusted",
+                    )
+                    tenant_db.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
@@ -1808,91 +1978,6 @@ async def execute_action(
             else:
                 result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
-        # ===== HANDOVER ACTIONS (P0 Action 8) =====
-        elif action == "add_to_handover":
-            # Route to proper handler
-            if not handover_handlers:
-                raise HTTPException(status_code=500, detail="Handover handlers not initialized")
-
-            # Support multiple payload formats for backwards compatibility
-            # Format 1 (E2E test): { summary, category, is_critical, priority }
-            # Format 2 (legacy): { title, description, category, priority }
-            # Format 3 (original): { entity_type, entity_id, summary_text, category }
-            summary = payload.get("summary") or payload.get("summary_text")
-            if not summary:
-                # Fallback: construct from title + description
-                title = payload.get("title")
-                description = payload.get("description", "")
-                summary = f"{title}\n\n{description}" if title and description else (title or description or "")
-
-            if not summary or len(summary) < 10:
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "status": "error",
-                        "error_code": "VALIDATION_ERROR",
-                        "message": "Summary must be at least 10 characters"
-                    }
-                )
-
-            entity_type = payload.get("entity_type", "note")  # Default to note
-            entity_id = payload.get("entity_id")
-            category = payload.get("category", "fyi")
-            priority = payload.get("priority", "normal")
-            is_critical = payload.get("is_critical", False)
-            requires_action = payload.get("requires_action", False)
-            action_summary = payload.get("action_summary")
-            section = payload.get("section") or payload.get("presentation_bucket")  # Accept both aliases
-
-            try:
-                result = await handover_handlers.add_to_handover_execute(
-                    entity_type=entity_type,
-                    entity_id=entity_id,
-                    summary=summary,
-                    category=category,
-                    yacht_id=yacht_id,
-                    user_id=user_id,
-                    priority=priority,
-                    section=section,
-                    is_critical=is_critical,
-                    requires_action=requires_action,
-                    action_summary=action_summary
-                )
-
-                # Map handler errors to HTTP exceptions
-                if result.get("status") == "error":
-                    error_code = result.get("error_code")
-                    status_code = 400
-
-                    if error_code == "INVALID_ENTITY_TYPE":
-                        status_code = 400
-                    elif error_code == "VALIDATION_ERROR":
-                        status_code = 400
-                    elif error_code == "INTERNAL_ERROR":
-                        status_code = 500
-
-                    raise HTTPException(
-                        status_code=status_code,
-                        detail={
-                            "status": "error",
-                            "error_code": error_code,
-                            "message": result.get("message")
-                        }
-                    )
-
-            except HTTPException:
-                raise
-            except Exception as e:
-                logger.exception(f"Unexpected error in add_to_handover: {e}")
-                raise HTTPException(
-                    status_code=500,
-                    detail={
-                        "status": "error",
-                        "error_code": "INTERNAL_ERROR",
-                        "message": f"Failed to add to handover: {str(e)}"
-                    }
-                )
-
         # ===== MANUAL ACTIONS (P0 Action 1) =====
         elif action == "show_manual_section":
             if not manual_handlers:
@@ -1947,6 +2032,23 @@ async def execute_action(
                     "fault_id": fault_result.data[0]["id"],
                     "message": "Fault reported successfully"
                 }
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="create",
+                        entity_type="fault",
+                        entity_id=fault_result.data[0]["id"],
+                        action="report_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault reported",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {
                     "status": "error",
@@ -2008,6 +2110,23 @@ async def execute_action(
                     "fault_id": fault_id,
                     "new_status": "investigating"
                 }
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="acknowledge_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault acknowledged",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to acknowledge fault"}
 
@@ -2065,6 +2184,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Diagnosis added"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="diagnose_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault diagnosed",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to add diagnosis"}
 
@@ -2103,6 +2239,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault closed"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="close_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault closed",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close fault"}
 
@@ -2133,6 +2286,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault updated"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="update_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault updated",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update fault"}
 
@@ -2173,6 +2343,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault reopened"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="reopen_fault",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault reopened",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to reopen fault"}
 
@@ -2204,6 +2391,23 @@ async def execute_action(
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault marked as false alarm"}
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="mark_fault_false_alarm",
+                        user_role=user_context.get("role"),
+                        change_summary="Fault marked as false alarm",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to mark as false alarm"}
 
@@ -2246,347 +2450,6 @@ async def execute_action(
                 result = {"status": "success", "fault": fault_result.data}
             else:
                 result = {"status": "error", "error_code": "NOT_FOUND", "message": "Fault not found"}
-
-        # ===== WORK ORDER ACTIONS (Cluster 02) =====
-        elif action in ("update_work_order", "update_wo"):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-
-            # Build update data
-            update_data = {"updated_by": user_id, "updated_at": datetime.now(timezone.utc).isoformat()}
-            if payload.get("description"):
-                update_data["description"] = payload["description"]
-            if payload.get("priority"):
-                # Map priority values
-                priority_map = {"normal": "routine", "low": "routine", "medium": "routine", "high": "critical"}
-                raw_priority = payload["priority"]
-                update_data["priority"] = priority_map.get(raw_priority, raw_priority if raw_priority in ("routine", "emergency", "critical") else "routine")
-            if payload.get("title"):
-                update_data["title"] = payload["title"]
-
-            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-            if wo_result.data:
-                result = {"status": "success", "message": "Work order updated"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update work order"}
-
-        elif action in ("assign_work_order", "assign_wo"):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-            assigned_to = payload.get("assigned_to")
-
-            update_data = {
-                "assigned_to": assigned_to,
-                "updated_by": user_id,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-            if wo_result.data:
-                result = {"status": "success", "message": "Work order assigned"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to assign work order"}
-
-        elif action in ("close_work_order", "complete_work_order"):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-
-            # Note: completed_by has FK to non-existent users table, skip it
-            update_data = {
-                "status": "completed",
-                "completed_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            if payload.get("completion_notes"):
-                update_data["completion_notes"] = payload["completion_notes"]
-
-            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-            if wo_result.data:
-                result = {"status": "success", "message": "Work order closed"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close work order"}
-
-        elif action in ("add_wo_hours", "log_work_hours"):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-            hours = payload.get("hours", 0)
-
-            # Add to work order notes as hours entry
-            # Note: created_by is NOT NULL, use existing tenant user ID
-            # Note: note_type must be 'general' or 'progress'
-            TENANT_USER_ID = "a35cad0b-02ff-4287-b6e4-17c96fa6a424"
-            note_data = {
-                "work_order_id": work_order_id,
-                "note_text": f"Hours logged: {hours}h - {payload.get('description', 'Work performed')}",
-                "note_type": "progress",
-                "created_by": TENANT_USER_ID,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
-            if note_result.data:
-                result = {"status": "success", "message": f"Logged {hours} hours"}
-            else:
-                result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to log hours"}
-
-        elif action in ("add_wo_part", "add_part_to_wo"):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-            part_id = payload.get("part_id")
-            quantity = payload.get("quantity", 1)
-
-            # Validate required fields
-            if not work_order_id:
-                raise HTTPException(status_code=400, detail="work_order_id is required")
-            if not part_id:
-                raise HTTPException(status_code=400, detail="part_id is required")
-
-            # Validate quantity bounds (PostgreSQL integer max is 2147483647)
-            try:
-                quantity = int(quantity)
-            except (TypeError, ValueError):
-                raise HTTPException(status_code=400, detail="quantity must be a valid integer")
-
-            if quantity < 0:
-                raise HTTPException(status_code=400, detail="quantity cannot be negative")
-            if quantity > 1000000:
-                raise HTTPException(status_code=400, detail="quantity exceeds maximum allowed (1000000)")
-
-            # Use upsert to handle duplicate key (work_order_id, part_id)
-            part_data = {
-                "work_order_id": work_order_id,
-                "part_id": part_id,
-                "quantity": quantity,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            part_result = db_client.table("pms_work_order_parts").upsert(part_data, on_conflict="work_order_id,part_id").execute()
-            if part_result.data:
-                result = {"status": "success", "message": "Part added to work order"}
-            else:
-                result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to add part"}
-
-        elif action in ("add_wo_note", "add_note_to_wo"):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-            note_text = payload.get("note_text")
-
-            # Note: created_by is NOT NULL, use existing tenant user ID
-            # Note: note_type must be 'general' or 'progress'
-            # Note: pms_work_order_notes does NOT have yacht_id column - ledger trigger fetches it from parent WO
-            TENANT_USER_ID = "a35cad0b-02ff-4287-b6e4-17c96fa6a424"
-            raw_note_type = payload.get("note_type", "general")
-            note_type = raw_note_type if raw_note_type in ("general", "progress") else "general"
-            note_data = {
-                "work_order_id": work_order_id,
-                "note_text": note_text,
-                "note_type": note_type,
-                "created_by": TENANT_USER_ID,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
-            if note_result.data:
-                result = {"status": "success", "message": "Note added to work order"}
-            else:
-                result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to add note"}
-
-        elif action in ("start_work_order", "begin_wo"):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-
-            # Note: started_at column doesn't exist, just update status
-            update_data = {
-                "status": "in_progress",
-                "updated_by": user_id,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-            if wo_result.data:
-                result = {"status": "success", "message": "Work order started"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to start work order"}
-
-        elif action in ("cancel_work_order", "cancel_wo"):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-
-            # Note: cancellation columns don't exist, just update status and add note
-            update_data = {
-                "status": "cancelled",
-                "updated_by": user_id,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-            if wo_result.data:
-                result = {"status": "success", "message": "Work order cancelled"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to cancel work order"}
-
-        elif action in ("create_work_order", "create_wo"):
-            from datetime import datetime, timezone
-            import uuid
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            # Validate required fields
-            title = payload.get("title")
-            if not title:
-                raise HTTPException(status_code=400, detail="title is required")
-
-            # Map priority
-            raw_priority = payload.get("priority", "routine")
-            priority_map = {"normal": "routine", "low": "routine", "medium": "routine", "high": "critical"}
-            priority = priority_map.get(raw_priority, raw_priority if raw_priority in ("routine", "emergency", "critical") else "routine")
-
-            # Department-level RBAC for crew (2026-02-09)
-            user_role = user_context.get("role")
-            if user_role == "crew":
-                # Get user's department from TENANT DB (stored in metadata JSON)
-                try:
-                    user_dept_result = db_client.table("auth_users_profiles").select("metadata").eq("id", user_id).eq("yacht_id", yacht_id).maybe_single().execute()
-                    if user_dept_result.data and user_dept_result.data.get("metadata"):
-                        # Department is stored in metadata->department JSON field
-                        user_dept = user_dept_result.data["metadata"].get("department")
-                        # Normalize to lowercase for comparison
-                        user_dept = user_dept.lower() if user_dept else None
-                    else:
-                        user_dept = None
-                except Exception:
-                    # User doesn't have a profile record - no department
-                    user_dept = None
-
-                # Get work order department from payload
-                wo_dept = payload.get("department")
-
-                # Require department in payload
-                if not wo_dept:
-                    raise HTTPException(status_code=400, detail="department is required for crew")
-
-                # Normalize to lowercase for comparison
-                wo_dept = wo_dept.lower() if wo_dept else None
-
-                # Require crew to have a department in profile
-                if not user_dept:
-                    raise HTTPException(status_code=403, detail="Crew user must have a department assigned in their profile")
-
-                # Enforce department match
-                if user_dept != wo_dept:
-                    raise HTTPException(
-                        status_code=403,
-                        detail=f"Crew can only create work orders for their department (user: {user_dept}, work order: {wo_dept})"
-                    )
-
-            wo_data = {
-                "yacht_id": yacht_id,
-                "equipment_id": payload.get("equipment_id"),
-                "title": title,
-                "description": payload.get("description", ""),
-                "priority": priority,
-                "status": "planned",
-                "work_order_type": payload.get("work_order_type", "corrective"),
-                "created_by": user_id,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            wo_result = db_client.table("pms_work_orders").insert(wo_data).execute()
-            if wo_result.data:
-                work_order_id = wo_result.data[0]["id"]
-
-                # Create audit log entry
-                try:
-                    audit_entry = {
-                        "id": str(uuid.uuid4()),
-                        "yacht_id": yacht_id,
-                        "action": "create_work_order",
-                        "entity_type": "work_order",
-                        "entity_id": work_order_id,
-                        "user_id": user_id,
-                        "old_values": {},
-                        "new_values": wo_data,
-                        "signature": {
-                            "user_id": user_id,
-                            "execution_id": execution_id,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "action": "create_work_order"
-                        }
-                    }
-                    db_client.table("pms_audit_log").insert(audit_entry).execute()
-                    logger.info(f"Audit log created for create_work_order: execution_id={execution_id}")
-                except Exception as audit_err:
-                    # Log audit failure but don't fail the action
-                    logger.warning(f"Audit log failed for create_work_order (work_order_id={work_order_id}): {audit_err}")
-
-                result = {"status": "success", "work_order_id": work_order_id, "message": "Work order created"}
-            else:
-                result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to create work order"}
-
-        elif action == "list_work_orders":
-            # List work orders with optional filters
-            logger.info(f"[WORK_ORDER] Listing work orders - yacht_id={yacht_id}")
-
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            from handlers.list_handlers import ListHandlers
-            list_handlers_instance = ListHandlers(db_client)
-
-            # Extract filters from payload
-            filters = payload.get("filters", {})
-            params = payload.get("params", {})
-
-            result = await list_handlers_instance.list_work_orders(
-                yacht_id=yacht_id,
-                filters=filters,
-                params=params
-            )
-
-        elif action in ("view_work_order_detail", "view_work_order", "get_work_order"):
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-
-            wo_result = db_client.table("pms_work_orders").select("*, pms_equipment(*)").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
-            if wo_result.data:
-                result = {"status": "success", "work_order": wo_result.data}
-            else:
-                result = {"status": "error", "error_code": "NOT_FOUND", "message": "Work order not found"}
-
-        # ===== PM SCHEDULE ACTIONS (Cluster 02 - BLOCKED: table not exists) =====
-        elif action in ("create_pm_schedule", "record_pm_completion", "defer_pm_task", "update_pm_schedule", "view_pm_due_list"):
-            # BLOCKED: pms_maintenance_schedules table does not exist in tenant DB
-            raise HTTPException(
-                status_code=501,
-                detail=f"Action '{action}' BLOCKED: pms_maintenance_schedules table does not exist. Create table first."
-            )
-
-        # ===== HANDOVER ACTIONS (Cluster 05 - BLOCKED: handover_id NOT NULL) =====
-        elif action in ("create_handover", "acknowledge_handover", "update_handover", "delete_handover", "filter_handover"):
-            # BLOCKED: dash_handover_items requires handover_id NOT NULL but no parent handovers table exists
-            raise HTTPException(
-                status_code=501,
-                detail=f"Action '{action}' BLOCKED: dash_handover_items.handover_id is NOT NULL but no parent handovers table exists."
-            )
-
-        # ===== COMPLIANCE ACTIONS (Cluster 06 - BLOCKED: tables not exist) =====
-        # NOTE: update_certificate is now handled by Certificate Lens v2 (pms_vessel_certificates/pms_crew_certificates)
-        elif action in ("add_certificate", "renew_certificate", "add_service_contract", "record_contract_claim"):
-            # BLOCKED: pms_certificates and pms_service_contracts tables do not exist
-            raise HTTPException(
-                status_code=501,
-                detail=f"Action '{action}' BLOCKED: pms_certificates/pms_service_contracts tables do not exist."
-            )
 
         # ===== EQUIPMENT STATUS ACTION (Cluster 03) =====
         elif action == "update_equipment_status":
@@ -2641,6 +2504,23 @@ async def execute_action(
                     "new_status": new_status,
                     "message": f"Equipment status updated from {old_status} to {new_status}"
                 }
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="equipment",
+                        entity_id=equipment_id,
+                        action="update_equipment_status",
+                        user_role=user_context.get("role"),
+                        change_summary="Equipment status updated",
+                    )
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    if "204" in str(ledger_err):
+                        pass
+                    else:
+                        logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
             except Exception as db_err:
                 error_str = str(db_err)
                 if "status" in error_str.lower() and "column" in error_str.lower():
@@ -2649,332 +2529,6 @@ async def execute_action(
                         detail="Action blocked: pms_equipment.status column not found. Run migration 00000000000018."
                     )
                 raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
-        # ===== DOCUMENT ACTIONS moved to Document Lens v2 block =====
-        # (see elif block for upload_document, update_document, etc.)
-
-        # ===== SHOPPING ITEM DELETE ACTION (Cluster 08) =====
-        elif action == "delete_shopping_item":
-            # RBAC Check: delete_shopping_item is HoD+ only (Security Fix 2026-02-10)
-            delete_item_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
-            if user_role not in delete_item_roles:
-                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {delete_item_roles}")
-                return {
-                    "success": False,
-                    "code": "FORBIDDEN",
-                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
-                    "required_roles": delete_item_roles
-                }
-
-            import re
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            item_id = payload.get("item_id")
-            if not item_id:
-                raise HTTPException(status_code=400, detail="item_id is required")
-
-            # Validate UUID format to catch placeholder strings like 'REAL_SHOPPING_ITEM_ID'
-            uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-            if not re.match(uuid_pattern, str(item_id), re.IGNORECASE):
-                raise HTTPException(status_code=400, detail="item_id must be a valid UUID")
-
-            try:
-                # Check if item exists
-                check = db_client.table("pms_shopping_list_items").select("id").eq("id", item_id).eq("yacht_id", yacht_id).maybe_single().execute()
-                if not check or not check.data:
-                    raise HTTPException(status_code=404, detail="Shopping list item not found")
-
-                # Delete item
-                db_client.table("pms_shopping_list_items").delete().eq("id", item_id).eq("yacht_id", yacht_id).execute()
-
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "item_id": item_id,
-                    "message": "Shopping list item deleted successfully"
-                }
-            except HTTPException:
-                raise  # Re-raise our own exceptions
-            except Exception as e:
-                error_str = str(e)
-                # Handle table not existing
-                if "does not exist" in error_str.lower() or "42P01" in error_str:
-                    raise HTTPException(status_code=404, detail="Shopping list feature not available")
-                # Handle finance immutability constraint
-                if "immutable" in error_str.lower() or "finance transactions" in error_str.lower():
-                    raise HTTPException(status_code=409, detail="Cannot delete: item is linked to a finance transaction. Use reversal instead.")
-                raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
-
-        # ===== WORK ORDER PHOTO ACTION (Cluster 02) =====
-        elif action == "add_work_order_photo":
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-            photo_url = payload.get("photo_url")
-
-            if not work_order_id:
-                raise HTTPException(status_code=400, detail="work_order_id is required")
-            if not photo_url:
-                raise HTTPException(status_code=400, detail="photo_url is required")
-
-            # Check if work order exists
-            try:
-                check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
-                if not check.data:
-                    raise HTTPException(status_code=404, detail="Work order not found")
-            except HTTPException:
-                raise  # Re-raise our own 404
-            except Exception as e:
-                # Supabase single() raises exception when 0 rows found
-                error_str = str(e)
-                if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
-                    raise HTTPException(status_code=404, detail="Work order not found")
-                # Re-raise other exceptions as 500
-                raise
-
-            # Store photo URL in metadata (work orders don't have a dedicated photos table)
-            wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
-            metadata = wo_data.data.get("metadata", {}) if wo_data.data else {}
-            if not metadata:
-                metadata = {}
-            photos = metadata.get("photos", [])
-            photos.append({
-                "url": photo_url,
-                "caption": payload.get("caption", ""),
-                "added_by": user_id,
-                "added_at": datetime.now(timezone.utc).isoformat()
-            })
-            metadata["photos"] = photos
-
-            db_client.table("pms_work_orders").update({
-                "metadata": metadata,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-
-            # Record ledger event
-            try:
-                ledger_event = build_ledger_event(
-                    yacht_id=yacht_id,
-                    user_id=user_id,
-                    event_type="update",
-                    entity_type="work_order",
-                    entity_id=work_order_id,
-                    action="add_work_order_photo",
-                    user_role=user_context.get("role", "member"),
-                    change_summary="Photo added to work order",
-                    metadata={
-                        "photo_url": photo_url,
-                        "caption": payload.get("caption", ""),
-                        "domain": "Work Orders"
-                    }
-                )
-                try:
-                    db_client.table("ledger_events").insert(ledger_event).execute()
-                    logger.info(f"[Ledger] add_work_order_photo recorded for {work_order_id}")
-                except Exception as e:
-                    if "204" in str(e):
-                        logger.info(f"[Ledger] add_work_order_photo recorded (204)")
-                    else:
-                        logger.warning(f"[Ledger] Failed: {e}")
-            except Exception as e:
-                logger.warning(f"[Ledger] Failed to prepare event: {e}")
-
-            result = {
-                "status": "success",
-                "success": True,
-                "work_order_id": work_order_id,
-                "message": "Photo added to work order"
-            }
-
-        # ===== ADD PARTS TO WORK ORDER (Cluster 02) =====
-        elif action == "add_parts_to_work_order":
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-            part_id = payload.get("part_id")
-
-            if not work_order_id:
-                raise HTTPException(status_code=400, detail="work_order_id is required")
-            if not part_id:
-                raise HTTPException(status_code=400, detail="part_id is required")
-
-            # Check if work order exists
-            try:
-                check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
-                if not check.data:
-                    raise HTTPException(status_code=404, detail="Work order not found")
-            except HTTPException:
-                raise  # Re-raise our own 404
-            except Exception as e:
-                # Supabase single() raises exception when 0 rows found
-                error_str = str(e)
-                if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
-                    raise HTTPException(status_code=404, detail="Work order not found")
-                # Re-raise other exceptions as 500
-                raise
-
-            # Store part link in metadata
-            wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
-            metadata = wo_data.data.get("metadata", {}) if wo_data.data else {}
-            if not metadata:
-                metadata = {}
-            parts = metadata.get("parts", [])
-            parts.append({
-                "part_id": part_id,
-                "quantity": payload.get("quantity", 1),
-                "added_by": user_id,
-                "added_at": datetime.now(timezone.utc).isoformat()
-            })
-            metadata["parts"] = parts
-
-            db_client.table("pms_work_orders").update({
-                "metadata": metadata,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-
-            # Record ledger event
-            try:
-                ledger_event = build_ledger_event(
-                    yacht_id=yacht_id,
-                    user_id=user_id,
-                    event_type="update",
-                    entity_type="work_order",
-                    entity_id=work_order_id,
-                    action="add_parts_to_work_order",
-                    user_role=user_context.get("role", "member"),
-                    change_summary=f"Part {part_id} added (qty: {payload.get('quantity', 1)})",
-                    metadata={
-                        "part_id": part_id,
-                        "quantity": payload.get("quantity", 1),
-                        "domain": "Work Orders"
-                    }
-                )
-                try:
-                    db_client.table("ledger_events").insert(ledger_event).execute()
-                    logger.info(f"[Ledger] add_parts_to_work_order recorded for {work_order_id}")
-                except Exception as e:
-                    if "204" in str(e):
-                        logger.info(f"[Ledger] add_parts_to_work_order recorded (204)")
-                    else:
-                        logger.warning(f"[Ledger] Failed: {e}")
-            except Exception as e:
-                logger.warning(f"[Ledger] Failed to prepare event: {e}")
-
-            result = {
-                "status": "success",
-                "success": True,
-                "work_order_id": work_order_id,
-                "part_id": part_id,
-                "message": "Part added to work order"
-            }
-
-        # ===== VIEW WORK ORDER CHECKLIST (Cluster 02) =====
-        elif action == "view_work_order_checklist":
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-
-            # Check if work order exists and get its metadata
-            wo_data = db_client.table("pms_work_orders").select("id, metadata").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
-            if not wo_data.data:
-                raise HTTPException(status_code=404, detail="Work order not found")
-
-            metadata = wo_data.data.get("metadata", {}) or {}
-            checklist = metadata.get("checklist", [])
-
-            # Calculate progress
-            total = len(checklist)
-            completed = len([item for item in checklist if item.get("completed")])
-
-            result = {
-                "status": "success",
-                "success": True,
-                "work_order_id": work_order_id,
-                "checklist": checklist,
-                "progress": {
-                    "completed": completed,
-                    "total": total,
-                    "percent": round((completed / total * 100) if total > 0 else 0, 1)
-                }
-            }
-
-        # ===== WORKLIST ACTIONS (Cluster 02) =====
-        elif action == "view_worklist":
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            # Get open work orders as worklist items
-            wo_result = db_client.table("pms_work_orders").select(
-                "id, title, description, priority, status, created_at"
-            ).eq("yacht_id", yacht_id).in_("status", ["planned", "in_progress"]).order("priority", desc=True).limit(50).execute()
-
-            result = {
-                "status": "success",
-                "success": True,
-                "worklist": wo_result.data or [],
-                "total": len(wo_result.data or [])
-            }
-
-        elif action == "add_worklist_task":
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            task_description = payload.get("task_description") or payload.get("description")
-            if not task_description:
-                raise HTTPException(status_code=400, detail="task_description is required")
-
-            # Create a work order as a worklist task
-            # Map priority
-            raw_priority = payload.get("priority", "routine")
-            priority_map = {"normal": "routine", "low": "routine", "medium": "routine", "high": "critical"}
-            priority = priority_map.get(raw_priority, raw_priority if raw_priority in ("routine", "emergency", "critical") else "routine")
-
-            task_data = {
-                "yacht_id": yacht_id,
-                "title": task_description[:100] if len(task_description) > 100 else task_description,
-                "description": task_description,
-                "priority": priority,
-                "status": "planned",
-                "work_order_type": "task",
-                "created_by": user_id,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            task_result = db_client.table("pms_work_orders").insert(task_data).execute()
-
-            if task_result.data:
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "task_id": task_result.data[0]["id"],
-                    "message": "Worklist task added"
-                }
-            else:
-                result = {
-                    "status": "error",
-                    "error_code": "INSERT_FAILED",
-                    "message": "Failed to add worklist task"
-                }
-
-        elif action == "export_worklist":
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            # Get all work orders for export
-            wo_result = db_client.table("pms_work_orders").select("*").eq("yacht_id", yacht_id).order("created_at", desc=True).execute()
-
-            result = {
-                "status": "success",
-                "success": True,
-                "data": wo_result.data or [],
-                "total": len(wo_result.data or []),
-                "export_format": "json",
-                "exported_at": datetime.now(timezone.utc).isoformat()
-            }
-
         # ===== CLOSE FAULT ACTION (Cluster 01) =====
         elif action == "close_fault":
             from datetime import datetime, timezone
@@ -3183,28 +2737,6 @@ async def execute_action(
                 "success": True,
                 "message": "Note added to fault",
                 "notes_count": len(notes)
-            }
-
-        elif action == "view_work_order_history":
-            # View work order history for an equipment
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            equipment_id = payload.get("equipment_id")
-
-            if not equipment_id:
-                raise HTTPException(status_code=400, detail="equipment_id is required")
-
-            work_orders = db_client.table("pms_work_orders").select(
-                "id, wo_number, title, description, status, priority, created_at, completed_at"
-            ).eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).order(
-                "created_at", desc=True
-            ).limit(50).execute()
-
-            result = {
-                "status": "success",
-                "success": True,
-                "work_orders": work_orders.data or [],
-                "count": len(work_orders.data) if work_orders.data else 0
             }
 
         elif action == "suggest_parts":
@@ -3425,6 +2957,23 @@ async def execute_action(
                 "message": "Note added to equipment",
                 "notes_count": len(notes)
             }
+            try:
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="update",
+                    entity_type="equipment",
+                    entity_id=payload.get("equipment_id"),
+                    action="add_equipment_note",
+                    user_role=user_context.get("role"),
+                    change_summary="Note added to equipment",
+                )
+                db_client.table("ledger_events").insert(ledger_event).execute()
+            except Exception as ledger_err:
+                if "204" in str(ledger_err):
+                    pass
+                else:
+                    logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
 
         # =====================================================================
         # TIER 3 HANDLERS - Inventory Views
@@ -3980,257 +3529,6 @@ async def execute_action(
                     "photo_url": photo_url
                 }
 
-        # =====================================================================
-        # TIER 5 HANDLERS - Handover/Communication
-        # =====================================================================
-
-        elif action == "add_document_to_handover":
-            # Add a document reference to a handover
-            from datetime import datetime, timezone
-            import uuid as uuid_module
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            handover_id = payload.get("handover_id")
-            document_id = payload.get("document_id")
-            summary = payload.get("summary", "")
-
-            if not handover_id:
-                raise HTTPException(status_code=400, detail="handover_id is required")
-            if not document_id:
-                raise HTTPException(status_code=400, detail="document_id is required")
-
-            # Verify handover exists
-            handover = db_client.table("handovers").select("id").eq(
-                "id", handover_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
-
-            if not handover.data:
-                # Try the simpler 'handover' table
-                handover = db_client.table("handover").select("id").eq(
-                    "id", handover_id
-                ).eq("yacht_id", yacht_id).maybe_single().execute()
-
-            if not handover.data:
-                raise HTTPException(status_code=404, detail="Handover not found")
-
-            # Add document to handover_items
-            try:
-                item_data = {
-                    "id": str(uuid_module.uuid4()),
-                    "yacht_id": yacht_id,
-                    "handover_id": handover_id,
-                    "entity_id": document_id,
-                    "entity_type": "document",
-                    "summary": summary or "Document attached",
-                    "added_by": user_id,
-                    "status": "pending"
-                }
-                db_client.table("handover_items").insert(item_data).execute()
-            except Exception:
-                # Table may not exist, add to metadata instead
-                pass
-
-            result = {
-                "status": "success",
-                "success": True,
-                "message": "Document added to handover",
-                "handover_id": handover_id,
-                "document_id": document_id
-            }
-
-        elif action == "add_predictive_insight_to_handover":
-            # Add an AI-generated insight to a handover
-            from datetime import datetime, timezone
-            import uuid as uuid_module
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            handover_id = payload.get("handover_id")
-            insight_text = payload.get("insight_text")
-            insight_type = payload.get("insight_type", "general")
-
-            if not handover_id:
-                raise HTTPException(status_code=400, detail="handover_id is required")
-            if not insight_text:
-                raise HTTPException(status_code=400, detail="insight_text is required")
-
-            # Verify handover exists (try both tables)
-            handover = db_client.table("handovers").select("id, metadata").eq(
-                "id", handover_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
-
-            table_name = "handovers"
-            if not handover.data:
-                handover = db_client.table("handover").select("id, metadata").eq(
-                    "id", handover_id
-                ).eq("yacht_id", yacht_id).maybe_single().execute()
-                table_name = "handover"
-
-            if not handover.data:
-                raise HTTPException(status_code=404, detail="Handover not found")
-
-            # Add insight to metadata
-            metadata = handover.data.get("metadata", {}) or {}
-            insights = metadata.get("predictive_insights", []) or []
-            insights.append({
-                "text": insight_text,
-                "type": insight_type,
-                "added_by": user_id,
-                "added_at": datetime.now(timezone.utc).isoformat()
-            })
-            metadata["predictive_insights"] = insights
-
-            db_client.table(table_name).update({
-                "metadata": metadata,
-                "updated_by": user_id
-            }).eq("id", handover_id).execute()
-
-            result = {
-                "status": "success",
-                "success": True,
-                "message": "Predictive insight added to handover",
-                "handover_id": handover_id,
-                "insights_count": len(insights)
-            }
-
-        elif action == "edit_handover_section":
-            # Edit a section within a handover
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            handover_id = payload.get("handover_id")
-            section_name = payload.get("section_name")
-            section_content = payload.get("content", "")
-
-            if not handover_id:
-                raise HTTPException(status_code=400, detail="handover_id is required")
-            if not section_name:
-                raise HTTPException(status_code=400, detail="section_name is required")
-
-            # Verify handover exists
-            handover = db_client.table("handovers").select("id, metadata").eq(
-                "id", handover_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
-
-            table_name = "handovers"
-            if not handover.data:
-                handover = db_client.table("handover").select("id, metadata").eq(
-                    "id", handover_id
-                ).eq("yacht_id", yacht_id).maybe_single().execute()
-                table_name = "handover"
-
-            if not handover.data:
-                raise HTTPException(status_code=404, detail="Handover not found")
-
-            # Update section in metadata
-            metadata = handover.data.get("metadata", {}) or {}
-            sections = metadata.get("sections", {}) or {}
-            sections[section_name] = {
-                "content": section_content,
-                "updated_by": user_id,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            metadata["sections"] = sections
-
-            db_client.table(table_name).update({
-                "metadata": metadata,
-                "updated_by": user_id
-            }).eq("id", handover_id).execute()
-
-            result = {
-                "status": "success",
-                "success": True,
-                "message": f"Handover section '{section_name}' updated",
-                "handover_id": handover_id,
-                "section_name": section_name
-            }
-
-        elif action == "export_handover":
-            # Export a handover (returns export data for client-side rendering)
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            handover_id = payload.get("handover_id")
-            export_format = payload.get("format", "pdf")
-
-            if not handover_id:
-                raise HTTPException(status_code=400, detail="handover_id is required")
-
-            # Get handover with items
-            handover = db_client.table("handovers").select("*").eq(
-                "id", handover_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
-
-            table_name = "handovers"
-            if not handover.data:
-                handover = db_client.table("handover").select("*").eq(
-                    "id", handover_id
-                ).eq("yacht_id", yacht_id).maybe_single().execute()
-                table_name = "handover"
-
-            if not handover.data:
-                raise HTTPException(status_code=404, detail="Handover not found")
-
-            # Get items if using handover_items table
-            items = []
-            try:
-                items_result = db_client.table("handover_items").select("*").eq(
-                    "handover_id", handover_id
-                ).execute()
-                items = items_result.data or []
-            except Exception:
-                pass
-
-            result = {
-                "status": "success",
-                "success": True,
-                "handover": handover.data,
-                "items": items,
-                "export_format": export_format,
-                "message": f"Handover ready for {export_format} export"
-            }
-
-        elif action == "regenerate_handover_summary":
-            # Mark handover for AI summary regeneration
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            handover_id = payload.get("handover_id")
-
-            if not handover_id:
-                raise HTTPException(status_code=400, detail="handover_id is required")
-
-            # Verify handover exists
-            handover = db_client.table("handovers").select("id, metadata").eq(
-                "id", handover_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
-
-            table_name = "handovers"
-            if not handover.data:
-                handover = db_client.table("handover").select("id, metadata").eq(
-                    "id", handover_id
-                ).eq("yacht_id", yacht_id).maybe_single().execute()
-                table_name = "handover"
-
-            if not handover.data:
-                raise HTTPException(status_code=404, detail="Handover not found")
-
-            # Flag for summary regeneration
-            metadata = handover.data.get("metadata", {}) or {}
-            metadata["summary_regeneration_requested"] = True
-            metadata["summary_regeneration_requested_at"] = datetime.now(timezone.utc).isoformat()
-            metadata["summary_regeneration_requested_by"] = user_id
-
-            db_client.table(table_name).update({
-                "metadata": metadata,
-                "updated_by": user_id
-            }).eq("id", handover_id).execute()
-
-            result = {
-                "status": "success",
-                "success": True,
-                "message": "Summary regeneration requested",
-                "handover_id": handover_id
-            }
-
         elif action == "view_smart_summary":
             # View AI-generated smart summary for an entity
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -4402,148 +3700,9 @@ async def execute_action(
             }
 
         # =====================================================================
-        # TIER 6 HANDLERS - Compliance/Hours of Rest
+        # TIER 6: view/update/export_hours_of_rest → routes/handlers/hours_of_rest_handler.py (Phase 4 Task 4)
+        # Crew Lens v3: get/upsert HoR, monthly signoff, templates, warnings → same + crew_handler.py
         # =====================================================================
-
-        elif action == "view_hours_of_rest":
-            # View hours of rest records for a crew member
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            crew_id = payload.get("crew_id")
-            start_date = payload.get("start_date")
-            end_date = payload.get("end_date")
-
-            if not crew_id:
-                raise HTTPException(status_code=400, detail="crew_id is required")
-
-            # Try to query hours_of_rest table
-            try:
-                query = db_client.table("hours_of_rest").select(
-                    "id, crew_id, date, rest_hours, work_hours, created_at"
-                ).eq("crew_id", crew_id).eq("yacht_id", yacht_id)
-
-                if start_date:
-                    query = query.gte("date", start_date)
-                if end_date:
-                    query = query.lte("date", end_date)
-
-                records = query.order("date", desc=True).limit(30).execute()
-
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "crew_id": crew_id,
-                    "records": records.data or [],
-                    "count": len(records.data) if records.data else 0
-                }
-            except Exception:
-                # Table may not exist
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "crew_id": crew_id,
-                    "records": [],
-                    "count": 0,
-                    "message": "Hours of rest tracking not yet configured"
-                }
-
-        elif action == "update_hours_of_rest":
-            # Update hours of rest for a specific date
-            from datetime import datetime, timezone
-            import uuid as uuid_module
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            crew_id = payload.get("crew_id")
-            date = payload.get("date")
-            hours = payload.get("hours")
-            rest_hours = payload.get("rest_hours", hours)
-            work_hours = payload.get("work_hours", 24 - float(hours) if hours else None)
-
-            if not crew_id:
-                raise HTTPException(status_code=400, detail="crew_id is required")
-            if not date:
-                raise HTTPException(status_code=400, detail="date is required")
-            if hours is None:
-                raise HTTPException(status_code=400, detail="hours is required")
-
-            try:
-                # Try upsert
-                record_data = {
-                    "id": str(uuid_module.uuid4()),
-                    "yacht_id": yacht_id,
-                    "crew_id": crew_id,
-                    "date": date,
-                    "rest_hours": float(rest_hours),
-                    "work_hours": float(work_hours) if work_hours else 24 - float(rest_hours),
-                    "updated_by": user_id,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
-
-                # Check if record exists
-                existing = db_client.table("hours_of_rest").select("id").eq(
-                    "crew_id", crew_id
-                ).eq("date", date).maybe_single().execute()
-
-                if existing.data:
-                    db_client.table("hours_of_rest").update({
-                        "rest_hours": float(rest_hours),
-                        "work_hours": float(work_hours) if work_hours else 24 - float(rest_hours),
-                        "updated_by": user_id
-                    }).eq("id", existing.data["id"]).execute()
-                else:
-                    record_data["created_by"] = user_id
-                    db_client.table("hours_of_rest").insert(record_data).execute()
-
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "message": f"Hours of rest updated for {date}",
-                    "crew_id": crew_id,
-                    "date": date,
-                    "rest_hours": float(rest_hours)
-                }
-            except Exception as e:
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "message": "Hours of rest tracking not yet configured",
-                    "crew_id": crew_id
-                }
-
-        elif action == "export_hours_of_rest":
-            # Export hours of rest data for a crew member
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            crew_id = payload.get("crew_id")
-            export_format = payload.get("format", "csv")
-
-            if not crew_id:
-                raise HTTPException(status_code=400, detail="crew_id is required")
-
-            try:
-                records = db_client.table("hours_of_rest").select(
-                    "date, rest_hours, work_hours, created_at"
-                ).eq("crew_id", crew_id).eq("yacht_id", yacht_id).order(
-                    "date", desc=True
-                ).limit(90).execute()
-
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "crew_id": crew_id,
-                    "records": records.data or [],
-                    "export_format": export_format,
-                    "message": f"Ready for {export_format} export"
-                }
-            except Exception:
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "crew_id": crew_id,
-                    "records": [],
-                    "export_format": export_format,
-                    "message": "No hours of rest data available"
-                }
 
         elif action == "view_compliance_status":
             # View overall compliance status for the yacht
@@ -5069,178 +4228,6 @@ async def execute_action(
         # TIER 9 HANDLERS - Remaining Actions
         # =====================================================================
 
-        elif action == "update_worklist_progress":
-            # Update progress on a worklist item
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            worklist_item_id = payload.get("worklist_item_id")
-            progress = payload.get("progress")  # Percentage 0-100
-            notes = payload.get("notes", "")
-
-            if not worklist_item_id:
-                raise HTTPException(status_code=400, detail="worklist_item_id is required")
-            if progress is None:
-                raise HTTPException(status_code=400, detail="progress is required")
-
-            try:
-                # Try to update in worklist_items table
-                update_data = {
-                    "progress": int(progress),
-                    "updated_by": user_id,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
-                if notes:
-                    update_data["notes"] = notes
-
-                db_client.table("worklist_items").update(update_data).eq(
-                    "id", worklist_item_id
-                ).eq("yacht_id", yacht_id).execute()
-
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "message": f"Progress updated to {progress}%",
-                    "worklist_item_id": worklist_item_id,
-                    "progress": int(progress)
-                }
-            except Exception:
-                # Try worklist table with metadata
-                try:
-                    item = db_client.table("worklist").select("id, metadata").eq(
-                        "id", worklist_item_id
-                    ).eq("yacht_id", yacht_id).maybe_single().execute()
-
-                    if item.data:
-                        metadata = item.data.get("metadata", {}) or {}
-                        metadata["progress"] = int(progress)
-                        if notes:
-                            metadata["progress_notes"] = notes
-                        metadata["progress_updated_at"] = datetime.now(timezone.utc).isoformat()
-                        metadata["progress_updated_by"] = user_id
-
-                        db_client.table("worklist").update({
-                            "metadata": metadata
-                        }).eq("id", worklist_item_id).execute()
-
-                    result = {
-                        "status": "success",
-                        "success": True,
-                        "message": f"Progress updated to {progress}%",
-                        "worklist_item_id": worklist_item_id,
-                        "progress": int(progress)
-                    }
-                except Exception:
-                    result = {
-                        "status": "success",
-                        "success": True,
-                        "message": "Progress update registered",
-                        "worklist_item_id": worklist_item_id,
-                        "progress": int(progress)
-                    }
-
-        elif action == "view_related_documents":
-            # View documents related to an entity
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            entity_type = payload.get("entity_type")
-            entity_id = payload.get("entity_id")
-
-            if not entity_type:
-                raise HTTPException(status_code=400, detail="entity_type is required")
-            if not entity_id:
-                raise HTTPException(status_code=400, detail="entity_id is required")
-
-            try:
-                # Query documents linked to the entity
-                docs = db_client.table("documents").select(
-                    "id, filename, doc_type, storage_path, created_at"
-                ).eq("yacht_id", yacht_id).or_(
-                    f"metadata->>entity_id.eq.{entity_id},metadata->>related_entity_id.eq.{entity_id}"
-                ).limit(20).execute()
-
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "entity_type": entity_type,
-                    "entity_id": entity_id,
-                    "documents": docs.data or [],
-                    "count": len(docs.data) if docs.data else 0
-                }
-            except Exception:
-                # Fallback to simple query
-                try:
-                    docs = db_client.table("documents").select(
-                        "id, filename, doc_type, storage_path, created_at"
-                    ).eq("yacht_id", yacht_id).limit(10).execute()
-
-                    result = {
-                        "status": "success",
-                        "success": True,
-                        "entity_type": entity_type,
-                        "entity_id": entity_id,
-                        "documents": docs.data or [],
-                        "count": len(docs.data) if docs.data else 0,
-                        "note": "Showing recent documents for yacht"
-                    }
-                except Exception:
-                    result = {
-                        "status": "success",
-                        "success": True,
-                        "entity_type": entity_type,
-                        "entity_id": entity_id,
-                        "documents": [],
-                        "count": 0
-                    }
-
-        elif action == "view_document_section":
-            # View a specific section of a document
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            document_id = payload.get("document_id")
-            section_id = payload.get("section_id")
-
-            if not document_id:
-                raise HTTPException(status_code=400, detail="document_id is required")
-            if not section_id:
-                raise HTTPException(status_code=400, detail="section_id is required")
-
-            try:
-                # Get document
-                doc = db_client.table("documents").select(
-                    "id, filename, metadata"
-                ).eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
-
-                if not doc.data:
-                    raise HTTPException(status_code=404, detail="Document not found")
-
-                # Extract section from content or metadata
-                metadata = doc.data.get("metadata", {}) or {}
-                sections = metadata.get("sections", {}) or {}
-                section_content = sections.get(section_id, {})
-
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "document_id": document_id,
-                    "document_title": doc.data.get("filename"),
-                    "section_id": section_id,
-                    "section": section_content if section_content else {
-                        "content": "Section not found",
-                        "note": f"Section '{section_id}' not available in document"
-                    }
-                }
-            except HTTPException:
-                raise
-            except Exception:
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "document_id": document_id,
-                    "section_id": section_id,
-                    "section": {"content": "Section not available"}
-                }
-
         elif action == "request_predictive_insight":
             # Request an AI-generated predictive insight for an entity
             from datetime import datetime, timezone
@@ -5387,356 +4374,6 @@ async def execute_action(
                 "work_order_id": work_order_id,
                 "notes_count": len(notes)
             }
-
-        # ===== CERTIFICATE ACTIONS (Certificate Lens v2) =====
-        elif action in ("create_vessel_certificate", "create_crew_certificate",
-                        "update_certificate", "link_document_to_certificate",
-                        "supersede_certificate"):
-            # Role-based access control for certificate actions
-            CERT_ALLOWED_ROLES = {
-                "create_vessel_certificate": ["chief_engineer", "captain", "manager"],
-                "create_crew_certificate": ["chief_engineer", "captain", "manager"],
-                "update_certificate": ["chief_engineer", "captain", "manager"],
-                "link_document_to_certificate": ["chief_engineer", "captain", "manager"],
-                "supersede_certificate": ["captain", "manager"],  # Manager-only for signed actions
-            }
-            user_role = user_context.get("role", "")
-            allowed_roles = CERT_ALLOWED_ROLES.get(action, [])
-            if user_role not in allowed_roles:
-                logger.warning(f"[RLS] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Role '{user_role}' is not authorized to perform action '{action}'"
-                )
-
-            # Import certificate handlers lazily
-            from handlers.certificate_handlers import get_certificate_handlers
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            cert_handlers = get_certificate_handlers(db_client)
-
-            # Get the handler function
-            handler_fn = cert_handlers.get(action)
-            if not handler_fn:
-                raise HTTPException(status_code=404, detail=f"Certificate handler '{action}' not found")
-
-            # Merge context and payload for handler
-            handler_params = {
-                "yacht_id": yacht_id,
-                "user_id": user_id,
-                **payload
-            }
-
-            # Call the handler (async handlers)
-            if action == "create_vessel_certificate":
-                result = await handler_fn(**handler_params)
-            elif action == "create_crew_certificate":
-                result = await handler_fn(**handler_params)
-            elif action == "update_certificate":
-                result = await handler_fn(**handler_params)
-            elif action == "link_document_to_certificate":
-                # Defensive validation: ensure document exists before handler
-                doc_id = payload.get("document_id")
-                if not doc_id:
-                    raise HTTPException(status_code=400, detail="document_id is required")
-                try:
-                    dm = db_client.table("doc_metadata").select("id").eq("id", doc_id).maybe_single().execute()
-                except Exception:
-                    dm = None
-                if not getattr(dm, 'data', None):
-                    raise HTTPException(status_code=404, detail="document_id not found")
-                result = await handler_fn(**handler_params)
-            elif action == "supersede_certificate":
-                # Supersede requires signature validation
-                if not payload.get("signature"):
-                    raise HTTPException(status_code=400, detail="signature payload is required for supersede action")
-                result = await handler_fn(**handler_params)
-
-        # ===== SHOPPING LIST ACTIONS (Shopping List Lens v1) =====
-        elif action in ("create_shopping_list_item", "approve_shopping_list_item",
-                       "reject_shopping_list_item", "promote_candidate_to_part",
-                       "view_shopping_list_history"):
-            if not shopping_list_handlers:
-                raise HTTPException(status_code=503, detail="Shopping list handlers not available")
-
-            # RBAC: Define allowed roles per action (from registry.py)
-            SHOPPING_LIST_ROLES = {
-                "create_shopping_list_item": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-                "approve_shopping_list_item": ["chief_engineer", "chief_officer", "captain", "manager"],  # HoD only
-                "reject_shopping_list_item": ["chief_engineer", "chief_officer", "captain", "manager"],  # HoD only
-                "promote_candidate_to_part": ["chief_engineer", "manager"],  # Engineers only
-                "view_shopping_list_history": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-            }
-
-            # RBAC Check: Verify user role is authorized
-            allowed_roles = SHOPPING_LIST_ROLES.get(action, [])
-            if user_role not in allowed_roles:
-                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
-                return {
-                    "success": False,
-                    "code": "FORBIDDEN",
-                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
-                    "required_roles": allowed_roles
-                }
-
-            # Map action to handler method
-            handler_map = {
-                "create_shopping_list_item": shopping_list_handlers.create_shopping_list_item,
-                "approve_shopping_list_item": shopping_list_handlers.approve_shopping_list_item,
-                "reject_shopping_list_item": shopping_list_handlers.reject_shopping_list_item,
-                "promote_candidate_to_part": shopping_list_handlers.promote_candidate_to_part,
-                "view_shopping_list_history": shopping_list_handlers.view_shopping_list_history,
-            }
-
-            handler_fn = handler_map[action]
-
-            # STATE MACHINE: Validate transition for mutating actions (Security Fix 2026-02-10)
-            if action in ("approve_shopping_list_item", "reject_shopping_list_item", "promote_candidate_to_part"):
-                item_id = payload.get("item_id")
-                if item_id:
-                    try:
-                        tenant_alias = user_context.get("tenant_key_alias", "")
-                        sm_db = get_tenant_supabase_client(tenant_alias)
-                        item = sm_db.table("pms_shopping_list_items").select("status").eq("id", item_id).eq("yacht_id", yacht_id).maybe_single().execute()
-                        if item and item.data:
-                            current_status = item.data.get("status", "candidate")
-                            try:
-                                validate_state_transition("shopping_list", current_status, action)
-                            except InvalidStateTransitionError as e:
-                                logger.warning(f"[STATE] {e.message}")
-                                return {
-                                    "success": False,
-                                    "code": e.code,
-                                    "message": e.message,
-                                    "current_status": current_status
-                                }
-                    except Exception as db_err:
-                        logger.debug(f"[STATE] Could not check item status: {db_err}")
-
-            # Add user context to payload
-            payload["user_id"] = user_id
-            payload["user_role"] = user_context.get("role")
-            payload["user_name"] = user_context.get("name", "Unknown")
-
-            # Call handler
-            result = await handler_fn(
-                entity_id=payload.get("item_id"),
-                yacht_id=yacht_id,
-                params=payload
-            )
-
-        # ===== HOURS OF REST ACTIONS (Crew Lens v3) =====
-        elif action in ("get_hours_of_rest", "upsert_hours_of_rest"):
-            logger.info(f"[HOR] Dispatching action '{action}' - yacht_id={yacht_id}, user_id={user_id}")
-
-            # Create user-scoped client for RLS enforcement
-            user_client = get_user_scoped_client(authorization, user_context.get("tenant_key_alias"))
-            user_scoped_hor_handlers = HoursOfRestHandlers(user_client)
-
-            # Map action to handler method
-            handler_map = {
-                "get_hours_of_rest": user_scoped_hor_handlers.get_hours_of_rest,
-                "upsert_hours_of_rest": user_scoped_hor_handlers.upsert_hours_of_rest,
-            }
-
-            handler_fn = handler_map[action]
-
-            # Extract target user (defaults to current user for get_hours_of_rest)
-            target_user_id = payload.get("user_id", user_id)
-
-            # Build params dict (only include dates if provided)
-            handler_params = {"user_id": target_user_id}
-            if "start_date" in payload:
-                handler_params["start_date"] = payload["start_date"]
-            if "end_date" in payload:
-                handler_params["end_date"] = payload["end_date"]
-            if "record_date" in payload:
-                handler_params["record_date"] = payload["record_date"]
-            if "rest_periods" in payload:
-                handler_params["rest_periods"] = payload["rest_periods"]
-            if "total_rest_hours" in payload:
-                handler_params["total_rest_hours"] = payload["total_rest_hours"]
-            if "daily_compliance_notes" in payload:
-                handler_params["daily_compliance_notes"] = payload["daily_compliance_notes"]
-
-            # Call handler
-            if action == "get_hours_of_rest":
-                result = await handler_fn(
-                    entity_id=target_user_id,
-                    yacht_id=yacht_id,
-                    params=handler_params
-                )
-            else:  # upsert_hours_of_rest
-                result = await handler_fn(
-                    entity_id=target_user_id,
-                    yacht_id=yacht_id,
-                    user_id=user_id,
-                    payload=payload
-                )
-
-        # ===== HOR MONTHLY SIGNOFF ACTIONS =====
-        elif action in ("get_monthly_signoff", "list_monthly_signoffs", "create_monthly_signoff", "sign_monthly_signoff"):
-            logger.info(f"[HOR_SIGNOFF] Dispatching action '{action}' - yacht_id={yacht_id}")
-
-            # Create user-scoped client for RLS enforcement
-            user_client = get_user_scoped_client(authorization, user_context.get("tenant_key_alias"))
-            user_scoped_hor_handlers = HoursOfRestHandlers(user_client)
-
-            handler_map = {
-                "get_monthly_signoff": user_scoped_hor_handlers.get_monthly_signoff,
-                "list_monthly_signoffs": user_scoped_hor_handlers.list_monthly_signoffs,
-                "create_monthly_signoff": user_scoped_hor_handlers.create_monthly_signoff,
-                "sign_monthly_signoff": user_scoped_hor_handlers.sign_monthly_signoff,
-            }
-
-            handler_fn = handler_map[action]
-
-            # Entity ID varies by action
-            if action == "get_monthly_signoff" or action == "sign_monthly_signoff":
-                entity_id = payload.get("signoff_id")
-            else:
-                entity_id = user_id
-
-            # Call handler
-            if action in ("get_monthly_signoff", "list_monthly_signoffs"):
-                # READ actions
-                result = await handler_fn(
-                    entity_id=entity_id,
-                    yacht_id=yacht_id,
-                    params=payload
-                )
-            else:
-                # MUTATE/SIGNED actions
-                result = await handler_fn(
-                    entity_id=entity_id,
-                    yacht_id=yacht_id,
-                    user_id=user_id,
-                    payload=payload
-                )
-
-        # ===== HOR TEMPLATE ACTIONS =====
-        elif action in ("create_crew_template", "apply_crew_template", "list_crew_templates"):
-            logger.info(f"[HOR_TEMPLATE] Dispatching action '{action}' - yacht_id={yacht_id}")
-
-            # Create user-scoped client for RLS enforcement
-            user_client = get_user_scoped_client(authorization, user_context.get("tenant_key_alias"))
-            user_scoped_hor_handlers = HoursOfRestHandlers(user_client)
-
-            handler_map = {
-                "create_crew_template": user_scoped_hor_handlers.create_crew_template,
-                "apply_crew_template": user_scoped_hor_handlers.apply_crew_template,
-                "list_crew_templates": user_scoped_hor_handlers.list_crew_templates,
-            }
-
-            handler_fn = handler_map[action]
-
-            # Call handler
-            if action == "list_crew_templates":
-                # READ action
-                result = await handler_fn(
-                    entity_id=user_id,
-                    yacht_id=yacht_id,
-                    params=payload
-                )
-            else:
-                # MUTATE actions
-                result = await handler_fn(
-                    entity_id=user_id,
-                    yacht_id=yacht_id,
-                    user_id=user_id,
-                    payload=payload
-                )
-
-        # ===== HOR WARNING ACTIONS =====
-        elif action in ("list_crew_warnings", "acknowledge_warning", "dismiss_warning"):
-            logger.info(f"[HOR_WARNING] Dispatching action '{action}' - yacht_id={yacht_id}")
-
-            # Create user-scoped client for RLS enforcement
-            user_client = get_user_scoped_client(authorization, user_context.get("tenant_key_alias"))
-            user_scoped_hor_handlers = HoursOfRestHandlers(user_client)
-
-            handler_map = {
-                "list_crew_warnings": user_scoped_hor_handlers.list_crew_warnings,
-                "acknowledge_warning": user_scoped_hor_handlers.acknowledge_warning,
-                "dismiss_warning": user_scoped_hor_handlers.dismiss_warning,
-            }
-
-            handler_fn = handler_map[action]
-
-            # Entity ID is warning_id for acknowledge/dismiss, user_id for list
-            if action == "list_crew_warnings":
-                entity_id = user_id
-            else:
-                entity_id = payload.get("warning_id")
-
-            # Call handler
-            if action == "list_crew_warnings":
-                # READ action
-                result = await handler_fn(
-                    entity_id=entity_id,
-                    yacht_id=yacht_id,
-                    params=payload
-                )
-            else:
-                # MUTATE actions
-                result = await handler_fn(
-                    entity_id=entity_id,
-                    yacht_id=yacht_id,
-                    user_id=user_id,
-                    payload=payload
-                )
-
-        # ===== DOCUMENT LENS V2 ACTIONS =====
-        elif action in ("upload_document", "update_document", "delete_document",
-                        "add_document_tags", "get_document_url", "list_documents"):
-            # Role-based access control for document actions
-            DOC_ALLOWED_ROLES = {
-                "upload_document": ["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-                "update_document": ["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-                "add_document_tags": ["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-                "delete_document": ["captain", "manager"],  # SIGNED action - manager/captain only
-                "get_document_url": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                                     "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-                "list_documents": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                                   "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-            }
-            user_role = user_context.get("role", "")
-            allowed_roles = DOC_ALLOWED_ROLES.get(action, [])
-            if user_role not in allowed_roles:
-                logger.warning(f"[RLS] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Role '{user_role}' is not authorized to perform action '{action}'"
-                )
-
-            # Import document handlers lazily
-            from handlers.document_handlers import get_document_handlers
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            doc_handlers = get_document_handlers(db_client)
-
-            # Get the handler function
-            handler_fn = doc_handlers.get(action)
-            if not handler_fn:
-                raise HTTPException(status_code=404, detail=f"Document handler '{action}' not found")
-
-            # Merge context and payload for handler
-            handler_params = {
-                "yacht_id": yacht_id,
-                "user_id": user_id,
-                **payload
-            }
-
-            # Call the handler (async handlers)
-            result = await handler_fn(**handler_params)
-
-        # ===== DOCUMENT COMMENT ACTIONS - MIGRATED TO ACTION ROUTER =====
-        # Document comment actions (add_document_comment, update_document_comment,
-        # delete_document_comment, list_document_comments) are now handled by the
-        # action router with proper role-based permissions. They should NOT be
-        # handled here to avoid dual permission systems.
-        # See: apps/api/action_router/registry.py (lines 1764-1835)
-        # See: apps/api/action_router/dispatchers/internal_dispatcher.py (lines 451-507)
 
         # ===== RECEIVING LENS V1 ACTIONS =====
         elif action in ["create_receiving", "attach_receiving_image_with_comment",
@@ -5891,6 +4528,46 @@ async def execute_action(
             error_response["hint"] = result["hint"]
 
         return JSONResponse(status_code=status_code, content=error_response)
+
+    # ── Centralised ledger write (non-fatal) ─────────────────────────────────
+    # Captures every successful mutation automatically. Failures are logged only.
+    try:
+        _resp_dict = result if isinstance(result, dict) else {}
+        if _resp_dict.get("status") == "success" or _resp_dict.get("success") is True:
+            _entity_type, _entity_key = _ACTION_ENTITY_MAP.get(action, ("unknown", None))
+            _entity_id = str(payload.get(_entity_key, "")) if _entity_key else ""
+
+            if any(w in action for w in ("create", "report", "add", "log")):
+                _ev_type = "create"
+            elif any(w in action for w in ("approve", "accept")):
+                _ev_type = "approval"
+            elif any(w in action for w in ("reject", "cancel", "close", "write_off")):
+                _ev_type = "rejection"
+            elif any(w in action for w in ("complete", "start", "submit")):
+                _ev_type = "status_change"
+            else:
+                _ev_type = "update"
+
+            _ledger_ev = build_ledger_event(
+                yacht_id=str(yacht_id),
+                user_id=str(user_id),
+                event_type=_ev_type,
+                entity_type=_entity_type,
+                entity_id=_entity_id or "00000000-0000-0000-0000-000000000000",
+                action=action,
+                user_role=user_role or "",
+                change_summary=_resp_dict.get("message", action.replace("_", " ").title()),
+                actor_name=user_context.get("email", ""),
+                department=user_context.get("department", ""),
+                event_category="write",
+            )
+            _ledger_tenant_alias = user_context.get("tenant_key_alias", "")
+            if _ledger_tenant_alias:
+                _ledger_db = get_tenant_supabase_client(_ledger_tenant_alias)
+                _ledger_db.table("ledger_events").insert(_ledger_ev).execute()
+    except Exception as _le:
+        logger.warning(f"[Ledger] Non-fatal post-action write failed for '{action}': {_le}")
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Add execution_id to response for E2E test tracing
     import uuid
