@@ -134,7 +134,7 @@ export function LensRenderer({
     case 'warranty':
       return <WarrantyLensContent {...commonProps} />;
     case 'shopping_list':
-      return <ShoppingListLensContent {...commonProps} />;
+      return <EntityLensPage entityType="shopping_list" entityId={entityId} content={ShoppingListLensContent} />;
     case 'document':
       return <EntityLensPage entityType="document" entityId={entityId} content={DocumentLensContent} />;
     case 'purchase_order':
