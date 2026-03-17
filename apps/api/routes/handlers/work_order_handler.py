@@ -17,6 +17,10 @@ from routes.handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 
+# TODO: This UUID is a fallback for legacy WO notes created before user auth.
+# Source: p0_actions_routes.py original. See migration context for details.
+_LEGACY_TENANT_USER_ID = "a35cad0b-02ff-4287-b6e4-17c96fa6a424"
+
 
 # ============================================================================
 # update_work_order / update_wo  (was L2527-2549)
@@ -132,12 +136,11 @@ async def add_wo_hours(
     # Add to work order notes as hours entry
     # Note: created_by is NOT NULL, use existing tenant user ID
     # Note: note_type must be 'general' or 'progress'
-    TENANT_USER_ID = "a35cad0b-02ff-4287-b6e4-17c96fa6a424"
     note_data = {
         "work_order_id": work_order_id,
         "note_text": f"Hours logged: {hours}h - {payload.get('description', 'Work performed')}",
         "note_type": "progress",
-        "created_by": TENANT_USER_ID,
+        "created_by": _LEGACY_TENANT_USER_ID,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
@@ -210,14 +213,13 @@ async def add_wo_note(
     # Note: created_by is NOT NULL, use existing tenant user ID
     # Note: note_type must be 'general' or 'progress'
     # Note: pms_work_order_notes does NOT have yacht_id column - ledger trigger fetches it from parent WO
-    TENANT_USER_ID = "a35cad0b-02ff-4287-b6e4-17c96fa6a424"
     raw_note_type = payload.get("note_type", "general")
     note_type = raw_note_type if raw_note_type in ("general", "progress") else "general"
     note_data = {
         "work_order_id": work_order_id,
         "note_text": note_text,
         "note_type": note_type,
-        "created_by": TENANT_USER_ID,
+        "created_by": _LEGACY_TENANT_USER_ID,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()

@@ -376,6 +376,76 @@ async def test_create_work_order_for_equipment_missing_equipment_id():
 # ============================================================================
 
 @pytest.mark.asyncio
+async def test_add_work_order_photo_success():
+    """add_work_order_photo stores photo URL in WO metadata."""
+    db = MagicMock()
+    wo_record = {"id": "wo-1", "metadata": {}}
+    # Existence check: select("id").eq(id).eq(yacht_id).single().execute()
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.single.return_value.execute.return_value.data = wo_record
+    # Metadata fetch: select("metadata").eq(id).single().execute()
+    db.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = wo_record
+    # Update chain
+    db.table.return_value.update.return_value.eq.return_value.eq.return_value.execute.return_value.data = [wo_record]
+
+    result = await HANDLERS["add_work_order_photo"](
+        payload={"work_order_id": "wo-1", "photo_url": "https://example.com/photo.jpg"},
+        context={"yacht_id": "y-1", "work_order_id": "wo-1"},
+        yacht_id="y-1", user_id="u-1",
+        user_context=base_uc(), db_client=db,
+    )
+    assert result["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_add_work_order_photo_missing_fields():
+    """add_work_order_photo raises 400 when photo_url is absent."""
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc:
+        await HANDLERS["add_work_order_photo"](
+            payload={"work_order_id": "wo-1"},  # missing photo_url
+            context={"yacht_id": "y-1"},
+            yacht_id="y-1", user_id="u-1",
+            user_context=base_uc(), db_client=make_db(),
+        )
+    assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_add_parts_to_work_order_success():
+    """add_parts_to_work_order stores part link in WO metadata."""
+    db = MagicMock()
+    wo_record = {"id": "wo-1", "metadata": {}}
+    # Existence check: select("id").eq(id).eq(yacht_id).single().execute()
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.single.return_value.execute.return_value.data = wo_record
+    # Metadata fetch: select("metadata").eq(id).single().execute()
+    db.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = wo_record
+    # Update chain
+    db.table.return_value.update.return_value.eq.return_value.eq.return_value.execute.return_value.data = [wo_record]
+
+    result = await HANDLERS["add_parts_to_work_order"](
+        payload={"work_order_id": "wo-1", "part_id": "p-1", "quantity": 2},
+        context={"yacht_id": "y-1", "work_order_id": "wo-1"},
+        yacht_id="y-1", user_id="u-1",
+        user_context=base_uc(), db_client=db,
+    )
+    assert result["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_add_parts_to_work_order_missing_fields():
+    """add_parts_to_work_order raises 400 when part_id is absent."""
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc:
+        await HANDLERS["add_parts_to_work_order"](
+            payload={"work_order_id": "wo-1"},  # missing part_id
+            context={"yacht_id": "y-1"},
+            yacht_id="y-1", user_id="u-1",
+            user_context=base_uc(), db_client=make_db(),
+        )
+    assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_all_aliases_registered():
     """Test all aliases that should exist based on the elif chain."""
     expected = [
@@ -397,6 +467,8 @@ async def test_all_aliases_registered():
         "view_work_order_history",
         "update_worklist_progress",
         "create_work_order_for_equipment",
+        "add_work_order_photo",
+        "add_parts_to_work_order",
     ]
     for alias in expected:
         assert alias in HANDLERS, f"Alias '{alias}' not in HANDLERS"
