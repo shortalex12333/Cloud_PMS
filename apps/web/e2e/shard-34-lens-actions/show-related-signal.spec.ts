@@ -243,7 +243,7 @@ test.describe('Signal error handling', () => {
     expect(result.status).toBe(404);
   });
 
-  test('401 without JWT', async ({ hodPage }) => {
+  test('rejects request without JWT', async ({ hodPage }) => {
     await hodPage.goto(FRONTEND_BASE);
     await hodPage.waitForLoadState('domcontentloaded');
 
@@ -252,7 +252,10 @@ test.describe('Signal error handling', () => {
       return { status: res.status };
     }, [`${API_URL}/v1/show-related-signal?entity_type=work_order&entity_id=00000000-0000-0000-0000-000000000001`] as [string]);
 
-    expect(result.status).toBe(401);
+    // FastAPI validates required headers (Authorization: str = Header(...)) before
+    // auth logic runs, so a missing header returns 422 Unprocessable Entity rather
+    // than 401. Both indicate an unauthenticated request is rejected.
+    expect(result.status).toBe(422);
   });
 });
 
