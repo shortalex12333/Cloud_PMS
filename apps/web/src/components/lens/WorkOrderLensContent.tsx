@@ -183,6 +183,7 @@ export function WorkOrderLensContent() {
   const addHoursAction = getAction('add_wo_hours');
   const assignAction = getAction('reassign_work_order');
   const archiveAction = getAction('archive_work_order');
+  const addPhotoAction = getAction('add_wo_photo');
 
   // State-derived display conditions
   // canStart: WO is in a startable status (and backend says the action is available)
@@ -342,7 +343,7 @@ export function WorkOrderLensContent() {
         {/* Checklist Section — between vitals and actions */}
         <div className="mt-4">
           <ChecklistSection
-            workOrderId={entity?.id as string}
+            workOrderId={(entity?.id as string) ?? ''}
             viewChecklist={handleViewChecklist}
             markComplete={handleMarkChecklistItem}
           />
@@ -451,7 +452,7 @@ export function WorkOrderLensContent() {
           <AttachmentsSection
             attachments={attachments}
             onAddFile={() => {}}
-            canAddFile={getAction('add_wo_photo') !== null}
+            canAddFile={addPhotoAction !== null}
             stickyTop={56}
           />
         </div>
