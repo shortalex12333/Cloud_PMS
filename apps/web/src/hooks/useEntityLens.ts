@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
@@ -25,7 +23,7 @@ export function useEntityLens(
 
   const [entity, setEntity] = useState<Record<string, unknown> | null>(null);
   const [availableActions, setAvailableActions] = useState<AvailableAction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchEntity = useCallback(async () => {
@@ -48,9 +46,36 @@ export function useEntityLens(
     }
   }, [entityType, entityId, token]);
 
+  // AbortController prevents stale responses when entityId changes rapidly
   useEffect(() => {
-    fetchEntity();
-  }, [fetchEntity]);
+    const controller = new AbortController();
+
+    const run = async () => {
+      if (!entityId || !token) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/v1/entity/${entityType}/${entityId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`${res.status}`);
+        const data = await res.json() as Record<string, unknown> & { available_actions?: AvailableAction[] };
+        const { available_actions = [], ...rest } = data;
+        setEntity(rest);
+        setAvailableActions(available_actions);
+      } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') return; // ignore cancellation
+        setError(e instanceof Error ? e.message : 'Failed to load');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    run();
+
+    return () => controller.abort();
+  }, [entityType, entityId, token]);
 
   const executeAction = useCallback(
     async (actionId: string, payload: Record<string, unknown> = {}): Promise<ActionResult> => {
@@ -58,6 +83,7 @@ export function useEntityLens(
       // Merge prefill from the matching available_actions entry
       const actionMeta = availableActions.find((a) => a.action_id === actionId);
       const mergedPayload = { ...actionMeta?.prefill, ...payload };
+      // Next.js proxy — mutations route through /api/v1/actions/execute
       const res = await fetch('/api/v1/actions/execute', {
         method: 'POST',
         headers: {
