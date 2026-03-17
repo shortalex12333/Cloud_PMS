@@ -2,9 +2,8 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { usePartActions, usePartPermissions } from '@/hooks/usePartActions';
 import { EntityList } from '@/features/entity-list/components/EntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
 import { fetchParts, fetchPart } from '@/features/inventory/api';
@@ -14,17 +13,6 @@ import type { Part } from '@/features/inventory/types';
 function PartDetail({ id }: { id: string }) {
   const { session } = useAuth();
   const token = session?.access_token;
-  const queryClient = useQueryClient();
-  const permissions = usePartPermissions();
-  const {
-    isLoading: isActionLoading,
-    consumePart,
-    receivePart,
-    transferPart,
-    adjustStock,
-    writeOff,
-    addToShoppingList,
-  } = usePartActions(id);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['part', id],
@@ -32,54 +20,6 @@ function PartDetail({ id }: { id: string }) {
     enabled: !!token,
     staleTime: 30000,
   });
-
-  // Action handlers with query invalidation
-  const handleConsume = React.useCallback(async () => {
-    const result = await consumePart(1);
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['part', id] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-    }
-  }, [consumePart, queryClient, id]);
-
-  const handleReceive = React.useCallback(async () => {
-    const result = await receivePart(1);
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['part', id] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-    }
-  }, [receivePart, queryClient, id]);
-
-  const handleTransfer = React.useCallback(async () => {
-    const result = await transferPart(1, 'default');
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['part', id] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-    }
-  }, [transferPart, queryClient, id]);
-
-  const handleAdjustStock = React.useCallback(async () => {
-    const result = await adjustStock(data?.quantity_on_hand ?? 0, 'Manual adjustment');
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['part', id] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-    }
-  }, [adjustStock, queryClient, id, data?.quantity_on_hand]);
-
-  const handleWriteOff = React.useCallback(async () => {
-    const result = await writeOff(1, 'Write off');
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['part', id] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-    }
-  }, [writeOff, queryClient, id]);
-
-  const handleAddToShoppingList = React.useCallback(async () => {
-    const result = await addToShoppingList(1);
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
-    }
-  }, [addToShoppingList, queryClient]);
 
   if (isLoading) {
     return (
@@ -134,64 +74,6 @@ function PartDetail({ id }: { id: string }) {
           <span className="text-white/80">{data.manufacturer}</span>
         </div>
       )}
-
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-2 pt-4 border-t border-white/10">
-        {permissions.canConsume && (
-          <button
-            onClick={handleConsume}
-            disabled={isActionLoading}
-            className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
-          >
-            Use Part
-          </button>
-        )}
-        {permissions.canReceive && (
-          <button
-            onClick={handleReceive}
-            disabled={isActionLoading}
-            className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
-          >
-            Receive Stock
-          </button>
-        )}
-        {permissions.canTransfer && (
-          <button
-            onClick={handleTransfer}
-            disabled={isActionLoading}
-            className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
-          >
-            Transfer
-          </button>
-        )}
-        {permissions.canAdjustStock && (
-          <button
-            onClick={handleAdjustStock}
-            disabled={isActionLoading}
-            className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
-          >
-            Adjust Stock
-          </button>
-        )}
-        {permissions.canWriteOff && (
-          <button
-            onClick={handleWriteOff}
-            disabled={isActionLoading}
-            className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
-          >
-            Write Off
-          </button>
-        )}
-        {permissions.canAddToShoppingList && (
-          <button
-            onClick={handleAddToShoppingList}
-            disabled={isActionLoading}
-            className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
-          >
-            Add to Shopping List
-          </button>
-        )}
-      </div>
     </div>
   );
 }
