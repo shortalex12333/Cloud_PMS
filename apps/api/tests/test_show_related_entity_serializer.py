@@ -246,3 +246,130 @@ async def test_db_exception_returns_none():
     text = await serialize_entity("work_order", ENTITY_ID, conn, YACHT_ID)
 
     assert text is None
+
+
+# ---------------------------------------------------------------------------
+# certificate
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_certificate_full():
+    row = {
+        "certificate_name": "Lloyds Register Class",
+        "certificate_number": "LR-2026-001",
+        "certificate_type": "CLASS",
+        "issuing_authority": "Lloyds",
+        "status": "active",
+    }
+    conn = make_conn(fetchrow_return=row)
+
+    text = await serialize_entity("certificate", ENTITY_ID, conn, YACHT_ID)
+
+    assert text is not None
+    assert "Lloyds Register Class" in text
+    assert "type: CLASS" in text
+    assert "authority: Lloyds" in text
+    assert "status: active" in text
+    assert "number: LR-2026-001" in text
+
+
+# ---------------------------------------------------------------------------
+# receiving
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_receiving_with_vendor():
+    row = {
+        "vendor_name": "Marine Parts Co",
+        "vendor_reference": "REF-001",
+        "notes": None,
+        "status": "draft",
+    }
+    conn = make_conn(fetchrow_return=row)
+
+    text = await serialize_entity("receiving", ENTITY_ID, conn, YACHT_ID)
+
+    assert "Receiving from Marine Parts Co" in text
+    assert "ref: REF-001" in text
+    assert "status: draft" in text
+
+
+@pytest.mark.asyncio
+async def test_receiving_no_vendor_uses_fallback():
+    row = {"vendor_name": None, "vendor_reference": None, "notes": None, "status": "draft"}
+    conn = make_conn(fetchrow_return=row)
+
+    text = await serialize_entity("receiving", ENTITY_ID, conn, YACHT_ID)
+
+    assert text is not None
+    assert text.startswith("Receiving")
+
+
+# ---------------------------------------------------------------------------
+# handover_item
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_handover_item_full():
+    row = {
+        "summary": "Engine inspection overdue",
+        "entity_type": "note",
+        "section": "Engineering",
+        "category": "urgent",
+        "action_summary": "Schedule within 48 hours",
+    }
+    conn = make_conn(fetchrow_return=row)
+
+    text = await serialize_entity("handover_item", ENTITY_ID, conn, YACHT_ID)
+
+    assert "Engine inspection overdue" in text
+    assert "type: note" in text
+    assert "section: Engineering" in text
+    assert "category: urgent" in text
+    assert "Schedule within 48 hours" in text
+
+
+# ---------------------------------------------------------------------------
+# shopping_item
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_shopping_item_full():
+    row = {
+        "part_name": "Fuel Filter",
+        "part_number": "FF-4400",
+        "manufacturer": "Racor",
+        "status": "approved",
+        "urgency": "high",
+    }
+    conn = make_conn(fetchrow_return=row)
+
+    text = await serialize_entity("shopping_item", ENTITY_ID, conn, YACHT_ID)
+
+    assert "Fuel Filter" in text
+    assert "part_number: FF-4400" in text
+    assert "manufacturer: Racor" in text
+    assert "urgency: high" in text
+    assert "status: approved" in text
+
+
+# ---------------------------------------------------------------------------
+# email
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_email_full():
+    row = {
+        "subject": "Maintenance needed: Watermaker",
+        "preview_text": "Please schedule service for serial SN104999.",
+        "from_display_name": "Fleet Manager",
+        "folder": "inbox",
+    }
+    conn = make_conn(fetchrow_return=row)
+
+    text = await serialize_entity("email", ENTITY_ID, conn, YACHT_ID)
+
+    assert "Maintenance needed: Watermaker" in text
+    assert "from: Fleet Manager" in text
+    assert "folder: inbox" in text
+    assert "SN104999" in text

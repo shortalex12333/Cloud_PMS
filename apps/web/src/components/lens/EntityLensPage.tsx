@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { RouteLayout } from '@/components/layout';
 import { useEntityLens } from '@/hooks/useEntityLens';
 import { EntityLensProvider } from '@/contexts/EntityLensContext';
-import { useRelatedPanel } from '@/hooks/useRelatedPanel';
+import { useRelatedDrawer } from '@/hooks/useRelatedDrawer';
 import { useReadBeacon } from '@/hooks/useReadBeacon';
 import { useSignalRelated } from '@/hooks/useSignalRelated';
 import { ShowRelatedButton } from './ShowRelatedButton';
@@ -166,7 +166,7 @@ export function EntityLensPage({
     isLoading: relatedLoading,
     error: relatedError,
     totalRelated,
-  } = useRelatedPanel(entityType, entityId);
+  } = useRelatedDrawer(entityType, entityId);
 
   const {
     data: signalData,

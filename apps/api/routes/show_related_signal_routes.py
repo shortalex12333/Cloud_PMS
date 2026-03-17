@@ -37,17 +37,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/show-related-signal", tags=["show-related-signal"])
 
-# Valid entity types (mirrors related_handlers.py VALID_ENTITY_TYPES)
-VALID_ENTITY_TYPES = [
-    "work_order",
-    "equipment",
-    "fault",
-    "part",
-    "manual",
-    "handover",
-    # "attachment" removed — no standalone lens page or serializer.
-    # Attachments are always accessed through their parent entity.
-]
+# Derived from entity_serializer._SERIALIZERS — never hardcode this list.
+# Adding a new entity type: add it to entity_serializer.py only. This gate
+# automatically stays in sync.
+from services.entity_serializer import SUPPORTED_ENTITY_TYPES as _SUPPORTED
+VALID_ENTITY_TYPES = sorted(_SUPPORTED)
 
 
 def _build_user_context(auth: dict) -> UserContext:

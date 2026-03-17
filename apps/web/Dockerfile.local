@@ -1,0 +1,20 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+# Clobber any existing env files and force local API URL
+RUN rm -f .env.local .env.production .env && \
+    printf "NEXT_PUBLIC_API_URL=http://localhost:8000\nNEXT_PUBLIC_SUPABASE_URL=https://qvzmkaamzaqxpzbewjxe.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzkwNDYsImV4cCI6MjA3OTU1NTA0Nn0.MMzzsRkvbug-u19GBUnD0qLDtMVWEbOf6KE8mAADaxw\n" > .env.production
+
+# Patch CSP to allow localhost:8000 for local API testing
+RUN sed -i 's|https://handover-export.onrender.com|https://handover-export.onrender.com http://localhost:8000 http://127.0.0.1:8000|g' next.config.js
+
+RUN npm run build
+
+EXPOSE 3000
+CMD ["npm", "start"]
