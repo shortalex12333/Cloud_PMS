@@ -136,7 +136,7 @@ export function LensRenderer({
     case 'shopping_list':
       return <ShoppingListLensContent {...commonProps} />;
     case 'document':
-      return <DocumentLensContent {...commonProps} />;
+      return <EntityLensPage entityType="document" entityId={entityId} content={DocumentLensContent} />;
     case 'purchase_order':
       return <PurchaseOrderLensContent {...commonProps} />;
     default:
