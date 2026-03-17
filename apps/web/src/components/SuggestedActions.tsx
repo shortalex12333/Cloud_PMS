@@ -16,6 +16,7 @@ import ActionModal from '@/components/actions/ActionModal';
 interface SuggestedActionsProps {
   actions: ActionSuggestion[];
   yachtId: string | null;
+  query?: string;
   onActionComplete?: () => void;
   className?: string;
 }
@@ -23,6 +24,7 @@ interface SuggestedActionsProps {
 export default function SuggestedActions({
   actions,
   yachtId,
+  query,
   onActionComplete,
   className,
 }: SuggestedActionsProps) {
@@ -84,6 +86,7 @@ export default function SuggestedActions({
         <ActionModal
           action={selectedAction}
           yachtId={yachtId}
+          query={query}
           onClose={handleModalClose}
           onSuccess={handleActionSuccess}
         />
