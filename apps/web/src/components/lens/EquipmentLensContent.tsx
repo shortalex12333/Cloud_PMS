@@ -108,7 +108,7 @@ export function EquipmentLensContent() {
   // ---------------------------------------------------------------------------
 
   const handleCreateWO = React.useCallback(
-    async () => executeAction('create_work_order_for_equipment', { type: 'corrective', priority: 'medium' }),
+    async () => executeAction('create_work_order_for_equipment', { type: 'corrective', priority: 'routine' }),
     [executeAction]
   );
 

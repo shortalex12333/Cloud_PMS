@@ -6279,7 +6279,7 @@ async def execute_action(
             import uuid as uuid_module
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
-            equipment_id = payload.get("equipment_id") or context.get("equipment_id")
+            equipment_id = payload.get("equipment_id") or request.context.get("equipment_id") or request.context.get("entity_id")
             title = payload.get("title", "Work Order")
             description = payload.get("description", "")
             priority = payload.get("priority", "routine")
