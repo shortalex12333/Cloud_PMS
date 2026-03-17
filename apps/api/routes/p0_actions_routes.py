@@ -686,6 +686,7 @@ _WORK_ORDER_ACTIONS = frozenset({
     "add_work_order_photo", "mark_work_order_complete",
     "add_note_to_work_order", "add_part_to_work_order",
     "reassign_work_order", "archive_work_order",
+    "add_parts_to_work_order", "view_work_order_checklist", "add_work_order_note",
 })
 
 _PART_ACTIONS = frozenset({
