@@ -12,7 +12,7 @@ import { receivingToListResult } from '@/features/receiving/adapter';
 import { ReceivingPhotos } from '@/features/receiving/components/ReceivingPhotos';
 import type { ReceivingItem } from '@/features/receiving/types';
 function ReceivingDetail({ id }: { id: string }) {
-  const { session, user } = useAuth();
+  const { session } = useAuth();
   const token = session?.access_token;
   const queryClient = useQueryClient();
   const { executeAction, isLoading: isActionLoading } = useActionHandler();
@@ -44,9 +44,6 @@ function ReceivingDetail({ id }: { id: string }) {
     },
     [executeAction, id, handleRefresh]
   );
-
-  // Check if user is HOD (Head of Department) for verify action
-  const isHOD = user?.role && ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'].includes(user.role);
 
   if (isLoading) {
     return (
@@ -115,15 +112,13 @@ function ReceivingDetail({ id }: { id: string }) {
         >
           Report Discrepancy
         </button>
-        {isHOD && (
-          <button
-            onClick={() => handleAction('adjust_receiving_item')}
-            disabled={isActionLoading}
-            className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
-          >
-            Verify Line Item
-          </button>
-        )}
+        <button
+          onClick={() => handleAction('adjust_receiving_item')}
+          disabled={isActionLoading}
+          className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+        >
+          Verify Line Item
+        </button>
       </div>
 
       {data.description && (
