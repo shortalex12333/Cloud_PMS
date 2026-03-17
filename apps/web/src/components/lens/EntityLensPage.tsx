@@ -8,6 +8,7 @@ import { useEntityLens } from '@/hooks/useEntityLens';
 import { EntityLensProvider } from '@/contexts/EntityLensContext';
 import { useRelatedPanel } from '@/hooks/useRelatedPanel';
 import { useReadBeacon } from '@/hooks/useReadBeacon';
+import { useSignalRelated } from '@/hooks/useSignalRelated';
 import { ShowRelatedButton } from './ShowRelatedButton';
 import { RelatedDrawer } from './RelatedDrawer';
 import { AddRelatedItemModal } from './AddRelatedItemModal';
@@ -17,6 +18,20 @@ import { getActionDisplay } from '@/types/actions';
 
 // Clusters rendered in the shell action bar (not inline in content)
 const SHELL_CLUSTERS = new Set(['lifecycle', 'entity', 'compliance']);
+
+// Fields handled automatically — never require user input in the form
+const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+
+/**
+ * Returns true if the action has required fields that are not covered by
+ * BACKEND_AUTO or action.prefill — meaning a form is needed to execute it.
+ * Such actions must NOT appear in the shell bar (content component handles them inline).
+ */
+function hasUnresolvedFields(action: AvailableAction): boolean {
+  return action.required_fields.some(
+    (f) => !BACKEND_AUTO.has(f) && !(f in action.prefill)
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Signature modal (PIN collection only — TOTP is a future phase)
@@ -153,6 +168,11 @@ export function EntityLensPage({
     totalRelated,
   } = useRelatedPanel(entityType, entityId);
 
+  const {
+    data: signalData,
+    isLoading: signalLoading,
+  } = useSignalRelated(entityType, entityId);
+
   useReadBeacon(entityType, entityId);
 
   const handleNavigate = React.useCallback(
@@ -185,7 +205,7 @@ export function EntityLensPage({
   // Shell action bar: lifecycle, entity, and compliance clusters
   const shellActions = lens.availableActions.filter((a) => {
     const { cluster } = getActionDisplay(a.action_id);
-    return SHELL_CLUSTERS.has(cluster);
+    return SHELL_CLUSTERS.has(cluster) && !hasUnresolvedFields(a);
   });
 
   const contextValue = React.useMemo(
@@ -312,6 +332,8 @@ export function EntityLensPage({
               error={relatedError ?? null}
               onNavigate={handleNavigate}
               onAddRelated={canAddRelated ? () => setShowAddModal(true) : undefined}
+              signalItems={signalData?.items}
+              signalLoading={signalLoading}
             />
           ),
         }}
