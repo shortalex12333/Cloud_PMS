@@ -888,9 +888,8 @@ export default function SpotlightSearch({
         <div
           className={cn(
             'w-full font-body',
-            'bg-surface-elevated',
             'spotlight-panel',
-            emailScopeActive && 'bg-brand-interactive/20 ring-2 ring-brand-interactive/40'
+            emailScopeActive && 'ring-2 ring-brand-interactive/40'
           )}
           data-email-scope={emailScopeActive}
         >
@@ -1018,6 +1017,7 @@ export default function SpotlightSearch({
             <SuggestedActions
               actions={actionSuggestions}
               yachtId={user?.yachtId ?? null}
+              query={query}
               onActionComplete={refetch}
             />
           )}
@@ -1276,7 +1276,7 @@ export default function SpotlightSearch({
             aria-label={emailScopeActive ? 'Exit Email' : 'Email'}
             data-testid="utility-email-button"
           >
-            <SplineIcon scene="/spline/icons/mail_icon_dark.splinecode" size={32} renderSize={504} cropX={344} cropY={178} cropSize={130} />
+            <SplineIcon scene="/spline/icons/mail_icon_v2.splinecode" size={32} renderSize={512} />
           </button>
 
           {/* Menu Button with hamburger icon */}
