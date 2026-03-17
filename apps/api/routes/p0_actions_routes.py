@@ -51,66 +51,10 @@ from middleware.auth import lookup_tenant_for_user
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# LEDGER HELPER
+# LEDGER HELPER (moved to handlers/ledger_utils.py — imported here for backward compat)
 # ============================================================================
-
-def build_ledger_event(
-    yacht_id: str,
-    user_id: str,
-    event_type: str,  # Must be: create, update, delete, status_change, assignment, etc.
-    entity_type: str,  # e.g., 'work_order', 'fault', 'equipment'
-    entity_id: str,
-    action: str,  # e.g., 'add_note', 'add_checklist_item'
-    user_role: str = None,
-    change_summary: str = None,
-    metadata: dict = None,
-    department: str = None,
-    actor_name: str = None,
-    event_category: str = "write"
-) -> dict:
-    """Build a ledger event with correct schema for ledger_events table.
-
-    Required columns (NOT NULL):
-    - yacht_id, event_type, entity_type, entity_id, action, user_id, proof_hash
-
-    event_type must be one of:
-    - create, update, delete, status_change, assignment, approval, rejection,
-      escalation, handover, import, export
-    """
-    event_data = {
-        "yacht_id": str(yacht_id),
-        "user_id": str(user_id),
-        "event_type": event_type,
-        "entity_type": entity_type,
-        "entity_id": str(entity_id),
-        "action": action,
-        "source_context": "microaction",
-        "metadata": metadata or {},
-    }
-
-    if user_role:
-        event_data["user_role"] = user_role
-    if change_summary:
-        event_data["change_summary"] = change_summary
-    if department:
-        event_data["department"] = department
-    if actor_name:
-        event_data["actor_name"] = actor_name
-    event_data["event_category"] = event_category or "write"
-
-    # Generate proof_hash (SHA-256 of event data)
-    hash_input = json.dumps({
-        "yacht_id": event_data["yacht_id"],
-        "user_id": event_data["user_id"],
-        "event_type": event_type,
-        "entity_type": entity_type,
-        "entity_id": str(entity_id),
-        "action": action,
-        "timestamp": datetime.utcnow().isoformat()
-    }, sort_keys=True)
-    event_data["proof_hash"] = hashlib.sha256(hash_input.encode()).hexdigest()
-
-    return event_data
+from routes.handlers.ledger_utils import build_ledger_event
+from routes.handlers import HANDLERS as _ACTION_HANDLERS
 
 
 # Maps action name → (entity_type, payload_key_for_entity_id)
@@ -708,6 +652,76 @@ async def create_work_order_from_fault_preview(
     return result
 
 
+# ---------------------------------------------------------------------------
+# ENTITY CONTEXT NORMALISATION (Phase 4)
+# Maps generic entity_id → domain-specific keys based on action name.
+# useEntityLens surfaces always send entity_id; standalone forms send
+# domain keys (equipment_id, fault_id, etc.) directly.
+# Uses setdefault — if the domain key is already present it is NOT overwritten.
+# ---------------------------------------------------------------------------
+
+_EQUIPMENT_ACTIONS = frozenset({
+    "create_work_order_for_equipment", "update_equipment_status",
+    "flag_equipment_attention", "add_equipment_note",
+    "show_manual_section", "view_equipment_details",
+    "view_equipment_history", "view_equipment_parts",
+    "view_linked_faults", "view_equipment_manual",
+    "view_fault_history", "view_work_order_history",
+    "suggest_parts",
+})
+
+_FAULT_ACTIONS = frozenset({
+    "close_fault", "diagnose_fault", "acknowledge_fault", "resolve_fault",
+    "reopen_fault", "mark_fault_false_alarm", "create_work_order_from_fault",
+    "update_fault", "add_fault_photo", "view_fault_detail",
+    "add_fault_note", "report_fault",
+})
+
+_WORK_ORDER_ACTIONS = frozenset({
+    "update_work_order", "update_wo", "assign_work_order", "assign_wo",
+    "close_work_order", "complete_work_order", "add_wo_hours", "log_work_hours",
+    "add_wo_part", "add_part_to_wo", "add_wo_note", "add_note_to_wo",
+    "start_work_order", "begin_wo", "cancel_work_order", "cancel_wo",
+    "view_work_order_detail", "view_work_order", "get_work_order",
+    "add_work_order_photo", "mark_work_order_complete",
+    "add_note_to_work_order", "add_part_to_work_order",
+    "reassign_work_order", "archive_work_order",
+})
+
+_PART_ACTIONS = frozenset({
+    "consume_part", "receive_part", "transfer_part", "adjust_stock_quantity",
+    "write_off_part", "add_to_shopping_list", "view_part_stock",
+    "view_part_location", "view_part_usage", "view_linked_equipment",
+    "view_part_details", "check_stock_level", "log_part_usage",
+})
+
+
+def resolve_entity_context(action: str, context: dict) -> dict:
+    """
+    Normalise incoming context so handlers receive domain-specific keys.
+
+    Callers from useEntityLens surfaces send `entity_id`.
+    Callers from standalone forms send `equipment_id`, `fault_id`, etc. directly.
+    After this function, both paths produce the same context shape for handlers.
+
+    Uses setdefault — existing domain keys are never overwritten.
+    """
+    ctx = dict(context)
+    entity_id = ctx.get("entity_id")
+
+    if entity_id:
+        if action in _EQUIPMENT_ACTIONS:
+            ctx.setdefault("equipment_id", entity_id)
+        elif action in _FAULT_ACTIONS:
+            ctx.setdefault("fault_id", entity_id)
+        elif action in _WORK_ORDER_ACTIONS:
+            ctx.setdefault("work_order_id", entity_id)
+        elif action in _PART_ACTIONS:
+            ctx.setdefault("part_id", entity_id)
+
+    return ctx
+
+
 # ============================================================================
 # EXECUTE ENDPOINT (All Actions)
 # ============================================================================
@@ -1186,7 +1200,27 @@ async def execute_action(
                 }
             )
 
-    # Route to handler based on action name
+    # ========================================================================
+    # ENTITY CONTEXT NORMALISATION + HANDLER DISPATCH (Phase 4)
+    # resolve_entity_context maps entity_id → domain key once for all handlers.
+    # Registered handlers return here. Unregistered actions fall through to the
+    # legacy try/elif chain below. Delete the chain only after all actions migrated.
+    # ========================================================================
+    resolved_context = resolve_entity_context(action, request.context)
+
+    if action in _ACTION_HANDLERS:
+        tenant_alias = user_context.get("tenant_key_alias", "")
+        db_client = get_tenant_supabase_client(tenant_alias)
+        return await _ACTION_HANDLERS[action](
+            payload=payload,
+            context=resolved_context,
+            yacht_id=yacht_id,
+            user_id=user_id,
+            user_context=user_context,
+            db_client=db_client,
+        )
+
+    # Legacy elif chain — handles all actions not yet migrated to HANDLERS
     try:
         # ===== WORK ORDER ACTIONS (P0 Actions 2-5) =====
         if action == "create_work_order_from_fault":
