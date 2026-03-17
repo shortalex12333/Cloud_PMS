@@ -35,6 +35,7 @@ export interface ActionSuggestion {
   required_fields: string[];
   domain: string | null;
   match_score: number;
+  prefill?: Record<string, unknown>;
   storage_options?: {
     bucket: string;
     path_preview: string;
