@@ -124,7 +124,7 @@ export function useActionHandler() {
           throw new Error(errorData.error || `API Error: ${apiResponse.statusText}`);
         }
 
-        const response = await apiResponse.json() as Record<string, unknown>;
+        const response = await apiResponse.json();
 
         // Update state with success
         setState((prev) => ({
