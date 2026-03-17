@@ -696,6 +696,15 @@ _PART_ACTIONS = frozenset({
     "view_part_details", "check_stock_level", "log_part_usage",
 })
 
+_PO_ACTIONS = frozenset({
+    "submit_purchase_order", "approve_purchase_order",
+    "mark_po_received", "cancel_purchase_order",
+})
+
+_RECEIVING_ACTIONS = frozenset({
+    "submit_receiving_for_review", "edit_receiving",
+})
+
 
 def resolve_entity_context(action: str, context: dict) -> dict:
     """
@@ -719,6 +728,10 @@ def resolve_entity_context(action: str, context: dict) -> dict:
             ctx.setdefault("work_order_id", entity_id)
         elif action in _PART_ACTIONS:
             ctx.setdefault("part_id", entity_id)
+        elif action in _PO_ACTIONS:
+            ctx.setdefault("purchase_order_id", entity_id)
+        elif action in _RECEIVING_ACTIONS:
+            ctx.setdefault("receiving_id", entity_id)
 
     return ctx
 
@@ -5372,53 +5385,7 @@ async def execute_action(
         # See: apps/api/action_router/registry.py (lines 1764-1835)
         # See: apps/api/action_router/dispatchers/internal_dispatcher.py (lines 451-507)
 
-        # ===== RECEIVING INLINE ACTIONS (no dispatcher handler) =====
-        elif action in ("submit_receiving_for_review",):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            receiving_id = payload.get("receiving_id") or context.get("receiving_id")
-            if not receiving_id:
-                raise HTTPException(status_code=400, detail="receiving_id is required")
-            upd = db_client.table("pms_receiving").update({
-                "status": "in_review"
-            }).eq("id", receiving_id).eq("yacht_id", yacht_id).execute()
-            if upd.data:
-                try:
-                    db_client.table("ledger_events").insert(build_ledger_event(
-                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
-                        entity_type="receiving", entity_id=receiving_id, action="submit_receiving_for_review",
-                        user_role=user_context.get("role"), change_summary="Receiving submitted for review",
-                    )).execute()
-                except Exception as ledger_err:
-                    if "204" not in str(ledger_err):
-                        logger.warning(f"[Ledger] Failed to record submit_receiving_for_review: {ledger_err}")
-                result = {"status": "success", "message": "Receiving submitted for review"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to submit receiving for review"}
-
-        elif action in ("edit_receiving",):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            receiving_id = payload.get("receiving_id") or context.get("receiving_id")
-            if not receiving_id:
-                raise HTTPException(status_code=400, detail="receiving_id is required")
-            # edit_receiving returns current record data so the UI can populate edit form
-            rec = db_client.table("pms_receiving").select("*").eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
-            if rec.data:
-                try:
-                    db_client.table("ledger_events").insert(build_ledger_event(
-                        yacht_id=yacht_id, user_id=user_id, event_type="view",
-                        entity_type="receiving", entity_id=receiving_id, action="edit_receiving",
-                        user_role=user_context.get("role"), change_summary="Receiving record opened for editing",
-                    )).execute()
-                except Exception as ledger_err:
-                    if "204" not in str(ledger_err):
-                        logger.warning(f"[Ledger] Failed to record edit_receiving: {ledger_err}")
-                result = {"status": "success", "message": "Receiving record ready for editing", "data": rec.data}
-            else:
-                result = {"status": "error", "error_code": "NOT_FOUND", "message": "Receiving record not found"}
+        # ===== RECEIVING INLINE HANDLERS MIGRATED to handlers/receiving_handler.py (Phase 4, Task 3) =====
 
         # ===== RECEIVING LENS V1 ACTIONS =====
         elif action in ["create_receiving", "attach_receiving_image_with_comment",
@@ -5460,129 +5427,7 @@ async def execute_action(
                 logger.error(f"[RECEIVING] Action '{action}' failed: {type(e).__name__}: {e}")
                 raise
 
-        elif action in ("submit_purchase_order",):
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            po_id = payload.get("purchase_order_id")
-            if not po_id:
-                raise HTTPException(status_code=400, detail="purchase_order_id is required")
-            result_data = db_client.table("pms_purchase_orders").update({
-                "status": "submitted", "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
-            if result_data.data:
-                try:
-                    ledger_event = build_ledger_event(
-                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
-                        entity_type="purchase_order", entity_id=po_id, action="submit_purchase_order",
-                        user_role=user_context.get("role"), change_summary="Purchase order submitted",
-                    )
-                    db_client.table("ledger_events").insert(ledger_event).execute()
-                except Exception as ledger_err:
-                    if "204" not in str(ledger_err):
-                        logger.warning(f"[Ledger] Failed to record submit_purchase_order: {ledger_err}")
-                result = {"status": "success", "message": "Purchase order submitted"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to submit purchase order"}
-
-        elif action in ("approve_purchase_order",):
-            # Role check — HOD only (canonical: LENS_TRUTH_SHEET.md)
-            _hod = ["chief_engineer", "captain", "manager"]
-            if user_context.get("role", "") not in _hod:
-                raise HTTPException(status_code=403, detail={
-                    "status": "error", "error_code": "FORBIDDEN",
-                    "message": f"Role '{user_context.get('role', '')}' is not permitted to perform '{action}'",
-                    "required_roles": _hod,
-                })
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            po_id = payload.get("purchase_order_id")
-            if not po_id:
-                raise HTTPException(status_code=400, detail="purchase_order_id is required")
-            result_data = db_client.table("pms_purchase_orders").update({
-                "status": "ordered", "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
-            if result_data.data:
-                try:
-                    ledger_event = build_ledger_event(
-                        yacht_id=yacht_id, user_id=user_id, event_type="approval",
-                        entity_type="purchase_order", entity_id=po_id, action="approve_purchase_order",
-                        user_role=user_context.get("role"), change_summary="Purchase order approved and ordered",
-                    )
-                    db_client.table("ledger_events").insert(ledger_event).execute()
-                except Exception as ledger_err:
-                    if "204" not in str(ledger_err):
-                        logger.warning(f"[Ledger] Failed to record approve_purchase_order: {ledger_err}")
-                result = {"status": "success", "message": "Purchase order approved and ordered"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to approve purchase order"}
-
-        elif action in ("mark_po_received",):
-            # Role check — HOD only (canonical: LENS_TRUTH_SHEET.md)
-            _hod = ["chief_engineer", "captain", "manager"]
-            if user_context.get("role", "") not in _hod:
-                raise HTTPException(status_code=403, detail={
-                    "status": "error", "error_code": "FORBIDDEN",
-                    "message": f"Role '{user_context.get('role', '')}' is not permitted to perform '{action}'",
-                    "required_roles": _hod,
-                })
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            po_id = payload.get("purchase_order_id")
-            if not po_id:
-                raise HTTPException(status_code=400, detail="purchase_order_id is required")
-            result_data = db_client.table("pms_purchase_orders").update({
-                "status": "received", "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
-            if result_data.data:
-                try:
-                    ledger_event = build_ledger_event(
-                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
-                        entity_type="purchase_order", entity_id=po_id, action="mark_po_received",
-                        user_role=user_context.get("role"), change_summary="Purchase order marked received",
-                    )
-                    db_client.table("ledger_events").insert(ledger_event).execute()
-                except Exception as ledger_err:
-                    if "204" not in str(ledger_err):
-                        logger.warning(f"[Ledger] Failed to record mark_po_received: {ledger_err}")
-                result = {"status": "success", "message": "Purchase order marked as received"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update purchase order"}
-
-        elif action in ("cancel_purchase_order",):
-            # Role check — HOD only (canonical: LENS_TRUTH_SHEET.md)
-            _hod = ["chief_engineer", "captain", "manager"]
-            if user_context.get("role", "") not in _hod:
-                raise HTTPException(status_code=403, detail={
-                    "status": "error", "error_code": "FORBIDDEN",
-                    "message": f"Role '{user_context.get('role', '')}' is not permitted to perform '{action}'",
-                    "required_roles": _hod,
-                })
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            po_id = payload.get("purchase_order_id")
-            if not po_id:
-                raise HTTPException(status_code=400, detail="purchase_order_id is required")
-            result_data = db_client.table("pms_purchase_orders").update({
-                "status": "cancelled", "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
-            if result_data.data:
-                try:
-                    ledger_event = build_ledger_event(
-                        yacht_id=yacht_id, user_id=user_id, event_type="status_change",
-                        entity_type="purchase_order", entity_id=po_id, action="cancel_purchase_order",
-                        user_role=user_context.get("role"), change_summary="Purchase order cancelled",
-                    )
-                    db_client.table("ledger_events").insert(ledger_event).execute()
-                except Exception as ledger_err:
-                    if "204" not in str(ledger_err):
-                        logger.warning(f"[Ledger] Failed to record cancel_purchase_order: {ledger_err}")
-                result = {"status": "success", "message": "Purchase order cancelled"}
-            else:
-                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to cancel purchase order"}
+        # ===== PO HANDLERS MIGRATED to handlers/purchase_order_handler.py (Phase 4, Task 3) =====
 
         elif action in ("mark_shopping_list_ordered",):
             # Role check — HOD only (canonical: LENS_TRUTH_SHEET.md)
