@@ -13,8 +13,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { LensHeader, LensTitleBlock } from './LensHeader';
+import { LensTitleBlock } from './LensHeader';
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
@@ -109,7 +108,7 @@ export function EquipmentLensContent() {
   // ---------------------------------------------------------------------------
 
   const handleCreateWO = React.useCallback(
-    async () => executeAction('create_work_order_for_equipment', {}),
+    async () => executeAction('create_work_order_for_equipment', { type: 'corrective', priority: 'medium' }),
     [executeAction]
   );
 
@@ -148,9 +147,6 @@ export function EquipmentLensContent() {
   );
 
   // Navigation
-  const handleBack = React.useCallback(() => router.back(), [router]);
-  const handleClose = React.useCallback(() => router.push('/equipment'), [router]);
-
   const handleNavigate = React.useCallback(
     (entityType: string, entityId: string) =>
       router.push(getEntityRoute(entityType as Parameters<typeof getEntityRoute>[0], entityId)),
@@ -158,18 +154,7 @@ export function EquipmentLensContent() {
   );
 
   return (
-    <div className="flex flex-col h-full">
-      <LensHeader entityType="Equipment" title={name} onBack={handleBack} onClose={handleClose} />
-
-      <main
-        className={cn(
-          'flex-1 overflow-y-auto',
-          'pt-14',
-          'px-10 md:px-6 sm:px-4',
-          'max-w-[800px] mx-auto w-full',
-          'pb-12'
-        )}
-      >
+    <div className="space-y-6">
         {/* Title block */}
         <div className="mt-6">
           <LensTitleBlock
@@ -387,7 +372,6 @@ export function EquipmentLensContent() {
             />
           </div>
         )}
-      </main>
     </div>
   );
 }
