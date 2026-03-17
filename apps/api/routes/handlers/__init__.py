@@ -24,6 +24,7 @@ from .handover_handler import HANDLERS as HAND_HANDLERS
 from .shopping_handler import HANDLERS as SHOP_HANDLERS
 from .pm_handler import HANDLERS as PM_HANDLERS
 from .wo_completion_handler import HANDLERS as WO_COMP_HANDLERS
+from .fault_handler import HANDLERS as FAULT_HANDLERS
 
 HANDLERS: dict = {
     **WO_HANDLERS, **PO_HANDLERS, **REC_HANDLERS,
@@ -31,4 +32,5 @@ HANDLERS: dict = {
     **CERT_HANDLERS, **DOC_HANDLERS, **HAND_HANDLERS,
     **SHOP_HANDLERS, **PM_HANDLERS,
     **WO_COMP_HANDLERS,
+    **FAULT_HANDLERS,
 }
