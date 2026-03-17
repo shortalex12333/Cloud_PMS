@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import type { ActionResult } from '@/types/actions';
+import type { ActionResult } from '@/types/entity';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 

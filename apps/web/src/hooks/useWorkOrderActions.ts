@@ -18,18 +18,12 @@
  */
 
 import { useState, useCallback } from 'react';
+import type { ActionResult } from '@/types/entity';
 import { useAuth } from '@/hooks/useAuth';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-export interface ActionResult {
-  success: boolean;
-  message?: string;
-  data?: Record<string, unknown>;
-  error?: string;
-}
 
 export interface WorkOrderActionsState {
   isLoading: boolean;
