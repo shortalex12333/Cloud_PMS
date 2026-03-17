@@ -124,7 +124,7 @@ export function LensRenderer({
     case 'receiving':
       return <EntityLensPage entityType="receiving" entityId={entityId} content={ReceivingLensContent} />;
     case 'certificate':
-      return <CertificateLensContent {...commonProps} />;
+      return <EntityLensPage entityType="certificate" entityId={entityId} content={CertificateLensContent} />;
     case 'handover':
       return <HandoverLensContent {...commonProps} />;
     case 'handover_export':
