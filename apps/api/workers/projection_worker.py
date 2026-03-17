@@ -61,6 +61,25 @@ try:
 except ImportError:
     ENTITY_EXTRACTOR_AVAILABLE = False
 
+# Sync entity serializer — unified search_text building for both pipelines
+try:
+    # Workers run as `python workers/projection_worker.py`, which sets sys.path[0]
+    # to /app/workers — not /app. Insert the app root so services.* is importable.
+    import sys as _sys
+    _app_root = str(Path(__file__).parent.parent)
+    if _app_root not in _sys.path:
+        _sys.path.insert(0, _app_root)
+    from services.entity_serializer_sync import (
+        serialize_entity_sync,
+        SUPPORTED_ENTITY_TYPES_SYNC,
+    )
+    SERIALIZER_SYNC_AVAILABLE = True
+except ImportError:
+    SERIALIZER_SYNC_AVAILABLE = False
+    logging.getLogger('projection_worker').warning(
+        "[ProjectionWorker] entity_serializer_sync not available — using legacy text build"
+    )
+
 # Graceful shutdown flag
 _shutdown = False
 
@@ -500,7 +519,8 @@ def atomic_chunk_replacement(cur, doc_id: str, yacht_id: str, chunks: List[Dict]
 # =============================================================================
 
 def upsert_search_index(cur, item: Dict, row: Dict, mapping: Dict,
-                        chunk_keywords: str = "") -> Tuple[bool, bool]:
+                        chunk_keywords: str = "",
+                        search_text_override: Optional[str] = None) -> Tuple[bool, bool]:
     """
     Upsert search_index with source_version guard.
     Includes Hard Tiers fields (recency_ts, ident_norm).
@@ -509,8 +529,11 @@ def upsert_search_index(cur, item: Dict, row: Dict, mapping: Dict,
     try:
         object_type = mapping['object_type']
 
-        # Build fields
-        search_text = build_search_text(row, mapping)
+        # Build search_text — prefer override from entity_serializer_sync
+        if search_text_override:
+            search_text = search_text_override
+        else:
+            search_text = build_search_text(row, mapping)
 
         # Prepend chunk keywords for documents
         if chunk_keywords:
@@ -732,6 +755,18 @@ def process_item(cur, item: Dict) -> Tuple[bool, str]:
     yacht_id = str(item['yacht_id'])
     org_id = str(item.get('org_id') or yacht_id)
 
+    # --- Entity serializer unified path ---
+    # Compute search_text_override early so it's available at all exit paths below.
+    search_text_override = None
+    if SERIALIZER_SYNC_AVAILABLE and object_type in SUPPORTED_ENTITY_TYPES_SYNC:
+        search_text_override = serialize_entity_sync(object_type, object_id, cur, yacht_id)
+        if search_text_override:
+            logger.info(
+                f"[EntitySerializerSync] {object_type}/{object_id[:8]}... "
+                f"→ {repr(search_text_override[:80])}"
+            )
+    # --- End entity serializer ---
+
     # If no source_table in payload, use object_type to find mapping
     if not source_table:
         # Find mapping by object_type
@@ -741,15 +776,26 @@ def process_item(cur, item: Dict) -> Tuple[bool, str]:
                 break
 
     if not source_table:
-        # No source table needed for embedding - item already exists in search_index
-        # Just mark as processed (embedding would be handled by embedding worker)
+        # No source table found — new entity type not yet in search_projection_map.
+        if search_text_override:
+            upsert_search_index(
+                cur, item, {},
+                {'object_type': object_type, 'filter_map': {}, 'payload_map': {}},
+                search_text_override=search_text_override,
+            )
         METRICS.last_process_ms = (time.perf_counter() - start) * 1000
         return True, ""
 
     # Get mapping for this source table
     mapping = MAPPINGS.get(source_table)
     if not mapping:
-        # No mapping but item exists - proceed with embedding
+        # No DB mapping for this source table — new entity type.
+        if search_text_override:
+            upsert_search_index(
+                cur, item, {},
+                {'object_type': object_type, 'filter_map': {}, 'payload_map': {}},
+                search_text_override=search_text_override,
+            )
         METRICS.last_process_ms = (time.perf_counter() - start) * 1000
         return True, ""
 
@@ -770,7 +816,7 @@ def process_item(cur, item: Dict) -> Tuple[bool, str]:
 
     # Upsert search_index (refresh data before embedding)
     upsert_start = time.perf_counter()
-    success, was_updated = upsert_search_index(cur, item, row, mapping, chunk_keywords)
+    success, was_updated = upsert_search_index(cur, item, row, mapping, chunk_keywords, search_text_override)
     METRICS.last_upsert_ms = (time.perf_counter() - upsert_start) * 1000
 
     if not success:

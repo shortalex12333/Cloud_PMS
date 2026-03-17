@@ -1,13 +1,17 @@
-# handlers/__init__.py
+# routes/handlers/__init__.py
 #
-# Merges all domain handler registries into a single HANDLERS dict.
-# The dispatcher imports this at module level.
+# Phase 4 dispatch table — action name → handler function.
+# Imported by p0_actions_routes.py as _ACTION_HANDLERS.
 #
-# Activation pattern: each task uncomments its import + adds to HANDLERS.
-# The uncomment IS the deployment gate — if the handler file has bugs,
-# the import fails at startup (safe, visible failure).
+# NOT the same as apps/api/handlers/ (domain business logic classes).
+# This directory: thin dispatch functions registered by action name.
+# apps/api/handlers/: stateful handler classes instantiated per request.
 #
-# Current state: All Phase 4 domains active.
+# Activation pattern: uncomment an import to activate its domain cluster.
+# The uncomment IS the deployment gate — a bad handler file fails at
+# import time (loud failure, safe to roll back).
+#
+# Current state: All Phase 4 domains active (92 actions registered).
 
 from .work_order_handler import HANDLERS as WO_HANDLERS
 from .purchase_order_handler import HANDLERS as PO_HANDLERS

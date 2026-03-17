@@ -220,6 +220,113 @@ async def _serialize_handover(
     return "; ".join(parts)
 
 
+async def _serialize_certificate(
+    entity_id: str, conn: asyncpg.Connection, yacht_id: str
+) -> Optional[str]:
+    row = await conn.fetchrow(
+        "SELECT certificate_name, certificate_number, certificate_type, "
+        "issuing_authority, status "
+        "FROM pms_vessel_certificates WHERE id = $1 AND yacht_id = $2",
+        entity_id, yacht_id,
+    )
+    if not row:
+        return None
+    parts = [row["certificate_name"] or "Certificate"]
+    if row["certificate_type"]:
+        parts.append(f"type: {row['certificate_type']}")
+    if row["issuing_authority"]:
+        parts.append(f"authority: {row['issuing_authority']}")
+    if row["status"]:
+        parts.append(f"status: {row['status']}")
+    if row["certificate_number"]:
+        parts.append(f"number: {row['certificate_number']}")
+    return "; ".join(parts)
+
+
+async def _serialize_receiving(
+    entity_id: str, conn: asyncpg.Connection, yacht_id: str
+) -> Optional[str]:
+    row = await conn.fetchrow(
+        "SELECT vendor_name, vendor_reference, notes, status "
+        "FROM pms_receiving WHERE id = $1 AND yacht_id = $2",
+        entity_id, yacht_id,
+    )
+    if not row:
+        return None
+    parts = [f"Receiving from {row['vendor_name']}" if row.get("vendor_name") else "Receiving"]
+    if row["vendor_reference"]:
+        parts.append(f"ref: {row['vendor_reference']}")
+    if row["status"]:
+        parts.append(f"status: {row['status']}")
+    if row["notes"]:
+        parts.append(str(row["notes"])[:200])
+    return "; ".join(parts)
+
+
+async def _serialize_handover_item(
+    entity_id: str, conn: asyncpg.Connection, yacht_id: str
+) -> Optional[str]:
+    row = await conn.fetchrow(
+        "SELECT summary, entity_type, section, category, action_summary "
+        "FROM handover_items WHERE id = $1 AND yacht_id = $2",
+        entity_id, yacht_id,
+    )
+    if not row:
+        return None
+    parts = [row["summary"] or "Handover item"]
+    if row["entity_type"]:
+        parts.append(f"type: {row['entity_type']}")
+    if row["section"]:
+        parts.append(f"section: {row['section']}")
+    if row["category"]:
+        parts.append(f"category: {row['category']}")
+    if row["action_summary"]:
+        parts.append(str(row["action_summary"])[:200])
+    return "; ".join(parts)
+
+
+async def _serialize_shopping_item(
+    entity_id: str, conn: asyncpg.Connection, yacht_id: str
+) -> Optional[str]:
+    row = await conn.fetchrow(
+        "SELECT part_name, part_number, manufacturer, status, urgency "
+        "FROM pms_shopping_list_items WHERE id = $1 AND yacht_id = $2",
+        entity_id, yacht_id,
+    )
+    if not row:
+        return None
+    parts = [row["part_name"] or "Shopping item"]
+    if row["part_number"]:
+        parts.append(f"part_number: {row['part_number']}")
+    if row["manufacturer"]:
+        parts.append(f"manufacturer: {row['manufacturer']}")
+    if row["urgency"]:
+        parts.append(f"urgency: {row['urgency']}")
+    if row["status"]:
+        parts.append(f"status: {row['status']}")
+    return "; ".join(parts)
+
+
+async def _serialize_email(
+    entity_id: str, conn: asyncpg.Connection, yacht_id: str
+) -> Optional[str]:
+    row = await conn.fetchrow(
+        "SELECT subject, preview_text, from_display_name, folder "
+        "FROM email_messages WHERE id = $1 AND yacht_id = $2",
+        entity_id, yacht_id,
+    )
+    if not row:
+        return None
+    parts = [row["subject"] or "Email"]
+    if row["from_display_name"]:
+        parts.append(f"from: {row['from_display_name']}")
+    if row["folder"]:
+        parts.append(f"folder: {row['folder']}")
+    if row["preview_text"]:
+        parts.append(str(row["preview_text"])[:200])
+    return "; ".join(parts)
+
+
 # ---------------------------------------------------------------------------
 # Serializer registry
 # ---------------------------------------------------------------------------
@@ -229,11 +336,22 @@ _SERIALIZERS: Dict[str, Callable] = {
     "fault": _serialize_fault,
     "equipment": _serialize_equipment,
     "part": _serialize_part,
-    "inventory": _serialize_part,   # alias — same table as part
+    "inventory": _serialize_part,          # alias — same table as part
     "manual": _serialize_manual,
-    "document": _serialize_manual,  # alias
+    "document": _serialize_manual,         # alias
     "handover": _serialize_handover,
+    "handover_export": _serialize_handover, # explicit alias
+    "certificate": _serialize_certificate,
+    "receiving": _serialize_receiving,
+    "handover_item": _serialize_handover_item,
+    "shopping_item": _serialize_shopping_item,
+    "email": _serialize_email,
 }
 
+# Public constant — import this instead of accessing _SERIALIZERS directly.
+# Routes and other consumers derive their allowed-types list from here so
+# the gate can never drift from the serializer registry.
+SUPPORTED_ENTITY_TYPES: frozenset = frozenset(_SERIALIZERS.keys())
 
-__all__ = ["serialize_entity"]
+
+__all__ = ["serialize_entity", "SUPPORTED_ENTITY_TYPES"]

@@ -1276,7 +1276,7 @@ export default function SpotlightSearch({
             aria-label={emailScopeActive ? 'Exit Email' : 'Email'}
             data-testid="utility-email-button"
           >
-            <SplineIcon scene="/spline/icons/mail_icon_v2.splinecode" size={32} renderSize={512} />
+            <SplineIcon scene="/spline/icons/mail_icon_dark.splinecode" size={32} renderSize={512} />
           </button>
 
           {/* Menu Button with hamburger icon */}

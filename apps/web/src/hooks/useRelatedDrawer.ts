@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * useRelatedPanel
+ * useRelatedDrawer
  *
- * Encapsulates all UI state and data-fetching for the Show Related side panel.
+ * Encapsulates all UI state and data-fetching for the RelatedDrawer.
  * Replaces the ~30-line boilerplate block that was duplicated across every
  * entity detail page (work-orders, faults, equipment, inventory).
  *
  * Usage:
- *   const panel = useRelatedPanel('work_order', workOrderId);
- *   // then use panel.open, panel.totalRelated, panel.primaryPanelProps, etc.
+ *   const drawer = useRelatedDrawer('work_order', workOrderId);
+ *   // then use drawer.open, drawer.totalRelated, etc.
  */
 
 import * as React from 'react';
@@ -18,7 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { isHOD } from '@/contexts/AuthContext';
 import type { RelatedResponse } from '@/hooks/useRelated';
 
-export interface RelatedPanelState {
+export interface RelatedDrawerState {
   /** Whether the side panel is open */
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -40,10 +40,10 @@ export interface RelatedPanelState {
   totalRelated: number;
 }
 
-export function useRelatedPanel(
+export function useRelatedDrawer(
   entityType: string,
   entityId: string
-): RelatedPanelState {
+): RelatedDrawerState {
   const { user } = useAuth();
   const [open, setOpen] = React.useState(false);
   const [showAddModal, setShowAddModal] = React.useState(false);

@@ -233,7 +233,258 @@ async def get_signal_related_supabase(
 
 
 # ---------------------------------------------------------------------------
-# Supabase entity serializer
+# Supabase entity serializer — individual functions
+# ---------------------------------------------------------------------------
+# Each function: (entity_id, supabase, yacht_id) -> Optional[str]
+# Mirrors entity_serializer.py but uses supabase.table().select() calls.
+# IMPORTANT: These are synchronous — called via asyncio.to_thread().
+
+def _sb_work_order(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("pms_work_orders").select(
+        "title, description, status, priority, equipment_id"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    eq_name = None
+    if row.get("equipment_id"):
+        er = supabase.table("pms_equipment").select("name").eq(
+            "id", row["equipment_id"]
+        ).maybe_single().execute()
+        eq_name = er.data.get("name") if er.data else None
+    parts = [row["title"]] if row.get("title") else []
+    if eq_name:
+        parts.append(f"equipment: {eq_name}")
+    if row.get("status"):
+        parts.append(f"status: {row['status']}")
+    if row.get("priority"):
+        parts.append(f"priority: {row['priority']}")
+    desc = (row.get("description") or "").strip()
+    if desc and desc != (row.get("title") or "").strip():
+        parts.append(desc[:200])
+    return "; ".join(parts) if parts else None
+
+
+def _sb_fault(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("pms_faults").select(
+        "title, description, severity, equipment_id"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    eq_name = None
+    if row.get("equipment_id"):
+        er = supabase.table("pms_equipment").select("name").eq(
+            "id", row["equipment_id"]
+        ).maybe_single().execute()
+        eq_name = er.data.get("name") if er.data else None
+    parts = [row["title"]] if row.get("title") else []
+    if eq_name:
+        parts.append(f"equipment: {eq_name}")
+    if row.get("severity"):
+        parts.append(f"severity: {row['severity']}")
+    desc = row.get("description") or ""
+    if desc and desc.strip() != (row.get("title") or "").strip():
+        parts.append(desc[:200])
+    return "; ".join(parts) if parts else None
+
+
+def _sb_equipment(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("pms_equipment").select(
+        "name, manufacturer, model, system_type, location, criticality"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [row["name"]] if row.get("name") else []
+    if row.get("manufacturer"):
+        parts.append(f"manufacturer: {row['manufacturer']}")
+    if row.get("model"):
+        parts.append(f"model: {row['model']}")
+    if row.get("system_type"):
+        parts.append(f"system_type: {row['system_type']}")
+    if row.get("location"):
+        parts.append(f"location: {row['location']}")
+    if row.get("criticality"):
+        parts.append(f"criticality: {row['criticality']}")
+    return "; ".join(parts) if parts else None
+
+
+def _sb_part(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("pms_parts").select(
+        "name, part_number, category, manufacturer"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [row["name"]] if row.get("name") else []
+    if row.get("part_number"):
+        parts.append(f"part_number: {row['part_number']}")
+    if row.get("category"):
+        parts.append(f"category: {row['category']}")
+    if row.get("manufacturer"):
+        parts.append(f"manufacturer: {row['manufacturer']}")
+    return "; ".join(parts) if parts else None
+
+
+def _sb_manual(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("doc_metadata").select(
+        "filename, doc_type, equipment_ids"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [row["filename"]] if row.get("filename") else []
+    if row.get("doc_type"):
+        parts.append(f"doc_type: {row['doc_type']}")
+    eq_ids = row.get("equipment_ids") or []
+    if eq_ids:
+        er = supabase.table("pms_equipment").select("name").in_("id", eq_ids).execute()
+        eq_names = [e["name"] for e in (er.data or []) if e.get("name")]
+        if eq_names:
+            parts.append(f"equipment: {', '.join(eq_names)}")
+    return "; ".join(parts) if parts else None
+
+
+def _sb_handover(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("pms_handovers").select(
+        "title, content"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [row["title"]] if row.get("title") else []
+    if row.get("content"):
+        parts.append(row["content"][:300])
+    return "; ".join(parts) if parts else None
+
+
+def _sb_handover_export(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("handover_exports").select(
+        "title, content"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [row.get("title") or "Handover"]
+    if row.get("content"):
+        parts.append(str(row["content"])[:300])
+    return "; ".join(parts) if parts else None
+
+
+def _sb_certificate(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("pms_vessel_certificates").select(
+        "certificate_name, certificate_number, certificate_type, issuing_authority, status"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [row.get("certificate_name") or "Certificate"]
+    if row.get("certificate_type"):
+        parts.append(f"type: {row['certificate_type']}")
+    if row.get("issuing_authority"):
+        parts.append(f"authority: {row['issuing_authority']}")
+    if row.get("status"):
+        parts.append(f"status: {row['status']}")
+    if row.get("certificate_number"):
+        parts.append(f"number: {row['certificate_number']}")
+    return "; ".join(parts) if parts else None
+
+
+def _sb_receiving(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("pms_receiving").select(
+        "vendor_name, vendor_reference, notes, status"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [f"Receiving from {row['vendor_name']}" if row.get("vendor_name") else "Receiving"]
+    if row.get("vendor_reference"):
+        parts.append(f"ref: {row['vendor_reference']}")
+    if row.get("status"):
+        parts.append(f"status: {row['status']}")
+    if row.get("notes"):
+        parts.append(str(row["notes"])[:200])
+    return "; ".join(parts) if parts else None
+
+
+def _sb_handover_item(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("handover_items").select(
+        "summary, entity_type, section, category, action_summary"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [row.get("summary") or "Handover item"]
+    if row.get("entity_type"):
+        parts.append(f"type: {row['entity_type']}")
+    if row.get("section"):
+        parts.append(f"section: {row['section']}")
+    if row.get("category"):
+        parts.append(f"category: {row['category']}")
+    if row.get("action_summary"):
+        parts.append(str(row["action_summary"])[:200])
+    return "; ".join(parts) if parts else None
+
+
+def _sb_shopping_item(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("pms_shopping_list_items").select(
+        "part_name, part_number, manufacturer, status, urgency"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [row.get("part_name") or "Shopping item"]
+    if row.get("part_number"):
+        parts.append(f"part_number: {row['part_number']}")
+    if row.get("manufacturer"):
+        parts.append(f"manufacturer: {row['manufacturer']}")
+    if row.get("urgency"):
+        parts.append(f"urgency: {row['urgency']}")
+    if row.get("status"):
+        parts.append(f"status: {row['status']}")
+    return "; ".join(parts) if parts else None
+
+
+def _sb_email(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
+    r = supabase.table("email_messages").select(
+        "subject, preview_text, from_display_name, folder"
+    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r.data:
+        return None
+    row = r.data
+    parts = [row.get("subject") or "Email"]
+    if row.get("from_display_name"):
+        parts.append(f"from: {row['from_display_name']}")
+    if row.get("folder"):
+        parts.append(f"folder: {row['folder']}")
+    if row.get("preview_text"):
+        parts.append(str(row["preview_text"])[:200])
+    return "; ".join(parts) if parts else None
+
+
+# Registry — mirrors entity_serializer._SERIALIZERS.
+# Adding a new type: add a _sb_* function above + one entry here.
+_SUPABASE_SERIALIZERS: Dict[str, Any] = {
+    "work_order":      _sb_work_order,
+    "fault":           _sb_fault,
+    "equipment":       _sb_equipment,
+    "part":            _sb_part,
+    "inventory":       _sb_part,           # alias
+    "manual":          _sb_manual,
+    "document":        _sb_manual,         # alias
+    "handover":        _sb_handover,
+    "handover_export": _sb_handover_export,
+    "certificate":     _sb_certificate,
+    "receiving":       _sb_receiving,
+    "handover_item":   _sb_handover_item,
+    "shopping_item":   _sb_shopping_item,
+    "email":           _sb_email,
+}
+
+
+# ---------------------------------------------------------------------------
+# Supabase entity serializer — dispatcher
 # ---------------------------------------------------------------------------
 
 def _serialize_entity_supabase_sync(
@@ -243,134 +494,16 @@ def _serialize_entity_supabase_sync(
     yacht_id: str,
 ) -> Optional[str]:
     """
-    Serialize entity attributes to text using Supabase HTTP client.
-    Mirrors entity_serializer.py but uses supabase.table().select() calls.
+    Dispatch to the correct Supabase serializer function.
     Returns None if entity not found or type unknown.
 
     IMPORTANT: Synchronous — run via asyncio.to_thread() from async context.
     """
+    fn = _SUPABASE_SERIALIZERS.get(entity_type)
+    if fn is None:
+        return None
     try:
-        if entity_type == "work_order":
-            r = supabase.table("pms_work_orders").select(
-                "title, description, status, priority, equipment_id"
-            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
-            if not r.data:
-                return None
-            row = r.data
-            eq_name = None
-            if row.get("equipment_id"):
-                er = supabase.table("pms_equipment").select("name").eq(
-                    "id", row["equipment_id"]
-                ).maybe_single().execute()
-                eq_name = er.data.get("name") if er.data else None
-            parts = [row["title"]] if row.get("title") else []
-            if eq_name:
-                parts.append(f"equipment: {eq_name}")
-            if row.get("status"):
-                parts.append(f"status: {row['status']}")
-            if row.get("priority"):
-                parts.append(f"priority: {row['priority']}")
-            desc = (row.get("description") or "").strip()
-            if desc and desc != (row.get("title") or "").strip():
-                parts.append(desc[:200])
-            return "; ".join(parts) if parts else None
-
-        elif entity_type == "fault":
-            r = supabase.table("pms_faults").select(
-                "title, description, severity, equipment_id"
-            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
-            if not r.data:
-                return None
-            row = r.data
-            eq_name = None
-            if row.get("equipment_id"):
-                er = supabase.table("pms_equipment").select("name").eq(
-                    "id", row["equipment_id"]
-                ).maybe_single().execute()
-                eq_name = er.data.get("name") if er.data else None
-            parts = [row["title"]] if row.get("title") else []
-            if eq_name:
-                parts.append(f"equipment: {eq_name}")
-            if row.get("severity"):
-                parts.append(f"severity: {row['severity']}")
-            # Only append description if it adds new information (not a repeat of title)
-            desc = row.get("description") or ""
-            if desc and desc.strip() != (row.get("title") or "").strip():
-                parts.append(desc[:200])
-            return "; ".join(parts) if parts else None
-
-        elif entity_type == "equipment":
-            # pms_equipment has system_type + criticality, NOT category
-            r = supabase.table("pms_equipment").select(
-                "name, manufacturer, model, system_type, location, criticality"
-            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
-            if not r.data:
-                return None
-            row = r.data
-            parts = [row["name"]] if row.get("name") else []
-            if row.get("manufacturer"):
-                parts.append(f"manufacturer: {row['manufacturer']}")
-            if row.get("model"):
-                parts.append(f"model: {row['model']}")
-            if row.get("system_type"):
-                parts.append(f"system_type: {row['system_type']}")
-            if row.get("location"):
-                parts.append(f"location: {row['location']}")
-            if row.get("criticality"):
-                parts.append(f"criticality: {row['criticality']}")
-            return "; ".join(parts) if parts else None
-
-        elif entity_type in ("part", "inventory"):
-            r = supabase.table("pms_parts").select(
-                "name, part_number, category, manufacturer"
-            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
-            if not r.data:
-                return None
-            row = r.data
-            parts = [row["name"]] if row.get("name") else []
-            if row.get("part_number"):
-                parts.append(f"part_number: {row['part_number']}")
-            if row.get("category"):
-                parts.append(f"category: {row['category']}")
-            if row.get("manufacturer"):
-                parts.append(f"manufacturer: {row['manufacturer']}")
-            return "; ".join(parts) if parts else None
-
-        elif entity_type in ("manual", "document"):
-            r = supabase.table("doc_metadata").select(
-                "filename, doc_type, equipment_ids"
-            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
-            if not r.data:
-                return None
-            row = r.data
-            parts = [row["filename"]] if row.get("filename") else []
-            if row.get("doc_type"):
-                parts.append(f"doc_type: {row['doc_type']}")
-            eq_ids = row.get("equipment_ids") or []
-            if eq_ids:
-                er = supabase.table("pms_equipment").select("name").in_(
-                    "id", eq_ids
-                ).execute()
-                eq_names = [e["name"] for e in (er.data or []) if e.get("name")]
-                if eq_names:
-                    parts.append(f"equipment: {', '.join(eq_names)}")
-            return "; ".join(parts) if parts else None
-
-        elif entity_type == "handover":
-            r = supabase.table("pms_handovers").select(
-                "title, content"
-            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
-            if not r.data:
-                return None
-            row = r.data
-            parts = [row["title"]] if row.get("title") else []
-            if row.get("content"):
-                parts.append(row["content"][:300])
-            return "; ".join(parts) if parts else None
-
-        else:
-            return None
-
+        return fn(entity_id, supabase, yacht_id)
     except Exception as e:
         logger.error(f"[EntitySerializer/Supabase] {entity_type}/{entity_id}: {e}")
         return None

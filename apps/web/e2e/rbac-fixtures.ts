@@ -57,6 +57,11 @@ type RBACFixtures = {
   seedWorkOrder: (title?: string) => Promise<{ id: string; title: string; wo_number: string }>;
   seedNote: (entityId: string, entityType: string, text?: string) => Promise<{ id: string; text: string }>;
 
+  // Seed a search_index row for an equipment entity — bypasses the projector daemon.
+  // Ensures at least one indexed entity exists for FTS/vector signal tests regardless
+  // of whether the projection worker has run (LAW 9: content_hash targets cleanup).
+  seedSearchIndex: () => Promise<{ equipmentId: string; equipmentName: string }>;
+
   // Action execution helpers
   executeAction: (page: Page, action: string, context: Record<string, string>, payload: Record<string, unknown>) => Promise<{ success: boolean; error?: string; data?: unknown }>;
 
@@ -242,6 +247,66 @@ export const test = base.extend<RBACFixtures>({
     };
 
     await use(seedNote);
+  },
+
+  // Seed a search_index row for a real equipment entity.
+  // Uses embedding_status='indexed' to bypass the projector daemon entirely.
+  // content_hash='test-fixture-hash' scopes cleanup to only rows we inserted.
+  // Vector dimension MUST be 1536 — any other size rejects the pgvector index.
+  seedSearchIndex: async ({ supabaseAdmin }, use) => {
+    const seededIds: string[] = [];
+
+    const seedSearchIndex = async () => {
+      const { data: equip } = await supabaseAdmin
+        .from('pms_equipment')
+        .select('id, name')
+        .eq('yacht_id', RBAC_CONFIG.yachtId)
+        .not('name', 'is', null)
+        .limit(1)
+        .single();
+
+      if (!equip) throw new Error('No equipment in test yacht for search_index seed');
+
+      // Exactly 1536 dimensions — must match text-embedding-3-small output size
+      const embedding = '[' + Array(1536).fill(0.001).join(',') + ']';
+
+      const { error } = await supabaseAdmin.from('search_index').upsert({
+        object_type: 'equipment',
+        object_id: equip.id,
+        yacht_id: RBAC_CONFIG.yachtId,
+        org_id: RBAC_CONFIG.yachtId,
+        // "work order" appears in any test WO's entity_text → FTS match guaranteed
+        search_text: `${equip.name} maintenance work order inspection service engine check`,
+        filters: {},
+        payload: { name: equip.name, entity_type: 'equipment' },
+        recency_ts: new Date().toISOString(),
+        ident_norm: equip.name.toLowerCase().replace(/\s+/g, ''),
+        source_version: 1,
+        content_hash: 'test-fixture-hash',
+        embedding_1536: embedding,
+        embedding_model: 'text-embedding-3-small',
+        embedding_version: 1,
+        embedding_hash: 'test-fixture-embedding-hash',
+        embedding_status: 'indexed',
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'object_type,object_id' });
+
+      if (error) throw new Error(`Failed to seed search_index: ${error.message}`);
+      seededIds.push(equip.id);
+      return { equipmentId: equip.id, equipmentName: equip.name };
+    };
+
+    await use(seedSearchIndex);
+
+    // Cleanup: only delete rows we seeded — real indexed rows are left intact
+    if (seededIds.length > 0) {
+      await supabaseAdmin
+        .from('search_index')
+        .delete()
+        .eq('object_type', 'equipment')
+        .in('object_id', seededIds)
+        .eq('content_hash', 'test-fixture-hash');
+    }
   },
 
   // Execute an action via the API

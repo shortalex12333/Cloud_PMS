@@ -1,7 +1,7 @@
 // apps/web/e2e/shard-34-lens-actions/show-related-signal.spec.ts
 
 /**
- * SHARD 34: Show Related — Signal-Based Discovery (V2)
+ * SHARD 34: Show Related — Signal-Based Discovery
  *
  * These tests prove the signal discovery layer WORKS, not just that
  * the endpoint responds. Key properties verified:
@@ -30,9 +30,13 @@ const FRONTEND_BASE = process.env.E2E_BASE_URL || 'http://localhost:3000';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Valid entity_types the signal layer can return — any result outside this set is a bug
+// All types from projection.yaml + entity_serializer.py _SERIALIZERS
 const VALID_ENTITY_TYPES = new Set([
   'work_order', 'fault', 'equipment', 'part', 'inventory',
-  'manual', 'document', 'handover',
+  'manual', 'document', 'handover', 'handover_export',
+  'certificate', 'receiving', 'handover_item',
+  'shopping_item', 'email',
+  'work_order_note', 'note', 'warranty_claim', 'purchase_order', 'supplier',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -477,8 +481,13 @@ test.describe('[HOD] UI — signal item navigation', () => {
   test('clicking a signal item navigates to that entity, back button returns', async ({
     hodPage,
     seedWorkOrder,
+    seedSearchIndex,
   }) => {
     const wo = await seedWorkOrder(`S34 UI ClickWO ${generateTestId('cl')}`);
+
+    // Ensure at least one indexed equipment row exists in search_index for this yacht.
+    // This bypasses the projector daemon so the test is deterministic on any machine.
+    await seedSearchIndex();
 
     await hodPage.goto(`${FRONTEND_BASE}/work-orders/${wo.id}`);
     await hodPage.waitForLoadState('domcontentloaded');
@@ -488,16 +497,7 @@ test.describe('[HOD] UI — signal item navigation', () => {
 
     // Signal results take up to 20 s — the embedding round-trip can be slow
     const signalSection = hodPage.getByTestId('signal-also-related');
-    const hasSignalItems = await signalSection.isVisible({ timeout: 20_000 }).catch(() => false);
-
-    if (!hasSignalItems) {
-      test.skip(
-        true,
-        'No signal items in search_index for this entity — skipping navigation test. ' +
-        'Run the projector daemon to populate search_index, or seed directly into search_index.'
-      );
-      return;
-    }
+    await expect(signalSection).toBeVisible({ timeout: 20_000 });
 
     const firstSignalItem = hodPage.locator('[data-testid^="signal-item-"]').first();
     await expect(firstSignalItem).toBeVisible({ timeout: 5_000 });
