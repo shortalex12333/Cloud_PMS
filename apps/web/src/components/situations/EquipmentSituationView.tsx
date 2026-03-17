@@ -4,15 +4,16 @@
  * Equipment Situation View
  *
  * Equipment viewing environment per situation framework.
- * Displays equipment details, status, and available actions based on permissions.
+ * Displays equipment details and status.
+ *
+ * Note: Action execution is handled via the entity lens page at /equipment/{id}.
+ * This view is read-only — navigate to the entity page for mutations.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { X, Wrench, AlertTriangle, Plus, Loader2, Clock, MapPin, FileText, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Wrench, AlertTriangle, Loader2, Clock, MapPin, FileText, RefreshCw } from 'lucide-react';
 import type { SituationContext } from '@/types/situation';
-import { useEquipmentActions, useEquipmentPermissions } from '@/hooks/useEquipmentActions';
 import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/hooks/useAuth';
 
 // ============================================================================
 // TYPES
@@ -21,7 +22,7 @@ import { useAuth } from '@/hooks/useAuth';
 export interface EquipmentSituationViewProps {
   situation: SituationContext;
   onClose: () => void;
-  onAction?: (action: string, payload: any) => void;
+  onAction?: (action: string, payload: unknown) => void;
 }
 
 interface EquipmentData {
@@ -45,19 +46,14 @@ interface EquipmentData {
 export default function EquipmentSituationView({
   situation,
   onClose,
-  onAction,
 }: EquipmentSituationViewProps) {
   const [equipment, setEquipment] = useState<EquipmentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { user } = useAuth();
   const equipmentId = situation.primary_entity_id;
-  const metadata = situation.evidence as any;
-  const equipmentTitle = metadata?.title || metadata?.name || 'Equipment';
-
-  const { isLoading: actionLoading, createWorkOrder, reportFault, logHours } = useEquipmentActions(equipmentId);
-  const permissions = useEquipmentPermissions();
+  const metadata = situation.evidence as unknown as Record<string, unknown> | undefined;
+  const equipmentTitle = (metadata?.title ?? metadata?.name ?? 'Equipment') as string;
 
   /**
    * Load equipment data on mount
@@ -98,60 +94,6 @@ export default function EquipmentSituationView({
       loadEquipment();
     }
   }, [equipmentId]);
-
-  /**
-   * Handle create work order
-   */
-  const handleCreateWorkOrder = useCallback(async () => {
-    const result = await createWorkOrder(equipmentId);
-    if (result.success) {
-      if (onAction) {
-        onAction('work_order_created', result.data);
-      }
-      alert('Work order created successfully');
-    } else {
-      alert(`Failed to create work order: ${result.error}`);
-    }
-  }, [createWorkOrder, equipmentId, onAction]);
-
-  /**
-   * Handle report fault
-   */
-  const handleReportFault = useCallback(async () => {
-    const result = await reportFault(equipmentId);
-    if (result.success) {
-      if (onAction) {
-        onAction('fault_reported', result.data);
-      }
-      alert('Fault reported successfully');
-    } else {
-      alert(`Failed to report fault: ${result.error}`);
-    }
-  }, [reportFault, equipmentId, onAction]);
-
-  /**
-   * Handle log hours
-   */
-  const handleLogHours = useCallback(async () => {
-    const hoursInput = prompt('Enter running hours reading:');
-    if (!hoursInput) return;
-
-    const hours = parseFloat(hoursInput);
-    if (isNaN(hours)) {
-      alert('Please enter a valid number');
-      return;
-    }
-
-    const result = await logHours(equipmentId, hours);
-    if (result.success) {
-      if (onAction) {
-        onAction('hours_logged', result.data);
-      }
-      alert('Hours logged successfully');
-    } else {
-      alert(`Failed to log hours: ${result.error}`);
-    }
-  }, [logHours, equipmentId, onAction]);
 
   /**
    * Get status badge color
@@ -297,49 +239,14 @@ export default function EquipmentSituationView({
             )}
           </div>
 
-          {/* Footer Actions */}
-          <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+          {/* Footer */}
+          <div className="flex items-center justify-end px-5 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
             <button
               onClick={onClose}
               className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
             >
               Close
             </button>
-
-            <div className="flex items-center gap-2">
-              {permissions.canLogHours && (
-                <button
-                  onClick={handleLogHours}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded-lg transition-colors text-zinc-700 dark:text-zinc-300"
-                >
-                  <Clock className="h-4 w-4" />
-                  Log Hours
-                </button>
-              )}
-
-              {permissions.canReportFault && (
-                <button
-                  onClick={handleReportFault}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 rounded-lg transition-colors text-amber-700 dark:text-amber-400"
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  Report Fault
-                </button>
-              )}
-
-              {permissions.canCreateWorkOrder && (
-                <button
-                  onClick={handleCreateWorkOrder}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors text-white"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Work Order
-                </button>
-              )}
-            </div>
           </div>
         </div>
       </div>

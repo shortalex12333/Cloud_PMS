@@ -2,30 +2,18 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/useAuth';
 import { EntityList } from '@/features/entity-list/components/EntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
+import { EntityLensPage } from '@/components/lens/EntityLensPage';
 import { EquipmentLensContent } from '@/components/lens/EquipmentLensContent';
-import { fetchEquipment, fetchEquipmentItem } from '@/features/equipment/api';
+import { fetchEquipment } from '@/features/equipment/api';
 import { equipmentToListResult } from '@/features/equipment/adapter';
 import type { Equipment } from '@/features/equipment/types';
 
 function EquipmentPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const selectedId = searchParams.get('id');
-  const { session } = useAuth();
-  const token = session?.access_token;
-
-  // Fetch selected equipment data
-  const { data: equipmentData, isLoading, error } = useQuery({
-    queryKey: ['equipment', selectedId],
-    queryFn: () => fetchEquipmentItem(selectedId!, token || ''),
-    enabled: !!selectedId && !!token,
-    staleTime: 30000,
-  });
 
   const handleSelect = React.useCallback(
     (id: string) => {
@@ -37,44 +25,6 @@ function EquipmentPageContent() {
   const handleCloseDetail = React.useCallback(() => {
     router.push('/equipment', { scroll: false });
   }, [router]);
-
-  const handleRefresh = React.useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['equipment'] });
-    if (selectedId) {
-      queryClient.invalidateQueries({ queryKey: ['equipment', selectedId] });
-    }
-  }, [queryClient, selectedId]);
-
-  // Render loading state for lens content
-  const renderLensContent = () => {
-    if (!selectedId) return null;
-
-    if (isLoading) {
-      return (
-        <div className="flex items-center justify-center h-full">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
-        </div>
-      );
-    }
-
-    if (error || !equipmentData) {
-      return (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-red-400">Failed to load equipment</p>
-        </div>
-      );
-    }
-
-    return (
-      <EquipmentLensContent
-        id={selectedId}
-        data={equipmentData as unknown as Record<string, unknown>}
-        onBack={handleCloseDetail}
-        onClose={handleCloseDetail}
-        onRefresh={handleRefresh}
-      />
-    );
-  };
 
   return (
     <div className="h-screen bg-surface-base">
@@ -88,7 +38,13 @@ function EquipmentPageContent() {
       />
 
       <EntityDetailOverlay isOpen={!!selectedId} onClose={handleCloseDetail}>
-        {renderLensContent()}
+        {selectedId && (
+          <EntityLensPage
+            entityType="equipment"
+            entityId={selectedId}
+            content={EquipmentLensContent}
+          />
+        )}
       </EntityDetailOverlay>
     </div>
   );
