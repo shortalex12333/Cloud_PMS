@@ -130,7 +130,7 @@ export function LensRenderer({
     case 'handover_export':
       return <HandoverExportLensContent {...commonProps} />;
     case 'hours_of_rest':
-      return <HoursOfRestLensContent {...commonProps} />;
+      return <EntityLensPage entityType="hours_of_rest" entityId={entityId} content={HoursOfRestLensContent} />;
     case 'warranty':
       return <EntityLensPage entityType="warranty" entityId={entityId} content={WarrantyLensContent} />;
     case 'shopping_list':
