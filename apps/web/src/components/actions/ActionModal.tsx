@@ -20,6 +20,7 @@ interface ActionModalProps {
   action: ActionSuggestion;
   yachtId: string | null;
   entityId?: string;
+  query?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -68,10 +69,26 @@ export default function ActionModal({
   action,
   yachtId,
   entityId,
+  query,
   onClose,
   onSuccess,
 }: ActionModalProps) {
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState<Record<string, string>>(() => {
+    const trimmedQuery = query?.trim() ?? '';
+    if (!trimmedQuery) return {};
+    const seed: Record<string, string> = {};
+    const isNarrativeField = (name: string) =>
+      inferFieldType(name) === 'textarea' ||
+      name === 'title' ||
+      name === 'content' ||
+      name === 'summary';
+    for (const field of action.required_fields) {
+      if (isNarrativeField(field)) {
+        seed[field] = trimmedQuery;
+      }
+    }
+    return seed;
+  });
   const [filename, setFilename] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
