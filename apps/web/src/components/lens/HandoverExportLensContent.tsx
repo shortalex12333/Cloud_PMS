@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { useAuth } from '@/hooks/useAuth';
 import { HandoverExportLens } from './HandoverExportLens';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 interface Section {
   id: string;
@@ -44,33 +44,27 @@ interface SignatureData {
 }
 
 export function HandoverExportLensContent() {
-  const { entityId, entity, isLoading } = useEntityLensContext();
-  const { user } = useAuth();
+  const { entityId, entity } = useEntityLensContext();
+  const { user, session } = useAuth();
   const router = useRouter();
+  const token = session?.access_token ?? null;
 
-  // Determine mode based on user role and export status
+  // Mode is derived from entity state only — no client-side role checks.
+  // Backend enforces HOD authorization on the countersign endpoint.
   const getMode = useCallback((): 'edit' | 'review' => {
-    if (!entity || !user) return 'edit';
-
+    if (!entity || !user) return 'review';
     const reviewStatus = entity.review_status as string | undefined;
     const createdBy = entity.created_by as string | undefined;
-
-    // If user is the creator and status is pending_review, they can edit
-    if (createdBy === user.id && reviewStatus === 'pending_review') {
-      return 'edit';
-    }
-
-    // If status is pending_hod_signature and user is HOD+, they review
-    if (reviewStatus === 'pending_hod_signature') {
-      const hodRoles = ['hod', 'captain', 'manager', 'chief_engineer'];
-      if (user.role && hodRoles.includes(user.role)) {
-        return 'review';
-      }
-    }
-
-    // Default to review for completed exports
+    // Only the creator can edit while status is still pending_review
+    if (createdBy === user.id && reviewStatus === 'pending_review') return 'edit';
     return 'review';
   }, [entity, user]);
+
+  // ---------------------------------------------------------------------------
+  // Dedicated API routes — NOT safeExecute / executeAction
+  // These call Next.js proxy routes that forward to the Python backend.
+  // Both routes require Authorization: Bearer <token>.
+  // ---------------------------------------------------------------------------
 
   // Handle user submit (sign and send for HOD approval)
   const handleSubmit = useCallback(async (data: {
@@ -79,51 +73,34 @@ export function HandoverExportLensContent() {
   }) => {
     const response = await fetch(`/api/handover-export/${entityId}/submit`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(data),
     });
     if (!response.ok) throw new Error('Submit failed');
     router.refresh();
-  }, [entityId, router]);
+  }, [entityId, token, router]);
 
-  // Handle HOD countersign
+  // Handle HOD countersign — backend enforces HOD role authorization
   const handleCountersign = useCallback(async (hodSignature: SignatureData) => {
     const response = await fetch(`/api/handover-export/${entityId}/countersign`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ hodSignature }),
     });
     if (!response.ok) throw new Error('Countersign failed');
     router.refresh();
-  }, [entityId, router]);
+  }, [entityId, token, router]);
 
-  // Handle draft save
-  const handleSaveDraft = useCallback(async (sections: Section[]) => {
-    const editedContent = (entity?.edited_content as Record<string, unknown> | null) ?? {};
-    const response = await fetch(`/api/handover-export/${entityId}/submit`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        edited_content: {
-          ...editedContent,
-          sections,
-        },
-      }),
-    });
-    if (!response.ok) throw new Error('Save draft failed');
-  }, [entityId, entity]);
+  // No dedicated draft-save API route exists — onSaveDraft omitted from HandoverExportLens.
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 text-celeste-blue animate-spin mx-auto mb-3" />
-          <p className="text-celeste-text-muted typo-body">Loading export...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // EntityLensPage handles isLoading and entity-not-found states before mounting this component.
+  // The !user guard covers the edge case where auth session is missing.
   if (!entity || !user) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -149,11 +126,8 @@ export function HandoverExportLensContent() {
   const userSignature = (entity.user_signature as SignatureData | null) ?? null;
   const hodSignature = (entity.hod_signature as SignatureData | null) ?? null;
 
-  // Force review mode if user has already submitted
-  let mode = getMode();
-  if (userSignature && reviewStatus !== 'pending_review') {
-    mode = 'review';
-  }
+  // Force review mode if user has already submitted their signature
+  const mode: 'edit' | 'review' = userSignature ? 'review' : getMode();
 
   return (
     <HandoverExportLens
@@ -176,7 +150,6 @@ export function HandoverExportLensContent() {
       onClose={() => router.back()}
       onSubmit={handleSubmit}
       onCountersign={handleCountersign}
-      onSaveDraft={handleSaveDraft}
     />
   );
 }
