@@ -835,33 +835,44 @@ from routes.handlers import HANDLERS
 
 # All canonical names from lines 2491–end (Phase 4 scope only)
 PHASE4_ACTIONS = {
-    # Work orders (2492–2842, 6277–6318)
+    # Work orders (2492–2842, 6277–6318, full)
     'update_work_order', 'update_wo', 'assign_work_order', 'assign_wo',
     'close_work_order', 'complete_work_order', 'add_wo_hours', 'log_work_hours',
     'add_wo_part', 'add_part_to_wo', 'add_wo_note', 'add_note_to_wo',
     'start_work_order', 'begin_wo', 'cancel_work_order', 'cancel_wo',
     'create_work_order', 'create_wo', 'view_work_order_detail', 'view_work_order',
     'get_work_order', 'create_work_order_for_equipment',
+    'list_work_orders', 'add_parts_to_work_order', 'add_work_order_photo',
+    'view_work_order_history', 'view_work_order_checklist', 'promote_candidate_to_part',
+    # Worklist
+    'add_worklist_task', 'update_worklist_progress', 'export_worklist', 'view_worklist',
     # PM (2855–2862)
     'create_pm_schedule', 'record_pm_completion', 'defer_pm_task',
     'update_pm_schedule', 'view_pm_due_list',
-    # Handover (2863–2871)
+    # Handover (full — 5 BLOCKED + 6 inline/delegate)
     'create_handover', 'acknowledge_handover', 'update_handover',
     'delete_handover', 'filter_handover',
+    'add_to_handover', 'add_document_to_handover', 'add_predictive_insight_to_handover',
+    'edit_handover_section', 'export_handover', 'regenerate_handover_summary',
     # Certificate block 1 (2872–2882)
     'add_certificate', 'renew_certificate', 'add_service_contract', 'record_contract_claim',
-    # Certificate block 2 (5714–5777)
+    # Certificate block 2 (5714–5777, full — 5 delegate actions)
     'create_vessel_certificate', 'create_crew_certificate',
-    # Shopping (5778–5852, 6318+)
+    'update_certificate', 'link_document_to_certificate', 'supersede_certificate',
+    # Shopping (5778–5852, 6318+, full)
     'create_shopping_list_item', 'approve_shopping_list_item', 'mark_shopping_list_ordered',
-    # HoR (5853–5941)
-    'get_hours_of_rest', 'upsert_hours_of_rest',
+    'reject_shopping_list_item', 'delete_shopping_item', 'view_shopping_list_history',
+    # HoR (5853–5941, full)
+    'get_hours_of_rest', 'upsert_hours_of_rest', 'update_hours_of_rest',
+    'view_hours_of_rest', 'export_hours_of_rest',
     'get_monthly_signoff', 'list_monthly_signoffs', 'create_monthly_signoff', 'sign_monthly_signoff',
     # Crew (5942–6013)
     'create_crew_template', 'apply_crew_template', 'list_crew_templates',
     'list_crew_warnings', 'acknowledge_warning', 'dismiss_warning',
-    # Document (6014–6065)
+    # Document (6014–6065, full)
     'upload_document', 'update_document', 'delete_document',
+    'list_documents', 'get_document_url', 'add_document_tags',
+    'view_document_section', 'view_related_documents',
     # Receiving (partial — create_receiving and attach_receiving_image_with_comment
     # use internal_dispatcher with different contract; remain in legacy chain)
     'submit_receiving_for_review', 'edit_receiving',

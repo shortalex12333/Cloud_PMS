@@ -92,6 +92,24 @@ async def record_contract_claim(
 # CERT LENS V2 ACTIONS (L4897-4959) — delegate to handlers.certificate_handlers
 # ============================================================================
 
+async def _delegate_to_cert_handler(
+    action_name: str,
+    db_client: Client,
+    payload: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+) -> dict:
+    """Single factory call shared by all cert v2 delegate functions."""
+    from handlers.certificate_handlers import get_certificate_handlers
+    cert_handlers = get_certificate_handlers(db_client)
+    handler_fn = cert_handlers.get(action_name)
+    if not handler_fn:
+        raise HTTPException(status_code=501, detail=f"Certificate action '{action_name}' not implemented")
+    handler_params = {"yacht_id": yacht_id, "user_id": user_id, **payload}
+    return await handler_fn(**handler_params)
+
+
 async def create_vessel_certificate(
     payload: dict,
     context: dict,
@@ -101,12 +119,7 @@ async def create_vessel_certificate(
     db_client: Client,
 ) -> dict:
     _enforce_cert_rbac("create_vessel_certificate", user_context)
-    from handlers.certificate_handlers import get_certificate_handlers
-    cert_handlers = get_certificate_handlers(db_client)
-    handler_fn = cert_handlers.get("create_vessel_certificate")
-    if not handler_fn:
-        raise HTTPException(status_code=404, detail="Certificate handler 'create_vessel_certificate' not found")
-    return await handler_fn(yacht_id=yacht_id, user_id=user_id, **payload)
+    return await _delegate_to_cert_handler("create_vessel_certificate", db_client, payload, yacht_id, user_id, user_context)
 
 
 async def create_crew_certificate(
@@ -118,12 +131,7 @@ async def create_crew_certificate(
     db_client: Client,
 ) -> dict:
     _enforce_cert_rbac("create_crew_certificate", user_context)
-    from handlers.certificate_handlers import get_certificate_handlers
-    cert_handlers = get_certificate_handlers(db_client)
-    handler_fn = cert_handlers.get("create_crew_certificate")
-    if not handler_fn:
-        raise HTTPException(status_code=404, detail="Certificate handler 'create_crew_certificate' not found")
-    return await handler_fn(yacht_id=yacht_id, user_id=user_id, **payload)
+    return await _delegate_to_cert_handler("create_crew_certificate", db_client, payload, yacht_id, user_id, user_context)
 
 
 async def update_certificate(
@@ -135,12 +143,7 @@ async def update_certificate(
     db_client: Client,
 ) -> dict:
     _enforce_cert_rbac("update_certificate", user_context)
-    from handlers.certificate_handlers import get_certificate_handlers
-    cert_handlers = get_certificate_handlers(db_client)
-    handler_fn = cert_handlers.get("update_certificate")
-    if not handler_fn:
-        raise HTTPException(status_code=404, detail="Certificate handler 'update_certificate' not found")
-    return await handler_fn(yacht_id=yacht_id, user_id=user_id, **payload)
+    return await _delegate_to_cert_handler("update_certificate", db_client, payload, yacht_id, user_id, user_context)
 
 
 async def link_document_to_certificate(
@@ -163,12 +166,7 @@ async def link_document_to_certificate(
     if not getattr(dm, 'data', None):
         raise HTTPException(status_code=404, detail="document_id not found")
 
-    from handlers.certificate_handlers import get_certificate_handlers
-    cert_handlers = get_certificate_handlers(db_client)
-    handler_fn = cert_handlers.get("link_document_to_certificate")
-    if not handler_fn:
-        raise HTTPException(status_code=404, detail="Certificate handler 'link_document_to_certificate' not found")
-    return await handler_fn(yacht_id=yacht_id, user_id=user_id, **payload)
+    return await _delegate_to_cert_handler("link_document_to_certificate", db_client, payload, yacht_id, user_id, user_context)
 
 
 async def supersede_certificate(
@@ -184,12 +182,7 @@ async def supersede_certificate(
     if not payload.get("signature"):
         raise HTTPException(status_code=400, detail="signature payload is required for supersede action")
 
-    from handlers.certificate_handlers import get_certificate_handlers
-    cert_handlers = get_certificate_handlers(db_client)
-    handler_fn = cert_handlers.get("supersede_certificate")
-    if not handler_fn:
-        raise HTTPException(status_code=404, detail="Certificate handler 'supersede_certificate' not found")
-    return await handler_fn(yacht_id=yacht_id, user_id=user_id, **payload)
+    return await _delegate_to_cert_handler("supersede_certificate", db_client, payload, yacht_id, user_id, user_context)
 
 
 # ============================================================================

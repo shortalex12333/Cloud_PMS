@@ -135,10 +135,13 @@ async def add_to_handover(
 
         # Map handler errors to HTTP exceptions (from original L2033-2051)
         if result.get("status") == "error":
-            error_code = result.get("error_code")
-            status_code = 400
+            error_code = result.get("error_code", "")
             if error_code == "INTERNAL_ERROR":
                 status_code = 500
+            elif error_code in ("INVALID_ENTITY_TYPE", "VALIDATION_ERROR"):
+                status_code = 400
+            else:
+                status_code = 400
             raise HTTPException(
                 status_code=status_code,
                 detail={
@@ -340,17 +343,7 @@ async def export_handover(
         raise HTTPException(status_code=400, detail="handover_id is required")
 
     # Get handover with all fields
-    handover = db_client.table("handovers").select("*").eq(
-        "id", handover_id
-    ).eq("yacht_id", yacht_id).maybe_single().execute()
-
-    if not handover.data:
-        handover = db_client.table("handover").select("*").eq(
-            "id", handover_id
-        ).eq("yacht_id", yacht_id).maybe_single().execute()
-
-    if not handover.data:
-        raise HTTPException(status_code=404, detail="Handover not found")
+    handover, _ = _find_handover(db_client, handover_id, yacht_id, "*")
 
     # Get items if using handover_items table
     items = []
