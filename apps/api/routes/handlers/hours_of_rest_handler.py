@@ -193,13 +193,6 @@ async def export_hours_of_rest(
         }
 
 
-# ============================================================================
-# DELEGATION HELPERS — instantiate HoursOfRestHandlers with dispatcher db_client
-# ============================================================================
-
-def _hor_instance(db_client: Client) -> HoursOfRestHandlers:
-    """Create HoursOfRestHandlers bound to the dispatcher's db_client."""
-    return HoursOfRestHandlers(db_client)
 
 
 # ============================================================================
@@ -215,7 +208,7 @@ async def get_hours_of_rest(
 ) -> dict:
     logger.info(f"[HOR] Dispatching 'get_hours_of_rest' - yacht_id={yacht_id}, user_id={user_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
 
     # Extract target user (defaults to current user)
     target_user_id = payload.get("user_id", user_id)
@@ -247,7 +240,7 @@ async def upsert_hours_of_rest(
 ) -> dict:
     logger.info(f"[HOR] Dispatching 'upsert_hours_of_rest' - yacht_id={yacht_id}, user_id={user_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
 
     target_user_id = payload.get("user_id", user_id)
 
@@ -277,11 +270,14 @@ async def get_monthly_signoff(
 ) -> dict:
     logger.info(f"[HOR_SIGNOFF] Dispatching 'get_monthly_signoff' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
-    entity_id = payload.get("signoff_id")
+    signoff_id = payload.get("signoff_id")
+    if not signoff_id:
+        raise HTTPException(status_code=400, detail="signoff_id is required")
+
+    hor = HoursOfRestHandlers(db_client)
 
     return await hor.get_monthly_signoff(
-        entity_id=entity_id,
+        entity_id=signoff_id,
         yacht_id=yacht_id,
         params=payload
     )
@@ -300,7 +296,7 @@ async def list_monthly_signoffs(
 ) -> dict:
     logger.info(f"[HOR_SIGNOFF] Dispatching 'list_monthly_signoffs' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
 
     return await hor.list_monthly_signoffs(
         entity_id=user_id,
@@ -322,7 +318,7 @@ async def create_monthly_signoff(
 ) -> dict:
     logger.info(f"[HOR_SIGNOFF] Dispatching 'create_monthly_signoff' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
 
     return await hor.create_monthly_signoff(
         entity_id=user_id,
@@ -345,11 +341,14 @@ async def sign_monthly_signoff(
 ) -> dict:
     logger.info(f"[HOR_SIGNOFF] Dispatching 'sign_monthly_signoff' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
-    entity_id = payload.get("signoff_id")
+    signoff_id = payload.get("signoff_id")
+    if not signoff_id:
+        raise HTTPException(status_code=400, detail="signoff_id is required")
+
+    hor = HoursOfRestHandlers(db_client)
 
     return await hor.sign_monthly_signoff(
-        entity_id=entity_id,
+        entity_id=signoff_id,
         yacht_id=yacht_id,
         user_id=user_id,
         payload=payload

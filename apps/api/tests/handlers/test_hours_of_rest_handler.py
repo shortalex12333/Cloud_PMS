@@ -345,3 +345,35 @@ async def test_sign_monthly_signoff_delegates():
         )
         assert result == mock_result
         instance.sign_monthly_signoff.assert_awaited_once()
+
+
+# ============================================================================
+# GUARDS: signoff_id validation
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_get_monthly_signoff_missing_signoff_id():
+    """get_monthly_signoff must raise 400 when signoff_id is missing."""
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc:
+        await HANDLERS["get_monthly_signoff"](
+            payload={},  # missing signoff_id
+            context=base_ctx(), yacht_id="y-1", user_id="u-1",
+            user_context=base_uc(), db_client=MagicMock(),
+        )
+    assert exc.value.status_code == 400
+    assert "signoff_id is required" in str(exc.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_sign_monthly_signoff_missing_signoff_id():
+    """sign_monthly_signoff must raise 400 when signoff_id is missing."""
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc:
+        await HANDLERS["sign_monthly_signoff"](
+            payload={},  # missing signoff_id
+            context=base_ctx(), yacht_id="y-1", user_id="u-1",
+            user_context=base_uc(), db_client=MagicMock(),
+        )
+    assert exc.value.status_code == 400
+    assert "signoff_id is required" in str(exc.value.detail)

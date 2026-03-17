@@ -25,13 +25,6 @@ from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 logger = logging.getLogger(__name__)
 
 
-# ============================================================================
-# DELEGATION HELPER
-# ============================================================================
-
-def _hor_instance(db_client: Client) -> HoursOfRestHandlers:
-    """Create HoursOfRestHandlers bound to the dispatcher's db_client."""
-    return HoursOfRestHandlers(db_client)
 
 
 # ============================================================================
@@ -47,7 +40,7 @@ async def create_crew_template(
 ) -> dict:
     logger.info(f"[HOR_TEMPLATE] Dispatching 'create_crew_template' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
 
     return await hor.create_crew_template(
         entity_id=user_id,
@@ -70,7 +63,7 @@ async def apply_crew_template(
 ) -> dict:
     logger.info(f"[HOR_TEMPLATE] Dispatching 'apply_crew_template' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
 
     return await hor.apply_crew_template(
         entity_id=user_id,
@@ -93,7 +86,7 @@ async def list_crew_templates(
 ) -> dict:
     logger.info(f"[HOR_TEMPLATE] Dispatching 'list_crew_templates' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
 
     return await hor.list_crew_templates(
         entity_id=user_id,
@@ -115,7 +108,7 @@ async def list_crew_warnings(
 ) -> dict:
     logger.info(f"[HOR_WARNING] Dispatching 'list_crew_warnings' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
 
     return await hor.list_crew_warnings(
         entity_id=user_id,
@@ -137,7 +130,7 @@ async def acknowledge_warning(
 ) -> dict:
     logger.info(f"[HOR_WARNING] Dispatching 'acknowledge_warning' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
     warning_id = payload.get("warning_id")
 
     return await hor.acknowledge_warning(
@@ -161,7 +154,7 @@ async def dismiss_warning(
 ) -> dict:
     logger.info(f"[HOR_WARNING] Dispatching 'dismiss_warning' - yacht_id={yacht_id}")
 
-    hor = _hor_instance(db_client)
+    hor = HoursOfRestHandlers(db_client)
     warning_id = payload.get("warning_id")
 
     return await hor.dismiss_warning(
