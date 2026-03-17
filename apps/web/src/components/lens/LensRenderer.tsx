@@ -17,6 +17,7 @@ import { useSurface } from '@/contexts/SurfaceContext';
 import { useNavigationContextSafe } from '@/contexts/NavigationContext';
 
 // Lens content components
+import { EntityLensPage } from './EntityLensPage';
 import { WorkOrderLensContent } from './WorkOrderLensContent';
 import { FaultLensContent } from './FaultLensContent';
 import { EquipmentLensContent } from './EquipmentLensContent';
@@ -112,7 +113,7 @@ export function LensRenderer({
   // Render the appropriate lens content based on entity type
   switch (entityType) {
     case 'work_order':
-      return <WorkOrderLensContent {...commonProps} />;
+      return <EntityLensPage entityType="work_order" entityId={entityId} content={WorkOrderLensContent} />;
     case 'fault':
       return <FaultLensContent {...commonProps} />;
     case 'equipment':

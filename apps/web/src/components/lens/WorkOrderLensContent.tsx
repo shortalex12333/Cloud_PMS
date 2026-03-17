@@ -3,10 +3,11 @@
 /**
  * WorkOrderLensContent - Work Order detail view (lens entity view).
  *
- * Renders at /work-orders/{id} following fragmented URL architecture.
+ * Renders inside EntityLensPage at /work-orders/{id}.
+ * Reads all data and actions from useEntityLensContext() — zero props.
  *
  * This component contains:
- * - LensHeader with back/close callbacks
+ * - LensHeader with back/close via useRouter
  * - Title block with status/priority pills
  * - VitalSignsRow (5 indicators)
  * - Checklist section (progress bar + items from pms_checklist_items)
@@ -16,10 +17,12 @@
  */
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { LensHeader, LensTitleBlock } from './LensHeader';
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
+import { getEntityRoute } from '@/lib/featureFlags';
 
 // Sections
 import {
@@ -51,8 +54,8 @@ import {
   type SignaturePayload,
 } from './actions';
 
-// Action hook + permissions
-import { useWorkOrderActions, useWorkOrderPermissions } from '@/hooks/useWorkOrderActions';
+// Context
+import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { GhostButton } from '@/components/ui/GhostButton';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import {
@@ -62,19 +65,6 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
-
-// ---------------------------------------------------------------------------
-// Props interface
-// ---------------------------------------------------------------------------
-
-export interface WorkOrderLensContentProps {
-  id: string;
-  data: Record<string, unknown>;
-  onBack: () => void;
-  onClose: () => void;
-  onNavigate?: (entityType: string, entityId: string) => void;
-  onRefresh?: () => void;
-}
 
 // ---------------------------------------------------------------------------
 // Colour mapping helpers
@@ -134,17 +124,13 @@ function formatPriorityLabel(priority: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// WorkOrderLensContent component
+// WorkOrderLensContent component — zero props
 // ---------------------------------------------------------------------------
 
-export function WorkOrderLensContent({
-  id,
-  data,
-  onBack,
-  onClose,
-  onNavigate,
-  onRefresh,
-}: WorkOrderLensContentProps) {
+export function WorkOrderLensContent() {
+  const router = useRouter();
+  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+
   // Modal visibility
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
   const [addPartOpen, setAddPartOpen] = React.useState(false);
@@ -154,32 +140,30 @@ export function WorkOrderLensContent({
   const [addHoursOpen, setAddHoursOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
 
-  // Actions and permissions
-  const actions = useWorkOrderActions(id);
-  const perms = useWorkOrderPermissions();
+  // Map entity to typed fields.
+  // Handle both flat and nested payload structures from F1.
+  const payload = (entity?.payload as Record<string, unknown>) ?? {};
+  const wo_number = (entity?.wo_number ?? payload.wo_number) as string | undefined;
+  const title = ((entity?.title ?? payload.title) as string | undefined) ?? 'Work Order';
+  const description = (entity?.description ?? payload.description) as string | undefined;
+  const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
+  const priority = ((entity?.priority ?? payload.priority) as string | undefined) ?? 'medium';
+  const equipment_id = (entity?.equipment_id ?? payload.equipment_id) as string | undefined;
+  const equipment_name = (entity?.equipment_name ?? payload.equipment_name) as string | undefined;
+  const assigned_to = (entity?.assigned_to ?? payload.assigned_to) as string | undefined;
+  const created_at = ((entity?.created_at ?? payload.created_at) as string | undefined) ?? new Date().toISOString();
+  const parts_count = (entity?.parts_count ?? payload.parts_count) as number | undefined;
+  const due_date = (entity?.due_date ?? payload.due_date) as string | undefined;
+  const wo_type = (entity?.type ?? payload.type) as string | undefined;
 
-  // Map data to typed structure
-  // Handle both flat and nested payload structures from F1
-  const payload = (data.payload as Record<string, unknown>) || {};
-  const wo_number = (data.wo_number || payload.wo_number) as string | undefined;
-  const title = (data.title || payload.title) as string || 'Work Order';
-  const description = (data.description || payload.description) as string | undefined;
-  const status = (data.status || payload.status) as string || 'draft';
-  const priority = (data.priority || payload.priority) as string || 'medium';
-  const equipment_id = (data.equipment_id || payload.equipment_id) as string | undefined;
-  const equipment_name = (data.equipment_name || payload.equipment_name) as string | undefined;
-  const assigned_to = (data.assigned_to || payload.assigned_to) as string | undefined;
-  const created_at = (data.created_at || payload.created_at) as string || new Date().toISOString();
-  const parts_count = (data.parts_count || payload.parts_count) as number | undefined;
+  // Section data — handle both flat and nested payload structures
+  const notes = ((entity?.notes ?? payload.notes) as WorkOrderNote[] | undefined) ?? [];
+  const parts = ((entity?.parts ?? payload.parts) as WorkOrderPart[] | undefined) ?? [];
+  const attachments = ((entity?.attachments ?? payload.attachments) as Attachment[] | undefined) ?? [];
+  const history = ((entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as AuditLogEntry[] | undefined) ?? [];
+  const related_entities = ((entity?.related_entities ?? payload.related_entities) as RelatedEntity[] | undefined) ?? [];
 
-  // Section data - handle both flat and nested payload structures
-  const notes = (data.notes || payload.notes) as WorkOrderNote[] || [];
-  const parts = (data.parts || payload.parts) as WorkOrderPart[] || [];
-  const attachments = (data.attachments || payload.attachments) as Attachment[] || [];
-  const history = (data.audit_history || payload.audit_history || data.history || payload.history) as AuditLogEntry[] || [];
-  const related_entities = (data.related_entities || payload.related_entities) as RelatedEntity[] || [];
-
-  // Available options for modals
+  // Available options for modals (populated by future crew/parts fetch)
   const availableParts: PartOption[] = [];
   const availableCrew: CrewMember[] = [];
 
@@ -189,6 +173,31 @@ export function WorkOrderLensContent({
   const priorityColor = mapPriorityToColor(priority);
   const statusLabel = formatStatusLabel(status);
   const priorityLabel = formatPriorityLabel(priority);
+
+  // Permission gates — null means no permission = don't render the button
+  const startAction = getAction('start_work_order');
+  const closeAction = getAction('close_work_order');
+  const updateAction = getAction('update_work_order');
+  const addNoteAction = getAction('add_wo_note');
+  const addPartAction = getAction('add_wo_part');
+  const addHoursAction = getAction('add_wo_hours');
+  const assignAction = getAction('reassign_work_order');
+  const archiveAction = getAction('archive_work_order');
+
+  // State-derived display conditions
+  // canStart: WO is in a startable status (and backend says the action is available)
+  const canStart = startAction !== null && ['draft', 'planned', 'open'].includes(status);
+  // isCloseable: WO has not already reached a terminal state
+  const isCloseable = !['completed', 'closed', 'cancelled'].includes(status);
+
+  // Whether any action controls should be shown at all
+  const hasAnyAction =
+    startAction !== null ||
+    closeAction !== null ||
+    updateAction !== null ||
+    addHoursAction !== null ||
+    assignAction !== null ||
+    archiveAction !== null;
 
   // Build vital signs
   const vitalSigns: VitalSign[] = [
@@ -216,66 +225,84 @@ export function WorkOrderLensContent({
       label: 'Equipment',
       value: equipment_name ?? 'None',
       // Cross-lens navigation: click equipment to navigate
-      onClick: equipment_id && onNavigate
-        ? () => onNavigate('equipment', equipment_id)
+      onClick: equipment_id
+        ? () => router.push(getEntityRoute('equipment', equipment_id))
         : undefined,
     },
   ];
 
-  // Whether the WO can still be closed/completed
-  const isCloseable = !['completed', 'closed', 'cancelled'].includes(status);
+  // ---------------------------------------------------------------------------
+  // Action handlers — call executeAction directly, no onRefresh needed
+  // executeAction triggers refetch automatically via EntityLensPage
+  // ---------------------------------------------------------------------------
 
-  // Whether the WO can be started (transition from draft/planned to in_progress)
-  const canStart = ['draft', 'planned', 'open'].includes(status);
+  const handleAddNote = React.useCallback(
+    async (noteText: string) => executeAction('add_wo_note', { note_text: noteText }),
+    [executeAction]
+  );
 
-  // Action handlers
-  const handleAddNote = React.useCallback(async (noteText: string) => {
-    const result = await actions.addNote(noteText);
-    if (result.success) onRefresh?.();
-    return result;
-  }, [actions, onRefresh]);
+  const handleAddPart = React.useCallback(
+    async (partId: string, qty: number, unit?: string) =>
+      executeAction('add_wo_part', { part_id: partId, quantity: qty, unit }),
+    [executeAction]
+  );
 
-  const handleAddPart = React.useCallback(async (partId: string, qty: number, unit?: string) => {
-    const result = await actions.addPart(partId, qty, unit);
-    if (result.success) onRefresh?.();
-    return result;
-  }, [actions, onRefresh]);
+  const handleMarkComplete = React.useCallback(
+    async (completionNotes?: string) =>
+      executeAction('close_work_order', { completion_notes: completionNotes }),
+    [executeAction]
+  );
 
-  const handleMarkComplete = React.useCallback(async (completionNotes?: string) => {
-    const result = await actions.closeWorkOrder(completionNotes);
-    if (result.success) onRefresh?.();
-    return result;
-  }, [actions, onRefresh]);
+  const handleReassign = React.useCallback(
+    async (assigneeId: string, reason: string, signature: SignaturePayload) =>
+      executeAction('reassign_work_order', { assignee_id: assigneeId, reason, signature }),
+    [executeAction]
+  );
 
-  const handleReassign = React.useCallback(async (assigneeId: string) => {
-    const result = await actions.assignWorkOrder(assigneeId);
-    if (result.success) onRefresh?.();
-    return result;
-  }, [actions, onRefresh]);
+  const handleArchive = React.useCallback(
+    async (reason: string, signature: SignaturePayload) =>
+      executeAction('archive_work_order', { deletion_reason: reason, signature }),
+    [executeAction]
+  );
 
-  const handleArchive = React.useCallback(async (reason: string, signature: SignaturePayload) => {
-    const result = await actions.archiveWorkOrder(reason, signature);
-    if (result.success) onRefresh?.();
-    return result;
-  }, [actions, onRefresh]);
+  const handleStartWork = React.useCallback(
+    async () => executeAction('start_work_order'),
+    [executeAction]
+  );
 
-  const handleStartWork = React.useCallback(async () => {
-    const result = await actions.startWorkOrder();
-    if (result.success) onRefresh?.();
-    return result;
-  }, [actions, onRefresh]);
+  const handleAddHours = React.useCallback(
+    async (hours: number, notes?: string) =>
+      executeAction('add_wo_hours', { hours, notes }),
+    [executeAction]
+  );
 
-  const handleAddHours = React.useCallback(async (hours: number, notes?: string) => {
-    const result = await actions.addHours(hours, notes);
-    if (result.success) onRefresh?.();
-    return result;
-  }, [actions, onRefresh]);
+  const handleUpdateWorkOrder = React.useCallback(
+    async (changes: WorkOrderEditData) =>
+      executeAction('update_work_order', changes as Record<string, unknown>),
+    [executeAction]
+  );
 
-  const handleUpdateWorkOrder = React.useCallback(async (changes: WorkOrderEditData) => {
-    const result = await actions.updateWorkOrder(changes as Record<string, unknown>);
-    if (result.success) onRefresh?.();
-    return result;
-  }, [actions, onRefresh]);
+  // ChecklistSection callbacks — wired to executeAction
+  const handleViewChecklist = React.useCallback(
+    () => executeAction('view_work_order_checklist', {}),
+    [executeAction]
+  );
+
+  const handleMarkChecklistItem = React.useCallback(
+    (checklistItemId: string) =>
+      executeAction('mark_checklist_item_complete', { checklist_item_id: checklistItemId }),
+    [executeAction]
+  );
+
+  // Navigation callbacks
+  const handleBack = React.useCallback(() => router.back(), [router]);
+  const handleClose = React.useCallback(() => router.push('/work-orders'), [router]);
+
+  const handleNavigate = React.useCallback(
+    (entityType: string, entityId: string) =>
+      router.push(getEntityRoute(entityType as Parameters<typeof getEntityRoute>[0], entityId)),
+    [router]
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -283,8 +310,8 @@ export function WorkOrderLensContent({
       <LensHeader
         entityType="Work Order"
         title={displayTitle}
-        onBack={onBack}
-        onClose={onClose}
+        onBack={handleBack}
+        onClose={handleClose}
       />
 
       {/* Main content — scrollable */}
@@ -315,29 +342,31 @@ export function WorkOrderLensContent({
         {/* Checklist Section — between vitals and actions */}
         <div className="mt-4">
           <ChecklistSection
-            workOrderId={id}
-            viewChecklist={actions.viewChecklist}
-            markComplete={actions.markChecklistItemComplete}
+            workOrderId={entity?.id as string}
+            viewChecklist={handleViewChecklist}
+            markComplete={handleMarkChecklistItem}
           />
         </div>
 
         {/* Actions — primary CTA + dropdown for secondary */}
-        {(perms.canStart || perms.canClose || perms.canUpdate || perms.canAddHours || perms.canAssign || perms.canArchive) && (
+        {hasAnyAction && (
           <div className="mt-4 flex items-center gap-2">
             {/* Primary CTA — only one visible at a time */}
-            {perms.canStart && canStart && (
+            {canStart && (
               <PrimaryButton
                 onClick={handleStartWork}
-                disabled={actions.isLoading}
+                disabled={startAction?.disabled ?? isLoading}
+                title={startAction?.disabled_reason ?? undefined}
                 className="text-[13px] min-h-9 px-4 py-2"
               >
-                {actions.isLoading ? 'Starting...' : 'Start Work'}
+                {isLoading ? 'Starting...' : 'Start Work'}
               </PrimaryButton>
             )}
-            {perms.canClose && isCloseable && !canStart && (
+            {closeAction !== null && isCloseable && !canStart && (
               <PrimaryButton
                 onClick={() => setMarkCompleteOpen(true)}
-                disabled={actions.isLoading}
+                disabled={closeAction?.disabled ?? isLoading}
+                title={closeAction?.disabled_reason ?? undefined}
                 className="text-[13px] min-h-9 px-4 py-2"
               >
                 Mark Complete
@@ -349,39 +378,39 @@ export function WorkOrderLensContent({
               <DropdownMenuTrigger asChild>
                 <GhostButton
                   className="text-[13px] min-h-9 px-3 py-2"
-                  disabled={actions.isLoading}
+                  disabled={isLoading}
                   aria-label="More actions"
                 >
                   <MoreHorizontal className="w-4 h-4" />
                 </GhostButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-[180px]">
-                {perms.canUpdate && isCloseable && (
+                {updateAction !== null && isCloseable && (
                   <DropdownMenuItem onClick={() => setEditOpen(true)}>
                     Edit
                   </DropdownMenuItem>
                 )}
-                {perms.canAddNote && (
+                {addNoteAction !== null && (
                   <DropdownMenuItem onClick={() => setAddNoteOpen(true)}>
                     Add Note
                   </DropdownMenuItem>
                 )}
-                {perms.canAddPart && (
+                {addPartAction !== null && (
                   <DropdownMenuItem onClick={() => setAddPartOpen(true)}>
                     Add Part
                   </DropdownMenuItem>
                 )}
-                {perms.canAddHours && status === 'in_progress' && (
+                {addHoursAction !== null && status === 'in_progress' && (
                   <DropdownMenuItem onClick={() => setAddHoursOpen(true)}>
                     Log Hours
                   </DropdownMenuItem>
                 )}
-                {perms.canAssign && (
+                {assignAction !== null && (
                   <DropdownMenuItem onClick={() => setReassignOpen(true)}>
                     Reassign
                   </DropdownMenuItem>
                 )}
-                {perms.canArchive && (
+                {archiveAction !== null && (
                   <DropdownMenuItem
                     onClick={() => setArchiveOpen(true)}
                     className="text-status-critical focus:text-status-critical"
@@ -402,7 +431,7 @@ export function WorkOrderLensContent({
           <NotesSection
             notes={notes}
             onAddNote={() => setAddNoteOpen(true)}
-            canAddNote={perms.canAddNote}
+            canAddNote={addNoteAction !== null}
             stickyTop={56}
           />
         </div>
@@ -412,7 +441,7 @@ export function WorkOrderLensContent({
           <PartsSection
             parts={parts}
             onAddPart={() => setAddPartOpen(true)}
-            canAddPart={perms.canAddPart}
+            canAddPart={addPartAction !== null}
             stickyTop={56}
           />
         </div>
@@ -422,7 +451,7 @@ export function WorkOrderLensContent({
           <AttachmentsSection
             attachments={attachments}
             onAddFile={() => {}}
-            canAddFile={perms.canAddPhoto}
+            canAddFile={getAction('add_wo_photo') !== null}
             stickyTop={56}
           />
         </div>
@@ -432,9 +461,13 @@ export function WorkOrderLensContent({
           <HistorySection history={history} stickyTop={56} />
         </div>
 
-        {related_entities.length > 0 && onNavigate && (
+        {related_entities.length > 0 && (
           <div className="mt-6">
-            <RelatedEntitiesSection entities={related_entities} onNavigate={onNavigate} stickyTop={56} />
+            <RelatedEntitiesSection
+              entities={related_entities}
+              onNavigate={handleNavigate}
+              stickyTop={56}
+            />
           </div>
         )}
       </main>
@@ -444,14 +477,14 @@ export function WorkOrderLensContent({
         open={addNoteOpen}
         onClose={() => setAddNoteOpen(false)}
         onSubmit={handleAddNote}
-        isLoading={actions.isLoading}
+        isLoading={isLoading}
       />
 
       <AddPartModal
         open={addPartOpen}
         onClose={() => setAddPartOpen(false)}
         onSubmit={handleAddPart}
-        isLoading={actions.isLoading}
+        isLoading={isLoading}
         parts={availableParts}
       />
 
@@ -459,7 +492,7 @@ export function WorkOrderLensContent({
         open={markCompleteOpen}
         onClose={() => setMarkCompleteOpen(false)}
         onSubmit={handleMarkComplete}
-        isLoading={actions.isLoading}
+        isLoading={isLoading}
         workOrderTitle={displayTitle}
       />
 
@@ -467,7 +500,7 @@ export function WorkOrderLensContent({
         open={reassignOpen}
         onClose={() => setReassignOpen(false)}
         onSubmit={handleReassign}
-        isLoading={actions.isLoading}
+        isLoading={isLoading}
         crew={availableCrew}
         currentAssigneeId={assigned_to}
       />
@@ -476,7 +509,7 @@ export function WorkOrderLensContent({
         open={archiveOpen}
         onClose={() => setArchiveOpen(false)}
         onSubmit={handleArchive}
-        isLoading={actions.isLoading}
+        isLoading={isLoading}
         workOrderTitle={displayTitle}
       />
 
@@ -484,7 +517,7 @@ export function WorkOrderLensContent({
         open={addHoursOpen}
         onClose={() => setAddHoursOpen(false)}
         onSubmit={handleAddHours}
-        isLoading={actions.isLoading}
+        isLoading={isLoading}
         workOrderTitle={displayTitle}
       />
 
@@ -492,16 +525,15 @@ export function WorkOrderLensContent({
         open={editOpen}
         onClose={() => setEditOpen(false)}
         onSubmit={handleUpdateWorkOrder}
-        isLoading={actions.isLoading}
+        isLoading={isLoading}
         currentData={{
-          title: title,
-          description: description,
-          priority: priority,
-          due_date: (data.due_date || payload.due_date) as string | undefined,
-          type: (data.type || payload.type) as string | undefined,
+          title,
+          description,
+          priority,
+          due_date,
+          type: wo_type,
         }}
       />
     </div>
   );
 }
-
