@@ -760,6 +760,185 @@ async def create_work_order_for_equipment(
 
 
 # ============================================================================
+# add_work_order_photo  (was L2695-2774)
+# ============================================================================
+async def add_work_order_photo(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    work_order_id = payload.get("work_order_id")
+    photo_url = payload.get("photo_url")
+
+    if not work_order_id:
+        raise HTTPException(status_code=400, detail="work_order_id is required")
+    if not photo_url:
+        raise HTTPException(status_code=400, detail="photo_url is required")
+
+    # Check if work order exists
+    try:
+        check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+        if not check.data:
+            raise HTTPException(status_code=404, detail="Work order not found")
+    except HTTPException:
+        raise  # Re-raise our own 404
+    except Exception as e:
+        # Supabase single() raises exception when 0 rows found
+        error_str = str(e)
+        if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
+            raise HTTPException(status_code=404, detail="Work order not found")
+        # Re-raise other exceptions as 500
+        raise
+
+    # Store photo URL in metadata (work orders don't have a dedicated photos table)
+    wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
+    metadata = wo_data.data.get("metadata", {}) if wo_data.data else {}
+    if not metadata:
+        metadata = {}
+    photos = metadata.get("photos", [])
+    photos.append({
+        "url": photo_url,
+        "caption": payload.get("caption", ""),
+        "added_by": user_id,
+        "added_at": datetime.now(timezone.utc).isoformat()
+    })
+    metadata["photos"] = photos
+
+    db_client.table("pms_work_orders").update({
+        "metadata": metadata,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+
+    # Record ledger event
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id,
+            user_id=user_id,
+            event_type="update",
+            entity_type="work_order",
+            entity_id=work_order_id,
+            action="add_work_order_photo",
+            user_role=user_context.get("role", "member"),
+            change_summary="Photo added to work order",
+            metadata={
+                "photo_url": photo_url,
+                "caption": payload.get("caption", ""),
+                "domain": "Work Orders"
+            }
+        )
+        try:
+            db_client.table("ledger_events").insert(ledger_event).execute()
+            logger.info(f"[Ledger] add_work_order_photo recorded for {work_order_id}")
+        except Exception as e:
+            if "204" in str(e):
+                logger.info(f"[Ledger] add_work_order_photo recorded (204)")
+            else:
+                logger.warning(f"[Ledger] Failed: {e}")
+    except Exception as e:
+        logger.warning(f"[Ledger] Failed to prepare event: {e}")
+
+    return {
+        "status": "success",
+        "success": True,
+        "work_order_id": work_order_id,
+        "message": "Photo added to work order"
+    }
+
+
+# ============================================================================
+# add_parts_to_work_order  (was L2777-2857)
+# ============================================================================
+async def add_parts_to_work_order(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    work_order_id = payload.get("work_order_id")
+    part_id = payload.get("part_id")
+
+    if not work_order_id:
+        raise HTTPException(status_code=400, detail="work_order_id is required")
+    if not part_id:
+        raise HTTPException(status_code=400, detail="part_id is required")
+
+    # Check if work order exists
+    try:
+        check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+        if not check.data:
+            raise HTTPException(status_code=404, detail="Work order not found")
+    except HTTPException:
+        raise  # Re-raise our own 404
+    except Exception as e:
+        # Supabase single() raises exception when 0 rows found
+        error_str = str(e)
+        if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
+            raise HTTPException(status_code=404, detail="Work order not found")
+        # Re-raise other exceptions as 500
+        raise
+
+    # Store part link in metadata
+    wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
+    metadata = wo_data.data.get("metadata", {}) if wo_data.data else {}
+    if not metadata:
+        metadata = {}
+    parts = metadata.get("parts", [])
+    parts.append({
+        "part_id": part_id,
+        "quantity": payload.get("quantity", 1),
+        "added_by": user_id,
+        "added_at": datetime.now(timezone.utc).isoformat()
+    })
+    metadata["parts"] = parts
+
+    db_client.table("pms_work_orders").update({
+        "metadata": metadata,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+
+    # Record ledger event
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id,
+            user_id=user_id,
+            event_type="update",
+            entity_type="work_order",
+            entity_id=work_order_id,
+            action="add_parts_to_work_order",
+            user_role=user_context.get("role", "member"),
+            change_summary=f"Part {part_id} added (qty: {payload.get('quantity', 1)})",
+            metadata={
+                "part_id": part_id,
+                "quantity": payload.get("quantity", 1),
+                "domain": "Work Orders"
+            }
+        )
+        try:
+            db_client.table("ledger_events").insert(ledger_event).execute()
+            logger.info(f"[Ledger] add_parts_to_work_order recorded for {work_order_id}")
+        except Exception as e:
+            if "204" in str(e):
+                logger.info(f"[Ledger] add_parts_to_work_order recorded (204)")
+            else:
+                logger.warning(f"[Ledger] Failed: {e}")
+    except Exception as e:
+        logger.warning(f"[Ledger] Failed to prepare event: {e}")
+
+    return {
+        "status": "success",
+        "success": True,
+        "work_order_id": work_order_id,
+        "part_id": part_id,
+        "message": "Part added to work order"
+    }
+
+
+# ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
 HANDLERS: dict = {
@@ -810,4 +989,8 @@ HANDLERS: dict = {
     "update_worklist_progress":         update_worklist_progress,
     # create_work_order_for_equipment
     "create_work_order_for_equipment":  create_work_order_for_equipment,
+    # add_work_order_photo
+    "add_work_order_photo":             add_work_order_photo,
+    # add_parts_to_work_order
+    "add_parts_to_work_order":          add_parts_to_work_order,
 }

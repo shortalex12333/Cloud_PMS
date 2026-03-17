@@ -2523,15 +2523,6 @@ async def execute_action(
             else:
                 result = {"status": "error", "error_code": "NOT_FOUND", "message": "Fault not found"}
 
-        # ===== WORK ORDER ACTIONS (Cluster 02) =====
-        # Migrated to handlers/work_order_handler.py (Phase 4 Task 2)
-        # Actions: update_work_order, update_wo, assign_work_order, assign_wo,
-        #   close_work_order, complete_work_order, add_wo_hours, log_work_hours,
-        #   add_wo_part, add_part_to_wo, add_wo_note, add_note_to_wo,
-        #   start_work_order, begin_wo, cancel_work_order, cancel_wo,
-        #   create_work_order, create_wo, list_work_orders,
-        #   view_work_order_detail, view_work_order, get_work_order
-
         # ===== PM SCHEDULE ACTIONS (Cluster 02 - BLOCKED: table not exists) =====
         elif action in ("create_pm_schedule", "record_pm_completion", "defer_pm_task", "update_pm_schedule", "view_pm_due_list"):
             # BLOCKED: pms_maintenance_schedules table does not exist in tenant DB
@@ -2690,174 +2681,6 @@ async def execute_action(
                 if "immutable" in error_str.lower() or "finance transactions" in error_str.lower():
                     raise HTTPException(status_code=409, detail="Cannot delete: item is linked to a finance transaction. Use reversal instead.")
                 raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
-
-        # ===== WORK ORDER PHOTO ACTION (Cluster 02) =====
-        elif action == "add_work_order_photo":
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-            photo_url = payload.get("photo_url")
-
-            if not work_order_id:
-                raise HTTPException(status_code=400, detail="work_order_id is required")
-            if not photo_url:
-                raise HTTPException(status_code=400, detail="photo_url is required")
-
-            # Check if work order exists
-            try:
-                check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
-                if not check.data:
-                    raise HTTPException(status_code=404, detail="Work order not found")
-            except HTTPException:
-                raise  # Re-raise our own 404
-            except Exception as e:
-                # Supabase single() raises exception when 0 rows found
-                error_str = str(e)
-                if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
-                    raise HTTPException(status_code=404, detail="Work order not found")
-                # Re-raise other exceptions as 500
-                raise
-
-            # Store photo URL in metadata (work orders don't have a dedicated photos table)
-            wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
-            metadata = wo_data.data.get("metadata", {}) if wo_data.data else {}
-            if not metadata:
-                metadata = {}
-            photos = metadata.get("photos", [])
-            photos.append({
-                "url": photo_url,
-                "caption": payload.get("caption", ""),
-                "added_by": user_id,
-                "added_at": datetime.now(timezone.utc).isoformat()
-            })
-            metadata["photos"] = photos
-
-            db_client.table("pms_work_orders").update({
-                "metadata": metadata,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-
-            # Record ledger event
-            try:
-                ledger_event = build_ledger_event(
-                    yacht_id=yacht_id,
-                    user_id=user_id,
-                    event_type="update",
-                    entity_type="work_order",
-                    entity_id=work_order_id,
-                    action="add_work_order_photo",
-                    user_role=user_context.get("role", "member"),
-                    change_summary="Photo added to work order",
-                    metadata={
-                        "photo_url": photo_url,
-                        "caption": payload.get("caption", ""),
-                        "domain": "Work Orders"
-                    }
-                )
-                try:
-                    db_client.table("ledger_events").insert(ledger_event).execute()
-                    logger.info(f"[Ledger] add_work_order_photo recorded for {work_order_id}")
-                except Exception as e:
-                    if "204" in str(e):
-                        logger.info(f"[Ledger] add_work_order_photo recorded (204)")
-                    else:
-                        logger.warning(f"[Ledger] Failed: {e}")
-            except Exception as e:
-                logger.warning(f"[Ledger] Failed to prepare event: {e}")
-
-            result = {
-                "status": "success",
-                "success": True,
-                "work_order_id": work_order_id,
-                "message": "Photo added to work order"
-            }
-
-        # ===== ADD PARTS TO WORK ORDER (Cluster 02) =====
-        elif action == "add_parts_to_work_order":
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            work_order_id = payload.get("work_order_id")
-            part_id = payload.get("part_id")
-
-            if not work_order_id:
-                raise HTTPException(status_code=400, detail="work_order_id is required")
-            if not part_id:
-                raise HTTPException(status_code=400, detail="part_id is required")
-
-            # Check if work order exists
-            try:
-                check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
-                if not check.data:
-                    raise HTTPException(status_code=404, detail="Work order not found")
-            except HTTPException:
-                raise  # Re-raise our own 404
-            except Exception as e:
-                # Supabase single() raises exception when 0 rows found
-                error_str = str(e)
-                if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
-                    raise HTTPException(status_code=404, detail="Work order not found")
-                # Re-raise other exceptions as 500
-                raise
-
-            # Store part link in metadata
-            wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
-            metadata = wo_data.data.get("metadata", {}) if wo_data.data else {}
-            if not metadata:
-                metadata = {}
-            parts = metadata.get("parts", [])
-            parts.append({
-                "part_id": part_id,
-                "quantity": payload.get("quantity", 1),
-                "added_by": user_id,
-                "added_at": datetime.now(timezone.utc).isoformat()
-            })
-            metadata["parts"] = parts
-
-            db_client.table("pms_work_orders").update({
-                "metadata": metadata,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-
-            # Record ledger event
-            try:
-                ledger_event = build_ledger_event(
-                    yacht_id=yacht_id,
-                    user_id=user_id,
-                    event_type="update",
-                    entity_type="work_order",
-                    entity_id=work_order_id,
-                    action="add_parts_to_work_order",
-                    user_role=user_context.get("role", "member"),
-                    change_summary=f"Part {part_id} added (qty: {payload.get('quantity', 1)})",
-                    metadata={
-                        "part_id": part_id,
-                        "quantity": payload.get("quantity", 1),
-                        "domain": "Work Orders"
-                    }
-                )
-                try:
-                    db_client.table("ledger_events").insert(ledger_event).execute()
-                    logger.info(f"[Ledger] add_parts_to_work_order recorded for {work_order_id}")
-                except Exception as e:
-                    if "204" in str(e):
-                        logger.info(f"[Ledger] add_parts_to_work_order recorded (204)")
-                    else:
-                        logger.warning(f"[Ledger] Failed: {e}")
-            except Exception as e:
-                logger.warning(f"[Ledger] Failed to prepare event: {e}")
-
-            result = {
-                "status": "success",
-                "success": True,
-                "work_order_id": work_order_id,
-                "part_id": part_id,
-                "message": "Part added to work order"
-            }
-
-        # view_work_order_checklist, view_worklist, add_worklist_task, export_worklist
-        # — migrated to handlers/work_order_handler.py (Phase 4 Task 2)
 
         # ===== CLOSE FAULT ACTION (Cluster 01) =====
         elif action == "close_fault":
@@ -3068,8 +2891,6 @@ async def execute_action(
                 "message": "Note added to fault",
                 "notes_count": len(notes)
             }
-
-        # view_work_order_history — migrated to handlers/work_order_handler.py (Phase 4 Task 2)
 
         elif action == "suggest_parts":
             # Suggest parts for a fault based on equipment type
@@ -4950,8 +4771,6 @@ async def execute_action(
         # TIER 9 HANDLERS - Remaining Actions
         # =====================================================================
 
-        # update_worklist_progress — migrated to handlers/work_order_handler.py (Phase 4 Task 2)
-
         elif action == "view_related_documents":
             # View documents related to an entity
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -5764,8 +5583,6 @@ async def execute_action(
                 result = {"status": "success", "message": "Purchase order cancelled"}
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to cancel purchase order"}
-
-        # create_work_order_for_equipment — migrated to handlers/work_order_handler.py (Phase 4 Task 2)
 
         elif action in ("mark_shopping_list_ordered",):
             # Role check — HOD only (canonical: LENS_TRUTH_SHEET.md)
