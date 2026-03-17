@@ -248,7 +248,7 @@ export function PartsLensContent() {
             {writeOffAction !== null && !showWriteOffInput && (
               <GhostButton
                 onClick={() => setShowWriteOffInput(true)}
-                disabled={writeOffAction?.disabled}
+                disabled={writeOffAction?.disabled ?? isLoading}
                 title={writeOffAction?.disabled_reason ?? undefined}
                 className="text-[13px] min-h-9 px-4 py-2"
               >
