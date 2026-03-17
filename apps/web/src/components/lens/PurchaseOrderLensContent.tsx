@@ -14,7 +14,8 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { LensHeader, LensTitleBlock } from './LensHeader';
+import { LensTitleBlock } from './LensHeader';
+// EntityLensPage's RouteLayout owns back/close navigation — LensHeader is NOT used here.
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
@@ -96,9 +97,6 @@ export function PurchaseOrderLensContent() {
   // ---------------------------------------------------------------------------
   // Navigation
   // ---------------------------------------------------------------------------
-  const handleBack = React.useCallback(() => router.back(), [router]);
-  const handleClose = React.useCallback(() => router.push('/purchasing'), [router]);
-
   const handleNavigate = React.useCallback(
     (entityType: string, entityId: string) =>
       router.push(getEntityRoute(entityType as Parameters<typeof getEntityRoute>[0], entityId)),
@@ -106,78 +104,62 @@ export function PurchaseOrderLensContent() {
   );
 
   return (
-    <div className="flex flex-col h-full">
-      <LensHeader entityType="Purchase Order" title={po_number} onBack={handleBack} onClose={handleClose} />
+    <div className="space-y-6">
+      <LensTitleBlock
+        title={po_number}
+        subtitle={supplier_name}
+        status={{ label: statusLabel, color: statusColor }}
+      />
 
-      <main className="flex-1 overflow-y-auto pt-14 px-10 md:px-6 sm:px-4 max-w-[800px] mx-auto w-full pb-12">
-        <div className="mt-6">
-          <LensTitleBlock
-            title={po_number}
-            subtitle={supplier_name}
-            status={{ label: statusLabel, color: statusColor }}
-          />
-        </div>
+      <VitalSignsRow signs={vitalSigns} />
 
-        <div className="mt-3">
-          <VitalSignsRow signs={vitalSigns} />
-        </div>
+      {expected_delivery && (
+        <p className="typo-body text-celeste-text-muted">
+          Expected delivery: {new Date(expected_delivery).toLocaleDateString()}
+        </p>
+      )}
 
-        {expected_delivery && (
-          <div className="mt-3">
-            <p className="typo-body text-celeste-text-muted">
-              Expected delivery: {new Date(expected_delivery).toLocaleDateString()}
-            </p>
-          </div>
+      <div className="border-t border-surface-border" aria-hidden="true" />
+
+      <SectionContainer title={`Items (${items.length})`} stickyTop={56}>
+        {items.length === 0 ? (
+          <p className="typo-body text-celeste-text-muted">No items on this order.</p>
+        ) : (
+          <ul className="space-y-3">
+            {items.map((item, index) => (
+              <li
+                key={item.id ?? index}
+                className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg"
+              >
+                <span className="typo-body text-celeste-text-primary">
+                  {item.description ?? item.part_name ?? `Item ${index + 1}`}
+                </span>
+                <span className="typo-body text-celeste-text-muted">
+                  Qty: {item.quantity}
+                  {item.unit_price != null && ` @ ${currency} ${item.unit_price.toFixed(2)}`}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
+      </SectionContainer>
 
-        <div className="mt-6 border-t border-surface-border" aria-hidden="true" />
+      {attachments.length > 0 && (
+        <AttachmentsSection
+          attachments={attachments}
+          onAddFile={() => {}}
+          canAddFile={addAttachmentAction !== null}
+          stickyTop={56}
+        />
+      )}
 
-        <div className="mt-6">
-          <SectionContainer title={`Items (${items.length})`} stickyTop={56}>
-            {items.length === 0 ? (
-              <p className="typo-body text-celeste-text-muted">No items on this order.</p>
-            ) : (
-              <ul className="space-y-3">
-                {items.map((item, index) => (
-                  <li
-                    key={item.id ?? index}
-                    className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg"
-                  >
-                    <span className="typo-body text-celeste-text-primary">
-                      {item.description ?? item.part_name ?? `Item ${index + 1}`}
-                    </span>
-                    <span className="typo-body text-celeste-text-muted">
-                      Qty: {item.quantity}
-                      {item.unit_price != null && ` @ ${currency} ${item.unit_price.toFixed(2)}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </SectionContainer>
-        </div>
-
-        {attachments.length > 0 && (
-          <div className="mt-6">
-            <AttachmentsSection
-              attachments={attachments}
-              onAddFile={() => {}}
-              canAddFile={addAttachmentAction !== null}
-              stickyTop={56}
-            />
-          </div>
-        )}
-
-        {related_entities.length > 0 && (
-          <div className="mt-6">
-            <RelatedEntitiesSection
-              entities={related_entities}
-              onNavigate={handleNavigate}
-              stickyTop={56}
-            />
-          </div>
-        )}
-      </main>
+      {related_entities.length > 0 && (
+        <RelatedEntitiesSection
+          entities={related_entities}
+          onNavigate={handleNavigate}
+          stickyTop={56}
+        />
+      )}
     </div>
   );
 }
