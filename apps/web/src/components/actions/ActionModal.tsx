@@ -81,7 +81,10 @@ export default function ActionModal({
       inferFieldType(name) === 'textarea' ||
       name === 'title' ||
       name === 'content' ||
-      name === 'summary';
+      name === 'summary' ||
+      name === 'text' ||
+      name === 'comment' ||
+      name === 'hod_justification';
     for (const field of action.required_fields) {
       if (isNarrativeField(field)) {
         seed[field] = trimmedQuery;
