@@ -16,7 +16,8 @@ from routes.handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 
-# HOD roles (canonical: LENS_TRUTH_SHEET.md)
+# Used by approve_purchase_order, mark_po_received, cancel_purchase_order only.
+# submit_purchase_order is intentionally open to all authenticated users.
 _HOD_ROLES = ["chief_engineer", "captain", "manager"]
 
 
@@ -31,7 +32,7 @@ async def submit_purchase_order(
     user_context: dict,
     db_client: Client,
 ) -> dict:
-    po_id = payload.get("purchase_order_id")
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
     if not po_id:
         raise HTTPException(status_code=400, detail="purchase_order_id is required")
     result_data = db_client.table("pms_purchase_orders").update({
@@ -71,7 +72,7 @@ async def approve_purchase_order(
             "message": f"Role '{user_context.get('role', '')}' is not permitted to perform 'approve_purchase_order'",
             "required_roles": _HOD_ROLES,
         })
-    po_id = payload.get("purchase_order_id")
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
     if not po_id:
         raise HTTPException(status_code=400, detail="purchase_order_id is required")
     result_data = db_client.table("pms_purchase_orders").update({
@@ -111,7 +112,7 @@ async def mark_po_received(
             "message": f"Role '{user_context.get('role', '')}' is not permitted to perform 'mark_po_received'",
             "required_roles": _HOD_ROLES,
         })
-    po_id = payload.get("purchase_order_id")
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
     if not po_id:
         raise HTTPException(status_code=400, detail="purchase_order_id is required")
     result_data = db_client.table("pms_purchase_orders").update({
@@ -151,7 +152,7 @@ async def cancel_purchase_order(
             "message": f"Role '{user_context.get('role', '')}' is not permitted to perform 'cancel_purchase_order'",
             "required_roles": _HOD_ROLES,
         })
-    po_id = payload.get("purchase_order_id")
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
     if not po_id:
         raise HTTPException(status_code=400, detail="purchase_order_id is required")
     result_data = db_client.table("pms_purchase_orders").update({
