@@ -1978,8 +1978,6 @@ async def execute_action(
             else:
                 result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
-        # ===== add_to_handover migrated to handlers/handover_handler.py (Phase 4, Task 5) =====
-
         # ===== MANUAL ACTIONS (P0 Action 1) =====
         elif action == "show_manual_section":
             if not manual_handlers:
@@ -2453,8 +2451,6 @@ async def execute_action(
             else:
                 result = {"status": "error", "error_code": "NOT_FOUND", "message": "Fault not found"}
 
-        # ===== PM / HANDOVER / CERTIFICATE BLOCKED ACTIONS migrated to handlers/ (Phase 4, Task 5) =====
-
         # ===== EQUIPMENT STATUS ACTION (Cluster 03) =====
         elif action == "update_equipment_status":
             # RBAC Check: update_equipment_status is HoD+ only (Security Fix 2026-02-10)
@@ -2533,11 +2529,6 @@ async def execute_action(
                         detail="Action blocked: pms_equipment.status column not found. Run migration 00000000000018."
                     )
                 raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
-        # ===== DOCUMENT ACTIONS moved to Document Lens v2 block =====
-        # (see elif block for upload_document, update_document, etc.)
-
-        # ===== delete_shopping_item migrated to handlers/shopping_handler.py (Phase 4, Task 5) =====
-
         # ===== CLOSE FAULT ACTION (Cluster 01) =====
         elif action == "close_fault":
             from datetime import datetime, timezone
@@ -3538,8 +3529,6 @@ async def execute_action(
                     "photo_url": photo_url
                 }
 
-        # ===== TIER 5 handover actions migrated to handlers/handover_handler.py (Phase 4, Task 5) =====
-
         elif action == "view_smart_summary":
             # View AI-generated smart summary for an entity
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -4239,8 +4228,6 @@ async def execute_action(
         # TIER 9 HANDLERS - Remaining Actions
         # =====================================================================
 
-        # ===== view_related_documents + view_document_section migrated to handlers/document_handler.py (Phase 4, Task 5) =====
-
         elif action == "request_predictive_insight":
             # Request an AI-generated predictive insight for an entity
             from datetime import datetime, timezone
@@ -4388,18 +4375,6 @@ async def execute_action(
                 "notes_count": len(notes)
             }
 
-        # ===== Certificate Lens v2, Shopping List Lens v1, Document Lens v2 migrated to handlers/ (Phase 4, Task 5) =====
-
-        # ===== DOCUMENT COMMENT ACTIONS - MIGRATED TO ACTION ROUTER =====
-        # Document comment actions (add_document_comment, update_document_comment,
-        # delete_document_comment, list_document_comments) are now handled by the
-        # action router with proper role-based permissions. They should NOT be
-        # handled here to avoid dual permission systems.
-        # See: apps/api/action_router/registry.py (lines 1764-1835)
-        # See: apps/api/action_router/dispatchers/internal_dispatcher.py (lines 451-507)
-
-        # ===== RECEIVING INLINE HANDLERS MIGRATED to handlers/receiving_handler.py (Phase 4, Task 3) =====
-
         # ===== RECEIVING LENS V1 ACTIONS =====
         elif action in ["create_receiving", "attach_receiving_image_with_comment",
                         "extract_receiving_candidates", "update_receiving_fields",
@@ -4439,10 +4414,6 @@ async def execute_action(
             except Exception as e:
                 logger.error(f"[RECEIVING] Action '{action}' failed: {type(e).__name__}: {e}")
                 raise
-
-        # ===== PO HANDLERS MIGRATED to handlers/purchase_order_handler.py (Phase 4, Task 3) =====
-
-        # ===== mark_shopping_list_ordered migrated to handlers/shopping_handler.py (Phase 4, Task 5) =====
 
         else:
             # Unknown action - return 400 (client error with invalid action name)
