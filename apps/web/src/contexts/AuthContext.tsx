@@ -432,9 +432,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     console.log('[AuthContext] Login successful');
-    // Session change will be handled by onAuthStateChange listener
-    // No need to manually call handleSession here
-  }, []);
+    // Explicitly handle session here — onAuthStateChange is unreliable in React 18
+    // StrictMode dev because the effect cleanup unsubscribes the listener before
+    // the remount re-subscribes it.
+    await handleSession(data.session);
+  }, [handleSession]);
 
   const logout = useCallback(async () => {
     if (bootstrapRetryRef.current) {
