@@ -138,7 +138,7 @@ export function LensRenderer({
     case 'document':
       return <EntityLensPage entityType="document" entityId={entityId} content={DocumentLensContent} />;
     case 'purchase_order':
-      return <PurchaseOrderLensContent {...commonProps} />;
+      return <EntityLensPage entityType="purchase_order" entityId={entityId} content={PurchaseOrderLensContent} />;
     default:
       return (
         <div className="p-6 text-celeste-text-muted">
