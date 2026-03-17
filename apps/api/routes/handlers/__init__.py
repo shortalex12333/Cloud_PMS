@@ -9,7 +9,7 @@
 #
 # Current state: HANDLERS is empty — all actions fall through to legacy elif chain.
 
-# from .work_order_handler import HANDLERS as WO_HANDLERS       # activate in Task 2
+from .work_order_handler import HANDLERS as WO_HANDLERS
 # from .purchase_order_handler import HANDLERS as PO_HANDLERS   # activate in Task 3
 # from .receiving_handler import HANDLERS as REC_HANDLERS        # activate in Task 3
 # from .crew_handler import HANDLERS as CREW_HANDLERS            # activate in Task 4
@@ -20,4 +20,4 @@
 # from .shopping_handler import HANDLERS as SHOP_HANDLERS        # activate in Task 5
 # from .pm_handler import HANDLERS as PM_HANDLERS                # activate in Task 5
 
-HANDLERS: dict = {}
+HANDLERS: dict = {**WO_HANDLERS}
