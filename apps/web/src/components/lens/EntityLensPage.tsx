@@ -13,36 +13,7 @@ import { RelatedDrawer } from './RelatedDrawer';
 import { AddRelatedItemModal } from './AddRelatedItemModal';
 import { getEntityRoute } from '@/lib/featureFlags';
 import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
-
-// ACTION_DISPLAY import — populated in Task 5. Until then, use the fallback.
-// After Task 5: import { getActionDisplay } from '@/types/actions';
-function getActionDisplay(actionId: string): { icon: string; cluster: string } {
-  const DISPLAY: Record<string, { icon: string; cluster: string }> = {
-    start_work_order:           { icon: 'play',          cluster: 'lifecycle' },
-    close_work_order:           { icon: 'check',         cluster: 'lifecycle' },
-    cancel_work_order:          { icon: 'x',             cluster: 'lifecycle' },
-    reopen_work_order:          { icon: 'rotate-ccw',    cluster: 'lifecycle' },
-    archive_work_order:         { icon: 'archive',       cluster: 'entity'    },
-    reassign_work_order:        { icon: 'user',          cluster: 'entity'    },
-    update_work_order:          { icon: 'edit',          cluster: 'entity'    },
-    close_fault:                { icon: 'check',         cluster: 'lifecycle' },
-    reopen_fault:               { icon: 'rotate-ccw',   cluster: 'lifecycle' },
-    acknowledge_fault:          { icon: 'check-circle',  cluster: 'lifecycle' },
-    mark_fault_false_alarm:     { icon: 'x-circle',     cluster: 'lifecycle' },
-    report_fault:               { icon: 'alert',         cluster: 'entity'    },
-    decommission_equipment:     { icon: 'trash',         cluster: 'lifecycle' },
-    update_equipment_status:    { icon: 'edit',          cluster: 'entity'    },
-    flag_equipment_attention:   { icon: 'flag',          cluster: 'entity'    },
-    write_off_part:             { icon: 'trash',         cluster: 'lifecycle' },
-    accept_receiving:           { icon: 'check',         cluster: 'lifecycle' },
-    reject_receiving:           { icon: 'x',             cluster: 'lifecycle' },
-    update_receiving:           { icon: 'edit',          cluster: 'entity'    },
-    update_certificate:         { icon: 'edit',          cluster: 'entity'    },
-    export_handover:            { icon: 'download',      cluster: 'entity'    },
-    export_hours_of_rest:       { icon: 'download',      cluster: 'compliance'},
-  };
-  return DISPLAY[actionId] ?? { icon: 'circle', cluster: 'entity' };
-}
+import { getActionDisplay } from '@/types/actions';
 
 // Clusters rendered in the shell action bar (not inline in content)
 const SHELL_CLUSTERS = new Set(['lifecycle', 'entity', 'compliance']);

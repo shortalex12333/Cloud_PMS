@@ -11,8 +11,6 @@ import { fetchReceivingItems, fetchReceivingItem } from '@/features/receiving/ap
 import { receivingToListResult } from '@/features/receiving/adapter';
 import { ReceivingPhotos } from '@/features/receiving/components/ReceivingPhotos';
 import type { ReceivingItem } from '@/features/receiving/types';
-import type { MicroAction } from '@/types/actions';
-
 function ReceivingDetail({ id }: { id: string }) {
   const { session, user } = useAuth();
   const token = session?.access_token;
@@ -32,7 +30,7 @@ function ReceivingDetail({ id }: { id: string }) {
   }, [queryClient, id]);
 
   const handleAction = React.useCallback(
-    async (action: MicroAction) => {
+    async (action: string) => {
       const result = await executeAction(
         action,
         { receiving_id: id },
