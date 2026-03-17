@@ -122,7 +122,7 @@ export function LensRenderer({
     case 'inventory':
       return <EntityLensPage entityType="part" entityId={entityId} content={PartsLensContent} />;
     case 'receiving':
-      return <ReceivingLensContent {...commonProps} />;
+      return <EntityLensPage entityType="receiving" entityId={entityId} content={ReceivingLensContent} />;
     case 'certificate':
       return <CertificateLensContent {...commonProps} />;
     case 'handover':
