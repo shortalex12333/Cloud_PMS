@@ -107,7 +107,7 @@ export function ReportFaultModal({
     if (response?.success) {
       onOpenChange(false);
       if (onSuccess) {
-        onSuccess(response.data?.fault_id);
+        onSuccess(response.data?.fault_id as string);
       }
     }
   };
