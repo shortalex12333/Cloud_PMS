@@ -9,6 +9,8 @@ Coverage:
 Runs in-memory (LAW 17): no real DB, Supabase client is fully mocked.
 """
 
+from __future__ import annotations
+
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import HTTPException
@@ -248,13 +250,12 @@ class TestAddRelatedValidation:
     @pytest.mark.asyncio
     async def test_invalid_source_entity_type_raises_400(self):
         db = MagicMock()
-        db.table.return_value = MagicMock(
-            select=MagicMock(return_value=MagicMock(
-                eq=MagicMock(return_value=MagicMock(
-                    execute=MagicMock(return_value=MagicMock(data=[{"role": "hod"}]))
-                ))
-            ))
-        )
+        chain = MagicMock()
+        chain.select.return_value = chain
+        chain.eq.return_value = chain
+        chain.maybe_single.return_value = chain
+        chain.execute.return_value = MagicMock(data={"role": "hod"})
+        db.table.return_value = chain
         handlers = RelatedHandlers(db)
 
         with pytest.raises(HTTPException) as exc_info:
@@ -276,7 +277,8 @@ class TestAddRelatedValidation:
         chain = MagicMock()
         chain.select.return_value = chain
         chain.eq.return_value = chain
-        chain.execute.return_value = MagicMock(data=[{"role": "hod"}])
+        chain.maybe_single.return_value = chain
+        chain.execute.return_value = MagicMock(data={"role": "hod"})
         db.table.return_value = chain
 
         handlers = RelatedHandlers(db)
@@ -300,7 +302,8 @@ class TestAddRelatedValidation:
         chain = MagicMock()
         chain.select.return_value = chain
         chain.eq.return_value = chain
-        chain.execute.return_value = MagicMock(data=[{"role": "hod"}])
+        chain.maybe_single.return_value = chain
+        chain.execute.return_value = MagicMock(data={"role": "hod"})
         db.table.return_value = chain
 
         handlers = RelatedHandlers(db)
@@ -324,7 +327,8 @@ class TestAddRelatedValidation:
         chain = MagicMock()
         chain.select.return_value = chain
         chain.eq.return_value = chain
-        chain.execute.return_value = MagicMock(data=[{"role": "hod"}])
+        chain.maybe_single.return_value = chain
+        chain.execute.return_value = MagicMock(data={"role": "hod"})
         db.table.return_value = chain
 
         handlers = RelatedHandlers(db)
@@ -356,8 +360,9 @@ class TestAddRelatedRoleGating:
         chain = MagicMock()
         chain.select.return_value = chain
         chain.eq.return_value = chain
+        chain.maybe_single.return_value = chain
         # auth_users_roles returns crew role (not HOD/manager)
-        chain.execute.return_value = MagicMock(data=[{"role": "crew"}])
+        chain.execute.return_value = MagicMock(data={"role": "crew"})
         db.table.return_value = chain
 
         handlers = RelatedHandlers(db)
@@ -380,7 +385,8 @@ class TestAddRelatedRoleGating:
         chain = MagicMock()
         chain.select.return_value = chain
         chain.eq.return_value = chain
-        chain.execute.return_value = MagicMock(data=[])  # no role row at all
+        chain.maybe_single.return_value = chain
+        chain.execute.return_value = MagicMock(data=None)  # no role row at all
         db.table.return_value = chain
 
         handlers = RelatedHandlers(db)
@@ -421,7 +427,8 @@ class TestAddRelatedHappyPath:
             c.single.return_value = c
 
             if name == "auth_users_roles":
-                c.execute.return_value = MagicMock(data=[{"role": "hod"}])
+                c.maybe_single.return_value = c
+                c.execute.return_value = MagicMock(data={"role": "hod"})
             elif name == "pms_entity_links":
                 call_counts[name] = call_counts.get(name, 0)
 
@@ -477,7 +484,8 @@ class TestAddRelatedHappyPath:
             c.limit.return_value = c
 
             if name == "auth_users_roles":
-                c.execute.return_value = MagicMock(data=[{"role": "hod"}])
+                c.maybe_single.return_value = c
+                c.execute.return_value = MagicMock(data={"role": "hod"})
             elif name == "pms_entity_links":
                 call_counts[name] = call_counts.get(name, 0)
 
