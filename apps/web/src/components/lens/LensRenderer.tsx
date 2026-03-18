@@ -16,21 +16,37 @@ import React from 'react';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { useNavigationContextSafe } from '@/contexts/NavigationContext';
 
-// Lens content components
+// Lens content components (lens-v2)
 import { EntityLensPage } from './EntityLensPage';
-import { WorkOrderLensContent } from './WorkOrderLensContent';
-import { FaultLensContent } from './FaultLensContent';
-import { EquipmentLensContent } from './EquipmentLensContent';
-import { PartsLensContent } from './PartsLensContent';
-import { ReceivingLensContent } from './ReceivingLensContent';
-import { CertificateLensContent } from './CertificateLensContent';
-import { HandoverLensContent } from './HandoverLensContent';
-import { HandoverExportLensContent } from './HandoverExportLensContent';
-import { HoursOfRestLensContent } from './HoursOfRestLensContent';
-import { WarrantyLensContent } from './WarrantyLensContent';
-import { ShoppingListLensContent } from './ShoppingListLensContent';
-import { DocumentLensContent } from './DocumentLensContent';
-import { PurchaseOrderLensContent } from './PurchaseOrderLensContent';
+import {
+  WorkOrderContent,
+  EquipmentContent,
+  FaultContent,
+  CertificateContent,
+  PartsInventoryContent,
+  PurchaseOrderContent,
+  DocumentContent,
+  WarrantyContent,
+  HoursOfRestContent,
+  ShoppingListContent,
+  ReceivingContent,
+  HandoverContent,
+} from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
+
+// Wrapped content components with prototype token scoping
+function WOContent() { return <div className={lensStyles.root}><WorkOrderContent /></div>; }
+function EqContent() { return <div className={lensStyles.root}><EquipmentContent /></div>; }
+function FtContent() { return <div className={lensStyles.root}><FaultContent /></div>; }
+function CtContent() { return <div className={lensStyles.root}><CertificateContent /></div>; }
+function PtContent() { return <div className={lensStyles.root}><PartsInventoryContent /></div>; }
+function RcContent() { return <div className={lensStyles.root}><ReceivingContent /></div>; }
+function HdContent() { return <div className={lensStyles.root}><HandoverContent /></div>; }
+function HrContent() { return <div className={lensStyles.root}><HoursOfRestContent /></div>; }
+function WrContent() { return <div className={lensStyles.root}><WarrantyContent /></div>; }
+function SlContent() { return <div className={lensStyles.root}><ShoppingListContent /></div>; }
+function DcContent() { return <div className={lensStyles.root}><DocumentContent /></div>; }
+function PoContent() { return <div className={lensStyles.root}><PurchaseOrderContent /></div>; }
 
 export interface LensRendererProps {
   /** Entity type to render */
@@ -113,32 +129,32 @@ export function LensRenderer({
   // Render the appropriate lens content based on entity type
   switch (entityType) {
     case 'work_order':
-      return <EntityLensPage entityType="work_order" entityId={entityId} content={WorkOrderLensContent} />;
+      return <EntityLensPage entityType="work_order" entityId={entityId} content={WOContent} />;
     case 'fault':
-      return <EntityLensPage entityType="fault" entityId={entityId} content={FaultLensContent} />;
+      return <EntityLensPage entityType="fault" entityId={entityId} content={FtContent} />;
     case 'equipment':
-      return <EntityLensPage entityType="equipment" entityId={entityId} content={EquipmentLensContent} />;
+      return <EntityLensPage entityType="equipment" entityId={entityId} content={EqContent} />;
     case 'part':
     case 'inventory':
-      return <EntityLensPage entityType="part" entityId={entityId} content={PartsLensContent} />;
+      return <EntityLensPage entityType="part" entityId={entityId} content={PtContent} />;
     case 'receiving':
-      return <EntityLensPage entityType="receiving" entityId={entityId} content={ReceivingLensContent} />;
+      return <EntityLensPage entityType="receiving" entityId={entityId} content={RcContent} />;
     case 'certificate':
-      return <EntityLensPage entityType="certificate" entityId={entityId} content={CertificateLensContent} />;
+      return <EntityLensPage entityType="certificate" entityId={entityId} content={CtContent} />;
     case 'handover':
-      return <HandoverLensContent {...commonProps} />;
+      return <EntityLensPage entityType="handover_export" entityId={entityId} content={HdContent} />;
     case 'handover_export':
-      return <EntityLensPage entityType="handover_export" entityId={entityId} content={HandoverExportLensContent} />;
+      return <EntityLensPage entityType="handover_export" entityId={entityId} content={HdContent} />;
     case 'hours_of_rest':
-      return <EntityLensPage entityType="hours_of_rest" entityId={entityId} content={HoursOfRestLensContent} />;
+      return <EntityLensPage entityType="hours_of_rest" entityId={entityId} content={HrContent} />;
     case 'warranty':
-      return <EntityLensPage entityType="warranty" entityId={entityId} content={WarrantyLensContent} />;
+      return <EntityLensPage entityType="warranty" entityId={entityId} content={WrContent} />;
     case 'shopping_list':
-      return <EntityLensPage entityType="shopping_list" entityId={entityId} content={ShoppingListLensContent} />;
+      return <EntityLensPage entityType="shopping_list" entityId={entityId} content={SlContent} />;
     case 'document':
-      return <EntityLensPage entityType="document" entityId={entityId} content={DocumentLensContent} />;
+      return <EntityLensPage entityType="document" entityId={entityId} content={DcContent} />;
     case 'purchase_order':
-      return <EntityLensPage entityType="purchase_order" entityId={entityId} content={PurchaseOrderLensContent} />;
+      return <EntityLensPage entityType="purchase_order" entityId={entityId} content={PoContent} />;
     default:
       return (
         <div className="p-6 text-celeste-text-muted">

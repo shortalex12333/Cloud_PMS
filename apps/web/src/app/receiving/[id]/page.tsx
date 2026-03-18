@@ -9,10 +9,14 @@
  * @see REQUIREMENTS_TABLE.md - T1-RCV-02
  */
 
-import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { ReceivingLensContent } from '@/components/lens/ReceivingLensContent';
+import { ReceivingContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
+
+function LensContent() {
+  return <div className={lensStyles.root}><ReceivingContent /></div>;
+}
 
 export default function ReceivingDetailPage() {
   const params = useParams();
@@ -20,7 +24,7 @@ export default function ReceivingDetailPage() {
     <EntityLensPage
       entityType="receiving"
       entityId={params.id as string}
-      content={ReceivingLensContent}
+      content={LensContent}
     />
   );
 }

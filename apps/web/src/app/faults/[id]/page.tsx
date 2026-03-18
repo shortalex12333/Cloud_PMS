@@ -2,7 +2,12 @@
 
 import { useParams } from 'next/navigation';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { FaultLensContent } from '@/components/lens/FaultLensContent';
+import { FaultContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
+
+function LensContent() {
+  return <div className={lensStyles.root}><FaultContent /></div>;
+}
 
 export default function FaultDetailPage() {
   const params = useParams();
@@ -10,7 +15,7 @@ export default function FaultDetailPage() {
     <EntityLensPage
       entityType="fault"
       entityId={params.id as string}
-      content={FaultLensContent}
+      content={LensContent}
     />
   );
 }
