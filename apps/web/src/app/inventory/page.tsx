@@ -24,7 +24,7 @@ function PartDetail({ id }: { id: string }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+        <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
       </div>
     );
   }
@@ -42,36 +42,36 @@ function PartDetail({ id }: { id: string }) {
   return (
     <div className="p-6 space-y-4">
       <div>
-        <p className="text-xs text-white/40 font-mono">{data.part_number}</p>
-        <h2 className="text-xl font-semibold text-white">{data.name}</h2>
+        <p className="text-xs text-txt-tertiary font-mono">{data.part_number}</p>
+        <h2 className="text-xl font-semibold text-txt-primary">{data.name}</h2>
       </div>
       <div className="flex gap-2">
         <span className={`px-2 py-1 text-xs rounded ${isLowStock ? 'bg-orange-500/20 text-orange-300' : 'bg-green-500/20 text-green-300'}`}>
           {isLowStock ? 'Low Stock' : 'In Stock'}
         </span>
-        <span className="px-2 py-1 text-xs rounded bg-white/10 text-white/80">
+        <span className="px-2 py-1 text-xs rounded bg-surface-hover text-txt-secondary">
           Qty: {data.quantity_on_hand}{data.unit_of_measure ? ` ${data.unit_of_measure}` : ''}
         </span>
       </div>
       {data.description && (
-        <p className="text-sm text-white/60">{data.description}</p>
+        <p className="text-sm text-txt-tertiary">{data.description}</p>
       )}
       {data.category && (
         <div className="text-sm">
-          <span className="text-white/40">Category: </span>
-          <span className="text-white/80">{data.category}</span>
+          <span className="text-txt-tertiary">Category: </span>
+          <span className="text-txt-secondary">{data.category}</span>
         </div>
       )}
       {data.location && (
         <div className="text-sm">
-          <span className="text-white/40">Location: </span>
-          <span className="text-white/80">{data.location}</span>
+          <span className="text-txt-tertiary">Location: </span>
+          <span className="text-txt-secondary">{data.location}</span>
         </div>
       )}
       {data.manufacturer && (
         <div className="text-sm">
-          <span className="text-white/40">Manufacturer: </span>
-          <span className="text-white/80">{data.manufacturer}</span>
+          <span className="text-txt-tertiary">Manufacturer: </span>
+          <span className="text-txt-secondary">{data.manufacturer}</span>
         </div>
       )}
     </div>
@@ -129,7 +129,7 @@ export default function InventoryPage() {
     <React.Suspense
       fallback={
         <div className="h-screen flex items-center justify-center bg-surface-base">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+          <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
         </div>
       }
     >

@@ -81,7 +81,7 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+        <Loader2 className="h-5 w-5 animate-spin text-txt-tertiary" />
       </div>
     );
   }
@@ -91,7 +91,7 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
     return (
       <div className="p-6 text-center">
         <AlertCircle className="h-6 w-6 text-red-500 mx-auto mb-2" />
-        <p className="typo-meta text-zinc-600 dark:text-zinc-400">
+        <p className="typo-meta text-txt-secondary">
           {error instanceof Error ? error.message : 'Failed to load thread'}
         </p>
       </div>
@@ -101,14 +101,14 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
   if (!thread) return null;
 
   return (
-    <div className="bg-zinc-50 dark:bg-surface-primary">
+    <div className="bg-surface-primary">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="flex items-center justify-between p-3 border-b border-border-sub">
         <div>
-          <h3 className="typo-meta font-medium text-zinc-800 dark:text-zinc-200">
+          <h3 className="typo-meta font-medium text-txt-primary">
             {thread.latest_subject || '(No subject)'}
           </h3>
-          <p className="typo-meta text-zinc-500">
+          <p className="typo-meta text-txt-secondary">
             {thread.message_count} message{thread.message_count !== 1 ? 's' : ''}
             {thread.has_attachments && ' • Has attachments'}
           </p>
@@ -124,7 +124,7 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
       </div>
 
       {/* Messages */}
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-800 max-h-[400px] overflow-y-auto">
+      <div className="divide-y divide-border-sub max-h-[400px] overflow-y-auto">
         {thread.messages.map((message) => (
           <MessageItem
             key={message.id}
@@ -193,24 +193,24 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="typo-meta font-medium text-zinc-800 dark:text-zinc-200 truncate">
+            <span className="typo-meta font-medium text-txt-primary truncate">
               {message.from_display_name || 'Unknown'}
             </span>
             <div className="flex items-center gap-2 flex-shrink-0">
               {message.has_attachments && (
-                <Paperclip className="h-3 w-3 text-zinc-400" />
+                <Paperclip className="h-3 w-3 text-txt-tertiary" />
               )}
-              <span className="typo-meta text-zinc-400">
+              <span className="typo-meta text-txt-tertiary">
                 {timestamp ? formatEmailTimestamp(timestamp) : ''}
               </span>
               {isExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                <ChevronDown className="h-3.5 w-3.5 text-txt-tertiary" />
               ) : (
-                <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />
+                <ChevronRight className="h-3.5 w-3.5 text-txt-tertiary" />
               )}
             </div>
           </div>
-          <p className="typo-meta text-zinc-500 truncate">
+          <p className="typo-meta text-txt-secondary truncate">
             {message.subject || '(No subject)'}
           </p>
         </div>
@@ -218,11 +218,11 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
 
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="mt-3 ml-7 pl-3 border-l-2 border-zinc-200 dark:border-zinc-700">
+        <div className="mt-3 ml-7 pl-3 border-l-2 border-border-sub">
           {/* Attachments List (metadata only) */}
           {message.has_attachments && message.attachments && message.attachments.length > 0 && (
             <div className="mb-3">
-              <p className="typo-meta text-zinc-500 uppercase tracking-wider mb-1">
+              <p className="typo-meta text-txt-secondary uppercase tracking-wider mb-1">
                 Attachments
               </p>
               <div className="flex flex-wrap gap-1">
@@ -235,7 +235,7 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
                       att.name,
                       att.contentType || 'application/octet-stream'
                     )}
-                    className="inline-flex items-center gap-1 typo-meta text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 typo-meta text-txt-secondary bg-surface-hover hover:bg-surface-active px-2 py-0.5 rounded transition-colors cursor-pointer"
                   >
                     <FileText className="h-3 w-3" />
                     {att.name}
@@ -284,7 +284,7 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
   // Loading state
   if (isLoading) {
     return (
-      <div className="py-4 flex items-center gap-2 text-zinc-500">
+      <div className="py-4 flex items-center gap-2 text-txt-secondary">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="typo-meta">Fetching original from Outlook...</span>
       </div>
@@ -322,41 +322,41 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
     <div className="mt-2">
       {/* Original Content Header */}
       <div className="flex items-center justify-between mb-2">
-        <span className="typo-meta text-zinc-500 uppercase tracking-wider">
+        <span className="typo-meta text-txt-secondary uppercase tracking-wider">
           Original Content
         </span>
         <button
           onClick={onClose}
-          className="typo-meta text-zinc-500 hover:text-zinc-700"
+          className="typo-meta text-txt-secondary hover:text-txt-primary"
         >
           Hide
         </button>
       </div>
 
       {/* Sender/Recipient Info */}
-      <div className="typo-meta text-zinc-500 mb-2 space-y-0.5">
+      <div className="typo-meta text-txt-secondary mb-2 space-y-0.5">
         {content.from_address?.emailAddress && (
           <p>
-            <span className="text-zinc-400">From:</span>{' '}
+            <span className="text-txt-tertiary">From:</span>{' '}
             {content.from_address.emailAddress.name || content.from_address.emailAddress.address}
           </p>
         )}
         {content.to_recipients.length > 0 && (
           <p>
-            <span className="text-zinc-400">To:</span>{' '}
+            <span className="text-txt-tertiary">To:</span>{' '}
             {content.to_recipients.map(r => r.emailAddress?.name || r.emailAddress?.address).join(', ')}
           </p>
         )}
         {content.cc_recipients.length > 0 && (
           <p>
-            <span className="text-zinc-400">Cc:</span>{' '}
+            <span className="text-txt-tertiary">Cc:</span>{' '}
             {content.cc_recipients.map(r => r.emailAddress?.name || r.emailAddress?.address).join(', ')}
           </p>
         )}
       </div>
 
       {/* Body Content - Sandboxed */}
-      <div className="border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 p-3 max-h-[300px] overflow-y-auto">
+      <div className="border border-border-sub rounded bg-surface-primary p-3 max-h-[300px] overflow-y-auto">
         {content.body?.contentType === 'html' ? (
           // Use iframe for HTML content (fully sandboxed - no allow flags)
           // Trust > cosmetics: styling may degrade but security is absolute
@@ -368,7 +368,7 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
           />
         ) : (
           // Plain text
-          <pre className="typo-meta text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap font-sans">
+          <pre className="typo-meta text-txt-primary whitespace-pre-wrap font-sans">
             {content.body?.content || content.body_preview || '(No content)'}
           </pre>
         )}
@@ -377,7 +377,7 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
       {/* Attachments from original */}
       {content.attachments && content.attachments.length > 0 && (
         <div className="mt-2">
-          <p className="typo-meta text-zinc-500 mb-1">
+          <p className="typo-meta text-txt-secondary mb-1">
             Attachments ({content.attachments.length})
           </p>
           <div className="flex flex-wrap gap-1">
@@ -390,11 +390,11 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
                   att.name,
                   att.contentType || 'application/octet-stream'
                 )}
-                className="inline-flex items-center gap-1 typo-meta text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 typo-meta text-txt-secondary bg-surface-hover hover:bg-surface-active px-2 py-0.5 rounded transition-colors cursor-pointer"
               >
                 <Paperclip className="h-3 w-3" />
                 {att.name}
-                <span className="text-zinc-400 typo-meta">
+                <span className="text-txt-tertiary typo-meta">
                   ({Math.round(att.size / 1024)}KB)
                 </span>
               </button>

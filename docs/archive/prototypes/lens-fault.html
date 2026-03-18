@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Fault · v1</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+/* ═══════════════════════════════════════════════════════
+   FAULT-SPECIFIC — detail label width override
+   ═══════════════════════════════════════════════════════ */
+.detail-label { min-width: 100px; }
+
+/* Root cause category display */
+.root-cause-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 5px;
+  font-size: 12px; font-weight: 500;
+  background: var(--neutral-bg); color: var(--txt3);
+  border: 1px solid var(--border-sub);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SPLIT BUTTON — fault variant
+   ═══════════════════════════════════════════════════════ */
+.split-toggle {
+  border-left: 1px solid var(--border-chrome);
+}
+
+/* Dropdown — fault variant */
+.dropdown {
+  top: 42px;
+  min-width: 210px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   STATUS PROGRESSION TIMELINE
+   ═══════════════════════════════════════════════════════ */
+.timeline { padding: 0; }
+.timeline-step {
+  display: flex; gap: 14px;
+  position: relative;
+  padding-bottom: 4px;
+  min-height: 52px;
+}
+.timeline-step:last-child { padding-bottom: 0; }
+.timeline-track {
+  display: flex; flex-direction: column; align-items: center;
+  width: 20px; flex-shrink: 0;
+  padding-top: 2px;
+}
+.timeline-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.timeline-dot.done { background: var(--green); }
+.timeline-dot.current { background: var(--mark); box-shadow: 0 0 0 3px var(--teal-bg); }
+.timeline-dot.pending { background: none; border: 1.5px solid var(--txt-ghost); }
+.timeline-line {
+  width: 1.5px; flex: 1;
+  margin-top: 4px;
+}
+.timeline-line.done { background: var(--green); opacity: 0.4; }
+.timeline-line.pending { background: var(--border-sub); }
+.timeline-step:last-child .timeline-line { display: none; }
+.timeline-content { flex: 1; padding-bottom: 12px; }
+.timeline-label {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  line-height: 1.3;
+}
+.timeline-step.future .timeline-label { color: var(--txt-ghost); }
+.timeline-meta {
+  font-size: 11px; color: var(--txt3); margin-top: 2px;
+  display: flex; align-items: center; gap: 8px;
+}
+.timeline-meta .ts { font-family: var(--font-mono); font-size: 10px; }
+.timeline-meta .who { font-weight: 500; }
+
+/* Subsection label within a section */
+.subsec-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--txt3);
+  margin-top: 20px; margin-bottom: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-faint);
+}
+.subsec-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+
+/* SOP action link */
+.doc-sop-action {
+  color: var(--mark); font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RELATED ENTITIES — spawned links
+   ═══════════════════════════════════════════════════════ */
+.related-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; min-height: 44px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.related-row:last-child { border-bottom: none; }
+.related-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--teal-bg);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.related-icon svg { width: 14px; height: 14px; color: var(--mark); }
+.related-info { flex: 1; }
+.related-type {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.related-name {
+  font-size: 13px; font-weight: 500;
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.related-name:hover { text-decoration-color: var(--mark); }
+.related-id {
+  font-family: var(--font-mono); font-size: 12px;
+}
+.related-chevron { color: var(--txt-ghost); }
+.related-status {
+  font-size: 11px; font-weight: 500; padding: 2px 8px;
+  border-radius: 4px; flex-shrink: 0;
+}
+.related-status.amber { color: var(--amber); background: var(--amber-bg); }
+.related-status.green { color: var(--green); background: var(--green-bg); }
+.related-status.neutral { color: var(--txt3); background: var(--neutral-bg); }
+
+/* Attachment name — fault uses monospace */
+.attach-name {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 400; color: var(--txt);
+}
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- ═══ LENS HEADER ═══ -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Fault</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Related
+      </button>
+      <button class="hdr-btn" onclick="toggleTheme()" title="Toggle light/dark mode">
+        <svg class="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ SCROLLABLE BODY ═══ -->
+  <div class="lens-body">
+
+    <!-- ─── IDENTITY STRIP ─── -->
+    <div class="identity">
+      <!-- Top row: overline left, split button right -->
+      <div class="identity-top-row">
+        <div class="identity-overline">F-2847</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main">Edit Details</button>
+            <button class="split-toggle" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit Details
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Add Comment
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              Link to Item
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              Reassign
+            </button>
+            <div class="dd-sep"></div>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Mark as Complete
+            </button>
+            <button class="dd-item danger" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              Archive
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Title — standalone, human-readable -->
+      <h1 class="identity-title">Port fuel isolation valve leak detected</h1>
+
+      <!-- Context — location + reporter -->
+      <p class="identity-context">Engine Room, Port Side · Reported by <span class="crew-link">Chief Engineer</span> · SV Andromeda</p>
+
+      <!-- Status pills -->
+      <div class="pills">
+        <span class="pill pill-neutral"><span class="dot"></span> Under Review</span>
+        <span class="pill pill-red"><span class="dot"></span> High</span>
+      </div>
+
+      <!-- Key-value detail lines -->
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Equipment</span>
+          <span class="equip-link"><span class="mono">E-007</span> Port Fuel Isolation Valve Assembly</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Date Reported</span>
+          <span class="mono-val">15 Mar 2026, 07:42</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Category</span>
+          <span>Mechanical — Fuel System</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Root Cause</span>
+          <span class="root-cause-tag">Material Failure</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTIONS
+         ═══════════════════════════════════════════════ -->
+
+    <!-- CORRECTIVE ACTION — user-written description, not a checklist -->
+    <div class="section reveal" id="sec-corrective">
+      <div class="sec-hdr" onclick="toggleSec('sec-corrective')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        <span class="sec-title">Corrective Action</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <p style="font-size:14px; color:var(--txt2); line-height:1.65; max-width:600px;">Containment installed immediately — absorbent pads and drip tray positioned under valve. Temporary bypass remains active. Replacement valve body and bonnet seal (<span class="mono">FIV-042</span>) ordered via <span style="color:var(--mark); cursor:pointer;">PO-89</span>. Once received, valve to be replaced and fuel circuit pressure-tested at 4 bar for 30 minutes to confirm zero leaks before returning to service.</p>
+      </div>
+    </div>
+
+    <!-- RELATED ENTITIES — the spawning links -->
+    <div class="section reveal" id="sec-related">
+      <div class="sec-hdr" onclick="toggleSec('sec-related')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        <span class="sec-title">Related Entities</span>
+        <span class="sec-count">5</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <!-- Work Order -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-type">Work Order</div>
+            <div class="related-name"><span class="related-id">WO-1058</span> Port Fuel Valve Replacement</div>
+          </div>
+          <span class="related-status neutral">Pending</span>
+          <span class="related-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <!-- Equipment -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-type">Equipment</div>
+            <div class="related-name"><span class="related-id">E-007</span> Port Fuel Isolation Valve Assembly</div>
+          </div>
+          <span class="related-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <!-- Warranty Claim -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-type">Warranty Claim</div>
+            <div class="related-name"><span class="related-id">WC-0091</span> Valve body corrosion — manufacturer defect</div>
+          </div>
+          <span class="related-status neutral">Filed</span>
+          <span class="related-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <!-- Part -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-type">Part</div>
+            <div class="related-name"><span class="related-id">FIV-042</span> Fuel Isolation Valve Body + Bonnet Seal</div>
+          </div>
+          <span class="related-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <!-- Person -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-type">Assigned Engineer</div>
+            <div class="related-name">Chief Engineer</div>
+          </div>
+          <span class="related-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMMENTS -->
+    <div class="section reveal" id="sec-comments">
+      <div class="sec-hdr" onclick="toggleSec('sec-comments')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="sec-title">Comments</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add Comment</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">Chief Engineer</span>
+            <span class="note-time">16 Mar 09:00</span>
+          </div>
+          <p class="note-body">Replacement valve (<span class="mono">FIV-042</span>) arrived via Maritime Supplies Ltd. Inspected — correct spec confirmed. Scheduling repair for tomorrow AM during calm weather window. Will require fuel system isolation for approx 4 hours.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">Captain</span>
+            <span class="note-time">15 Mar 14:20</span>
+          </div>
+          <p class="note-body">Warranty claim <span class="mono">WC-0091</span> filed with valve manufacturer — corrosion pitting within 18 months of install suggests material defect. Retained failed valve for inspection. Notified class surveyor per ISM 9.1.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">Chief Engineer</span>
+            <span class="note-time">15 Mar 10:30</span>
+          </div>
+          <p class="note-body clamped" id="longNote">Detailed inspection complete. Corrosion pitting concentrated on the valve bonnet seal face — bronze body shows dezincification pattern consistent with prolonged saltwater exposure. The adjacent starboard valve (same batch, installed same date) shows early signs of similar pitting. Recommend replacing both valves and reviewing material spec for future procurement. Drip rate stable at approx 2 drops/min — no immediate safety concern but requires repair before next passage.</p>
+          <button class="note-more" onclick="document.getElementById('longNote').classList.toggle('clamped'); this.textContent = this.textContent === 'Show more' ? 'Show less' : 'Show more'">Show more</button>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">ETO</span>
+            <span class="note-time">15 Mar 08:45</span>
+          </div>
+          <p class="note-body">ETO confirmed no electrical interference from fuel leak. Fuel level sensors and bilge alarms in engine room tested and operational. No secondary faults detected.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- OFFICIAL DOCUMENTS -->
+    <div class="section reveal" id="sec-docs">
+      <div class="sec-hdr" onclick="toggleSec('sec-docs')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="sec-title">Reference Documents</span>
+        <span class="sec-count">2</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name"><span class="doc-sop-action">Open SOP</span> — Fuel System Isolation Procedure (<span class="doc-code">SOP-ENG-018</span>)</div>
+          </div>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name"><span class="doc-code">ISM-9.1</span> — Non-Conformity Reporting &amp; Corrective Action</div>
+            <div class="doc-meta">Revision 4 · Effective <span class="doc-date">01 Jan 2026</span></div>
+          </div>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTACHMENTS -->
+    <div class="section reveal" id="sec-attach">
+      <div class="sec-hdr" onclick="toggleSec('sec-attach')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49"/></svg>
+        <span class="sec-title">Evidence &amp; Attachments</span>
+        <button class="sec-action" onclick="event.stopPropagation()">Upload</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="attach-row">
+          <div class="attach-thumb img"></div>
+          <div class="attach-info">
+            <div class="attach-name">valve_corrosion_detail.jpg</div>
+            <div class="attach-caption">"Dezincification pitting on bonnet seal face" — Chief Engineer</div>
+          </div>
+          <span class="attach-size">3.2 MB</span>
+        </div>
+        <div class="attach-row">
+          <div class="attach-thumb img"></div>
+          <div class="attach-info">
+            <div class="attach-name">drip_tray_containment.jpg</div>
+            <div class="attach-caption">"Containment setup — drip tray + absorbent pads" — Chief Engineer</div>
+          </div>
+          <span class="attach-size">1.9 MB</span>
+        </div>
+        <div class="attach-row">
+          <div class="attach-thumb img"></div>
+          <div class="attach-info">
+            <div class="attach-name">starboard_valve_comparison.jpg</div>
+            <div class="attach-caption">"Starboard valve showing early pitting — same batch" — Chief Engineer</div>
+          </div>
+          <span class="attach-size">2.4 MB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY — status progression log, collapsed by default -->
+    <div class="section collapsed reveal" id="sec-history">
+      <div class="sec-hdr" onclick="toggleSec('sec-history')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="sec-title">Audit Trail</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-time">16 Mar 09:00</span>
+          </div>
+          <p class="note-body" style="font-size:12px">Chief Engineer added comment. Replacement part received.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-time">15 Mar 14:20</span>
+          </div>
+          <p class="note-body" style="font-size:12px">Captain linked warranty claim <span class="mono">WC-0091</span>.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-time">15 Mar 10:30</span>
+          </div>
+          <p class="note-body" style="font-size:12px">Chief Engineer changed status from <strong>Acknowledged</strong> to <strong>Under Review</strong>. Root cause set to Material Failure.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-time">15 Mar 08:15</span>
+          </div>
+          <p class="note-body" style="font-size:12px">Captain acknowledged fault. Severity confirmed: High.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-time">15 Mar 07:42</span>
+          </div>
+          <p class="note-body" style="font-size:12px">Chief Engineer created fault report <span class="mono">F-2847</span>.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /lens-body -->
+
+</div><!-- /panel -->
+
+<script src="lens-base.js"></script>
+
+</body>
+</html>

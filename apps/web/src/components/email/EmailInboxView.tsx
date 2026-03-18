@@ -56,11 +56,11 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Inbox className="h-5 w-5 text-zinc-500" />
-          <h2 className="typo-title font-semibold text-zinc-800 dark:text-zinc-200">
+          <Inbox className="h-5 w-5 text-txt-secondary" />
+          <h2 className="typo-title font-semibold text-txt-primary">
             Email Inbox
           </h2>
-          <span className="typo-meta text-zinc-500">
+          <span className="typo-meta text-txt-secondary">
             {total} {showLinked ? 'total' : 'unlinked'} thread{total !== 1 ? 's' : ''}
           </span>
         </div>
@@ -74,7 +74,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
             }}
             className={cn(
               'px-3 py-1.5 typo-meta rounded-md transition-colors',
-              showLinked && 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300'
+              showLinked && 'bg-surface-active text-txt-primary'
             )}
             style={!showLinked ? { background: 'var(--teal-bg)', color: 'var(--mark)' } : undefined}
           >
@@ -96,7 +96,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
       {/* Loading State */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-txt-tertiary" />
         </div>
       )}
 
@@ -123,11 +123,11 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
       {/* Empty State */}
       {!isLoading && !error && threads.length === 0 && (
         <div className="text-center py-12">
-          <Mail className="h-12 w-12 text-zinc-300 mx-auto mb-4" />
-          <h3 className="typo-body font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          <Mail className="h-12 w-12 text-txt-tertiary mx-auto mb-4" />
+          <h3 className="typo-body font-medium text-txt-primary mb-2">
             {showLinked ? 'No email threads' : 'All emails are linked!'}
           </h3>
-          <p className="typo-meta text-zinc-500 max-w-sm mx-auto">
+          <p className="typo-meta text-txt-secondary max-w-sm mx-auto">
             {showLinked
               ? 'Email threads will appear here after sync.'
               : 'All your email threads have been linked to objects. Great work!'}
@@ -137,7 +137,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
 
       {/* Thread List */}
       {!isLoading && !error && threads.length > 0 && (
-        <div className="border border-zinc-200 dark:border-zinc-700 rounded-md divide-y divide-zinc-100 dark:divide-zinc-800" data-testid="email-list">
+        <div className="border border-border-sub rounded-md divide-y divide-border-sub" data-testid="email-list">
           {threads.map((thread) => (
             <ThreadRow
               key={thread.id}
@@ -152,7 +152,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
       {/* Pagination */}
       {!isLoading && total > 0 && (
         <div className="flex items-center justify-between pt-2">
-          <p className="typo-meta text-zinc-500">
+          <p className="typo-meta text-txt-secondary">
             Page {page} of {Math.ceil(total / (data?.page_size || 20))}
           </p>
           <div className="flex items-center gap-2">
@@ -204,19 +204,19 @@ interface ThreadRowProps {
 function ThreadRow({ thread, onLinkClick, onOpenClick }: ThreadRowProps) {
   return (
     <div
-      className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-surface-active transition-colors cursor-pointer"
+      className="flex items-center gap-4 p-4 hover:bg-surface-hover transition-colors cursor-pointer"
       data-testid="email-thread-item"
       onClick={onOpenClick}
     >
       {/* Email Icon */}
-      <Mail className="h-5 w-5 text-zinc-400 flex-shrink-0" />
+      <Mail className="h-5 w-5 text-txt-tertiary flex-shrink-0" />
 
       {/* Thread Info */}
       <div className="flex-1 min-w-0">
-        <h4 className="typo-meta font-medium text-zinc-800 dark:text-zinc-200 truncate">
+        <h4 className="typo-meta font-medium text-txt-primary truncate">
           {thread.latest_subject || '(No subject)'}
         </h4>
-        <div className="flex items-center gap-3 mt-1 typo-meta text-zinc-500">
+        <div className="flex items-center gap-3 mt-1 typo-meta text-txt-secondary">
           <span>{thread.message_count} message{thread.message_count !== 1 ? 's' : ''}</span>
           {thread.has_attachments && <span>Has attachments</span>}
           {thread.last_activity_at && (

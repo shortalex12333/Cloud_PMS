@@ -204,7 +204,7 @@ function Lightbox({ file, resolvedUrl, onClose }: LightboxProps) {
 
       {/* Filename caption */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-[80vw]">
-        <p className="text-[12px] text-white/70 text-center truncate bg-black/50 px-3 py-1 rounded-full">
+        <p className="text-[12px] text-txt-secondary text-center truncate bg-black/50 px-3 py-1 rounded-full">
           {file.filename}
         </p>
       </div>
@@ -345,7 +345,7 @@ export function MediaRenderer({ file, maxHeight = 240, className }: MediaRendere
             aria-hidden="true"
           >
             <svg
-              className="w-8 h-8 text-white drop-shadow-lg"
+              className="w-8 h-8 text-txt-primary drop-shadow-lg"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

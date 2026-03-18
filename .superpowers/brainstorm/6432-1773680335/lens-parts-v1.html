@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Parts/Inventory · v1</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0c0b0a;
+  color: rgba(255,255,255,0.92);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 24px 48px;
+  gap: 20px;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-label { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.20); text-align: center; }
+.page-sub { font-size: 11px; color: rgba(255,255,255,0.28); text-align: center; max-width: 600px; line-height: 1.5; }
+
+.scene { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+.theme-col { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; }
+.theme-label { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.22); }
+
+/* =================================================================
+   TOKENS
+   ================================================================= */
+:root {
+  --surface:       #181614;
+  --surface-el:    #1e1b18;
+  --surface-hover: #252525;
+  --surface-act:   #2c2925;
+  --border-sub:    rgba(255,255,255,0.045);
+  --border-int:    rgba(255,255,255,0.06);
+  --txt:           rgba(255,255,255,0.92);
+  --txt2:          rgba(255,255,255,0.55);
+  --txt3:          rgba(255,255,255,0.40);
+  --txt-ghost:     rgba(255,255,255,0.20);
+  --mark:          #5AABCC;
+  --teal-bg:       rgba(58,124,157,0.13);
+  --red:           #C0503A;
+  --red-bg:        rgba(192,80,58,0.10);
+  --red-border:    rgba(192,80,58,0.22);
+  --amber:         #C4893B;
+  --amber-bg:      rgba(196,137,59,0.10);
+  --amber-border:  rgba(196,137,59,0.22);
+  --green:         #4CAF81;
+  --green-bg:      rgba(76,175,129,0.10);
+  --green-border:  rgba(76,175,129,0.22);
+  --font-mono:     'SF Mono','Fira Code',monospace;
+}
+
+.light {
+  --surface:       #FFFFFF;
+  --surface-el:    #FDFCFB;
+  --surface-hover: #EDEAE4;
+  --surface-act:   #E8E3DC;
+  --border-sub:    rgba(0,0,0,0.06);
+  --border-int:    rgba(0,0,0,0.08);
+  --txt:           rgba(15,12,9,0.90);
+  --txt2:          rgba(15,12,9,0.60);
+  --txt3:          rgba(15,12,9,0.46);
+  --txt-ghost:     rgba(15,12,9,0.28);
+  --mark:          #2B7BA3;
+  --teal-bg:       rgba(43,123,163,0.09);
+  --red:           #B83A28;
+  --red-bg:        rgba(184,58,40,0.06);
+  --red-border:    rgba(184,58,40,0.20);
+  --amber:         #A67420;
+  --amber-bg:      rgba(166,116,32,0.06);
+  --amber-border:  rgba(166,116,32,0.20);
+  --green:         #2E7D5A;
+  --green-bg:      rgba(46,125,90,0.06);
+  --green-border:  rgba(46,125,90,0.20);
+}
+
+/* =================================================================
+   PANEL
+   ================================================================= */
+.panel {
+  width: 700px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  border-top:    1px solid rgba(255,255,255,0.13);
+  border-right:  1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-left:   1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.60), 0 28px 80px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.45);
+  background: var(--surface-el);
+}
+.light .panel {
+  border-top:    1px solid rgba(0,0,0,0.12);
+  border-right:  1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-left:   1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 28px 80px rgba(0,0,0,0.13), 0 8px 24px rgba(0,0,0,0.08);
+}
+
+/* =================================================================
+   HEADER (56px, glass)
+   ================================================================= */
+.lens-hdr {
+  height: 56px; flex-shrink: 0;
+  display: flex; align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-sub);
+  background: rgba(16,14,12,0.65);
+  backdrop-filter: blur(8px);
+}
+.light .lens-hdr { background: rgba(242,240,236,0.88); }
+
+.hdr-back {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 4px;
+  color: var(--txt3); background: transparent; border: none;
+  cursor: pointer; flex-shrink: 0; transition: all 100ms ease;
+}
+.hdr-back:hover { color: var(--txt); background: var(--surface-hover); }
+
+.hdr-overline {
+  flex: 1; text-align: center;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--txt3);
+}
+
+.hdr-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.hdr-btn {
+  height: 28px; padding: 0 10px; border-radius: 4px;
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  color: var(--txt3); background: transparent;
+  border: 1px solid var(--border-sub);
+  font-family: inherit; transition: all 100ms ease;
+}
+.hdr-btn:hover { color: var(--txt2); border-color: var(--border-int); }
+
+.hdr-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 4px;
+  color: var(--txt3); background: transparent; border: none;
+  cursor: pointer; font-size: 14px; transition: all 100ms ease;
+}
+.hdr-close:hover { color: var(--txt); background: var(--surface-hover); }
+
+/* =================================================================
+   BODY (scrollable)
+   ================================================================= */
+.lens-body {
+  overflow-y: auto;
+  flex: 1;
+  max-height: 720px;
+  padding: 0;
+}
+.lens-body::-webkit-scrollbar { width: 4px; }
+.lens-body::-webkit-scrollbar-track { background: transparent; }
+.lens-body::-webkit-scrollbar-thumb { background: var(--border-sub); border-radius: 2px; }
+
+/* =================================================================
+   TITLE BLOCK
+   ================================================================= */
+.title-block {
+  padding: 20px 20px 16px;
+}
+.title-main {
+  font-size: 24px; font-weight: 600; color: var(--txt);
+  line-height: 1.25; margin-bottom: 4px;
+}
+.title-sub {
+  font-size: 14px; font-weight: 400; color: var(--txt2);
+  line-height: 1.4; margin-bottom: 10px;
+}
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 10px; border-radius: 12px;
+  font-size: 11px; font-weight: 500;
+}
+.status-pill.amber {
+  background: var(--amber-bg); color: var(--amber);
+  border: 1px solid var(--amber-border);
+}
+.status-pill.green {
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green-border);
+}
+.status-pill.red {
+  background: var(--red-bg); color: var(--red);
+  border: 1px solid var(--red-border);
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.status-dot.amber { background: var(--amber); }
+.status-dot.green { background: var(--green); }
+.status-dot.red { background: var(--red); }
+
+/* =================================================================
+   VITAL SIGNS ROW
+   ================================================================= */
+.vitals-row {
+  display: flex; align-items: center; gap: 0;
+  height: 40px;
+  margin: 0 20px;
+  border-top: 1px solid var(--border-sub);
+  border-bottom: 1px solid var(--border-sub);
+}
+.vital {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 1px;
+  height: 100%;
+  position: relative;
+}
+.vital + .vital::before {
+  content: '';
+  position: absolute; left: 0; top: 8px; bottom: 8px;
+  width: 1px; background: var(--border-sub);
+}
+.vital-label {
+  font-size: 9px; font-weight: 500; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--txt-ghost);
+}
+.vital-value {
+  font-size: 12px; font-weight: 600; color: var(--txt);
+}
+.vital-value.amber { color: var(--amber); }
+.vital-value.red { color: var(--red); }
+.vital-value.green { color: var(--green); }
+.vital-value.mono { font-family: var(--font-mono); letter-spacing: 0.02em; }
+
+/* =================================================================
+   STOCK LEVEL BAR (unique to parts lens)
+   ================================================================= */
+.stock-level {
+  padding: 16px 20px 12px;
+}
+.stock-bar-container {
+  width: 100%; height: 8px;
+  background: var(--surface);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.stock-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 300ms ease;
+}
+.stock-bar-fill.green { background: var(--green); }
+.stock-bar-fill.amber { background: var(--amber); }
+.stock-bar-fill.red { background: var(--red); }
+
+.stock-labels {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 6px;
+}
+.stock-on-hand {
+  font-size: 12px; font-weight: 500; color: var(--txt);
+}
+.stock-min {
+  font-size: 12px; font-weight: 400; color: var(--txt-ghost);
+}
+.stock-alert {
+  margin-top: 8px;
+  font-size: 12px; color: var(--amber);
+  line-height: 1.4;
+}
+
+/* =================================================================
+   SECTION HEADERS
+   ================================================================= */
+.section-hdr {
+  display: flex; align-items: center;
+  padding: 16px 20px 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--txt3);
+  position: sticky; top: 0; z-index: 2;
+  background: var(--surface-el);
+}
+
+/* =================================================================
+   DETAILS GRID (2 columns, key-value)
+   ================================================================= */
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 0 20px;
+  border: 1px solid var(--border-sub);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.detail-cell {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-sub);
+}
+.detail-cell:nth-child(odd) {
+  border-right: 1px solid var(--border-sub);
+}
+.detail-cell:nth-last-child(-n+2) {
+  border-bottom: none;
+}
+.detail-key {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--txt-ghost);
+}
+.detail-val {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+}
+.detail-val.mono {
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+}
+
+/* =================================================================
+   ACTION BUTTONS ROW
+   ================================================================= */
+.actions-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 16px 20px;
+  flex-wrap: wrap;
+}
+.act-btn {
+  height: 36px; min-height: 44px; padding: 0 14px;
+  border-radius: 6px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  font-family: inherit; transition: all 100ms ease;
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.act-btn.primary {
+  color: var(--surface); background: var(--mark);
+  border: 1px solid transparent;
+}
+.act-btn.primary:hover { opacity: 0.9; }
+.act-btn.ghost {
+  color: var(--txt2); background: transparent;
+  border: 1px solid var(--border-sub);
+}
+.act-btn.ghost:hover { color: var(--txt); border-color: var(--border-int); background: var(--surface-hover); }
+.act-btn.danger {
+  color: var(--red); background: transparent;
+  border: 1px solid var(--border-sub);
+}
+.act-btn.danger:hover { background: var(--red-bg); border-color: var(--red-border); }
+
+/* =================================================================
+   STOCK MOVEMENTS TABLE
+   ================================================================= */
+.movement-row {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 8px 20px;
+  transition: background 60ms ease;
+}
+.movement-row:hover { background: var(--surface-hover); }
+.movement-row + .movement-row {
+  border-top: 1px solid var(--border-sub);
+}
+
+.mv-icon {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.mv-icon.consume { background: var(--red-bg); color: var(--red); }
+.mv-icon.receive { background: var(--green-bg); color: var(--green); }
+
+.mv-qty {
+  font-size: 13px; font-weight: 600; width: 80px; flex-shrink: 0;
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+}
+.mv-qty.neg { color: var(--red); }
+.mv-qty.pos { color: var(--green); }
+
+.mv-content {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;
+}
+.mv-ref {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mv-who {
+  font-size: 11px; color: var(--txt3);
+}
+.mv-time {
+  font-size: 11px; font-family: var(--font-mono); letter-spacing: 0.02em;
+  color: var(--txt-ghost); flex-shrink: 0; white-space: nowrap;
+}
+
+/* =================================================================
+   RELATED ENTITY ROWS (WOs, POs)
+   ================================================================= */
+.entity-row {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 8px 20px;
+  cursor: pointer; transition: background 60ms ease;
+}
+.entity-row:hover { background: var(--surface-hover); }
+.entity-row + .entity-row {
+  border-top: 1px solid var(--border-sub);
+}
+
+.entity-icon {
+  width: 20px; height: 20px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--txt3);
+}
+.entity-content {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+}
+.entity-primary {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.entity-secondary {
+  font-size: 11px; color: var(--txt3);
+}
+.entity-meta {
+  font-size: 12px; color: var(--txt3); flex-shrink: 0;
+}
+
+.badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 18px; padding: 0 6px; border-radius: 3px;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; flex-shrink: 0;
+}
+.badge-action { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.badge-progress { background: var(--teal-bg); color: var(--mark); border: 1px solid rgba(90,171,204,0.22); }
+
+.entity-chevron {
+  color: var(--txt-ghost); flex-shrink: 0; opacity: 0.35;
+  transition: opacity 80ms ease;
+}
+.entity-row:hover .entity-chevron { opacity: 0.7; }
+
+/* =================================================================
+   PART IMAGE
+   ================================================================= */
+.part-image-block {
+  padding: 16px 20px 20px;
+}
+.part-image {
+  width: 200px; height: 150px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-sub);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--txt-ghost);
+  font-size: 11px;
+}
+.part-image-caption {
+  font-size: 12px; color: var(--txt-ghost); margin-top: 6px;
+}
+
+/* =================================================================
+   MODAL BACKDROP + MODAL
+   ================================================================= */
+.modal-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.50);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  border-radius: 8px;
+}
+.modal {
+  width: 480px;
+  background: var(--surface-el);
+  border-radius: 16px;
+  padding: 28px;
+  border-top:    1px solid rgba(255,255,255,0.10);
+  border-right:  1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  border-left:   1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.50), 0 40px 100px rgba(0,0,0,0.85), 0 12px 36px rgba(0,0,0,0.55);
+  display: flex; flex-direction: column; gap: 20px;
+}
+.light .modal {
+  border-top:    1px solid rgba(0,0,0,0.10);
+  border-right:  1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+  border-left:   1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.06), 0 40px 100px rgba(0,0,0,0.18), 0 12px 36px rgba(0,0,0,0.10);
+}
+
+.modal-title {
+  font-size: 18px; font-weight: 600; color: var(--txt);
+}
+.modal-desc {
+  font-size: 14px; font-weight: 400; color: var(--txt2);
+  line-height: 1.5; margin-top: -12px;
+}
+
+.modal-field {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.modal-label {
+  font-size: 13px; font-weight: 500; color: var(--txt2);
+}
+.modal-value {
+  font-size: 14px; font-weight: 500; color: var(--txt);
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-sub);
+  border-radius: 6px;
+}
+
+/* PIN input row */
+.pin-field {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pin-label {
+  font-size: 13px; font-weight: 500; color: var(--txt2);
+}
+.pin-dots {
+  display: flex; gap: 8px;
+}
+.pin-dot {
+  width: 36px; height: 36px; border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-int);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--txt);
+}
+.pin-dot.filled::after {
+  content: '';
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--txt);
+}
+
+/* TOTP input row */
+.totp-boxes {
+  display: flex; gap: 6px;
+}
+.totp-box {
+  width: 40px; height: 44px; border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-int);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 600; color: var(--txt);
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+}
+
+.modal-actions {
+  display: flex; align-items: center; gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+.modal-btn {
+  height: 40px; min-height: 44px; padding: 0 20px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  font-family: inherit; transition: all 100ms ease;
+}
+.modal-btn.ghost {
+  color: var(--txt2); background: transparent;
+  border: 1px solid var(--border-sub);
+}
+.modal-btn.ghost:hover { color: var(--txt); border-color: var(--border-int); }
+.modal-btn.danger-primary {
+  color: var(--surface-el); background: var(--red);
+  border: 1px solid transparent;
+}
+.modal-btn.danger-primary:hover { opacity: 0.9; }
+.light .modal-btn.danger-primary { color: var(--surface); }
+
+/* =================================================================
+   SECTION DIVIDER
+   ================================================================= */
+.section-divider {
+  height: 1px; background: var(--border-sub); margin: 0 20px;
+}
+</style>
+</head>
+<body>
+
+<p class="page-label">Lens &middot; Parts/Inventory &middot; v1</p>
+<p class="page-sub">Entity detail view for parts/inventory. Stock level visualisation, stock movements, related WOs/POs, write-off with PIN+TOTP signature modal.</p>
+
+<div class="scene">
+
+<!-- =================================================================
+     DARK PANEL (with Write Off modal overlay)
+     ================================================================= -->
+<div class="theme-col">
+<p class="theme-label">Dark &middot; With Write Off Modal</p>
+<div class="panel" style="position:relative;">
+
+  <!-- HEADER -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="8,2 3,7 8,12"/></svg>
+    </button>
+    <span class="hdr-overline">Inventory</span>
+    <div class="hdr-right">
+      <button class="hdr-btn">Related</button>
+      <button class="hdr-close">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="lens-body">
+
+    <!-- TITLE BLOCK -->
+    <div class="title-block">
+      <p class="title-main">774-B &mdash; Impeller Kit</p>
+      <p class="title-sub">Stores &middot; Supplier: Marine Parts Direct</p>
+      <span class="status-pill amber">
+        <span class="status-dot amber"></span>
+        Low Stock
+      </span>
+    </div>
+
+    <!-- VITAL SIGNS ROW -->
+    <div class="vitals-row">
+      <div class="vital">
+        <span class="vital-label">Stock</span>
+        <span class="vital-value amber">Low Stock</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Quantity</span>
+        <span class="vital-value red mono">1</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Min Level</span>
+        <span class="vital-value mono">2</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Location</span>
+        <span class="vital-value">Stores A-14</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Last Count</span>
+        <span class="vital-value mono">12 Mar 2026</span>
+      </div>
+    </div>
+
+    <!-- STOCK LEVEL BAR -->
+    <div class="stock-level">
+      <div class="stock-bar-container">
+        <div class="stock-bar-fill amber" style="width:50%"></div>
+      </div>
+      <div class="stock-labels">
+        <span class="stock-on-hand">1 on hand</span>
+        <span class="stock-min">min: 2</span>
+      </div>
+      <p class="stock-alert">Reorder point reached &mdash; PO-89 submitted</p>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- DETAILS SECTION -->
+    <div class="section-hdr">Details</div>
+    <div class="details-grid">
+      <div class="detail-cell">
+        <span class="detail-key">Part Number</span>
+        <span class="detail-val mono">774-B</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Category</span>
+        <span class="detail-val">Pump Components</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Unit</span>
+        <span class="detail-val">Each</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Unit Cost</span>
+        <span class="detail-val mono">$47.50</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Total Value</span>
+        <span class="detail-val mono">$47.50</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Supplier</span>
+        <span class="detail-val">Marine Parts Direct</span>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="actions-row">
+      <button class="act-btn primary">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v10M2 7h10"/></svg>
+        Receive
+      </button>
+      <button class="act-btn ghost">Consume</button>
+      <button class="act-btn ghost">Transfer</button>
+      <button class="act-btn ghost">Adjust Stock</button>
+      <button class="act-btn danger" onclick="toggleModal('dark-modal')">Write Off</button>
+      <button class="act-btn ghost">Add to Shopping List</button>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- STOCK MOVEMENTS -->
+    <div class="section-hdr">Stock Movements</div>
+
+    <div class="movement-row">
+      <div class="mv-icon consume">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="2" x2="6" y2="10"/><polyline points="3,7 6,10 9,7"/></svg>
+      </div>
+      <span class="mv-qty neg mono">&minus;2 Consumed</span>
+      <div class="mv-content">
+        <span class="mv-ref">WO-1039 Bilge Pump</span>
+        <span class="mv-who">J. Morrison</span>
+      </div>
+      <span class="mv-time">15 Mar 09:30</span>
+    </div>
+
+    <div class="movement-row">
+      <div class="mv-icon receive">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="10" x2="6" y2="2"/><polyline points="3,5 6,2 9,5"/></svg>
+      </div>
+      <span class="mv-qty pos mono">+5 Received</span>
+      <div class="mv-content">
+        <span class="mv-ref">PO-84</span>
+        <span class="mv-who">R. Chen</span>
+      </div>
+      <span class="mv-time">10 Mar 14:15</span>
+    </div>
+
+    <div class="movement-row">
+      <div class="mv-icon consume">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="2" x2="6" y2="10"/><polyline points="3,7 6,10 9,7"/></svg>
+      </div>
+      <span class="mv-qty neg mono">&minus;1 Consumed</span>
+      <div class="mv-content">
+        <span class="mv-ref">WO-1035 Pump Seal</span>
+        <span class="mv-who">M. Okonkwo</span>
+      </div>
+      <span class="mv-time">05 Mar 11:00</span>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- USED IN WORK ORDERS -->
+    <div class="section-hdr">Used in Work Orders</div>
+
+    <div class="entity-row">
+      <div class="entity-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="9" height="13" rx="1.2"/><path d="M4 5h-1.5a1 1 0 00-1 1v7a1 1 0 001 1h1.5"/><path d="M7 6h4M7 8.5h4M7 11h2.5"/></svg>
+      </div>
+      <div class="entity-content">
+        <span class="entity-primary">WO-1042 &mdash; Emergency Valve Replacement</span>
+        <span class="entity-secondary">2 units</span>
+      </div>
+      <span class="badge badge-progress">In Progress</span>
+      <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+    </div>
+
+    <div class="entity-row">
+      <div class="entity-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="9" height="13" rx="1.2"/><path d="M4 5h-1.5a1 1 0 00-1 1v7a1 1 0 001 1h1.5"/><path d="M7 6h4M7 8.5h4M7 11h2.5"/></svg>
+      </div>
+      <div class="entity-content">
+        <span class="entity-primary">WO-1039 &mdash; Bilge Pump Maintenance</span>
+        <span class="entity-secondary">1 unit</span>
+      </div>
+      <span class="badge badge-progress">In Progress</span>
+      <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- PURCHASE ORDERS -->
+    <div class="section-hdr">Purchase Orders</div>
+
+    <div class="entity-row">
+      <div class="entity-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h8v10H4z"/><path d="M6 2h4v2H6z"/><path d="M6 7h4M6 9.5h2.5"/></svg>
+      </div>
+      <div class="entity-content">
+        <span class="entity-primary">PO-89 &mdash; Restock Order</span>
+        <span class="entity-secondary">Qty ordered: 5 &middot; ETA: 17 Mar 2026</span>
+      </div>
+      <span class="badge badge-action">Pending Approval</span>
+      <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- PART IMAGE -->
+    <div class="section-hdr">Part Image</div>
+
+    <div class="part-image-block">
+      <div class="part-image">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><rect x="4" y="6" width="24" height="20" rx="2"/><circle cx="12" cy="14" r="3"/><polyline points="28,22 22,16 10,26"/></svg>
+      </div>
+      <p class="part-image-caption">774-B Impeller Kit</p>
+    </div>
+
+  </div><!-- .lens-body -->
+
+  <!-- WRITE OFF MODAL OVERLAY -->
+  <div class="modal-backdrop" id="dark-modal">
+    <div class="modal">
+      <p class="modal-title">Write Off Part</p>
+      <p class="modal-desc">This action requires PIN + TOTP verification.</p>
+
+      <div class="modal-field">
+        <span class="modal-label">Write off quantity</span>
+        <div class="modal-value">1 unit</div>
+      </div>
+
+      <div class="modal-field">
+        <span class="modal-label">Reason</span>
+        <div class="modal-value">Damaged beyond repair</div>
+      </div>
+
+      <div class="pin-field">
+        <span class="pin-label">Enter PIN</span>
+        <div class="pin-dots">
+          <div class="pin-dot filled"></div>
+          <div class="pin-dot filled"></div>
+          <div class="pin-dot filled"></div>
+          <div class="pin-dot filled"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+        </div>
+      </div>
+
+      <div class="pin-field">
+        <span class="pin-label">Enter TOTP Code</span>
+        <div class="totp-boxes">
+          <div class="totp-box">4</div>
+          <div class="totp-box">8</div>
+          <div class="totp-box">2</div>
+          <div class="totp-box"></div>
+          <div class="totp-box"></div>
+          <div class="totp-box"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-btn ghost" onclick="toggleModal('dark-modal')">Cancel</button>
+        <button class="modal-btn danger-primary">Confirm Write Off</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .panel -->
+</div><!-- .theme-col -->
+
+<!-- =================================================================
+     LIGHT PANEL (no modal, clean view)
+     ================================================================= -->
+<div class="theme-col light">
+<p class="theme-label" style="color:rgba(0,0,0,0.30)">Light &middot; Clean View</p>
+<div class="panel">
+
+  <!-- HEADER -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="8,2 3,7 8,12"/></svg>
+    </button>
+    <span class="hdr-overline">Inventory</span>
+    <div class="hdr-right">
+      <button class="hdr-btn">Related</button>
+      <button class="hdr-close">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="lens-body">
+
+    <!-- TITLE BLOCK -->
+    <div class="title-block">
+      <p class="title-main">774-B &mdash; Impeller Kit</p>
+      <p class="title-sub">Stores &middot; Supplier: Marine Parts Direct</p>
+      <span class="status-pill amber">
+        <span class="status-dot amber"></span>
+        Low Stock
+      </span>
+    </div>
+
+    <!-- VITAL SIGNS ROW -->
+    <div class="vitals-row">
+      <div class="vital">
+        <span class="vital-label">Stock</span>
+        <span class="vital-value amber">Low Stock</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Quantity</span>
+        <span class="vital-value red mono">1</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Min Level</span>
+        <span class="vital-value mono">2</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Location</span>
+        <span class="vital-value">Stores A-14</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Last Count</span>
+        <span class="vital-value mono">12 Mar 2026</span>
+      </div>
+    </div>
+
+    <!-- STOCK LEVEL BAR -->
+    <div class="stock-level">
+      <div class="stock-bar-container">
+        <div class="stock-bar-fill amber" style="width:50%"></div>
+      </div>
+      <div class="stock-labels">
+        <span class="stock-on-hand">1 on hand</span>
+        <span class="stock-min">min: 2</span>
+      </div>
+      <p class="stock-alert">Reorder point reached &mdash; PO-89 submitted</p>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- DETAILS SECTION -->
+    <div class="section-hdr">Details</div>
+    <div class="details-grid">
+      <div class="detail-cell">
+        <span class="detail-key">Part Number</span>
+        <span class="detail-val mono">774-B</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Category</span>
+        <span class="detail-val">Pump Components</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Unit</span>
+        <span class="detail-val">Each</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Unit Cost</span>
+        <span class="detail-val mono">$47.50</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Total Value</span>
+        <span class="detail-val mono">$47.50</span>
+      </div>
+      <div class="detail-cell">
+        <span class="detail-key">Supplier</span>
+        <span class="detail-val">Marine Parts Direct</span>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="actions-row">
+      <button class="act-btn primary">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v10M2 7h10"/></svg>
+        Receive
+      </button>
+      <button class="act-btn ghost">Consume</button>
+      <button class="act-btn ghost">Transfer</button>
+      <button class="act-btn ghost">Adjust Stock</button>
+      <button class="act-btn danger">Write Off</button>
+      <button class="act-btn ghost">Add to Shopping List</button>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- STOCK MOVEMENTS -->
+    <div class="section-hdr">Stock Movements</div>
+
+    <div class="movement-row">
+      <div class="mv-icon consume">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="2" x2="6" y2="10"/><polyline points="3,7 6,10 9,7"/></svg>
+      </div>
+      <span class="mv-qty neg mono">&minus;2 Consumed</span>
+      <div class="mv-content">
+        <span class="mv-ref">WO-1039 Bilge Pump</span>
+        <span class="mv-who">J. Morrison</span>
+      </div>
+      <span class="mv-time">15 Mar 09:30</span>
+    </div>
+
+    <div class="movement-row">
+      <div class="mv-icon receive">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="10" x2="6" y2="2"/><polyline points="3,5 6,2 9,5"/></svg>
+      </div>
+      <span class="mv-qty pos mono">+5 Received</span>
+      <div class="mv-content">
+        <span class="mv-ref">PO-84</span>
+        <span class="mv-who">R. Chen</span>
+      </div>
+      <span class="mv-time">10 Mar 14:15</span>
+    </div>
+
+    <div class="movement-row">
+      <div class="mv-icon consume">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="2" x2="6" y2="10"/><polyline points="3,7 6,10 9,7"/></svg>
+      </div>
+      <span class="mv-qty neg mono">&minus;1 Consumed</span>
+      <div class="mv-content">
+        <span class="mv-ref">WO-1035 Pump Seal</span>
+        <span class="mv-who">M. Okonkwo</span>
+      </div>
+      <span class="mv-time">05 Mar 11:00</span>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- USED IN WORK ORDERS -->
+    <div class="section-hdr">Used in Work Orders</div>
+
+    <div class="entity-row">
+      <div class="entity-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="9" height="13" rx="1.2"/><path d="M4 5h-1.5a1 1 0 00-1 1v7a1 1 0 001 1h1.5"/><path d="M7 6h4M7 8.5h4M7 11h2.5"/></svg>
+      </div>
+      <div class="entity-content">
+        <span class="entity-primary">WO-1042 &mdash; Emergency Valve Replacement</span>
+        <span class="entity-secondary">2 units</span>
+      </div>
+      <span class="badge badge-progress">In Progress</span>
+      <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+    </div>
+
+    <div class="entity-row">
+      <div class="entity-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="9" height="13" rx="1.2"/><path d="M4 5h-1.5a1 1 0 00-1 1v7a1 1 0 001 1h1.5"/><path d="M7 6h4M7 8.5h4M7 11h2.5"/></svg>
+      </div>
+      <div class="entity-content">
+        <span class="entity-primary">WO-1039 &mdash; Bilge Pump Maintenance</span>
+        <span class="entity-secondary">1 unit</span>
+      </div>
+      <span class="badge badge-progress">In Progress</span>
+      <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- PURCHASE ORDERS -->
+    <div class="section-hdr">Purchase Orders</div>
+
+    <div class="entity-row">
+      <div class="entity-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h8v10H4z"/><path d="M6 2h4v2H6z"/><path d="M6 7h4M6 9.5h2.5"/></svg>
+      </div>
+      <div class="entity-content">
+        <span class="entity-primary">PO-89 &mdash; Restock Order</span>
+        <span class="entity-secondary">Qty ordered: 5 &middot; ETA: 17 Mar 2026</span>
+      </div>
+      <span class="badge badge-action">Pending Approval</span>
+      <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- PART IMAGE -->
+    <div class="section-hdr">Part Image</div>
+
+    <div class="part-image-block">
+      <div class="part-image">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"><rect x="4" y="6" width="24" height="20" rx="2"/><circle cx="12" cy="14" r="3"/><polyline points="28,22 22,16 10,26"/></svg>
+      </div>
+      <p class="part-image-caption">774-B Impeller Kit</p>
+    </div>
+
+  </div><!-- .lens-body -->
+
+</div><!-- .panel -->
+</div><!-- .theme-col light -->
+
+</div><!-- .scene -->
+
+<script>
+function toggleModal(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (el.style.display === 'none') {
+    el.style.display = 'flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+</script>
+
+</body>
+</html>

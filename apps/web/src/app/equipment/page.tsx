@@ -60,7 +60,7 @@ export default function EquipmentPage() {
     <React.Suspense
       fallback={
         <div className="h-screen flex items-center justify-center bg-surface-base">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+          <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
         </div>
       }
     >

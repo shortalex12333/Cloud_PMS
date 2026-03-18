@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipment Lens · v1</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0c0b0a;
+  color: rgba(255,255,255,0.92);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 24px 48px;
+  gap: 20px;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-label { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.20); text-align: center; }
+.page-sub { font-size: 11px; color: rgba(255,255,255,0.28); text-align: center; max-width: 620px; line-height: 1.5; }
+
+.scene { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+.theme-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.theme-label { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.22); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   TOKENS
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --surface:       #181614;
+  --surface-el:    #1e1b18;
+  --surface-hover: #252525;
+  --surface-act:   #2c2925;
+  --border-sub:    rgba(255,255,255,0.045);
+  --border-int:    rgba(255,255,255,0.06);
+  --txt:           rgba(255,255,255,0.92);
+  --txt2:          rgba(255,255,255,0.55);
+  --txt3:          rgba(255,255,255,0.40);
+  --txt-ghost:     rgba(255,255,255,0.20);
+  --mark:          #5AABCC;
+  --teal-bg:       rgba(58,124,157,0.13);
+  --red:           #C0503A;
+  --red-bg:        rgba(192,80,58,0.10);
+  --red-border:    rgba(192,80,58,0.22);
+  --amber:         #C4893B;
+  --amber-bg:      rgba(196,137,59,0.10);
+  --amber-border:  rgba(196,137,59,0.22);
+  --green:         #4CAF81;
+  --green-bg:      rgba(76,175,129,0.10);
+  --green-border:  rgba(76,175,129,0.22);
+  --btn-txt:       #fff;
+  --font-mono:     'SF Mono','Fira Code',monospace;
+}
+
+.light {
+  --surface:       #FFFFFF;
+  --surface-el:    #FDFCFB;
+  --surface-hover: #EDEAE4;
+  --surface-act:   #E8E3DC;
+  --border-sub:    rgba(0,0,0,0.06);
+  --border-int:    rgba(0,0,0,0.08);
+  --txt:           rgba(15,12,9,0.90);
+  --txt2:          rgba(15,12,9,0.60);
+  --txt3:          rgba(15,12,9,0.46);
+  --txt-ghost:     rgba(15,12,9,0.28);
+  --mark:          #2B7BA3;
+  --teal-bg:       rgba(43,123,163,0.09);
+  --red:           #B83A28;
+  --red-bg:        rgba(184,58,40,0.06);
+  --red-border:    rgba(184,58,40,0.20);
+  --amber:         #A67420;
+  --amber-bg:      rgba(166,116,32,0.06);
+  --amber-border:  rgba(166,116,32,0.20);
+  --green:         #2E7D5A;
+  --green-bg:      rgba(46,125,90,0.06);
+  --green-border:  rgba(46,125,90,0.20);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════ */
+.panel {
+  width: 700px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  border-top:    1px solid rgba(255,255,255,0.13);
+  border-right:  1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-left:   1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.60), 0 28px 80px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.45);
+  background: var(--surface-el);
+}
+.light .panel {
+  border-top:    1px solid rgba(0,0,0,0.12);
+  border-right:  1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-left:   1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 28px 80px rgba(0,0,0,0.13), 0 8px 24px rgba(0,0,0,0.08);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   1. LENS HEADER — 56px, glass
+   ═══════════════════════════════════════════════════════════════════ */
+.lens-hdr {
+  height: 56px; flex-shrink: 0;
+  display: flex; align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-sub);
+  background: rgba(16,14,12,0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.light .lens-hdr { background: rgba(242,240,236,0.88); }
+
+.hdr-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.hdr-back {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 4px;
+  color: var(--txt3); background: transparent; border: none;
+  cursor: pointer; font-family: inherit;
+  transition: all 100ms ease;
+}
+.hdr-back:hover { color: var(--txt2); background: var(--surface-hover); }
+
+.hdr-overline {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--txt3);
+  position: absolute; left: 50%; transform: translateX(-50%);
+}
+.lens-hdr { position: relative; }
+
+.hdr-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.hdr-btn {
+  height: 28px; padding: 0 10px; border-radius: 4px;
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  color: var(--txt3); background: transparent;
+  border: 1px solid var(--border-sub);
+  font-family: inherit; transition: all 100ms ease;
+}
+.hdr-btn:hover { color: var(--txt2); border-color: var(--border-int); }
+.hdr-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 4px;
+  color: var(--txt3); background: transparent; border: none;
+  cursor: pointer; font-size: 14px; font-family: inherit;
+  transition: all 100ms ease;
+}
+.hdr-close:hover { color: var(--txt2); background: var(--surface-hover); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PANEL BODY — scrollable
+   ═══════════════════════════════════════════════════════════════════ */
+.panel-body {
+  overflow-y: auto;
+  flex: 1;
+}
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-track { background: transparent; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border-sub); border-radius: 2px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   2. LENS TITLE BLOCK
+   ═══════════════════════════════════════════════════════════════════ */
+.title-block {
+  padding: 20px 20px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.title-main {
+  font-size: 24px; font-weight: 600; color: var(--txt);
+  line-height: 1.25; letter-spacing: -0.01em;
+}
+.title-sub {
+  font-size: 14px; font-weight: 400; color: var(--txt2);
+  line-height: 1.4;
+}
+.title-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 2px;
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.status-dot.green { background: var(--green); }
+.status-dot.red { background: var(--red); }
+.status-dot.amber { background: var(--amber); }
+.status-text {
+  font-size: 12px; font-weight: 500;
+}
+.status-text.green { color: var(--green); }
+.status-text.red { color: var(--red); }
+.status-text.amber { color: var(--amber); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   3. VITAL SIGNS ROW — 5 indicators, 40px
+   ═══════════════════════════════════════════════════════════════════ */
+.vitals-row {
+  display: flex; align-items: center;
+  height: 40px;
+  padding: 0 20px;
+  gap: 0;
+  border-top: 1px solid var(--border-sub);
+  border-bottom: 1px solid var(--border-sub);
+}
+.vital {
+  flex: 1;
+  display: flex; align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 8px;
+}
+.vital + .vital {
+  border-left: 1px solid var(--border-sub);
+}
+.vital-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.vital-dot.green { background: var(--green); }
+.vital-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--txt-ghost);
+  flex-shrink: 0;
+}
+.vital-value {
+  font-size: 12px; font-weight: 500; color: var(--txt2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vital-value.green { color: var(--green); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SECTION HEADERS
+   ═══════════════════════════════════════════════════════════════════ */
+.section {
+  border-top: 1px solid var(--border-sub);
+}
+.section-hdr {
+  display: flex; align-items: center;
+  padding: 14px 20px 8px;
+  position: sticky; top: 0;
+  background: var(--surface-el);
+  z-index: 1;
+}
+.section-label {
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--txt3);
+}
+.section-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 18px; min-width: 18px; padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px; font-weight: 600;
+  margin-left: 8px;
+}
+.section-count.red { background: var(--red-bg); color: var(--red); }
+.section-count.amber { background: var(--amber-bg); color: var(--amber); }
+.section-count.green { background: var(--green-bg); color: var(--green); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   4. DETAILS — key-value grid
+   ═══════════════════════════════════════════════════════════════════ */
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 0 20px 12px;
+}
+.detail-pair {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-sub);
+}
+.detail-pair:nth-last-child(-n+2) {
+  border-bottom: none;
+}
+.detail-pair:nth-child(odd) {
+  padding-right: 16px;
+}
+.detail-pair:nth-child(even) {
+  padding-left: 16px;
+  border-left: 1px solid var(--border-sub);
+}
+.detail-label {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--txt-ghost);
+  line-height: 1.3;
+}
+.detail-value {
+  font-size: 14px; font-weight: 400; color: var(--txt2);
+  line-height: 1.35;
+}
+.detail-value.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5. ACTION BUTTONS ROW
+   ═══════════════════════════════════════════════════════════════════ */
+.actions-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 20px 16px;
+}
+.action-btn {
+  height: 36px; padding: 0 16px; border-radius: 5px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  font-family: inherit; transition: all 100ms ease;
+  min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.action-btn.primary {
+  color: var(--btn-txt); background: var(--mark);
+  border: 1px solid transparent;
+}
+.action-btn.primary:hover { opacity: 0.9; }
+.action-btn.ghost {
+  color: var(--txt2); background: transparent;
+  border: 1px solid var(--border-int);
+}
+.action-btn.ghost:hover {
+  color: var(--txt); border-color: var(--txt3);
+  background: var(--surface-hover);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   6-7. FAULT / WORK ORDER ROWS — 44px
+   ═══════════════════════════════════════════════════════════════════ */
+.entity-row {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 8px 20px;
+  cursor: pointer; user-select: none;
+  transition: background 60ms ease;
+}
+.entity-row:hover { background: var(--surface-hover); }
+.entity-row + .entity-row {
+  border-top: 1px solid var(--border-sub);
+}
+
+.entity-icon {
+  width: 16px; height: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.entity-icon.warn { color: var(--amber); }
+.entity-icon.fault { color: var(--red); }
+.entity-icon.wo { color: var(--txt3); }
+.entity-icon.doc { color: var(--txt3); }
+.entity-icon.shield { color: var(--green); }
+
+.entity-text {
+  flex: 1; min-width: 0;
+  font-size: 13px; font-weight: 400; color: var(--txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.severity-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 20px; padding: 0 7px; border-radius: 3px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; flex-shrink: 0;
+}
+.severity-badge.critical {
+  background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border);
+}
+.severity-badge.medium {
+  background: var(--surface); color: var(--txt3); border: 1px solid var(--border-int);
+}
+.severity-badge.in-progress {
+  background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border);
+}
+
+.entity-chevron {
+  color: var(--txt-ghost); flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 80ms ease;
+}
+.entity-row:hover .entity-chevron { opacity: 0.6; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   8. MAINTENANCE SCHEDULE — timeline
+   ═══════════════════════════════════════════════════════════════════ */
+.timeline {
+  padding: 0 20px 12px;
+  display: flex; flex-direction: column; gap: 0;
+}
+.timeline-entry {
+  display: flex; align-items: flex-start; gap: 12px;
+  min-height: 40px;
+  padding: 8px 0;
+  position: relative;
+}
+.timeline-entry + .timeline-entry {
+  border-top: 1px solid var(--border-sub);
+}
+.timeline-marker {
+  width: 20px; height: 20px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.timeline-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 2px solid var(--mark);
+  background: var(--surface-el);
+}
+.timeline-dot.upcoming {
+  border-color: var(--mark);
+  background: var(--teal-bg);
+}
+.timeline-check {
+  color: var(--green);
+  font-size: 14px;
+}
+.timeline-content {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.timeline-date {
+  font-size: 11px; font-weight: 600; color: var(--txt3);
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+}
+.timeline-date.upcoming { color: var(--txt); }
+.timeline-desc {
+  font-size: 13px; font-weight: 400; color: var(--txt2);
+  line-height: 1.4;
+}
+.timeline-desc.upcoming { color: var(--txt); }
+.timeline-desc.completed { color: var(--txt3); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   9. DOCUMENT CARDS — 48px
+   ═══════════════════════════════════════════════════════════════════ */
+.doc-list {
+  padding: 0 20px 12px;
+  display: flex; flex-direction: column; gap: 0;
+}
+.doc-card {
+  display: flex; align-items: center; gap: 10px;
+  height: 48px; padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-sub);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 60ms ease, border-color 60ms ease;
+}
+.doc-card + .doc-card { margin-top: 6px; }
+.doc-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-int);
+}
+.doc-name {
+  flex: 1; min-width: 0;
+  font-size: 13px; font-weight: 400; color: var(--txt2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.doc-size {
+  font-size: 11px; font-weight: 400; color: var(--txt-ghost);
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   10. WARRANTY CARD
+   ═══════════════════════════════════════════════════════════════════ */
+.warranty-list {
+  padding: 0 20px 16px;
+  display: flex; flex-direction: column; gap: 0;
+}
+.warranty-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-sub);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 60ms ease, border-color 60ms ease;
+}
+.warranty-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-int);
+}
+.warranty-info {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.warranty-title {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  line-height: 1.35;
+}
+.warranty-expires {
+  font-size: 12px; font-weight: 500; color: var(--green);
+}
+.warranty-supplier {
+  font-size: 11px; font-weight: 400; color: var(--txt3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   EMPTY SECTION PADDING
+   ═══════════════════════════════════════════════════════════════════ */
+.section-body {
+  padding-bottom: 4px;
+}
+</style>
+<style>.theme-col:first-child{display:none!important}.scene{justify-content:center}.theme-label{display:none}body{background:#f5f4f2!important;color:rgba(15,12,9,0.90)!important}.page-label{color:rgba(15,12,9,0.20)!important}.page-sub{color:rgba(15,12,9,0.28)!important}</style></head>
+<body>
+
+<p class="page-label">Equipment Lens · v1</p>
+<p class="page-sub">Entity detail view for Equipment. Two-panel layout: dark (left) and light (right). Sections: title, vitals, details, actions, faults, work orders, maintenance schedule, documents, warranties.</p>
+
+<div class="scene">
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     DARK PANEL
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="theme-col">
+<p class="theme-label">Dark</p>
+<div class="panel" id="dark-panel">
+
+  <!-- 1. LENS HEADER -->
+  <div class="lens-hdr">
+    <div class="hdr-left">
+      <button class="hdr-back" title="Back">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,2 4,7 9,12"/></svg>
+      </button>
+    </div>
+    <span class="hdr-overline">Equipment</span>
+    <div class="hdr-right">
+      <button class="hdr-btn">Related</button>
+      <button class="hdr-close" title="Close">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel-body">
+
+    <!-- 2. TITLE BLOCK -->
+    <div class="title-block">
+      <div class="title-main">E-007 — Main Engine</div>
+      <div class="title-sub">Engine Room · Caterpillar 3516B</div>
+      <div class="title-status">
+        <span class="status-dot green"></span>
+        <span class="status-text green">Operational</span>
+      </div>
+    </div>
+
+    <!-- 3. VITAL SIGNS ROW -->
+    <div class="vitals-row">
+      <div class="vital">
+        <span class="vital-dot green"></span>
+        <span class="vital-value green">Operational</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Type</span>
+        <span class="vital-value">Propulsion</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Loc</span>
+        <span class="vital-value">Engine Room</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Mfg</span>
+        <span class="vital-value">Caterpillar</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Model</span>
+        <span class="vital-value">3516B</span>
+      </div>
+    </div>
+
+    <!-- 4. DETAILS SECTION -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Details</span>
+      </div>
+      <div class="details-grid">
+        <div class="detail-pair">
+          <span class="detail-label">Serial Number</span>
+          <span class="detail-value mono">CAT-3516B-2019-0042</span>
+        </div>
+        <div class="detail-pair">
+          <span class="detail-label">Installation Date</span>
+          <span class="detail-value">15 Jun 2019</span>
+        </div>
+        <div class="detail-pair">
+          <span class="detail-label">Last Maintenance</span>
+          <span class="detail-value">10 Mar 2026</span>
+        </div>
+        <div class="detail-pair">
+          <span class="detail-label">Next Maintenance</span>
+          <span class="detail-value">10 Jun 2026</span>
+        </div>
+        <div class="detail-pair">
+          <span class="detail-label">Running Hours</span>
+          <span class="detail-value mono">12,847 h</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. ACTION BUTTONS -->
+    <div class="actions-row">
+      <button class="action-btn primary">Report Fault</button>
+      <button class="action-btn ghost">Create Work Order</button>
+      <button class="action-btn ghost">Schedule Maintenance</button>
+    </div>
+
+    <!-- 6. OPEN FAULTS -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Open Faults</span>
+        <span class="section-count red">2</span>
+      </div>
+      <div class="section-body">
+        <div class="entity-row" onclick="toggleRowHighlight(this)">
+          <span class="entity-icon fault">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L14 13H2L8 3z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none"/></svg>
+          </span>
+          <span class="entity-text">F-0221 — Starboard Genset Overheating</span>
+          <span class="severity-badge critical">Critical</span>
+          <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+        <div class="entity-row" onclick="toggleRowHighlight(this)">
+          <span class="entity-icon warn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L14 13H2L8 3z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none"/></svg>
+          </span>
+          <span class="entity-text">F-0219 — Oil Pressure Sensor Intermittent</span>
+          <span class="severity-badge medium">Medium</span>
+          <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. ACTIVE WORK ORDERS -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Active Work Orders</span>
+        <span class="section-count amber">1</span>
+      </div>
+      <div class="section-body">
+        <div class="entity-row" onclick="toggleRowHighlight(this)">
+          <span class="entity-icon wo">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="9" height="13" rx="1.2"/><path d="M4 5h-1.5a1 1 0 00-1 1v7a1 1 0 001 1h1.5"/><path d="M7 6h4M7 8.5h4M7 11h2.5"/></svg>
+          </span>
+          <span class="entity-text">WO-1042 — Emergency Valve Replacement</span>
+          <span class="severity-badge in-progress">In Progress</span>
+          <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. MAINTENANCE SCHEDULE -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Maintenance Schedule</span>
+      </div>
+      <div class="timeline">
+        <div class="timeline-entry">
+          <div class="timeline-marker">
+            <span class="timeline-dot upcoming"></span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-date upcoming">10 Jun 2026</span>
+            <span class="timeline-desc upcoming">500-hour inspection</span>
+          </div>
+        </div>
+        <div class="timeline-entry">
+          <div class="timeline-marker">
+            <span class="timeline-check">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg>
+            </span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-date">10 Mar 2026</span>
+            <span class="timeline-desc completed">Oil analysis &amp; filter change</span>
+          </div>
+        </div>
+        <div class="timeline-entry">
+          <div class="timeline-marker">
+            <span class="timeline-check">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg>
+            </span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-date">15 Dec 2025</span>
+            <span class="timeline-desc completed">Annual overhaul</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. DOCUMENTS -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Documents</span>
+      </div>
+      <div class="doc-list">
+        <div class="doc-card">
+          <span class="entity-icon doc">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h5.5L13 5.5V13a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M9.5 2v4H13"/><path d="M6 8h4M6 10.5h2.5"/></svg>
+          </span>
+          <span class="doc-name">Caterpillar_3516B_Service_Manual.pdf</span>
+          <span class="doc-size">4.2 MB</span>
+        </div>
+        <div class="doc-card">
+          <span class="entity-icon doc">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h5.5L13 5.5V13a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M9.5 2v4H13"/><path d="M6 8h4M6 10.5h2.5"/></svg>
+          </span>
+          <span class="doc-name">E-007_Installation_Certificate.pdf</span>
+          <span class="doc-size">890 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. WARRANTIES -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Warranties</span>
+      </div>
+      <div class="warranty-list">
+        <div class="warranty-card">
+          <span class="entity-icon shield">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5 3-1 5.5-3 5.5-6.5V4L8 1.5z"/><polyline points="5.5,8 7.2,10 10.5,6.5"/></svg>
+          </span>
+          <div class="warranty-info">
+            <span class="warranty-title">Extended Powertrain Warranty</span>
+            <span class="warranty-expires">Expires: 15 Jun 2027</span>
+            <span class="warranty-supplier">Supplier: Caterpillar Marine</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .panel-body -->
+
+</div><!-- .panel -->
+</div><!-- .theme-col -->
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     LIGHT PANEL
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="theme-col light">
+<p class="theme-label" style="color:rgba(0,0,0,0.30)">Light</p>
+<div class="panel" id="light-panel">
+
+  <!-- 1. LENS HEADER -->
+  <div class="lens-hdr">
+    <div class="hdr-left">
+      <button class="hdr-back" title="Back">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,2 4,7 9,12"/></svg>
+      </button>
+    </div>
+    <span class="hdr-overline">Equipment</span>
+    <div class="hdr-right">
+      <button class="hdr-btn">Related</button>
+      <button class="hdr-close" title="Close">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel-body">
+
+    <!-- 2. TITLE BLOCK -->
+    <div class="title-block">
+      <div class="title-main">E-007 — Main Engine</div>
+      <div class="title-sub">Engine Room · Caterpillar 3516B</div>
+      <div class="title-status">
+        <span class="status-dot green"></span>
+        <span class="status-text green">Operational</span>
+      </div>
+    </div>
+
+    <!-- 3. VITAL SIGNS ROW -->
+    <div class="vitals-row">
+      <div class="vital">
+        <span class="vital-dot green"></span>
+        <span class="vital-value green">Operational</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Type</span>
+        <span class="vital-value">Propulsion</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Loc</span>
+        <span class="vital-value">Engine Room</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Mfg</span>
+        <span class="vital-value">Caterpillar</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Model</span>
+        <span class="vital-value">3516B</span>
+      </div>
+    </div>
+
+    <!-- 4. DETAILS SECTION -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Details</span>
+      </div>
+      <div class="details-grid">
+        <div class="detail-pair">
+          <span class="detail-label">Serial Number</span>
+          <span class="detail-value mono">CAT-3516B-2019-0042</span>
+        </div>
+        <div class="detail-pair">
+          <span class="detail-label">Installation Date</span>
+          <span class="detail-value">15 Jun 2019</span>
+        </div>
+        <div class="detail-pair">
+          <span class="detail-label">Last Maintenance</span>
+          <span class="detail-value">10 Mar 2026</span>
+        </div>
+        <div class="detail-pair">
+          <span class="detail-label">Next Maintenance</span>
+          <span class="detail-value">10 Jun 2026</span>
+        </div>
+        <div class="detail-pair">
+          <span class="detail-label">Running Hours</span>
+          <span class="detail-value mono">12,847 h</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. ACTION BUTTONS -->
+    <div class="actions-row">
+      <button class="action-btn primary">Report Fault</button>
+      <button class="action-btn ghost">Create Work Order</button>
+      <button class="action-btn ghost">Schedule Maintenance</button>
+    </div>
+
+    <!-- 6. OPEN FAULTS -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Open Faults</span>
+        <span class="section-count red">2</span>
+      </div>
+      <div class="section-body">
+        <div class="entity-row" onclick="toggleRowHighlight(this)">
+          <span class="entity-icon fault">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L14 13H2L8 3z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none"/></svg>
+          </span>
+          <span class="entity-text">F-0221 — Starboard Genset Overheating</span>
+          <span class="severity-badge critical">Critical</span>
+          <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+        <div class="entity-row" onclick="toggleRowHighlight(this)">
+          <span class="entity-icon warn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L14 13H2L8 3z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none"/></svg>
+          </span>
+          <span class="entity-text">F-0219 — Oil Pressure Sensor Intermittent</span>
+          <span class="severity-badge medium">Medium</span>
+          <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. ACTIVE WORK ORDERS -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Active Work Orders</span>
+        <span class="section-count amber">1</span>
+      </div>
+      <div class="section-body">
+        <div class="entity-row" onclick="toggleRowHighlight(this)">
+          <span class="entity-icon wo">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="9" height="13" rx="1.2"/><path d="M4 5h-1.5a1 1 0 00-1 1v7a1 1 0 001 1h1.5"/><path d="M7 6h4M7 8.5h4M7 11h2.5"/></svg>
+          </span>
+          <span class="entity-text">WO-1042 — Emergency Valve Replacement</span>
+          <span class="severity-badge in-progress">In Progress</span>
+          <svg class="entity-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. MAINTENANCE SCHEDULE -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Maintenance Schedule</span>
+      </div>
+      <div class="timeline">
+        <div class="timeline-entry">
+          <div class="timeline-marker">
+            <span class="timeline-dot upcoming"></span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-date upcoming">10 Jun 2026</span>
+            <span class="timeline-desc upcoming">500-hour inspection</span>
+          </div>
+        </div>
+        <div class="timeline-entry">
+          <div class="timeline-marker">
+            <span class="timeline-check">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg>
+            </span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-date">10 Mar 2026</span>
+            <span class="timeline-desc completed">Oil analysis &amp; filter change</span>
+          </div>
+        </div>
+        <div class="timeline-entry">
+          <div class="timeline-marker">
+            <span class="timeline-check">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg>
+            </span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-date">15 Dec 2025</span>
+            <span class="timeline-desc completed">Annual overhaul</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. DOCUMENTS -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Documents</span>
+      </div>
+      <div class="doc-list">
+        <div class="doc-card">
+          <span class="entity-icon doc">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h5.5L13 5.5V13a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M9.5 2v4H13"/><path d="M6 8h4M6 10.5h2.5"/></svg>
+          </span>
+          <span class="doc-name">Caterpillar_3516B_Service_Manual.pdf</span>
+          <span class="doc-size">4.2 MB</span>
+        </div>
+        <div class="doc-card">
+          <span class="entity-icon doc">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h5.5L13 5.5V13a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M9.5 2v4H13"/><path d="M6 8h4M6 10.5h2.5"/></svg>
+          </span>
+          <span class="doc-name">E-007_Installation_Certificate.pdf</span>
+          <span class="doc-size">890 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. WARRANTIES -->
+    <div class="section">
+      <div class="section-hdr">
+        <span class="section-label">Warranties</span>
+      </div>
+      <div class="warranty-list">
+        <div class="warranty-card">
+          <span class="entity-icon shield">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5 3-1 5.5-3 5.5-6.5V4L8 1.5z"/><polyline points="5.5,8 7.2,10 10.5,6.5"/></svg>
+          </span>
+          <div class="warranty-info">
+            <span class="warranty-title">Extended Powertrain Warranty</span>
+            <span class="warranty-expires">Expires: 15 Jun 2027</span>
+            <span class="warranty-supplier">Supplier: Caterpillar Marine</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .panel-body -->
+
+</div><!-- .panel -->
+</div><!-- .theme-col light -->
+
+</div><!-- .scene -->
+
+<script>
+function toggleRowHighlight(row) {
+  row.classList.toggle('active');
+}
+</script>
+
+</body>
+</html>

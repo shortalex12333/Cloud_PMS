@@ -41,8 +41,8 @@ interface ReceivingPhotosProps {
 function PhotosSkeleton() {
   return (
     <div className="space-y-3">
-      <div className="h-32 rounded-md bg-white/5 animate-pulse" />
-      <div className="h-32 rounded-md bg-white/5 animate-pulse" />
+      <div className="h-32 rounded-md bg-surface-hover animate-pulse" />
+      <div className="h-32 rounded-md bg-surface-hover animate-pulse" />
     </div>
   );
 }
@@ -54,8 +54,8 @@ function PhotosSkeleton() {
 function EmptyPhotos() {
   return (
     <div className="py-6 text-center">
-      <ImageIcon className="mx-auto h-8 w-8 text-white/30 mb-2" />
-      <p className="text-sm text-white/50">No photos or documents attached</p>
+      <ImageIcon className="mx-auto h-8 w-8 text-txt-tertiary mb-2" />
+      <p className="text-sm text-txt-secondary">No photos or documents attached</p>
     </div>
   );
 }
@@ -102,7 +102,7 @@ function AttachmentItem({ attachment, onDocumentClick }: AttachmentItemProps) {
     invoice: 'bg-blue-500/20 text-blue-300',
     packing_slip: 'bg-green-500/20 text-green-300',
     photo: 'bg-purple-500/20 text-purple-300',
-    other: 'bg-white/10 text-white/60',
+    other: 'bg-surface-hover text-txt-secondary',
   };
 
   const badgeColor = docTypeBadgeColors[attachment.doc_type] || docTypeBadgeColors.other;
@@ -115,7 +115,7 @@ function AttachmentItem({ attachment, onDocumentClick }: AttachmentItemProps) {
           {attachment.doc_type.replace(/_/g, ' ')}
         </span>
         {attachment.comment && (
-          <span className="text-xs text-white/50 truncate">{attachment.comment}</span>
+          <span className="text-xs text-txt-secondary truncate">{attachment.comment}</span>
         )}
       </div>
 
@@ -170,27 +170,27 @@ export function ReceivingPhotos({
   const count = attachments?.length || 0;
 
   return (
-    <div className="border-t border-white/10 pt-4">
+    <div className="border-t border-border-sub pt-4">
       {/* Section header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between py-2 text-left group"
       >
         <div className="flex items-center gap-2">
-          <ImageIcon className="h-4 w-4 text-white/60" />
-          <span className="text-sm font-medium text-white/80">
+          <ImageIcon className="h-4 w-4 text-txt-secondary" />
+          <span className="text-sm font-medium text-txt-primary">
             Photos & Documents
           </span>
           {count > 0 && (
-            <span className="px-1.5 py-0.5 text-xs rounded-full bg-white/10 text-white/60">
+            <span className="px-1.5 py-0.5 text-xs rounded-full bg-surface-hover text-txt-secondary">
               {count}
             </span>
           )}
         </div>
         {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-white/40 group-hover:text-white/60 transition-colors" />
+          <ChevronUp className="h-4 w-4 text-txt-tertiary group-hover:text-txt-secondary transition-colors" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-white/40 group-hover:text-white/60 transition-colors" />
+          <ChevronDown className="h-4 w-4 text-txt-tertiary group-hover:text-txt-secondary transition-colors" />
         )}
       </button>
 

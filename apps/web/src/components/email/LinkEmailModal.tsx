@@ -156,7 +156,7 @@ export function LinkEmailModal({
                   onClick={() => toggleType(type.value)}
                   className={cn(
                     'inline-flex items-center gap-1 px-2 py-1 typo-meta rounded-md transition-colors',
-                    !isSelected && 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                    !isSelected && 'bg-surface-hover text-txt-secondary hover:bg-surface-active'
                   )}
                   style={isSelected ? { background: 'var(--teal-bg)', color: 'var(--mark)' } : undefined}
                 >
@@ -169,37 +169,37 @@ export function LinkEmailModal({
 
           {/* Search Input */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, number, serial..."
-              className="w-full pl-9 pr-3 py-2 typo-meta border rounded-md placeholder:text-zinc-400 focus:outline-none focus:ring-2"
+              className="w-full pl-9 pr-3 py-2 typo-meta border rounded-md placeholder:text-txt-tertiary focus:outline-none focus:ring-2"
               style={{ borderColor: 'var(--border-sub)', background: 'var(--surface-el)', color: 'var(--txt)', ['--tw-ring-color' as string]: 'var(--teal-bg)' }}
               autoFocus
             />
             {isSearching && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-zinc-400" />
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-txt-tertiary" />
             )}
           </div>
 
           {/* Search Results */}
-          <div className="border border-zinc-200 dark:border-zinc-700 rounded-md max-h-[240px] overflow-y-auto">
+          <div className="border border-border-sub rounded-md max-h-[240px] overflow-y-auto">
             {debouncedQuery.length < 2 ? (
-              <div className="p-4 text-center typo-meta text-zinc-500">
+              <div className="p-4 text-center typo-meta text-txt-secondary">
                 Type at least 2 characters to search
               </div>
             ) : isSearching ? (
               <div className="p-4 text-center">
-                <Loader2 className="h-5 w-5 animate-spin mx-auto text-zinc-400" />
+                <Loader2 className="h-5 w-5 animate-spin mx-auto text-txt-tertiary" />
               </div>
             ) : !searchResults?.results?.length ? (
-              <div className="p-4 text-center typo-meta text-zinc-500">
+              <div className="p-4 text-center typo-meta text-txt-secondary">
                 No results found for &quot;{debouncedQuery}&quot;
               </div>
             ) : (
-              <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <div className="divide-y divide-border-sub">
                 {searchResults.results.map((result) => {
                   const isSelected = selectedObject?.id === result.id && selectedObject?.type === result.type;
                   const TypeIcon = OBJECT_TYPES.find(t => t.value === result.type)?.icon || Package;
@@ -210,14 +210,14 @@ export function LinkEmailModal({
                       onClick={() => setSelectedObject(result)}
                       className={cn(
                         'w-full flex items-center gap-3 p-3 text-left transition-colors',
-                        !isSelected && 'hover:bg-zinc-50 dark:hover:bg-surface-active'
+                        !isSelected && 'hover:bg-surface-hover'
                       )}
                       style={isSelected ? { background: 'var(--teal-bg)' } : undefined}
                     >
                       <TypeIcon
                         className={cn(
                           'h-4 w-4 flex-shrink-0',
-                          !isSelected && 'text-zinc-400'
+                          !isSelected && 'text-txt-tertiary'
                         )}
                         style={isSelected ? { color: 'var(--mark)' } : undefined}
                       />
@@ -225,13 +225,13 @@ export function LinkEmailModal({
                         <p
                           className={cn(
                             'typo-meta truncate',
-                            isSelected ? 'font-medium' : 'text-zinc-800 dark:text-zinc-200'
+                            isSelected ? 'font-medium' : 'text-txt-primary'
                           )}
                           style={isSelected ? { color: 'var(--mark)' } : undefined}
                         >
                           {result.label}
                         </p>
-                        <p className="typo-meta text-zinc-500 capitalize">
+                        <p className="typo-meta text-txt-secondary capitalize">
                           {result.type.replace('_', ' ')}
                           {result.status && ` • ${result.status}`}
                         </p>

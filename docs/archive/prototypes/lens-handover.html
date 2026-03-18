@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Handover · v2</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+/* ═══════════════════════════════════════════════════════
+   HANDOVER — entity-specific overrides + unique components
+   ═══════════════════════════════════════════════════════ */
+
+/* Identity context — inline flex for arrow separator */
+.identity-context {
+  display: flex; align-items: center; gap: 6px;
+}
+
+.arrow-sep { color: var(--txt3); font-size: 14px; }
+
+/* Pills — tighter sizing for handover */
+.pills { gap: 6px; }
+.pill {
+  gap: 5px;
+  padding: 3px 10px; border-radius: 4px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+  text-transform: uppercase; white-space: nowrap;
+}
+
+/* Detail lines — handover-specific layout tweaks */
+.detail-lines { display: flex; flex-direction: column; gap: 4px; margin-bottom: 0; }
+.detail-line { color: var(--txt); }
+.detail-label { font-size: 12px; min-width: 100px; }
+.mono-val { font-size: 12px; color: var(--txt2); }
+
+/* ═══════════════════════════════════════════════════════
+   HANDOVER DOCUMENT PREVIEW — rendered document container
+   (mirrors Document lens .preview-area + .pdf-page pattern)
+   ═══════════════════════════════════════════════════════ */
+.preview-area {
+  margin-top: 0; min-height: auto;
+}
+
+/* The rendered handover document page */
+.ho-page {
+  width: 100%; max-width: 560px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-sub);
+  border-radius: 4px;
+  padding: 40px 36px;
+  display: flex; flex-direction: column; gap: 0;
+  user-select: text;
+}
+
+/* Document header inside the rendered page */
+.ho-doc-header {
+  text-align: center;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--border-sub);
+  margin-bottom: 24px;
+}
+.ho-doc-title {
+  font-size: 16px; font-weight: 700;
+  color: var(--txt); letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.ho-doc-subtitle {
+  font-size: 11px; font-weight: 500;
+  color: var(--txt3); text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ho-doc-meta {
+  font-size: 11px; color: var(--txt3);
+  margin-top: 6px;
+}
+
+/* Summary stats grid inside the document */
+.ho-summary-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; margin-bottom: 28px;
+}
+.ho-summary-card {
+  background: var(--teal-bg);
+  border: 1px solid rgba(90,171,204,0.15);
+  border-radius: 6px; padding: 14px 10px; text-align: center;
+}
+.ho-summary-number {
+  font-family: var(--font-mono); font-size: 24px; font-weight: 600;
+  color: var(--mark); line-height: 1.1; margin-bottom: 3px;
+}
+.ho-summary-label {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--txt3);
+}
+
+/* Section headings inside the document */
+.ho-section-title {
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--txt3);
+  padding-bottom: 8px; margin-bottom: 12px; margin-top: 28px;
+  border-bottom: 1px solid var(--border-sub);
+}
+.ho-section-title:first-of-type { margin-top: 0; }
+
+/* Entity items inside the document — list style with inline links */
+.ho-entity-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+.ho-entity-item:last-child { border-bottom: none; }
+
+.ho-entity-info { flex: 1; min-width: 0; }
+.ho-entity-name {
+  font-size: 13px; font-weight: 500;
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.ho-entity-name:hover { text-decoration-color: var(--mark); }
+.ho-entity-detail {
+  font-size: 12px; color: var(--txt3); margin-top: 2px;
+  line-height: 1.5;
+}
+.ho-entity-detail .mono {
+  font-family: var(--font-mono); font-size: 11px;
+}
+
+.ho-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 3px;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; flex-shrink: 0; margin-top: 2px;
+}
+.ho-badge-neutral {
+  background: var(--neutral-bg); color: var(--txt3);
+  border: 1px solid var(--border-sub);
+}
+.ho-badge-red {
+  background: var(--red-bg); color: var(--red);
+  border: 1px solid var(--red-border);
+}
+.ho-badge-green {
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+/* Stock level bar inside document */
+.ho-stock-bar-wrap {
+  width: 40px; height: 3px; border-radius: 2px;
+  background: var(--neutral-bg); flex-shrink: 0;
+  display: inline-block; vertical-align: middle; margin-left: 6px;
+}
+.ho-stock-bar {
+  height: 100%; border-radius: 2px;
+}
+.ho-stock-bar.critical { background: var(--red); }
+.ho-stock-bar.low { background: var(--amber); }
+
+/* Narrative content inside the document */
+.ho-narrative {
+  font-size: 13px; line-height: 1.7; color: var(--txt);
+  white-space: pre-line; margin-top: 12px;
+}
+.ho-narrative strong {
+  color: var(--txt); font-weight: 600;
+  display: block; margin-top: 14px; margin-bottom: 2px;
+  font-size: 12px;
+}
+.ho-narrative strong:first-child { margin-top: 0; }
+
+.ho-inline-link {
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.ho-inline-link:hover { text-decoration-color: var(--mark); }
+
+.ho-mono {
+  font-family: var(--font-mono); font-size: 11px; color: var(--txt2);
+}
+
+/* Document footer */
+.ho-doc-footer {
+  text-align: center; font-size: 10px; color: var(--txt-ghost);
+  margin-top: 28px; padding-top: 16px;
+  border-top: 1px solid var(--border-faint);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SIGNATURES
+   ═══════════════════════════════════════════════════════ */
+.sig-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+.sig-row:last-child { border-bottom: none; }
+.sig-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--teal-bg); color: var(--mark);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; flex-shrink: 0;
+}
+.sig-info { flex: 1; }
+.sig-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+.sig-role { font-size: 12px; color: var(--txt3); }
+.sig-ts {
+  font-family: var(--font-mono); font-size: 11px; color: var(--txt-ghost);
+}
+.sig-status {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 3px 10px; border-radius: 4px;
+}
+.sig-status.signed {
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green-border);
+}
+.sign-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border-radius: 5px;
+  background: var(--mark); color: #fff;
+  font-size: 12px; font-weight: 600; border: none;
+  cursor: pointer; font-family: var(--font-sans);
+  transition: filter 80ms;
+}
+.sign-btn:hover { filter: brightness(1.1); }
+
+/* ═══════════════════════════════════════════════════════
+   PRIOR HANDOVERS
+   ═══════════════════════════════════════════════════════ */
+.prior-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 6px;
+  margin-bottom: 2px; min-height: 44px;
+  cursor: pointer; transition: background 60ms;
+}
+.prior-row:hover { background: var(--surface-hover); }
+.prior-row.current { background: var(--teal-bg); }
+
+.prior-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--neutral-bg); color: var(--txt3); flex-shrink: 0;
+}
+.prior-row.current .prior-icon { background: rgba(90,171,204,0.2); color: var(--mark); }
+.prior-icon svg { width: 14px; height: 14px; }
+
+.prior-info { flex: 1; }
+.prior-title { font-size: 13px; font-weight: 500; color: var(--txt); }
+.prior-meta { font-size: 12px; color: var(--txt3); }
+.prior-date { font-family: var(--font-mono); font-size: 11px; }
+
+.prior-status {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 2px 8px; border-radius: 3px;
+}
+.prior-status.active {
+  background: var(--teal-bg); color: var(--mark);
+  border: 1px solid rgba(90,171,204,0.2);
+}
+.prior-status.complete {
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+.prior-chevron { color: var(--txt-ghost); flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- GLASS HEADER -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Handover</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Related
+      </button>
+      <button class="hdr-btn" onclick="toggleTheme()" title="Toggle light/dark mode">
+        <svg class="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- SCROLLABLE BODY -->
+  <div class="lens-body">
+
+    <!-- IDENTITY STRIP — compact: who→who, rotation period, vessel -->
+    <div class="identity">
+      <div class="identity-top-row">
+        <div class="identity-overline">HO-2026-0205</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Sign Handover
+            </button>
+            <button class="split-toggle" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 4-8"/><rect x="2" y="2" width="20" height="20" rx="2"/></svg>
+              Export PDF
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              Print
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <h1 class="identity-title">Engineering Department Handover</h1>
+
+      <p class="identity-context">
+        <span class="crew-link">R. Chen</span> (Chief Engineer)
+        <span class="arrow-sep">&#8594;</span>
+        <span class="crew-link">S. Park</span> (2nd Engineer)
+      </p>
+
+      <div class="pills">
+        <span class="pill pill-neutral"><span class="dot"></span> Pending Signature</span>
+      </div>
+
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Department</span>
+          <span>Engineering</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Rotation</span>
+          <span class="mono-val">15 Jan 2026 — 05 Feb 2026</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Vessel</span>
+          <span>M/Y Andromeda, 60m</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Generated</span>
+          <span class="mono-val">05 Feb 2026</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         RENDERED HANDOVER DOCUMENT — the actual report content
+         rendered inline like the Document lens renders a PDF
+         ═══════════════════════════════════════════════════════ -->
+    <div class="preview-area reveal">
+      <!-- Document badge -->
+      <div class="preview-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Handover Report
+      </div>
+
+      <!-- Rendered handover document -->
+      <div class="ho-page">
+
+        <!-- Document title -->
+        <div class="ho-doc-header">
+          <div class="ho-doc-title">M/Y Andromeda — Engineering Handover Report</div>
+          <div class="ho-doc-subtitle">Crew Rotation Handover</div>
+          <div class="ho-doc-meta">Handover Period: 15 Jan — 05 Feb 2026 &middot; Generated 05 Feb 2026</div>
+        </div>
+
+        <!-- Summary stats -->
+        <div class="ho-summary-grid">
+          <div class="ho-summary-card">
+            <div class="ho-summary-number">3</div>
+            <div class="ho-summary-label">Open Work Orders</div>
+          </div>
+          <div class="ho-summary-card">
+            <div class="ho-summary-number">2</div>
+            <div class="ho-summary-label">Active Faults</div>
+          </div>
+          <div class="ho-summary-card">
+            <div class="ho-summary-number">5</div>
+            <div class="ho-summary-label">Low Stock Items</div>
+          </div>
+        </div>
+
+        <!-- Open Work Orders -->
+        <div class="ho-section-title">Open Work Orders</div>
+
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">500-Hour Preventive Maintenance</div>
+            <div class="ho-entity-detail"><span class="mono">WO-1042</span> &middot; Due <span class="mono">10 Feb 2026</span> &middot; High Priority</div>
+          </div>
+          <span class="ho-badge ho-badge-neutral">In Progress</span>
+        </div>
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Generator Oil Change</div>
+            <div class="ho-entity-detail"><span class="mono">WO-1058</span> &middot; Due <span class="mono">15 Feb 2026</span> &middot; Medium Priority</div>
+          </div>
+          <span class="ho-badge ho-badge-neutral">Pending</span>
+        </div>
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">HVAC Filter Replacement</div>
+            <div class="ho-entity-detail"><span class="mono">WO-1061</span> &middot; Due <span class="mono">20 Feb 2026</span> &middot; Low Priority</div>
+          </div>
+          <span class="ho-badge ho-badge-neutral">Pending</span>
+        </div>
+
+        <!-- Active Faults -->
+        <div class="ho-section-title">Active Faults</div>
+
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Starboard Engine — Coolant Temperature Warning</div>
+            <div class="ho-entity-detail"><span class="mono">F-0233</span> &middot; Reported <span class="mono">28 Jan 2026</span> &middot; Main Engine #2</div>
+          </div>
+          <span class="ho-badge ho-badge-red">Critical</span>
+        </div>
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Watermaker — Low Output Pressure</div>
+            <div class="ho-entity-detail"><span class="mono">F-0221</span> &middot; Reported <span class="mono">01 Feb 2026</span> &middot; Watermaker Unit</div>
+          </div>
+          <span class="ho-badge ho-badge-neutral">Under Investigation</span>
+        </div>
+
+        <!-- Critical Equipment -->
+        <div class="ho-section-title">Critical Equipment</div>
+
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Main Engine #1 (Port)</div>
+            <div class="ho-entity-detail"><span class="mono">E-007</span> &middot; Hours: <span class="mono">4,523</span> &middot; Next service: <span class="mono">500 hrs</span></div>
+          </div>
+        </div>
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Main Engine #2 (Starboard)</div>
+            <div class="ho-entity-detail"><span class="mono">E-008</span> &middot; Hours: <span class="mono">4,518</span> &middot; <span style="color:var(--red)">Coolant temp warning</span></div>
+          </div>
+        </div>
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Generator #1</div>
+            <div class="ho-entity-detail"><span class="mono">E-009</span> &middot; Hours: <span class="mono">8,234</span> &middot; Next service: <span class="mono">250 hrs</span></div>
+          </div>
+        </div>
+
+        <!-- Low Stock Items -->
+        <div class="ho-section-title">Low Stock Items</div>
+
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Engine Oil 15W-40 (5L)</div>
+            <div class="ho-entity-detail"><span class="mono">EO-15W40-5L</span> &middot; Stock: <span class="mono">2</span> / Min: <span class="mono">5</span> <span class="ho-stock-bar-wrap"><span class="ho-stock-bar critical" style="width:40%"></span></span></div>
+          </div>
+        </div>
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Fuel Filter Element</div>
+            <div class="ho-entity-detail"><span class="mono">FF-CAT-001</span> &middot; Stock: <span class="mono">1</span> / Min: <span class="mono">4</span> <span class="ho-stock-bar-wrap"><span class="ho-stock-bar critical" style="width:25%"></span></span></div>
+          </div>
+        </div>
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Impeller — Seawater Pump</div>
+            <div class="ho-entity-detail"><span class="mono">IMP-SW-02</span> &middot; Stock: <span class="mono">1</span> / Min: <span class="mono">2</span> <span class="ho-stock-bar-wrap"><span class="ho-stock-bar low" style="width:50%"></span></span></div>
+          </div>
+        </div>
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Zinc Anodes — Shaft</div>
+            <div class="ho-entity-detail"><span class="mono">ZA-SH-04</span> &middot; Stock: <span class="mono">2</span> / Min: <span class="mono">4</span> <span class="ho-stock-bar-wrap"><span class="ho-stock-bar low" style="width:50%"></span></span></div>
+          </div>
+        </div>
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Coolant Antifreeze (20L)</div>
+            <div class="ho-entity-detail"><span class="mono">CA-20L-01</span> &middot; Stock: <span class="mono">1</span> / Min: <span class="mono">3</span> <span class="ho-stock-bar-wrap"><span class="ho-stock-bar critical" style="width:33%"></span></span></div>
+          </div>
+        </div>
+
+        <!-- Off-going Crew Notes — embedded narrative with entity links -->
+        <div class="ho-section-title">Off-going Crew Notes</div>
+
+        <div class="ho-narrative"><strong>Main Propulsion</strong>
+<span class="ho-inline-link">Main Engine #1 (Port)</span> (<span class="ho-mono">E-007</span>) running well after 500-hour service completion. Starboard engine has coolant temperature warning — fault <span class="ho-inline-link">F-0233</span> is active, shore technician visit scheduled for <span class="ho-mono">10 Feb</span>. Do NOT increase load on starboard engine until resolved.
+
+<strong>Generators</strong>
+<span class="ho-inline-link">Generator #1</span> (<span class="ho-mono">E-009</span>) is primary, running hours at <span class="ho-mono">8,234</span>. Oil change due — <span class="ho-inline-link">WO-1058</span> raised. Generator #2 is standby, no issues.
+
+<strong>Water Systems</strong>
+<span class="ho-inline-link">Watermaker</span> operating at approximately 70% output — membrane degradation suspected. Fault <span class="ho-inline-link">F-0221</span> logged. Replacement membrane on order via <span class="ho-inline-link">PO-2026-0087</span>, ETA <span class="ho-mono">12 Feb</span>. Rationing not required at current consumption.
+
+<strong>HVAC</strong>
+All zones operational. Guest cabin zone 3 filters due for replacement — <span class="ho-inline-link">WO-1061</span> raised, low priority. No guest complaints.
+
+<strong>General</strong>
+Engine room bilge levels normal. All safety systems tested and operational. Fire detection system — all zones clear. Emergency generator last tested <span class="ho-mono">01 Feb</span>, next due <span class="ho-mono">08 Feb</span>.</div>
+
+        <!-- Related Documents -->
+        <div class="ho-section-title">Related Documents</div>
+
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Engine Service Manual — CAT C32</div>
+            <div class="ho-entity-detail">Manual &middot; Last updated <span class="mono">Jan 2024</span></div>
+          </div>
+        </div>
+
+        <!-- Related Emails -->
+        <div class="ho-section-title">Related Emails</div>
+
+        <div class="ho-entity-item">
+          <div class="ho-entity-info">
+            <div class="ho-entity-name">Re: Engine Parts Order Confirmation</div>
+            <div class="ho-entity-detail">From parts@marinespares.com &middot; <span class="mono">03 Feb 2026</span></div>
+          </div>
+        </div>
+
+        <!-- Document footer -->
+        <div class="ho-doc-footer">
+          Generated by Celeste PMS &middot; Engineering Department &middot; M/Y Andromeda
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         SIGNATURES — kept as a separate lens section
+         ═══════════════════════════════════════════════════════ -->
+    <div class="section reveal" id="sec-signatures">
+      <div class="sec-hdr" onclick="toggleSec('sec-signatures')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="sec-title">Signatures</span>
+        <span class="sec-count">1 / 2</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="sig-row">
+          <div class="sig-avatar">RC</div>
+          <div class="sig-info">
+            <div class="sig-name">R. Chen</div>
+            <div class="sig-role">Chief Engineer (off-going)</div>
+          </div>
+          <span class="sig-ts">05 Feb 2026 14:00</span>
+          <span class="sig-status signed">Signed</span>
+        </div>
+        <div class="sig-row">
+          <div class="sig-avatar">SP</div>
+          <div class="sig-info">
+            <div class="sig-name">S. Park</div>
+            <div class="sig-role">2nd Engineer (on-coming)</div>
+          </div>
+          <button class="sign-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Sign
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PRIOR HANDOVERS — navigation to previous documents
+         ═══════════════════════════════════════════════════════ -->
+    <div class="section reveal" id="sec-prior">
+      <div class="sec-hdr" onclick="toggleSec('sec-prior')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sec-title">Prior Handovers</span>
+        <span class="sec-count">3</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="prior-row current">
+          <div class="prior-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="prior-info">
+            <div class="prior-title">R. Chen &#8594; S. Park</div>
+            <div class="prior-meta">Engineering &middot; <span class="prior-date">Jan — Feb 2026</span></div>
+          </div>
+          <span class="prior-status active">Current</span>
+        </div>
+        <div class="prior-row">
+          <div class="prior-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="prior-info">
+            <div class="prior-title">T. M&uuml;ller &#8594; R. Chen</div>
+            <div class="prior-meta">Engineering &middot; <span class="prior-date">Nov — Jan 2026</span></div>
+          </div>
+          <span class="prior-status complete">Signed</span>
+          <span class="prior-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="prior-row">
+          <div class="prior-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="prior-info">
+            <div class="prior-title">R. Chen &#8594; T. M&uuml;ller</div>
+            <div class="prior-meta">Engineering &middot; <span class="prior-date">Sep — Nov 2025</span></div>
+          </div>
+          <span class="prior-status complete">Signed</span>
+          <span class="prior-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORT FOOTER -->
+    <div class="report-footer">
+      Generated by Celeste PMS &middot; Engineering Department &middot; M/Y Andromeda
+    </div>
+
+  </div>
+
+</div>
+
+<script src="lens-base.js"></script>
+
+</body>
+</html>
