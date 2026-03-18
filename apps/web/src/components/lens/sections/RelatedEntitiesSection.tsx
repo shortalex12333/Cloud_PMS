@@ -51,7 +51,7 @@ function EntityRow({ entity, onNavigate }: EntityRowProps) {
         'transition-colors duration-fast hover:bg-surface-hover'
       )}
     >
-      <span className="text-body-strong text-celeste-blue truncate">
+      <span className="text-body-strong truncate" style={{ color: 'var(--mark)' }}>
         {entity.label}
       </span>
       <span className="text-label text-txt-secondary flex-shrink-0 ml-3 px-2 py-0.5 bg-surface-secondary rounded">

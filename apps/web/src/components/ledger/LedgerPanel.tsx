@@ -327,15 +327,17 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
           </div>
 
           {/* Me / Department Pill Toggle - Centered */}
-          <div className="flex items-center bg-celeste-panel rounded-full p-1" data-testid="view-mode-toggle">
+          <div className="flex items-center rounded-full p-1" style={{ background: 'var(--surface-hover)' }} data-testid="view-mode-toggle">
             <button
               onClick={() => setViewMode('me')}
               className={cn(
                 'px-4 py-1.5 rounded-full typo-body font-medium transition-colors',
-                viewMode === 'me'
-                  ? 'bg-celeste-accent text-celeste-white'
-                  : 'text-celeste-text-muted hover:text-celeste-text-secondary'
+                viewMode !== 'me' && ''
               )}
+              style={viewMode === 'me'
+                ? { background: 'var(--teal)', color: 'var(--txt)' }
+                : { color: 'var(--txt3)' }
+              }
               data-testid="view-mode-me"
             >
               Me
@@ -344,10 +346,12 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
               onClick={() => setViewMode('department')}
               className={cn(
                 'px-4 py-1.5 rounded-full typo-body font-medium transition-colors',
-                viewMode === 'department'
-                  ? 'bg-celeste-accent text-celeste-white'
-                  : 'text-celeste-text-muted hover:text-celeste-text-secondary'
+                viewMode !== 'department' && ''
               )}
+              style={viewMode === 'department'
+                ? { background: 'var(--teal)', color: 'var(--txt)' }
+                : { color: 'var(--txt3)' }
+              }
               data-testid="view-mode-department"
             >
               Department
@@ -358,12 +362,11 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
             {/* Show/Hide Reads Toggle */}
             <button
               onClick={() => setShowReads(!showReads)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded-full typo-body transition-colors',
-                showReads
-                  ? 'bg-celeste-accent text-celeste-white'
-                  : 'text-celeste-text-muted hover:text-celeste-text-secondary hover:bg-celeste-panel'
-              )}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full typo-body transition-colors"
+              style={showReads
+                ? { background: 'var(--teal)', color: 'var(--txt)' }
+                : { color: 'var(--txt3)' }
+              }
             >
               <Eye className="w-4 h-4" strokeWidth={1.5} />
               <span>Reads</span>
@@ -385,7 +388,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
           className="flex-1 overflow-y-auto px-4 py-3"
         >
           {dayGroups.length === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center py-12 text-celeste-text-muted">
+            <div className="flex flex-col items-center justify-center py-12" style={{ color: 'var(--txt3)' }}>
               <BookOpen className="w-12 h-12 mb-3 opacity-50" strokeWidth={1} />
               <p>No events recorded yet</p>
             </div>
@@ -398,26 +401,26 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
                   className={cn(
                     'w-full flex items-center justify-between px-3 py-2',
                     'rounded-md',
-                    'bg-celeste-panel text-celeste-text-primary',
-                    'hover:bg-celeste-bg-tertiary transition-colors',
+                    'transition-colors',
                     'sticky top-0 z-10'
                   )}
+                  style={{ background: 'var(--surface-hover)', color: 'var(--txt)' }}
                 >
                   <div className="flex items-center gap-2">
                     {expandedDays.has(group.date) ? (
-                      <ChevronDown className="w-4 h-4 text-celeste-text-muted" />
+                      <ChevronDown className="w-4 h-4" style={{ color: 'var(--txt3)' }} />
                     ) : (
-                      <ChevronRight className="w-4 h-4 text-celeste-text-muted" />
+                      <ChevronRight className="w-4 h-4" style={{ color: 'var(--txt3)' }} />
                     )}
                     <span className="font-medium">{group.displayDate}</span>
                   </div>
                   <div className="flex items-center gap-3 typo-body">
-                    <span className="flex items-center gap-1 text-celeste-green">
+                    <span className="flex items-center gap-1 text-green-500">
                       <Edit3 className="w-3.5 h-3.5" />
                       {group.mutationCount}
                     </span>
                     {showReads && group.readCount > 0 && (
-                      <span className="flex items-center gap-1 text-celeste-orange">
+                      <span className="flex items-center gap-1 text-orange-500">
                         <Eye className="w-3.5 h-3.5" />
                         {group.readCount}
                       </span>
@@ -443,7 +446,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
           {hasMore && (
             <div ref={loadMoreRef} className="h-8 flex items-center justify-center">
               {loading && (
-                <div className="w-5 h-5 border-2 border-celeste-accent border-t-transparent rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--teal)', borderTopColor: 'transparent' }} />
               )}
             </div>
           )}
@@ -486,7 +489,7 @@ function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
       className={cn(
         'flex items-start gap-3 px-3 py-2',
         'rounded-md',
-        'hover:bg-celeste-panel transition-colors cursor-pointer'
+        'hover:bg-[var(--surface-hover)] transition-colors cursor-pointer'
       )}
       onClick={() => onItemClick(event)}
       role="button"
@@ -503,8 +506,8 @@ function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
         className={cn(
           'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
           isMutation
-            ? 'bg-celeste-green/10 text-celeste-green'
-            : 'bg-celeste-orange/10 text-celeste-orange'
+            ? 'bg-green-500/10 text-green-500'
+            : 'bg-orange-500/10 text-orange-500'
         )}
       >
         {isMutation ? (
@@ -517,13 +520,13 @@ function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         {/* Object — Verb format */}
-        <p className="text-celeste-text-primary truncate">
+        <p className="truncate" style={{ color: 'var(--txt)' }}>
           <span className="font-medium">{displayName}</span>
-          <span className="text-celeste-text-muted"> — </span>
+          <span style={{ color: 'var(--txt3)' }}> — </span>
           <span>{actionVerb}</span>
         </p>
         {/* Attribution */}
-        <p className="typo-body text-celeste-text-muted truncate">
+        <p className="typo-body truncate" style={{ color: 'var(--txt3)' }}>
           {userName} · {time}
         </p>
       </div>

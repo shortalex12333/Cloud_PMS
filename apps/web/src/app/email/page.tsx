@@ -56,7 +56,7 @@ function ThreadRow({ thread, isSelected, onClick }: { thread: EmailThread; isSel
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            {isUnread && <span className="w-2 h-2 rounded-full bg-brand-primary flex-shrink-0" />}
+            {isUnread && <span className="w-2 h-2 rounded-full bg-brand-interactive flex-shrink-0" />}
             {hasLink ? (
               <StatusPill status="success" label="Linked" />
             ) : (
@@ -255,7 +255,7 @@ function EmailPageContent() {
                 placeholder="Search emails... (from:, to:, has:attachment)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-surface-elevated border border-surface-border rounded-lg text-sm text-txt-primary placeholder:text-txt-tertiary focus:outline-none focus:border-brand-primary"
+                className="w-full pl-10 pr-4 py-2 bg-surface-elevated border border-surface-border rounded-lg text-sm text-txt-primary placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive"
               />
             </div>
           </div>
@@ -267,7 +267,7 @@ function EmailPageContent() {
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
                   filter === f
-                    ? 'bg-brand-primary text-white'
+                    ? 'bg-brand-interactive text-txt-inverse'
                     : 'bg-surface-elevated text-txt-secondary hover:bg-surface-hover'
                 )}
               >
@@ -285,7 +285,7 @@ function EmailPageContent() {
             <p className="text-sm text-txt-secondary">Thread selected. Click below to view full thread.</p>
             <button
               onClick={() => handleViewThread(selectedThreadId)}
-              className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 rounded-lg text-sm text-white transition-colors"
+              className="px-4 py-2 bg-brand-interactive hover:bg-brand-interactive/90 rounded-lg text-sm text-txt-inverse transition-colors"
             >
               View Full Thread
             </button>

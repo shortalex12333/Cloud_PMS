@@ -393,7 +393,8 @@ export function ReceivingDocumentUpload({
             ref={videoRef}
             autoPlay
             playsInline
-            className="w-full rounded-md bg-black"
+            className="w-full rounded-md"
+            style={{ background: 'var(--surface-base)' }}
           />
           <canvas ref={canvasRef} className="hidden" />
           <div className="flex gap-3">

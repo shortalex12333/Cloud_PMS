@@ -77,15 +77,15 @@ function OpenTokenResolver() {
   }, [resolveToken]);
 
   return (
-    <div className="min-h-screen bg-celeste-black flex items-center justify-center p-4">
-      <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full border border-surface-border">
+    <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
+      <div className="bg-surface-elevated rounded-lg p-8 max-w-md w-full border border-surface-border">
         {status === 'loading' && (
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-celeste-accent animate-spin mx-auto mb-4" />
-            <h2 className="typo-title font-semibold text-white mb-2">
+            <Loader2 className="w-12 h-12 text-brand-interactive animate-spin mx-auto mb-4" />
+            <h2 className="typo-title font-semibold text-txt-primary mb-2">
               Opening Link
             </h2>
-            <p className="text-celeste-text-muted typo-body">
+            <p className="text-txt-secondary typo-body">
               Resolving handover reference...
             </p>
           </div>
@@ -93,11 +93,11 @@ function OpenTokenResolver() {
 
         {status === 'success' && (
           <div className="text-center">
-            <ExternalLink className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            <h2 className="typo-title font-semibold text-white mb-2">
+            <ExternalLink className="w-12 h-12 text-status-success mx-auto mb-4" />
+            <h2 className="typo-title font-semibold text-txt-primary mb-2">
               Link Resolved
             </h2>
-            <p className="text-celeste-text-muted typo-body">
+            <p className="text-txt-secondary typo-body">
               Redirecting to item...
             </p>
           </div>
@@ -105,16 +105,16 @@ function OpenTokenResolver() {
 
         {status === 'error' && (
           <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="typo-title font-semibold text-white mb-2">
+            <AlertCircle className="w-12 h-12 text-status-critical mx-auto mb-4" />
+            <h2 className="typo-title font-semibold text-txt-primary mb-2">
               Unable to Open Link
             </h2>
-            <p className="text-celeste-text-muted typo-body mb-4">
+            <p className="text-txt-secondary typo-body mb-4">
               {errorMessage}
             </p>
             <button
               onClick={() => router.replace('/')}
-              className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-md transition-colors"
+              className="btn-primary"
             >
               Go to Home
             </button>
@@ -129,8 +129,8 @@ export default function OpenPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-celeste-black flex items-center justify-center">
-          <Loader2 className="w-12 h-12 text-celeste-accent animate-spin" />
+        <div className="min-h-screen bg-surface-base flex items-center justify-center">
+          <Loader2 className="w-12 h-12 text-brand-interactive animate-spin" />
         </div>
       }
     >

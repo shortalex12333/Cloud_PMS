@@ -46,7 +46,8 @@ export function AddRelatedItemModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+      className="fixed inset-0 flex items-center justify-center z-50"
+      style={{ background: 'rgba(0,0,0,0.60)' }}
       onClick={onClose}
     >
       <div
@@ -119,7 +120,8 @@ export function AddRelatedItemModal({
             <button
               type="submit"
               disabled={isPending || !toEntityType || !toEntityId}
-              className="flex-1 px-4 py-2 bg-accent-primary hover:bg-accent-primary-hover rounded-lg text-sm text-white font-medium transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-accent-primary hover:bg-accent-primary-hover rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              style={{ color: 'var(--txt)' }}
             >
               {isPending ? 'Adding…' : 'Add Link'}
             </button>

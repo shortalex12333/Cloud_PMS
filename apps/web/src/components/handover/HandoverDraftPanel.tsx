@@ -194,7 +194,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
 
   return (
     <div className="fixed inset-0 z-modal flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose} />
       <div className="relative bg-surface-elevated border border-surface-border rounded-lg shadow-modal w-full max-w-md mx-4 p-6">
         <h3 className="typo-title font-semibold text-txt-primary mb-4">Edit Handover Note</h3>
         <form onSubmit={handleSubmit}>
@@ -255,7 +255,8 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 typo-body font-medium bg-brand-interactive text-white rounded-md hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
+              className="px-4 py-2 typo-body font-medium bg-brand-interactive rounded-md hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
+              style={{ color: 'var(--txt)' }}
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -518,7 +519,8 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-sidebar bg-black/40"
+        className="fixed inset-0 z-sidebar"
+        style={{ background: 'rgba(0,0,0,0.4)' }}
         onClick={onClose}
       />
 
@@ -563,10 +565,11 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
               className={cn(
                 'w-full flex items-center justify-center gap-2',
                 'px-4 py-2.5 rounded-lg',
-                'bg-brand-interactive text-white font-medium',
+                'bg-brand-interactive font-medium',
                 'hover:bg-brand-interactive/90 transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
+              style={{ color: 'var(--txt)' }}
             >
               {exporting ? (
                 <>
