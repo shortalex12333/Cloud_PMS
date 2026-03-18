@@ -191,18 +191,19 @@ class ShoppingListHandlers:
             is_candidate_part = True  # Default: candidate (not in catalog)
 
             if part_id:
-                # Validate part exists
+                # Validate part exists — use .limit(1) instead of .maybe_single()
+                # to avoid supabase-py 204 "Missing response" errors
                 part_result = self.db.table("pms_parts").select(
-                    "id, part_name, part_number, manufacturer"
-                ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                    "id, name, part_number, manufacturer"
+                ).eq("id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-                if not part_result or not part_result.data:
+                if not part_result or not part_result.data or len(part_result.data) == 0:
                     builder.set_error("NOT_FOUND", f"Part not found: {part_id}")
                     return builder.build()
 
                 # Use part details if not provided
-                part = part_result.data
-                part_name = part_name or part.get("part_name")
+                part = part_result.data[0]
+                part_name = part_name or part.get("name")
                 part_number = part_number or part.get("part_number")
                 manufacturer = manufacturer or part.get("manufacturer")
                 is_candidate_part = False  # Existing part
@@ -230,19 +231,37 @@ class ShoppingListHandlers:
             }
 
             # Call RPC function (SECURITY DEFINER bypasses RLS)
+            # PostgREST may return 204 (no data) even on success — handle gracefully
+            insert_result = None
+            rpc_returned_204 = False
             try:
                 insert_result = self.db.rpc("rpc_insert_shopping_list_item", rpc_params).execute()
             except Exception as e:
-                logger.error(f"Failed to insert shopping list item via RPC: {e}", exc_info=True)
-                builder.set_error("EXECUTION_FAILED", f"Failed to create shopping list item: {str(e)}", 500)
-                return builder.build()
+                error_str = str(e).lower()
+                if "204" in error_str or "missing response" in error_str or "postgrest" in error_str:
+                    logger.info(f"[create_shopping_list_item] RPC returned 204 — insert succeeded, falling back to SELECT")
+                    rpc_returned_204 = True
+                else:
+                    logger.error(f"Failed to insert shopping list item via RPC: {e}", exc_info=True)
+                    builder.set_error("EXECUTION_FAILED", f"Failed to create shopping list item: {str(e)}", 500)
+                    return builder.build()
 
-            if not insert_result.data or len(insert_result.data) == 0:
-                builder.set_error("EXECUTION_FAILED", "Failed to create shopping list item", 500)
-                return builder.build()
-
-            # Extract new_item_id from RPC result
-            new_item_id = insert_result.data[0]["id"]
+            if rpc_returned_204 or not insert_result or not insert_result.data or len(insert_result.data) == 0:
+                # Fall back to SELECT the just-inserted item by requested_by + yacht_id + part_name
+                logger.info(f"[create_shopping_list_item] Falling back to SELECT for inserted row")
+                fallback = self.db.table("pms_shopping_list_items").select("id").eq(
+                    "yacht_id", yacht_id
+                ).eq("part_name", part_name).eq("requested_by", user_id).order(
+                    "created_at", desc=True
+                ).limit(1).execute()
+                if fallback.data and len(fallback.data) > 0:
+                    new_item_id = fallback.data[0]["id"]
+                else:
+                    builder.set_error("EXECUTION_FAILED", "Failed to create shopping list item", 500)
+                    return builder.build()
+            else:
+                # Extract new_item_id from RPC result
+                new_item_id = insert_result.data[0]["id"]
 
             # Timestamp for audit log
             now = datetime.now(timezone.utc).isoformat()

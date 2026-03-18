@@ -6,7 +6,7 @@
  * Receiving actions (via internal_dispatcher.dispatch):
  *   adjust_receiving_item                  — HARD PROOF: modifies receiving item qty
  *   link_invoice_document                  — HARD PROOF: links document to receiving
- *   attach_receiving_image_with_comment    — ADVISORY: image attachment
+ *   attach_receiving_image_with_comment    — HARD PROOF: links document to receiving record
  *   extract_receiving_candidates           — ADVISORY (READ): OCR/extraction
  *   view_receiving_history                 — HARD PROOF (READ): returns history
  *
@@ -58,28 +58,35 @@ test.describe('[Captain] adjust_receiving_item — HARD PROOF', () => {
     expect(addResult.status).toBe(200);
 
     // Extract item_id from add result
-    const addData = addResult.data as { item_id?: string; data?: { item_id?: string } };
-    const itemId = addData.item_id || addData.data?.item_id;
+    const addData = addResult.data as { item_id?: string };
+    const itemId = addData.item_id!;
+    expect(typeof itemId).toBe('string');
 
     // Step 3: adjust quantity
     const result = await callActionDirect(captainPage, 'adjust_receiving_item', {
       receiving_id: receivingId,
-      item_id: itemId || part.id, // fallback to part_id if item_id not returned
-      quantity: 3,
+      receiving_item_id: itemId,
+      quantity_received: 3,
     });
     console.log(`[JSON] adjust_receiving_item: ${JSON.stringify(result.data)}`);
 
-    // 200 = success, 400 = validation, 404 = item not found (ID mismatch), 500 = handler error
-    // REMOVE THIS ADVISORY WHEN: create_receiving_item returns item_id in its response (eliminating
-    // the part_id fallback in this test), ensuring adjust_receiving_item targets a real item.
-    // Tighten to: expect(result.status).toBe(200) after fixing the item_id response.
-    expect([200, 400, 404, 500]).toContain(result.status);
-    if (result.status === 200) {
-      const data = result.data as { status?: string };
-      expect(data.status).toBe('success');
-    } else {
-      console.log(`adjust_receiving_item ${result.status} — advisory: item may not exist for adjustment`);
-    }
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string };
+    expect(data.status).toBe('success');
+
+    // Entity state: verify quantity updated in pms_receiving_items
+    await expect.poll(
+      async () => {
+        const { data: row } = await supabaseAdmin
+          .from('pms_receiving_items')
+          .select('quantity_received')
+          .eq('id', itemId)
+          .single();
+        return (row as { quantity_received?: number } | null)?.quantity_received;
+      },
+      { intervals: [500, 1000, 1500], timeout: 8_000,
+        message: 'Expected pms_receiving_items.quantity_received=3' }
+    ).toBe(3);
   });
 });
 
@@ -130,13 +137,26 @@ test.describe('[Captain] link_invoice_document — HARD PROOF', () => {
 });
 
 // ===========================================================================
-// RECEIVING: attach_receiving_image_with_comment — ADVISORY
+// RECEIVING: attach_receiving_image_with_comment — HARD PROOF
 // ===========================================================================
 
-test.describe('[Captain] attach_receiving_image_with_comment — ADVISORY', () => {
-  test('attach_receiving_image_with_comment → 200 or 400', async ({
+test.describe('[Captain] attach_receiving_image_with_comment — HARD PROOF', () => {
+  test('attach_receiving_image_with_comment → 200 + document linked', async ({
     captainPage,
+    getExistingDocument,
   }) => {
+    let doc: { id: string };
+    try {
+      doc = await getExistingDocument();
+    } catch (e) {
+      const err = e as Error;
+      if (err.message?.startsWith('SKIP:')) {
+        test.skip(true, err.message.replace('SKIP:', ''));
+        return;
+      }
+      throw e;
+    }
+
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
@@ -148,15 +168,14 @@ test.describe('[Captain] attach_receiving_image_with_comment — ADVISORY', () =
 
     const result = await callActionDirect(captainPage, 'attach_receiving_image_with_comment', {
       receiving_id: receivingId,
-      image_url: `https://storage.celeste7.ai/test/s45-smoke-${generateTestId('img')}.jpg`,
+      document_id: doc.id,
       comment: 'S45 smoke test image comment',
     });
     console.log(`[JSON] attach_receiving_image_with_comment: status=${result.status}`);
 
-    // REMOVE THIS ADVISORY WHEN: attach_receiving_image_with_comment is fully implemented in the
-    // backend (currently may return 500 if image upload handler is incomplete).
-    // Tighten to: expect(result.status).toBe(200).
-    expect([200, 400, 500]).toContain(result.status);
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string };
+    expect(data.status).toBe('success');
   });
 });
 

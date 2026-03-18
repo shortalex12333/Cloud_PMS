@@ -134,7 +134,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Handle ledger item click - open entity in ContextPanel
+  // Handle ledger item click - navigate to entity route
   const handleItemClick = useCallback((event: LedgerEvent) => {
     if (!event.entity_type || !event.entity_id) {
       console.warn('[LedgerPanel] Cannot navigate: missing entity_type or entity_id', event);

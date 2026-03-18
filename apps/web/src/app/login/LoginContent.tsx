@@ -7,13 +7,146 @@
  * - All login happens on app.celeste7.ai (no cross-domain)
  * - Uses non-blocking AuthContext
  * - Handles bootstrap status: active, pending, error
+ *
+ * Visual: Matches /public/prototypes/auth.html approved design.
+ * Uses prototype-tokens.css variables (served via /src/styles/tokens.css).
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { isHOD, isFullyActivated } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+
+/* ── Shared inline-style objects ── */
+
+const PAGE_BG: React.CSSProperties = {
+  minHeight: '100vh',
+  background: 'var(--surface-base)',
+  display: 'flex',
+  flexDirection: 'column',
+  fontFamily: "var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif)",
+  fontSize: '13px',
+  lineHeight: 1.5,
+  color: 'var(--txt)',
+  WebkitFontSmoothing: 'antialiased',
+  position: 'relative',
+};
+
+const CENTER_STATE: React.CSSProperties = {
+  minHeight: '100vh',
+  background: 'var(--surface-base)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const TOPBAR: React.CSSProperties = {
+  height: '40px',
+  flexShrink: 0,
+  display: 'flex',
+  alignItems: 'center',
+  padding: '0 20px',
+  gap: '8px',
+  borderBottom: '1px solid var(--border-faint)',
+  background: 'var(--glass-bg)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+};
+
+const STAGE: React.CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  position: 'relative',
+  padding: '24px',
+};
+
+const CARD: React.CSSProperties = {
+  width: '100%',
+  maxWidth: '384px',
+  background: 'var(--surface)',
+  borderTop: '1px solid var(--border-top)',
+  borderRight: '1px solid var(--border-sub)',
+  borderBottom: '1px solid var(--border-faint)',
+  borderLeft: '1px solid var(--border-sub)',
+  borderRadius: '8px',
+  boxShadow: '0 20px 80px rgba(0,0,0,0.60), 0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.05)',
+  overflow: 'hidden',
+  position: 'relative',
+  zIndex: 1,
+};
+
+const INPUT_BASE: React.CSSProperties = {
+  width: '100%',
+  height: '44px',
+  padding: '0 14px',
+  background: 'var(--surface-base)',
+  border: '1px solid var(--border-sub)',
+  borderRadius: '6px',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '13px',
+  color: 'var(--txt)',
+  outline: 'none',
+  transition: 'border-color 120ms',
+};
+
+const SUBMIT_BTN: React.CSSProperties = {
+  width: '100%',
+  height: '44px',
+  borderRadius: '6px',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '13px',
+  fontWeight: 500,
+  background: 'var(--teal-bg)',
+  color: 'var(--mark)',
+  transition: 'background 80ms',
+  marginTop: '4px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '8px',
+};
+
+const LABEL: React.CSSProperties = {
+  display: 'block',
+  fontSize: '11px',
+  fontWeight: 500,
+  letterSpacing: '0.03em',
+  textTransform: 'uppercase',
+  color: 'var(--txt3)',
+  marginBottom: '6px',
+};
+
+/* ── Theme toggle SVGs ── */
+
+function MoonIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
 
 export default function LoginContent() {
   const router = useRouter();
@@ -24,14 +157,27 @@ export default function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justLoggedOut, setJustLoggedOut] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+
+  // Theme toggle
+  const toggleTheme = useCallback(() => {
+    const next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    document.documentElement.classList.toggle('dark', next === 'dark');
+    setIsDark(!isDark);
+  }, [isDark]);
+
+  // Sync initial theme from DOM
+  useEffect(() => {
+    const current = document.documentElement.getAttribute('data-theme');
+    setIsDark(current !== 'light');
+  }, []);
 
   // Detect logout param and clear it from URL
   useEffect(() => {
     if (searchParams.get('logout') === '1') {
       setJustLoggedOut(true);
-      // Clear the logout param from URL without triggering navigation
       window.history.replaceState({}, '', '/login');
-      // Reset after a short delay to allow auth state to settle
       const timer = setTimeout(() => setJustLoggedOut(false), 2000);
       return () => clearTimeout(timer);
     }
@@ -39,7 +185,6 @@ export default function LoginContent() {
 
   // Redirect when user is authenticated and fully activated
   useEffect(() => {
-    // Skip auto-redirect if user just logged out (prevents cache loop)
     if (justLoggedOut) {
       console.log('[LoginPage] Just logged out, skipping auto-redirect');
       return;
@@ -48,33 +193,27 @@ export default function LoginContent() {
     if (!authLoading && user) {
       console.log('[LoginPage] User state:', user.bootstrapStatus);
 
-      // Wait for bootstrap to complete before deciding where to redirect
       if (bootstrapping) {
         console.log('[LoginPage] Waiting for bootstrap...');
         return;
       }
 
-      // If fully activated, redirect to the single surface (root)
       if (isFullyActivated(user)) {
         console.log('[LoginPage] User fully activated, redirecting to /');
         router.replace('/');
         return;
       }
 
-      // If pending, show pending screen
       if (user.bootstrapStatus === 'pending') {
         console.log('[LoginPage] User pending activation');
-        // Stay on login page, show pending message
         return;
       }
 
-      // If inactive yacht, show message
       if (user.bootstrapStatus === 'inactive') {
         console.log('[LoginPage] Yacht inactive');
         return;
       }
 
-      // If error, will retry automatically, show loading
       if (user.bootstrapStatus === 'error') {
         console.log('[LoginPage] Bootstrap error, will retry');
         return;
@@ -90,7 +229,6 @@ export default function LoginContent() {
     try {
       console.log('[LoginPage] Attempting login:', email);
       await login(email, password);
-      // Redirect happens via useEffect when user state updates
     } catch (err) {
       console.error('[LoginPage] Login failed:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -98,55 +236,51 @@ export default function LoginContent() {
     }
   };
 
-  // Show loading while auth is initializing (but not if just logged out)
+  /* ── Loading / spinner states ── */
+
+  const renderSpinnerState = (label: string, sublabel?: string) => (
+    <div style={CENTER_STATE}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--mark)' }} />
+        <p style={{ fontSize: '13px', color: 'var(--txt2)' }}>{label}</p>
+        {sublabel && <p style={{ fontSize: '11px', color: 'var(--txt3)' }}>{sublabel}</p>}
+      </div>
+    </div>
+  );
+
+  // Auth initializing
   if (authLoading && !justLoggedOut) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="typo-body text-txt-secondary">Loading...</p>
-        </div>
-      </div>
-    );
+    return renderSpinnerState('Loading...');
   }
 
-  // If user exists but still bootstrapping, show loading (but not if just logged out)
+  // Bootstrapping
   if (user && bootstrapping && !justLoggedOut) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="typo-body text-txt-secondary">Loading your account...</p>
-        </div>
-      </div>
-    );
+    return renderSpinnerState('Loading your account...');
   }
 
-  // If user is fully activated, show redirecting state (but not if just logged out)
+  // Redirecting
   if (user && isFullyActivated(user) && !justLoggedOut) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="typo-body text-txt-secondary">Redirecting...</p>
-        </div>
-      </div>
-    );
+    return renderSpinnerState('Redirecting...');
   }
 
-  // If user exists but pending activation
+  // Pending activation
   if (user && user.bootstrapStatus === 'pending') {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6">
-        <div className="w-full max-w-[320px] text-center">
-          <div className="w-16 h-16 rounded-full bg-surface-base border border-surface-border flex items-center justify-center mx-auto mb-6">
-            <span className="typo-title">⏳</span>
+      <div style={{ ...CENTER_STATE, padding: '24px' }}>
+        <div style={{ width: '384px', maxWidth: '100%', textAlign: 'center' }}>
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '50%',
+            background: 'var(--surface-base)', border: '1px solid var(--border-sub)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px',
+          }}>
+            <span style={{ fontSize: '22px' }}>&#x23F3;</span>
           </div>
-          <h1 className="typo-title font-semibold text-white mb-2">Awaiting Activation</h1>
-          <p className="typo-body text-txt-secondary mb-6">
+          <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--txt)', marginBottom: '8px' }}>Awaiting Activation</h1>
+          <p style={{ fontSize: '13px', color: 'var(--txt2)', marginBottom: '24px' }}>
             Your account is pending activation. Please contact your administrator to complete setup.
           </p>
-          <p className="typo-meta text-txt-tertiary">
+          <p style={{ fontSize: '11px', color: 'var(--txt3)' }}>
             Signed in as {user.email}
           </p>
         </div>
@@ -154,20 +288,25 @@ export default function LoginContent() {
     );
   }
 
-  // If yacht is inactive
+  // Yacht inactive
   if (user && user.bootstrapStatus === 'inactive') {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6">
-        <div className="w-full max-w-[320px] text-center">
-          <div className="w-16 h-16 rounded-full bg-surface-base border border-surface-border flex items-center justify-center mx-auto mb-6">
-            <span className="typo-title">🚢</span>
+      <div style={{ ...CENTER_STATE, padding: '24px' }}>
+        <div style={{ width: '384px', maxWidth: '100%', textAlign: 'center' }}>
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '50%',
+            background: 'var(--surface-base)', border: '1px solid var(--border-sub)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px',
+          }}>
+            <span style={{ fontSize: '22px' }}>&#x1F6A2;</span>
           </div>
-          <h1 className="typo-title font-semibold text-white mb-2">Yacht Inactive</h1>
-          <p className="typo-body text-txt-secondary mb-6">
+          <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--txt)', marginBottom: '8px' }}>Yacht Inactive</h1>
+          <p style={{ fontSize: '13px', color: 'var(--txt2)', marginBottom: '24px' }}>
             The yacht associated with your account is currently inactive.
-            {user.yachtName && <span className="block mt-1">{user.yachtName}</span>}
+            {user.yachtName && <span style={{ display: 'block', marginTop: '4px' }}>{user.yachtName}</span>}
           </p>
-          <p className="typo-meta text-txt-tertiary">
+          <p style={{ fontSize: '11px', color: 'var(--txt3)' }}>
             Contact support for assistance.
           </p>
         </div>
@@ -175,95 +314,173 @@ export default function LoginContent() {
     );
   }
 
-  // If bootstrap error (will auto-retry)
+  // Bootstrap error
   if (user && user.bootstrapStatus === 'error') {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="typo-body text-txt-secondary">Connecting to server...</p>
-          <p className="typo-meta text-txt-tertiary">Retrying...</p>
-        </div>
-      </div>
-    );
+    return renderSpinnerState('Connecting to server...', 'Retrying...');
   }
 
   // Display error from auth context or local error
   const displayError = error || authError;
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-6">
-      <div className="w-full max-w-[280px]">
-        {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <div className="w-12 h-12 rounded-lg bg-gradient-to-b from-surface-border to-surface-base flex items-center justify-center">
-            <span className="text-white typo-title font-semibold">C</span>
+    <div style={PAGE_BG}>
+      {/* ── Backdrop orbs ── */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden', background: 'var(--surface-base)' }}>
+        <div style={{
+          position: 'absolute', borderRadius: '50%', filter: 'blur(90px)', opacity: 0.5,
+          width: '60vw', height: '60vw', top: '-20vw', left: '-8vw',
+          background: 'radial-gradient(circle, rgba(58,124,157,0.50) 0%, transparent 70%)',
+        }} />
+        <div style={{
+          position: 'absolute', borderRadius: '50%', filter: 'blur(90px)', opacity: 0.5,
+          width: '45vw', height: '45vw', bottom: '-12vw', right: '-5vw',
+          background: 'radial-gradient(circle, rgba(30,90,130,0.38) 0%, transparent 70%)',
+        }} />
+      </div>
+
+      {/* ── App shell ── */}
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        {/* ── Topbar ── */}
+        <header style={TOPBAR}>
+          <span style={{
+            fontSize: '10px', fontWeight: 600, letterSpacing: '0.16em',
+            textTransform: 'uppercase', color: 'var(--mark)',
+          }}>
+            Celeste
+          </span>
+          <div style={{ flex: 1 }} />
+          <button
+            type="button"
+            onClick={toggleTheme}
+            style={{
+              width: '28px', height: '28px', borderRadius: '4px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', background: 'none', border: 'none',
+              color: 'var(--txt-ghost)', transition: 'background 80ms',
+            }}
+            aria-label="Toggle theme"
+          >
+            {isDark ? <MoonIcon /> : <SunIcon />}
+          </button>
+        </header>
+
+        {/* ── Stage ── */}
+        <div style={STAGE}>
+          {/* Auth card */}
+          <div style={CARD}>
+            {/* Card header */}
+            <div style={{ padding: '32px 32px 0', textAlign: 'center' }}>
+              <div style={{
+                fontSize: '9px', fontWeight: 600, letterSpacing: '0.16em',
+                textTransform: 'uppercase', color: 'var(--mark)', marginBottom: '4px',
+              }}>
+                Celeste
+              </div>
+              <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--txt)', marginBottom: '4px' }}>
+                Sign in
+              </h1>
+              <p style={{ fontSize: '13px', color: 'var(--txt-ghost)' }}>
+                Maritime management platform
+              </p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleLogin} style={{ padding: '24px 32px 32px' }}>
+              {/* Error banner */}
+              {displayError && (
+                <div style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  background: 'var(--red-bg)',
+                  border: '1px solid var(--red-border)',
+                  marginBottom: '16px',
+                }}>
+                  <p style={{ fontSize: '11px', color: 'var(--red)' }}>{displayError}</p>
+                </div>
+              )}
+
+              {/* Email field */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={LABEL}>Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@vessel.com"
+                  required
+                  autoComplete="email"
+                  disabled={loading}
+                  style={{
+                    ...INPUT_BASE,
+                    opacity: loading ? 0.5 : 1,
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--teal)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-sub)'; }}
+                />
+              </div>
+
+              {/* Password field */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <label style={{ ...LABEL, marginBottom: 0 }}>Password</label>
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  required
+                  autoComplete="current-password"
+                  disabled={loading}
+                  style={{
+                    ...INPUT_BASE,
+                    opacity: loading ? 0.5 : 1,
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--teal)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-sub)'; }}
+                />
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  ...SUBMIT_BTN,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.5 : 1,
+                }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  'Sign in'
+                )}
+              </button>
+
+              {/* Footer text */}
+              <p style={{
+                marginTop: '24px', fontSize: '11px',
+                color: 'var(--txt-ghost)', textAlign: 'center',
+              }}>
+                Secure crew access only
+              </p>
+            </form>
           </div>
         </div>
-
-        {/* Title */}
-        <h1 className="typo-title font-semibold text-white text-center mb-1 tracking-tight">
-          Sign in
-        </h1>
-        <p className="typo-label text-txt-secondary text-center mb-8">
-          CelesteOS
-        </p>
-
-        {/* Form */}
-        <form onSubmit={handleLogin} className="space-y-3">
-          {/* Error */}
-          {displayError && (
-            <div className="px-3 py-2 rounded-md bg-red-500/10 border border-red-500/20">
-              <p className="typo-body text-red-500 text-center">{displayError}</p>
-            </div>
-          )}
-
-          {/* Email */}
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            required
-            autoComplete="email"
-            disabled={loading}
-            className="w-full h-11 px-4 rounded-md bg-surface-base border border-surface-border typo-label text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
-          />
-
-          {/* Password */}
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-            autoComplete="current-password"
-            disabled={loading}
-            className="w-full h-11 px-4 rounded-md bg-surface-base border border-surface-border typo-label text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
-          />
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full h-11 rounded-md bg-celeste-accent hover:bg-celeste-accent-hover disabled:opacity-50 disabled:cursor-not-allowed typo-label font-medium text-white transition-colors flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Signing in...</span>
-              </>
-            ) : (
-              'Sign In'
-            )}
-          </button>
-        </form>
-
-        {/* Footer */}
-        <p className="mt-8 typo-meta text-txt-tertiary text-center">
-          Secure crew access only
-        </p>
       </div>
+
+      {/* Version stamp */}
+      <span style={{
+        position: 'fixed', bottom: '16px', left: '50%', transform: 'translateX(-50%)',
+        fontSize: '10px', fontFamily: 'var(--font-mono)',
+        color: 'var(--txt-ghost)', letterSpacing: '0.04em', zIndex: 2,
+      }}>
+        v1.0.0
+      </span>
     </div>
   );
 }

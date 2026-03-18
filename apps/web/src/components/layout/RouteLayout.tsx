@@ -31,7 +31,7 @@ export interface PrimaryPanelConfig {
   children: React.ReactNode;
 }
 
-export interface ContextPanelConfig {
+export interface DetailPanelConfig {
   visible: boolean;
   title?: string;
   children: React.ReactNode;
@@ -53,7 +53,7 @@ export interface RouteLayoutProps {
   primaryPanel?: PrimaryPanelConfig;
 
   /** Context panel (supplementary information) */
-  contextPanel?: ContextPanelConfig;
+  detailPanel?: DetailPanelConfig;
 
   /** Action panel (modal overlay) */
   actionPanel?: ActionPanelConfig;
@@ -62,7 +62,7 @@ export interface RouteLayoutProps {
   onClosePrimaryPanel?: () => void;
 
   /** Close context panel handler */
-  onCloseContextPanel?: () => void;
+  onCloseDetailPanel?: () => void;
 
   /** Close action panel handler */
   onCloseActionPanel?: () => void;
@@ -175,10 +175,10 @@ export function RouteLayout({
   pageTitle,
   children,
   primaryPanel,
-  contextPanel,
+  detailPanel,
   actionPanel,
   onClosePrimaryPanel,
-  onCloseContextPanel,
+  onCloseDetailPanel,
   onCloseActionPanel,
   isLoading = false,
   showTopNav = true,
@@ -213,21 +213,21 @@ export function RouteLayout({
         )}
 
         {/* Context panel (if needed) */}
-        {contextPanel?.visible && (
+        {detailPanel?.visible && (
           <div
             className={cn(
               'w-[320px] flex-shrink-0 border-l border-surface-border bg-surface-primary',
               'flex flex-col overflow-hidden'
             )}
           >
-            {contextPanel.title && (
+            {detailPanel.title && (
               <div className="h-12 flex-shrink-0 border-b border-surface-border px-4 flex items-center justify-between">
                 <h3 className="text-sm font-medium text-txt-primary">
-                  {contextPanel.title}
+                  {detailPanel.title}
                 </h3>
-                {onCloseContextPanel && (
+                {onCloseDetailPanel && (
                   <button
-                    onClick={onCloseContextPanel}
+                    onClick={onCloseDetailPanel}
                     className="p-1 hover:bg-surface-hover rounded transition-colors"
                     aria-label="Close context panel"
                   >
@@ -246,7 +246,7 @@ export function RouteLayout({
                 )}
               </div>
             )}
-            <div className="flex-1 overflow-y-auto">{contextPanel.children}</div>
+            <div className="flex-1 overflow-y-auto">{detailPanel.children}</div>
           </div>
         )}
 

@@ -735,27 +735,6 @@
   --settings-desc-weight: 400;
   --settings-desc-lh: 18px;
 
-  /* Colors - Light */
-  --settings-bg-main: #ffffff;
-  --settings-bg-left: #f8f8f8;
-  --settings-bg-center: #f8f8f8;
-  --settings-bg-highlight: #eeeeee;
-  --settings-border: #e7e7e7;
-  --settings-text-primary: #111111;
-  --settings-text-secondary: #5a5a5a;
-  --settings-backdrop: rgba(0, 0, 0, 0.35);
-}
-
-.dark {
-  /* Colors - Dark */
-  --settings-bg-main: #1e1e1e;
-  --settings-bg-left: #1b1b1b;
-  --settings-bg-center: #171717;
-  --settings-bg-highlight: #323232;
-  --settings-border: #404040;
-  --settings-text-primary: #f2f2f2;
-  --settings-text-secondary: #b5b5b5;
-  --settings-backdrop: rgba(0, 0, 0, 0.35);
 }
 
 /* Backdrop */
@@ -774,9 +753,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: row;
-  background: var(--settings-bg-main);
-  border: 1px solid var(--settings-border);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--border-sub);
+  box-shadow: var(--shadow-panel);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
 }
 
@@ -784,8 +763,8 @@
 .settings-sidebar {
   width: 280px;
   flex-shrink: 0;
-  background: var(--settings-bg-left);
-  border-right: 1px solid var(--settings-border);
+  background: var(--surface-base);
+  border-right: 1px solid var(--border-sub);
   padding: 16px;
   overflow-y: auto;
   display: flex;
@@ -802,7 +781,7 @@
   background: transparent;
   border: none;
   border-radius: 8px;
-  color: var(--settings-text-secondary);
+  color: var(--txt-ghost);
   cursor: pointer;
   transition: all 0.15s ease;
   margin-bottom: 16px;
@@ -815,8 +794,8 @@
 }
 
 .settings-close-button:hover {
-  background: var(--settings-bg-highlight);
-  color: var(--settings-text-primary);
+  background: var(--surface-hover);
+  color: var(--txt);
 }
 
 /* Navigation - 4px gap */
@@ -838,21 +817,24 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-  color: var(--settings-text-primary);
+  color: var(--txt2);
   background: transparent;
   border: none;
+  border-left: 2px solid transparent;
   cursor: pointer;
   transition: background 0.15s ease;
   text-align: left;
 }
 
 .settings-nav-item:hover {
-  background: var(--settings-bg-highlight);
+  background: var(--surface-hover);
 }
 
 .settings-nav-item-active {
-  background: var(--settings-bg-highlight);
+  background: var(--teal-bg);
+  color: var(--mark);
   font-weight: 600;
+  border-left: 2px solid var(--mark);
 }
 
 /* Nav icons - 18px, stroke 1.75 */
@@ -860,18 +842,18 @@
   width: 18px !important;
   height: 18px !important;
   flex-shrink: 0;
-  color: var(--settings-text-secondary);
+  color: var(--txt2);
   stroke-width: 1.75;
 }
 
 .settings-nav-item-active svg {
-  color: var(--settings-text-primary);
+  color: var(--mark);
 }
 
 /* Content pane - 32px LR, 28px top, 24px bottom */
 .settings-content {
   flex: 1;
-  background: var(--settings-bg-center);
+  background: var(--surface);
   padding: 28px 32px 24px;
   overflow-y: auto;
 }
@@ -881,7 +863,7 @@
   font-size: 18px;
   font-weight: 600;
   line-height: 24px;
-  color: var(--settings-text-primary);
+  color: var(--txt);
   margin: 0 0 20px 0;
 }
 
@@ -891,7 +873,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 0;
-  border-bottom: 1px solid var(--settings-border);
+  border-bottom: 1px solid var(--border-sub);
   gap: 24px;
 }
 
@@ -911,18 +893,18 @@
 
 /* Label - 14px/500/20px */
 .settings-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 20px;
-  color: var(--settings-text-primary);
+  color: var(--txt);
 }
 
 /* Description - 13px/400/18px, 4px gap */
 .settings-helper {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 18px;
-  color: var(--settings-text-secondary);
+  color: var(--txt3);
   margin-top: 4px;
 }
 
@@ -930,13 +912,13 @@
 .settings-value {
   font-size: 13px;
   line-height: 18px;
-  color: var(--settings-text-primary);
+  color: var(--txt);
 }
 
 .settings-value-muted {
   font-size: 13px;
   line-height: 18px;
-  color: var(--settings-text-secondary);
+  color: var(--txt2);
 }
 
 .settings-value-locked {
@@ -945,27 +927,27 @@
   gap: 6px;
   font-size: 13px;
   line-height: 18px;
-  color: var(--settings-text-primary);
+  color: var(--txt);
 }
 
 .settings-value-locked svg {
   width: 14px;
   height: 14px;
-  color: var(--settings-text-secondary);
+  color: var(--txt-ghost);
 }
 
 /* Section Divider */
 .settings-section-divider {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--settings-border);
+  border-top: 1px solid var(--border-faint);
 }
 
 .settings-section-title {
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-  color: var(--settings-text-secondary);
+  color: var(--txt2);
   margin: 0 0 8px 0;
 }
 
@@ -973,25 +955,25 @@
 .settings-input {
   height: 36px;
   min-width: 180px;
-  background: var(--settings-bg-main);
-  border: 1px solid var(--settings-border);
+  background: var(--surface-el);
+  border: 1px solid var(--border-sub);
   border-radius: 10px;
   padding: 0 12px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
   font-size: 13px;
   font-weight: 400;
-  color: var(--settings-text-primary);
+  color: var(--txt);
   transition: all 0.15s ease;
 }
 
 .settings-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  border-color: var(--mark);
+  box-shadow: 0 0 0 3px var(--teal-bg);
 }
 
 .settings-input::placeholder {
-  color: var(--settings-text-secondary);
+  color: var(--txt2);
 }
 
 .settings-input-wide {
@@ -1004,40 +986,40 @@
   width: 100%;
   max-width: 280px;
   min-height: 100px;
-  background: var(--settings-bg-main);
-  border: 1px solid var(--settings-border);
+  background: var(--surface-el);
+  border: 1px solid var(--border-sub);
   border-radius: 10px;
   padding: 10px 12px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
   font-size: 13px;
   line-height: 18px;
-  color: var(--settings-text-primary);
+  color: var(--txt);
   resize: vertical;
   transition: all 0.15s ease;
 }
 
 .settings-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  border-color: var(--mark);
+  box-shadow: 0 0 0 3px var(--teal-bg);
 }
 
 .settings-textarea::placeholder {
-  color: var(--settings-text-secondary);
+  color: var(--txt2);
 }
 
 /* Select - 36px height, 120px min, 10px radius */
 .settings-select {
   height: 36px;
   min-width: 120px;
-  background-color: var(--settings-bg-main);
-  border: 1px solid var(--settings-border);
+  background-color: var(--surface-el);
+  border: 1px solid var(--border-sub);
   border-radius: 10px;
   padding: 0 32px 0 12px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
   font-size: 13px;
   font-weight: 400;
-  color: var(--settings-text-primary);
+  color: var(--txt);
   cursor: pointer;
   transition: all 0.15s ease;
   appearance: none;
@@ -1048,17 +1030,17 @@
 
 .settings-select:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  border-color: var(--mark);
+  box-shadow: 0 0 0 3px var(--teal-bg);
 }
 
 /* Toggle Group */
 .settings-toggle-group {
   display: flex;
-  background: var(--settings-bg-left);
+  background: var(--surface-base);
   border-radius: 10px;
   padding: 3px;
-  border: 1px solid var(--settings-border);
+  border: 1px solid var(--border-sub);
 }
 
 .settings-toggle {
@@ -1067,7 +1049,7 @@
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
   font-size: 13px;
   font-weight: 500;
-  color: var(--settings-text-secondary);
+  color: var(--txt2);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -1075,12 +1057,12 @@
 }
 
 .settings-toggle:hover {
-  color: var(--settings-text-primary);
+  color: var(--txt);
 }
 
 .settings-toggle-active {
-  background: var(--settings-bg-main);
-  color: var(--settings-text-primary);
+  background: var(--surface-el);
+  color: var(--txt);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
@@ -1097,9 +1079,9 @@
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
   font-size: 13px;
   font-weight: 500;
-  color: var(--settings-text-primary);
-  background: var(--settings-bg-left);
-  border: 1px solid var(--settings-border);
+  color: var(--txt);
+  background: var(--surface-base);
+  border: 1px solid var(--border-sub);
   cursor: pointer;
   transition: all 0.15s ease;
   display: flex;
@@ -1107,26 +1089,26 @@
 }
 
 .settings-pill:hover {
-  background: var(--settings-bg-highlight);
+  background: var(--surface-hover);
 }
 
 .settings-pill-active {
-  background: var(--settings-text-primary);
-  border-color: var(--settings-text-primary);
-  color: var(--settings-bg-main);
+  background: var(--txt);
+  border-color: var(--txt);
+  color: var(--surface-el);
 }
 
 .settings-pill-active:hover {
-  background: var(--settings-text-primary);
+  background: var(--txt);
 }
 
 /* Buttons - 36px height */
 .settings-button-primary {
   height: 36px;
   padding: 0 16px;
-  background: var(--settings-text-primary);
-  color: var(--settings-bg-main);
-  border: 1px solid var(--settings-text-primary);
+  background: var(--teal-bg);
+  color: var(--mark);
+  border: 1px solid transparent;
   border-radius: 10px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
   font-size: 13px;
@@ -1147,9 +1129,9 @@
 .settings-button-secondary {
   height: 36px;
   padding: 0 16px;
-  background: transparent;
-  color: var(--settings-text-primary);
-  border: 1px solid var(--settings-border);
+  background: var(--split-bg);
+  color: var(--txt2);
+  border: 1px solid var(--border-sub);
   border-radius: 10px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
   font-size: 13px;
@@ -1159,15 +1141,15 @@
 }
 
 .settings-button-secondary:hover {
-  background: var(--settings-bg-highlight);
+  background: var(--split-bg-hover);
 }
 
 .settings-button-danger {
   height: 36px;
   padding: 0 12px;
-  background: #dc2626;
-  color: #ffffff;
-  border: 1px solid #dc2626;
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid var(--red-border);
   border-radius: 10px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
   font-size: 13px;
@@ -1177,8 +1159,8 @@
 }
 
 .settings-button-danger:hover {
-  background: #b91c1c;
-  border-color: #b91c1c;
+  background: var(--red-border);
+  border-color: var(--red);
 }
 
 /* ============================================================================

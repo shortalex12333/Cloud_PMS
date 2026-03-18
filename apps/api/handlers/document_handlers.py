@@ -22,6 +22,8 @@ import logging
 import json
 import uuid
 
+from fastapi import HTTPException
+
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -127,12 +129,9 @@ class DocumentHandlers:
                 })
                 builder.add_files([file_ref.to_dict()])
             else:
-                # Map missing storage object to NOT_FOUND for clean front-end messaging
                 storage_path = doc.get("storage_path", "")
-                builder.set_error(
-                    "NOT_FOUND",
-                    f"Document file not found in storage: {storage_path}"
-                )
+                builder.set_error("NOT_FOUND", f"Document file not found in storage: {storage_path}")
+                return builder.build()
 
             return builder.build()
 

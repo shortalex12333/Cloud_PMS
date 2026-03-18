@@ -8,6 +8,6 @@ export { RouteLayout } from './RouteLayout';
 export type {
   RouteLayoutProps,
   PrimaryPanelConfig,
-  ContextPanelConfig,
+  DetailPanelConfig,
   ActionPanelConfig,
 } from './RouteLayout';

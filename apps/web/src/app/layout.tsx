@@ -22,7 +22,7 @@ export default function RootLayout({
           <AuthProvider>
             <MicroactionsProvider>
               {children}
-              <AuthDebug />
+              {process.env.NODE_ENV === 'development' && <AuthDebug />}
             </MicroactionsProvider>
           </AuthProvider>
         </QueryProvider>

@@ -10,13 +10,14 @@
  * 1. Extract token from URL
  * 2. Check authentication (redirect to login if needed)
  * 3. Call POST /api/v1/open/resolve with token
- * 4. On success: redirect to /app with entity focus
- * 5. On error: show error and redirect to /app
+ * 4. On success: redirect to entity's fragmented route (e.g. /work-orders/{id})
+ * 5. On error: show error and redirect to /
  */
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { resolveOpenToken, ResolveError } from '@/lib/handoverExportClient';
+import { getEntityRoute } from '@/lib/featureFlags';
 import { Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 
 function OpenTokenResolver() {
@@ -32,7 +33,7 @@ function OpenTokenResolver() {
     if (!token) {
       setStatus('error');
       setErrorMessage('No link token provided');
-      setTimeout(() => router.replace('/app'), 2000);
+      setTimeout(() => router.replace('/'), 2000);
       return;
     }
 
@@ -42,15 +43,14 @@ function OpenTokenResolver() {
       // Resolve the token
       const result = await resolveOpenToken(token);
 
-      // Success - redirect to /app with open_token for the shell to handle
-      // The shell will call showContext with the resolved entity
+      // Success — redirect directly to the entity's fragmented route
       setStatus('success');
 
-      // Store resolution result in sessionStorage for the app shell
-      sessionStorage.setItem('handover_open_result', JSON.stringify(result));
-
-      // Redirect to app - remove token from URL
-      router.replace('/app?open_resolved=1');
+      const entityRoute = getEntityRoute(
+        result.focus.type as Parameters<typeof getEntityRoute>[0],
+        result.focus.id
+      );
+      router.replace(entityRoute);
     } catch (error) {
       setStatus('error');
 
@@ -67,8 +67,8 @@ function OpenTokenResolver() {
         setErrorMessage('An unexpected error occurred');
       }
 
-      // Auto-redirect to app after showing error
-      setTimeout(() => router.replace('/app'), 3000);
+      // Auto-redirect to home after showing error
+      setTimeout(() => router.replace('/'), 3000);
     }
   }, [token, router]);
 
@@ -113,10 +113,10 @@ function OpenTokenResolver() {
               {errorMessage}
             </p>
             <button
-              onClick={() => router.replace('/app')}
+              onClick={() => router.replace('/')}
               className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-md transition-colors"
             >
-              Go to App
+              Go to Home
             </button>
           </div>
         )}

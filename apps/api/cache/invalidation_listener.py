@@ -98,11 +98,24 @@ async def handle_notification(conn, pid, channel, payload):
             f"yacht={yacht[:8] if yacht else 'N/A'}..., type={object_type}"
         )
 
-        # Key patterns to evict (result cache and rewrite cache)
-        patterns = [
-            f"rs::{org}:{yacht or ''}*",
-            f"rw::{org}:{yacht or ''}*",
-        ]
+        # Key patterns to evict.
+        # API stores result-cache keys as:  rs:{query_hash}:{org_id}:{yacht_id}:{embed_ver}
+        # We know yacht_id from the trigger payload; org_id may or may not be present.
+        # Use wildcard patterns so the scan catches all queries and embed versions for this yacht.
+        if yacht:
+            patterns = [
+                f"rs:*:*:{yacht}:*",   # matches rs:{hash}:{any_org}:{yacht}:{any_ver}
+                f"rw:*:*:{yacht}:*",   # future-proof: rewrite cache same layout
+            ]
+        elif org:
+            # Fallback: org-level eviction when yacht is unknown
+            patterns = [
+                f"rs:*:{org}:*",
+                f"rw:*:{org}:*",
+            ]
+        else:
+            logger.warning("No org_id or yacht_id in notification payload, skipping eviction")
+            return
 
         evicted = 0
         for pat in patterns:

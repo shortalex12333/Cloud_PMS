@@ -88,7 +88,7 @@ ALLOWED_ORIGINS_STR = os.getenv(
 
 # Normalize: strip whitespace, remove empties, deduplicate
 # Always include localhost for local dev regardless of env override
-_LOCAL_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:8000"]
+_LOCAL_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3007", "http://localhost:8000"]
 ALLOWED_ORIGINS = list(dict.fromkeys([
     origin.strip()
     for origin in ALLOWED_ORIGINS_STR.split(",")

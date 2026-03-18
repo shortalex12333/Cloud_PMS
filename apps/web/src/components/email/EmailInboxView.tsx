@@ -13,14 +13,14 @@ import { useInboxThreads, type EmailThread } from '@/hooks/useEmailData';
 import { LinkEmailModal } from './LinkEmailModal';
 import { Button } from '@/components/ui/button';
 import { cn, formatRelativeTime } from '@/lib/utils';
-import { useSurfaceSafe } from '@/contexts/SurfaceContext';
+import { useRouter } from 'next/navigation';
 
 interface EmailInboxViewProps {
   className?: string;
 }
 
 export function EmailInboxView({ className }: EmailInboxViewProps) {
-  const surfaceContext = useSurfaceSafe();
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [showLinked, setShowLinked] = useState(false);
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
@@ -28,12 +28,9 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
 
   const { data, isLoading, error, refetch } = useInboxThreads(page, showLinked);
 
-  // Open email in full EmailSurface view via overlay
-  // SINGLE-SURFACE: Uses SurfaceContext to show email overlay (no URL change)
+  // Navigate to email route with thread context
   const handleOpenThread = (thread: EmailThread) => {
-    if (surfaceContext) {
-      surfaceContext.showEmail({ threadId: thread.id, folder: 'inbox' });
-    }
+    router.push(`/email?thread=${thread.id}`);
   };
 
   const threads = data?.threads || [];

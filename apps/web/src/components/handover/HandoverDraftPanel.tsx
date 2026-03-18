@@ -16,8 +16,9 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { X, FileText, Edit3, Trash2, Send, AlertTriangle, Clock, Loader2, CheckCircle2, Package, Wrench, File, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useSurface } from '@/contexts/SurfaceContext';
+import { getEntityRoute } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 // External service functions no longer used - export creates local record
 // import { startExportJob, checkJobStatus } from '@/lib/handoverExportClient';
@@ -271,7 +272,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
 
 export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps) {
   const { user } = useAuth();
-  const { showContext } = useSurface();
+  const router = useRouter();
   const [items, setItems] = useState<HandoverItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -338,9 +339,10 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
   // Handle item click - navigate to entity
   const handleItemClick = useCallback((item: HandoverItem) => {
     if (!item.entity_type || !item.entity_id) return;
-    showContext(item.entity_type, item.entity_id);
+    const route = getEntityRoute(item.entity_type as Parameters<typeof getEntityRoute>[0], item.entity_id);
+    router.push(route);
     onClose();
-  }, [showContext, onClose]);
+  }, [router, onClose]);
 
   // Handle edit
   const handleEdit = useCallback(async (id: string, summary: string, category: string, isCritical: boolean, requiresAction: boolean) => {

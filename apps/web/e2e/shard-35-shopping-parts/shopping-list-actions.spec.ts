@@ -88,31 +88,23 @@ test.describe('[Captain] create_shopping_list_item — HARD PROOF', () => {
     });
     console.log(`[JSON] create_shopping_list_item (with part_id): ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: create_shopping_list_item with known part_id has a backend bug where
-    // rpc_insert_shopping_list_item returns 204 (no content) for non-candidate parts,
-    // causing PostgREST parse failure. Accept success (if fixed) or error (current state).
-    // REMOVE THIS ADVISORY WHEN: rpc_insert_shopping_list_item returns the created row for
-    // non-candidate parts (204 no-content bug fixed). Tighten to: expect(result.status).toBe(200)
-    // + expect(result.data.success).toBe(true) + verify is_candidate_part=false in DB.
+    // HARD PROOF: 204 fallback fixed — handler falls back to SELECT when RPC returns 204.
     console.log(`[JSON] create_shopping_list_item (with part_id) status=${result.status} success=${result.data.success}`);
-    if (result.status === 200 && result.data.success === true) {
-      const inner2 = result.data.data as { shopping_list_item_id?: string };
-      expect(typeof inner2.shopping_list_item_id).toBe('string');
-      const itemId = inner2.shopping_list_item_id!;
-      await expect.poll(
-        async () => {
-          const { data: row } = await supabaseAdmin
-            .from('pms_shopping_list_items')
-            .select('id, is_candidate_part')
-            .eq('id', itemId)
-            .single();
-          return (row as { is_candidate_part?: boolean } | null)?.is_candidate_part;
-        },
-        { intervals: [500, 1000, 1500], timeout: 8_000, message: 'Expected is_candidate_part=false' }
-      ).toBe(false);
-    } else {
-      console.log(`create_shopping_list_item (part_id) advisory — backend RPC returns no content for non-candidate parts`);
-    }
+    expect(result.status).toBe(200);
+    const d2 = result.data as { success?: boolean; data?: { shopping_list_item_id?: string } };
+    expect(d2.success).toBe(true);
+    const itemId = d2.data!.shopping_list_item_id!;
+    await expect.poll(
+      async () => {
+        const { data: row } = await supabaseAdmin
+          .from('pms_shopping_list_items')
+          .select('id, is_candidate_part')
+          .eq('id', itemId)
+          .single();
+        return (row as { is_candidate_part?: boolean } | null)?.is_candidate_part;
+      },
+      { intervals: [500, 1000, 1500], timeout: 8_000, message: 'Expected is_candidate_part=false' }
+    ).toBe(false);
   });
 });
 

@@ -664,6 +664,21 @@ class HoursOfRestHandlers:
 
             signoff = current.data
 
+            # Enforce sequential signing workflow: crew → hod → master
+            current_status = signoff.get("status", "draft")
+            if signature_level == "hod" and current_status != "crew_signed":
+                builder.set_error(
+                    "VALIDATION_ERROR",
+                    f"HOD can only sign after crew. Current status: {current_status}"
+                )
+                return builder.build()
+            elif signature_level == "master" and current_status != "hod_signed":
+                builder.set_error(
+                    "VALIDATION_ERROR",
+                    f"Master can only sign after HOD. Current status: {current_status}"
+                )
+                return builder.build()
+
             # Determine update based on signature level
             update_data = {
                 "updated_at": datetime.now(timezone.utc).isoformat()
@@ -965,7 +980,12 @@ class HoursOfRestHandlers:
 
         except Exception as e:
             logger.error(f"Error applying crew template: {e}")
-            builder.set_error("DATABASE_ERROR", str(e))
+            error_msg = str(e)
+            # No active template or week conflict → client-side fixable → 400
+            if "template" in error_msg.lower() or "not found" in error_msg.lower():
+                builder.set_error("NOT_FOUND", f"No active template found: {error_msg}")
+            else:
+                builder.set_error("DATABASE_ERROR", f"Error applying template: {error_msg}")
             return builder.build()
 
     # =========================================================================
@@ -1090,6 +1110,15 @@ class HoursOfRestHandlers:
                 builder.set_error("VALIDATION_ERROR", "warning_id is required")
                 return builder.build()
 
+            # Verify warning exists and belongs to this crew member before updating
+            existing = self.db.table("pms_crew_hours_warnings").select("id").eq(
+                "id", warning_id
+            ).eq("yacht_id", yacht_id).eq("user_id", user_id).maybe_single().execute()
+
+            if not existing.data:
+                builder.set_error("NOT_FOUND", f"Warning not found or not accessible: {warning_id}")
+                return builder.build()
+
             update_data = {
                 "acknowledged_at": datetime.now(timezone.utc).isoformat(),
                 "acknowledged_by": user_id,
@@ -1103,10 +1132,6 @@ class HoursOfRestHandlers:
             ).eq("yacht_id", yacht_id).eq("user_id", user_id).select("*").execute()
 
             warning = result.data[0] if result.data else None
-
-            if not warning:
-                builder.set_error("NOT_FOUND", f"Warning not found or not accessible: {warning_id}")
-                return builder.build()
 
             # Write audit log
             _write_hor_audit_log(self.db, {
@@ -1161,6 +1186,15 @@ class HoursOfRestHandlers:
                 builder.set_error("VALIDATION_ERROR", "warning_id, hod_justification, and dismissed_by_role are required")
                 return builder.build()
 
+            # Verify warning exists before updating
+            existing = self.db.table("pms_crew_hours_warnings").select("id").eq(
+                "id", warning_id
+            ).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            if not existing.data:
+                builder.set_error("NOT_FOUND", f"Warning not found: {warning_id}")
+                return builder.build()
+
             update_data = {
                 "is_dismissed": True,
                 "dismissed_at": datetime.now(timezone.utc).isoformat(),
@@ -1176,10 +1210,6 @@ class HoursOfRestHandlers:
             ).eq("yacht_id", yacht_id).select("*").execute()
 
             warning = result.data[0] if result.data else None
-
-            if not warning:
-                builder.set_error("NOT_FOUND", f"Warning not found: {warning_id}")
-                return builder.build()
 
             # Write audit log with justification
             _write_hor_audit_log(self.db, {

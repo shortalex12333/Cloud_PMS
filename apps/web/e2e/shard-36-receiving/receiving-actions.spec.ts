@@ -125,39 +125,58 @@ test.describe('[Captain] receiving workflow — chained HARD PROOF', () => {
 });
 
 // ===========================================================================
-// submit_receiving_for_review — ADVISORY
+// submit_receiving_for_review — HARD PROOF
 // ===========================================================================
 
-test.describe('[Captain] submit_receiving_for_review — ADVISORY', () => {
-  test('[Captain] submit_receiving_for_review → 200 or 400 (advisory)', async ({
+test.describe('[Captain] submit_receiving_for_review — HARD PROOF', () => {
+  test('[Captain] create→add_item→submit → 200 + pms_receiving status=in_review', async ({
     captainPage,
+    getExistingPart,
+    supabaseAdmin,
   }) => {
+    const part = await getExistingPart();
+
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    // Create a receiving to submit
+    // Step 1: create receiving draft
     const createResult = await callActionDirect(captainPage, 'create_receiving', {
       vendor_name: `S36 Submit Vendor ${generateTestId('v')}`,
     });
     expect(createResult.status).toBe(200);
     const receivingId = (createResult.data as { receiving_id?: string }).receiving_id!;
 
+    // Step 2: add a receiving item (required before submission)
+    const addResult = await callActionDirect(captainPage, 'add_receiving_item', {
+      receiving_id: receivingId,
+      part_id: part.id,
+      quantity_received: 1,
+    });
+    expect(addResult.status).toBe(200);
+
+    // Step 3: submit for review
     const result = await callActionDirect(captainPage, 'submit_receiving_for_review', {
       receiving_id: receivingId,
     });
     console.log(`[JSON] submit_receiving_for_review: ${JSON.stringify(result.data)}`);
 
-    // 200 = submitted, 400 = validation failure (e.g. no items added), 403 = RBAC
-    // Any of these is acceptable for smoke; 500 is not.
-    // REMOVE THIS ADVISORY WHEN: test pre-seeds at least one receiving item before submitting,
-    // so submit_receiving_for_review can succeed. Tighten to: expect(result.status).toBe(200)
-    // + verify pms_receivings.status updated to 'pending_review'.
-    expect([200, 400, 403]).toContain(result.status);
-    if (result.status === 200) {
-      console.log('submit_receiving_for_review returned 200 — submit path confirmed');
-    } else {
-      console.log(`submit_receiving_for_review returned ${result.status} — advisory gate`);
-    }
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string };
+    expect(data.status).toBe('success');
+
+    // Entity state: verify pms_receiving.status updated to 'in_review'
+    await expect.poll(
+      async () => {
+        const { data: row } = await supabaseAdmin
+          .from('pms_receiving')
+          .select('status')
+          .eq('id', receivingId)
+          .single();
+        return (row as { status?: string } | null)?.status;
+      },
+      { intervals: [500, 1000, 1500], timeout: 8_000,
+        message: 'Expected pms_receiving.status=in_review' }
+    ).toBe('in_review');
   });
 });
 

@@ -110,6 +110,8 @@ async def get_signal_related(
             page_limit=effective_limit,
             exclude_ids=[entity_id],  # never return the source entity itself
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"[SignalRelated] call_hyper_search failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Signal search failed")
@@ -197,6 +199,8 @@ async def get_signal_related_supabase(
             effective_limit,
             [entity_id],
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"[SignalRelated/Supabase] hyper_search failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Signal search failed")

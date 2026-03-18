@@ -10,7 +10,7 @@
  */
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import styles from './lens.module.css';
 import { LensGlassHeader } from './LensGlassHeader';
 import { useEntityLens } from '@/hooks/useEntityLens';
@@ -35,9 +35,17 @@ export function LensShell({
   children,
 }: LensShellProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const lens = useEntityLens(entityType, entityId);
 
-  const handleBack = React.useCallback(() => router.back(), [router]);
+  const handleBack = React.useCallback(() => {
+    const from = searchParams.get('from');
+    if (from) {
+      router.push(from);
+    } else {
+      router.back();
+    }
+  }, [router, searchParams]);
   const handleClose = React.useCallback(() => {
     const listRoute = `/${entityType.replace(/_/g, '-')}s`;
     router.push(listRoute);

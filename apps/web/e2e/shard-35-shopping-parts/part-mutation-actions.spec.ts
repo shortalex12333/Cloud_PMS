@@ -104,31 +104,23 @@ test.describe('[Captain] consume_part — HARD PROOF', () => {
     });
     console.log(`[JSON] consume_part: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: receive_part writes to pms_inventory_transactions (new system),
-    // but consume_part checks pms_parts.quantity_on_hand (legacy column) — data model split.
-    // Pre-receive shows new_stock_level=57 but consume sees 0 available.
-    // Accept 200 (if backend syncs the systems), 409 (stock split), or 500 (handler exception).
-    // REMOVE THIS ADVISORY WHEN: consume_part reads stock from pms_inventory_transactions
-    // instead of pms_parts.quantity_on_hand (data model split resolved — tighten to expect(200)).
-    expect([200, 409, 500]).toContain(result.status);
-    if (result.status === 200) {
-      const consumeData = result.data as { status?: string; transaction_id?: string };
-      expect(consumeData.status).toBe('success');
-      await expect.poll(
-        async () => {
-          const { data: row } = await supabaseAdmin
-            .from('pms_inventory_transactions')
-            .select('id, transaction_type')
-            .eq('id', consumeData.transaction_id!)
-            .single();
-          return (row as { transaction_type?: string } | null)?.transaction_type;
-        },
-        { intervals: [500, 1000, 1500], timeout: 8_000,
-          message: 'Expected pms_inventory_transactions consumption row' }
-      ).toBe('consumption');
-    } else {
-      console.log(`consume_part returned ${result.status} (advisory — pms_parts.quantity_on_hand vs pms_inventory_transactions split)`);
-    }
+    // HARD PROOF: consume_part reads pms_part_stock.on_hand (ordered by on_hand DESC)
+    // and calls deduct_stock_inventory RPC.
+    expect(result.status).toBe(200);
+    const consumeData = result.data as { status?: string; transaction_id?: string };
+    expect(consumeData.status).toBe('success');
+    await expect.poll(
+      async () => {
+        const { data: row } = await supabaseAdmin
+          .from('pms_inventory_transactions')
+          .select('id, transaction_type')
+          .eq('id', consumeData.transaction_id!)
+          .single();
+        return (row as { transaction_type?: string } | null)?.transaction_type;
+      },
+      { intervals: [500, 1000, 1500], timeout: 8_000,
+        message: 'Expected pms_inventory_transactions consumed row' }
+    ).toBe('consumed');
   });
 });
 
@@ -155,17 +147,10 @@ test.describe('[Captain] add_to_shopping_list — HARD PROOF', () => {
     });
     console.log(`[JSON] add_to_shopping_list: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: backend handler does not set source_type before insert (NOT NULL constraint).
-    // Bug: add_to_shopping_list ignores source_type from payload → 500 from DB.
-    // Accept 200 (if fixed) or 500 (current backend bug state).
-    // REMOVE THIS ADVISORY WHEN: add_to_shopping_list handler passes source_type to the DB insert
-    // (NOT NULL constraint satisfied — tighten to expect(200) + verify pms_shopping_list_items row).
-    expect([200, 500]).toContain(result.status);
-    if (result.status === 200) {
-      console.log('add_to_shopping_list returned 200 — confirmed success path');
-    } else {
-      console.log(`add_to_shopping_list returned ${result.status} (advisory — backend source_type bug)`);
-    }
+    // HARD PROOF: add_to_shopping_list inserts without .select() chaining
+    expect(result.status).toBe(200);
+    const shoppingData = result.data as { status?: string; success?: boolean };
+    expect(shoppingData.status === 'success' || shoppingData.success === true).toBe(true);
   });
 });
 

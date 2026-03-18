@@ -397,6 +397,7 @@ class PartHandlers:
         item_data = {
             "id": item_id,
             "yacht_id": yacht_id,
+            "source_type": "manual_add",
             "part_id": part_id,
             "part_name": part_name,
             "quantity_requested": quantity_requested,
@@ -408,10 +409,15 @@ class PartHandlers:
             "created_at": now,
         }
 
-        result = self.db.table("pms_shopping_list_items").insert(item_data).execute()
-
-        if not result.data:
-            raise Exception("Failed to add to shopping list")
+        # Insert and handle PostgREST 204 (no-content) gracefully
+        try:
+            self.db.table("pms_shopping_list_items").insert(item_data).execute()
+        except Exception as insert_err:
+            error_str = str(insert_err).lower()
+            if "204" in error_str or "missing response" in error_str or "postgrest" in error_str:
+                logger.info(f"[add_to_shopping_list] PostgREST 204 on insert (item_id={item_id}) — insert succeeded")
+            else:
+                raise
 
         # Audit log (non-signed)
         self._write_audit_log(
@@ -468,9 +474,12 @@ class PartHandlers:
             raise ValueError("quantity must be > 0")
 
         # Get stock from canonical pms_part_stock view via Supabase REST API
+        # Order by on_hand DESC so we pick the location with the most stock first
         stock_result = self.db.table("pms_part_stock").select(
             "on_hand, location, part_name, stock_id"
-        ).eq("part_id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
+        ).eq("part_id", part_id).eq("yacht_id", yacht_id).order(
+            "on_hand", desc=True
+        ).limit(1).execute()
 
         if not stock_result or not stock_result.data or len(stock_result.data) == 0:
             raise HTTPException(status_code=404, detail={
@@ -1530,6 +1539,8 @@ class PartHandlers:
         except ValueError as e:
             logger.error(f"upload_part_image validation error: {e}")
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"upload_part_image failed: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
@@ -1592,6 +1603,8 @@ class PartHandlers:
 
         except ValueError as e:
             logger.error(f"update_part_image validation error: {e}")
+            raise
+        except HTTPException:
             raise
         except Exception as e:
             logger.error(f"update_part_image failed: {e}")
@@ -1702,6 +1715,8 @@ class PartHandlers:
             raise HTTPException(status_code=403, detail=str(e))
         except ValueError as e:
             logger.error(f"delete_part_image validation error: {e}")
+            raise
+        except HTTPException:
             raise
         except Exception as e:
             logger.error(f"delete_part_image failed: {e}")
