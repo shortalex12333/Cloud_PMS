@@ -1,0 +1,339 @@
+{
+  "title": "Stage 3 Completion Build \u2014 E2E Verification Report",
+  "generated": "2026-03-16T11:25:35.698101+00:00",
+  "environment": {
+    "E2E_BASE_URL": "http://localhost:3000 (CelesteOS Next.js 14.2.33)",
+    "NEXT_PUBLIC_API_URL": "http://localhost:8000 (pipeline_service uvicorn)",
+    "database": "Supabase tenant vzsohavtuotocgrfkfyd",
+    "TEST_YACHT_ID": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "playwright_retries": 1,
+    "playwright_workers": 2
+  },
+  "summary": {
+    "passed": 116,
+    "failed": 31,
+    "flaky": 0,
+    "skipped": 1,
+    "total": 148,
+    "duration": "8.1m",
+    "pass_rate": "78.9%",
+    "start_time": "2026-03-16T11:16:44.652Z"
+  },
+  "shard_breakdown": {
+    "shard-33-lens-actions": {
+      "passed": 10,
+      "failed": 23,
+      "skipped": 0,
+      "total": 33,
+      "verdict": "FAIL"
+    },
+    "shard-34-lens-actions": {
+      "passed": 23,
+      "failed": 1,
+      "skipped": 1,
+      "total": 25,
+      "verdict": "FAIL"
+    },
+    "shard-35-shopping-parts": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "total": 9,
+      "verdict": "PASS"
+    },
+    "shard-36-receiving": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "total": 5,
+      "verdict": "PASS"
+    },
+    "shard-37-hours-of-rest": {
+      "passed": 2,
+      "failed": 3,
+      "skipped": 0,
+      "total": 5,
+      "verdict": "FAIL"
+    },
+    "shard-38-fault-actions": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "total": 4,
+      "verdict": "PASS"
+    },
+    "shard-39-wo-equipment": {
+      "passed": 4,
+      "failed": 1,
+      "skipped": 0,
+      "total": 5,
+      "verdict": "FAIL"
+    },
+    "shard-40-purchase-handover": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "total": 4,
+      "verdict": "PASS"
+    },
+    "shard-41-wo-extended": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "total": 11,
+      "verdict": "PASS"
+    },
+    "shard-42-fault-equipment": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "total": 3,
+      "verdict": "PASS"
+    },
+    "shard-43-docs-certs": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "total": 8,
+      "verdict": "PASS"
+    },
+    "shard-44-parts-shopping": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "total": 7,
+      "verdict": "PASS"
+    },
+    "shard-45-receiving-po": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "total": 7,
+      "verdict": "PASS"
+    },
+    "shard-46-hor-extended": {
+      "passed": 7,
+      "failed": 3,
+      "skipped": 0,
+      "total": 10,
+      "verdict": "FAIL"
+    },
+    "shard-47-handover-misc": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "total": 12,
+      "verdict": "PASS"
+    }
+  },
+  "failures": [
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders certificate detail + action button visible",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'DNV GL Class Certificate', exact: true }).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading', { name: '",
+      "duration_ms": 33009
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders certificate detail + action button visible",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'DNV GL Class Certificate', exact: true }).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading', { name: '",
+      "duration_ms": 32134
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders document detail + Archive button visible",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('button:has-text(\"Archive\")').first()\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 10000ms\n  - waiting for locator('button:has-text(\"Archive\")').first()\n",
+      "duration_ms": 23764
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders document detail + Archive button visible",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: locator('button:has-text(\"Archive\")').first()\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 10000ms\n  - waiting for locator('button:has-text(\"Archive\")').first()\n",
+      "duration_ms": 22373
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders equipment detail without crash",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'EQ_E2E_TEST_HVAC_Unit_1', exact: true }).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading', { name: 'E",
+      "duration_ms": 32526
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[HOD] add-equipment-note \u2192 200 + pms_equipment_notes write",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 401",
+      "duration_ms": 22732
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders equipment detail without crash",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'EQ_E2E_TEST_HVAC_Unit_1', exact: true }).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading', { name: 'E",
+      "duration_ms": 32093
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[Captain] add-equipment-note \u2192 200 + DB write",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 401",
+      "duration_ms": 23498
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders fault detail without crash",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'S33 HOD Render r-1773659873353-wdn17z', exact: true }).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('headin",
+      "duration_ms": 34245
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[HOD] acknowledge-fault \u2192 200 + status=investigating",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'S33 HOD Ack a-1773659908482-w9kiyt', exact: true }).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading',",
+      "duration_ms": 33296
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders fault detail without crash",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'S33 CAP Render r-1773659942648-hj7r4j', exact: true }).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('headin",
+      "duration_ms": 34269
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[Captain] acknowledge-fault \u2192 200 + status=investigating",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 401",
+      "duration_ms": 23250
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders inventory detail without crash",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'Raw Water Pump Seal Kit', exact: true }).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading', { name: 'R",
+      "duration_ms": 31765
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[HOD] check_stock_level \u2192 200 + valid stock_status in JSON",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 401",
+      "duration_ms": 22086
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders inventory detail without crash",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'Raw Water Pump Seal Kit', exact: true }).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading', { name: 'R",
+      "duration_ms": 32499
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[Captain] check_stock_level \u2192 200 + valid stock_status",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 401",
+      "duration_ms": 21925
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[Crew] check_stock_level \u2192 200 (read action, all roles permitted)",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 401",
+      "duration_ms": 22498
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders work-order detail without crash",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'S33 HOD Render r-1773660005481-1n3xwe', exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading', { na",
+      "duration_ms": 32643
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[HOD] add-note via UI \u2192 200 + pms_work_order_notes write",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'S33 HOD Note n-1773660038992-dlatco', exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading', { name",
+      "duration_ms": 33288
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[HOD] mark-complete \u2192 200 + pms_work_orders.status=completed",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 401",
+      "duration_ms": 24374
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[HOD] start-work-order \u2192 200 + status=in_progress",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 401",
+      "duration_ms": 25266
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "renders work-order detail without crash",
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('heading', { name: 'S33 CAP Render r-1773660124508-te2pj2', exact: true })\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 15000ms\n  - waiting for getByRole('heading', { na",
+      "duration_ms": 34260
+    },
+    {
+      "shard": "shard-33-lens-actions",
+      "test": "[Captain] add-note \u2192 200 + DB write",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 401",
+      "duration_ms": 23351
+    },
+    {
+      "shard": "shard-34-lens-actions",
+      "test": "[Captain] log_part_usage \u2192 200 + ledger row + quantity_on_hand decreased",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 400",
+      "duration_ms": 5849
+    },
+    {
+      "shard": "shard-37-hours-of-rest",
+      "test": "[Captain] upsert_hours_of_rest \u2192 200 + pms_hours_of_rest row",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 500",
+      "duration_ms": 5009
+    },
+    {
+      "shard": "shard-37-hours-of-rest",
+      "test": "[Captain] upsert_hours_of_rest (second date) \u2192 200 + compliance fields present",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 500",
+      "duration_ms": 5195
+    },
+    {
+      "shard": "shard-37-hours-of-rest",
+      "test": "[Captain] create_monthly_signoff \u2192 200 + pms_monthly_signoffs row",
+      "error": "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 500\nReceived array: [200, 409]",
+      "duration_ms": 3501
+    },
+    {
+      "shard": "shard-39-wo-equipment",
+      "test": "[Captain] update_equipment_status \u2192 200 + pms_equipment status updated",
+      "error": "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 500\nReceived array: [200, 400]",
+      "duration_ms": 2635
+    },
+    {
+      "shard": "shard-46-hor-extended",
+      "test": "create_crew_template \u2192 200 + template created",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 500",
+      "duration_ms": 1814
+    },
+    {
+      "shard": "shard-46-hor-extended",
+      "test": "upsert_hours_of_rest \u2192 check if SyncQueryRequestBuilder bug is fixed",
+      "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 200\nReceived: 500",
+      "duration_ms": 4575
+    },
+    {
+      "shard": "shard-46-hor-extended",
+      "test": "create_monthly_signoff \u2192 check if NoneType bug is fixed",
+      "error": "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 500\nReceived array: [200, 409]",
+      "duration_ms": 2451
+    }
+  ],
+  "skipped": [
+    {
+      "shard": "shard-34-lens-actions",
+      "test": "[Crew] close_fault \u2192 403 (RBAC)"
+    }
+  ],
+  "code_fixes_applied": [
+    "hours_of_rest_handlers.py: Removed json.dumps from 5 JSONB columns (rest_periods, 3 signatures, schedule_template)",
+    "hours_of_rest_handlers.py: Strengthened 3 null guards on create_monthly_signoff",
+    "pipeline_service.py: CORS middleware moved to outermost (last add_middleware)",
+    "useEntityActions.ts: PARTS_ACTIONS.logUsage changed from log_part_usage to consume_part",
+    "PartsLensContent.tsx: Added new_quantity + reason to countStock payload",
+    "HoursOfRestLensContent.tsx: Renamed Verify Record to Update Record",
+    "ShoppingListLensContent.tsx: Error swallowing replaced with console.error",
+    "CertificateLensContent.tsx: Added renewal_pending payload",
+    "WarrantyLensContent.tsx: Fixed equipment_id to use data.equipment_id",
+    "documents/[id]/page.tsx: Added pending_replacement payload",
+    "certificates/[id]/page.tsx: Added pending_link payload",
+    "useHandoverActions.ts: Removed unused useState import",
+    "Dockerfile: Fixed microaction_service to pipeline_service",
+    "docker-compose.yml: Added command override + master Supabase env vars"
+  ]
+}

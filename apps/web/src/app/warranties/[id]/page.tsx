@@ -10,10 +10,14 @@
  * @see REQUIREMENTS_TABLE.md - T1-WAR-02
  */
 
-import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { WarrantyLensContent } from '@/components/lens/WarrantyLensContent';
+import { WarrantyContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
+
+function LensContent() {
+  return <div className={lensStyles.root}><WarrantyContent /></div>;
+}
 
 export default function WarrantyDetailPage() {
   const params = useParams();
@@ -21,7 +25,7 @@ export default function WarrantyDetailPage() {
     <EntityLensPage
       entityType="warranty"
       entityId={params.id as string}
-      content={WarrantyLensContent}
+      content={LensContent}
     />
   );
 }

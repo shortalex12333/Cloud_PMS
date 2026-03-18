@@ -8,10 +8,14 @@
  * by EntityLensPage + useEntityLens.
  */
 
-import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { PurchaseOrderLensContent } from '@/components/lens/PurchaseOrderLensContent';
+import { PurchaseOrderContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
+
+function LensContent() {
+  return <div className={lensStyles.root}><PurchaseOrderContent /></div>;
+}
 
 export default function PurchaseOrderDetailPage() {
   const params = useParams();
@@ -19,7 +23,7 @@ export default function PurchaseOrderDetailPage() {
     <EntityLensPage
       entityType="purchase_order"
       entityId={params.id as string}
-      content={PurchaseOrderLensContent}
+      content={LensContent}
     />
   );
 }

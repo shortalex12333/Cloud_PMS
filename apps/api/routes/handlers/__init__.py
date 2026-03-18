@@ -23,10 +23,22 @@ from .document_handler import HANDLERS as DOC_HANDLERS
 from .handover_handler import HANDLERS as HAND_HANDLERS
 from .shopping_handler import HANDLERS as SHOP_HANDLERS
 from .pm_handler import HANDLERS as PM_HANDLERS
+from .wo_completion_handler import HANDLERS as WO_COMP_HANDLERS
+from .fault_handler import HANDLERS as FAULT_HANDLERS
+from .equipment_handler import HANDLERS as EQUIP_HANDLERS
+from .parts_handler_p5 import HANDLERS as PARTS_P5_HANDLERS
+from .checklist_handler import HANDLERS as CHECKLIST_HANDLERS
+from .compliance_handler import HANDLERS as COMPLIANCE_HANDLERS
 
 HANDLERS: dict = {
     **WO_HANDLERS, **PO_HANDLERS, **REC_HANDLERS,
     **CREW_HANDLERS, **HOR_HANDLERS,
     **CERT_HANDLERS, **DOC_HANDLERS, **HAND_HANDLERS,
     **SHOP_HANDLERS, **PM_HANDLERS,
+    **WO_COMP_HANDLERS,
+    **FAULT_HANDLERS,
+    **EQUIP_HANDLERS,
+    **PARTS_P5_HANDLERS,
+    **CHECKLIST_HANDLERS,
+    **COMPLIANCE_HANDLERS,
 }

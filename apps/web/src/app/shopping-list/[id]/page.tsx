@@ -9,10 +9,14 @@
  * @see REQUIREMENTS_TABLE.md - T1-SL-02
  */
 
-import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { ShoppingListLensContent } from '@/components/lens/ShoppingListLensContent';
+import { ShoppingListContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
+
+function LensContent() {
+  return <div className={lensStyles.root}><ShoppingListContent /></div>;
+}
 
 export default function ShoppingListDetailPage() {
   const params = useParams();
@@ -20,7 +24,7 @@ export default function ShoppingListDetailPage() {
     <EntityLensPage
       entityType="shopping_list"
       entityId={params.id as string}
-      content={ShoppingListLensContent}
+      content={LensContent}
     />
   );
 }

@@ -5,8 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { EntityList } from '@/features/entity-list/components/EntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { FaultLensContent } from '@/components/lens/FaultLensContent';
+import { FaultContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
 import { fetchFaults } from '@/features/faults/api';
+
+function LensContent() {
+  return <div className={lensStyles.root}><FaultContent /></div>;
+}
 import { faultToListResult } from '@/features/faults/adapter';
 import type { Fault } from '@/features/faults/types';
 
@@ -16,7 +21,7 @@ interface FaultDetailContentProps {
 }
 
 function FaultDetailContent({ id }: FaultDetailContentProps) {
-  return <EntityLensPage entityType="fault" entityId={id} content={FaultLensContent} />;
+  return <EntityLensPage entityType="fault" entityId={id} content={LensContent} />;
 }
 
 function FaultsPageContent() {

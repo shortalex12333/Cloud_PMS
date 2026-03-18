@@ -2,7 +2,12 @@
 
 import { useParams } from 'next/navigation';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { PartsLensContent } from '@/components/lens/PartsLensContent';
+import { PartsInventoryContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
+
+function LensContent() {
+  return <div className={lensStyles.root}><PartsInventoryContent /></div>;
+}
 
 export default function InventoryDetailPage() {
   const params = useParams();
@@ -10,7 +15,7 @@ export default function InventoryDetailPage() {
     <EntityLensPage
       entityType="part"
       entityId={params.id as string}
-      content={PartsLensContent}
+      content={LensContent}
     />
   );
 }

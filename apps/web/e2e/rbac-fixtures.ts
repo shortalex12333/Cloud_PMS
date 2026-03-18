@@ -71,6 +71,16 @@ type RBACFixtures = {
 
   // Cleanup helper
   cleanupTestData: (table: string, ids: string[]) => Promise<void>;
+
+  // Read-only getters (no insert, no cleanup needed)
+  getExistingEquipment: () => Promise<{ id: string; name: string }>;
+  getExistingPart: () => Promise<{ id: string; name: string; part_number: string | null }>;
+  getCrewUserId: () => Promise<string>;
+  getExistingDocument: () => Promise<{ id: string }>;
+  getExistingCertificate: () => Promise<{ id: string; certificate_name: string }>;
+  getExistingVesselCertificate: () => Promise<{ id: string }>;
+  getPartWithStock: () => Promise<{ id: string; name: string; quantity_on_hand: number }>;
+  getPartWithLocation: () => Promise<{ id: string; part_id: string; location: string; on_hand: number } | null>;
 };
 
 /**
@@ -404,6 +414,122 @@ export const test = base.extend<RBACFixtures>({
     };
 
     await use(verifyMutationDidNotOccur);
+  },
+
+  // Read-only: fetch first equipment from test yacht
+  getExistingEquipment: async ({ supabaseAdmin }, use) => {
+    await use(async () => {
+      const { data, error } = await supabaseAdmin
+        .from('pms_equipment')
+        .select('id, name')
+        .eq('yacht_id', RBAC_CONFIG.yachtId)
+        .is('deleted_at', null)
+        .limit(1)
+        .single();
+      if (error || !data) throw new Error(`getExistingEquipment: ${error?.message || 'no equipment found'}`);
+      return data as { id: string; name: string };
+    });
+  },
+
+  // Read-only: fetch first part from test yacht
+  getExistingPart: async ({ supabaseAdmin }, use) => {
+    await use(async () => {
+      const { data, error } = await supabaseAdmin
+        .from('pms_parts')
+        .select('id, name, part_number')
+        .eq('yacht_id', RBAC_CONFIG.yachtId)
+        .is('deleted_at', null)
+        .limit(1)
+        .single();
+      if (error || !data) throw new Error(`getExistingPart: ${error?.message || 'no parts found'}`);
+      return data as { id: string; name: string; part_number: string | null };
+    });
+  },
+
+  // Crew user: exists in MASTER DB, has role='crew' in auth_users_roles for test yacht.
+  // Using captain UUID returns 200 (captain is allowed); this UUID returns FORBIDDEN.
+  getCrewUserId: async ({}, use) => {
+    await use(async () => '05a54017-4749-49e8-a865-cb7fd7d2b0c3');
+  },
+
+  // Read-only: fetch first document from test yacht
+  getExistingDocument: async ({ supabaseAdmin }, use) => {
+    await use(async () => {
+      const { data, error } = await supabaseAdmin
+        .from('doc_metadata')
+        .select('id')
+        .eq('yacht_id', RBAC_CONFIG.yachtId)
+        .is('deleted_at', null)
+        .limit(1)
+        .single();
+      if (error || !data) {
+        // Documents may not be seeded — signal caller to skip
+        throw new Error(`SKIP: no documents found in test environment (${error?.message ?? 'no rows'})`);
+      }
+      return data as { id: string };
+    });
+  },
+
+  // Read-only: fetch first vessel certificate from test yacht
+  getExistingCertificate: async ({ supabaseAdmin }, use) => {
+    await use(async () => {
+      const { data, error } = await supabaseAdmin
+        .from('pms_vessel_certificates')
+        .select('id, certificate_name')
+        .eq('yacht_id', RBAC_CONFIG.yachtId)
+        .limit(1)
+        .single();
+      if (error || !data) throw new Error(`getExistingCertificate: ${error?.message || 'no certificates found'}`);
+      return data as { id: string; certificate_name: string };
+    });
+  },
+
+  // Read-only: fetch first vessel certificate (used by shard-34 update/supersede tests)
+  // Excludes superseded certificates — the update_certificate handler rejects them with 500.
+  getExistingVesselCertificate: async ({ supabaseAdmin }, use) => {
+    await use(async () => {
+      const { data, error } = await supabaseAdmin
+        .from('pms_vessel_certificates')
+        .select('id')
+        .eq('yacht_id', RBAC_CONFIG.yachtId)
+        .neq('status', 'superseded')
+        .limit(1)
+        .single();
+      if (error || !data) throw new Error(`getExistingVesselCertificate: ${error?.message || 'no non-superseded vessel certificates found'}`);
+      return data as { id: string };
+    });
+  },
+
+  // Read-only: fetch first part with quantity_on_hand >= 2 (for log_part_usage tests)
+  getPartWithStock: async ({ supabaseAdmin }, use) => {
+    await use(async () => {
+      const { data, error } = await supabaseAdmin
+        .from('pms_parts')
+        .select('id, name, quantity_on_hand')
+        .eq('yacht_id', RBAC_CONFIG.yachtId)
+        .is('deleted_at', null)
+        .gte('quantity_on_hand', 2)
+        .limit(1)
+        .single();
+      if (error || !data) throw new Error(`getPartWithStock: ${error?.message || 'no parts with stock >= 2 found'}`);
+      return data as { id: string; name: string; quantity_on_hand: number };
+    });
+  },
+
+  // Read-only: fetch a pms_part_stock row with a location set (for transfer_part tests)
+  getPartWithLocation: async ({ supabaseAdmin }, use) => {
+    await use(async () => {
+      const { data } = await supabaseAdmin
+        .from('pms_part_stock')
+        .select('id, part_id, location, on_hand')
+        .eq('yacht_id', RBAC_CONFIG.yachtId)
+        .not('location', 'is', null)
+        .gt('on_hand', 0)
+        .limit(1)
+        .single();
+      if (!data) return null;
+      return data as { id: string; part_id: string; location: string; on_hand: number };
+    });
   },
 
   // Cleanup test data

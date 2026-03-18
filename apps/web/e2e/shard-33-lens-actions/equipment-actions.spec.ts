@@ -28,7 +28,7 @@ test.describe('[HOD] Equipment lens actions', () => {
     await hodPage.goto(`${BASE_URL}/equipment/${eq.id}`);
     await hodPage.waitForLoadState('domcontentloaded');
 
-    await expect(hodPage.getByRole('heading', { name: eq.name, exact: true }).first())
+    await expect(hodPage.getByRole('heading', { name: eq.name }).first())
       .toBeVisible({ timeout: 15_000 });
     await assertNoRenderCrash(hodPage);
   });
@@ -94,7 +94,7 @@ test.describe('[Captain] Equipment lens actions', () => {
     await captainPage.goto(`${BASE_URL}/equipment/${eq.id}`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    await expect(captainPage.getByRole('heading', { name: eq.name, exact: true }).first())
+    await expect(captainPage.getByRole('heading', { name: eq.name }).first())
       .toBeVisible({ timeout: 15_000 });
     await assertNoRenderCrash(captainPage);
   });

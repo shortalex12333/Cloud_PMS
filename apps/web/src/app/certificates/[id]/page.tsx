@@ -1,9 +1,13 @@
 'use client';
 
-import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { CertificateLensContent } from '@/components/lens/CertificateLensContent';
+import { CertificateContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
+
+function LensContent() {
+  return <div className={lensStyles.root}><CertificateContent /></div>;
+}
 
 export default function CertificateDetailPage() {
   const params = useParams();
@@ -11,7 +15,7 @@ export default function CertificateDetailPage() {
     <EntityLensPage
       entityType="certificate"
       entityId={params.id as string}
-      content={CertificateLensContent}
+      content={LensContent}
     />
   );
 }

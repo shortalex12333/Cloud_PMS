@@ -100,7 +100,7 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        r = supabase.table("pms_certificates").select("*") \
+        r = supabase.table("pms_vessel_certificates").select("*") \
             .eq("id", certificate_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
         if not r or not r.data:
@@ -881,7 +881,7 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
             .select('*') \
             .eq('id', receiving_id) \
             .eq('yacht_id', yacht_id) \
-            .single() \
+            .maybe_single() \
             .execute()
 
         if not response.data:

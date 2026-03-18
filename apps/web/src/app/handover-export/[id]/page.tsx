@@ -2,7 +2,12 @@
 
 import { use } from 'react';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { HandoverExportLensContent } from '@/components/lens/HandoverExportLensContent';
+import { HandoverContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
+
+function LensContent() {
+  return <div className={lensStyles.root}><HandoverContent /></div>;
+}
 
 export default function HandoverExportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -10,7 +15,7 @@ export default function HandoverExportPage({ params }: { params: Promise<{ id: s
     <EntityLensPage
       entityType="handover_export"
       entityId={id}
-      content={HandoverExportLensContent}
+      content={LensContent}
     />
   );
 }

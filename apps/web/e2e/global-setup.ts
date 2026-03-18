@@ -19,9 +19,16 @@ import * as crypto from 'crypto';
 const AUTH_DIR = path.join(__dirname, '../playwright/.auth');
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:3000';
 
-// Supabase project ref — extracted from NEXT_PUBLIC_SUPABASE_URL or hardcoded.
-// The localStorage key is `sb-{ref}-auth-token`.
-const SUPABASE_PROJECT_REF = 'vzsohavtuotocgrfkfyd';
+// Supabase project ref — derived from the frontend's NEXT_PUBLIC_SUPABASE_URL.
+// This must match whatever project the running frontend is connected to, because
+// the Supabase SDK looks for `sb-{ref}-auth-token` in localStorage.
+//
+// Local dev  (localhost:3001): NEXT_PUBLIC_SUPABASE_URL = vzsohavtuotocgrfkfyd → TENANT project
+// Production (app.celeste7.ai): build uses qvzmkaamzaqxpzbewjxe  → MASTER project
+//
+// Pass NEXT_PUBLIC_SUPABASE_URL as an env var or it defaults to the tenant URL.
+const _supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzsohavtuotocgrfkfyd.supabase.co';
+const SUPABASE_PROJECT_REF = new URL(_supabaseUrl).hostname.split('.')[0];
 const STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
 
 // Captain user — all roles currently map to this user (see STAGE_3_HANDOVER.md §8)
@@ -46,7 +53,7 @@ function mintJwt(sub: string, email: string, expiresInSeconds = 8 * 3600): strin
   const payload = b64url({
     sub, aud: 'authenticated', role: 'authenticated',
     email, iat: now, exp: now + expiresInSeconds,
-    iss: `https://${SUPABASE_PROJECT_REF}.supabase.co/auth/v1`,
+    iss: `${_supabaseUrl}/auth/v1`,
   });
   const sig = crypto.createHmac('sha256', secretBytes)
     .update(`${header}.${payload}`).digest('base64url');
@@ -102,7 +109,7 @@ async function globalSetup() {
   }
 
   if (jwt) {
-    console.log(`[global-setup] Auth state written for captain/hod/crew/user (JWT valid 8h)`);
+    console.log(`[global-setup] Auth state written for captain/hod/crew/user (JWT valid 8h, project: ${SUPABASE_PROJECT_REF})`);
   } else {
     console.log(`[global-setup] Empty auth state — SUPABASE_JWT_SECRET not set`);
   }

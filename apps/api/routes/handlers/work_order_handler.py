@@ -134,13 +134,13 @@ async def add_wo_hours(
     hours = payload.get("hours", 0)
 
     # Add to work order notes as hours entry
-    # Note: created_by is NOT NULL, use existing tenant user ID
+    # Note: created_by is NOT NULL, use authenticated user_id
     # Note: note_type must be 'general' or 'progress'
     note_data = {
         "work_order_id": work_order_id,
         "note_text": f"Hours logged: {hours}h - {payload.get('description', 'Work performed')}",
         "note_type": "progress",
-        "created_by": _LEGACY_TENANT_USER_ID,
+        "created_by": user_id,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
@@ -210,7 +210,7 @@ async def add_wo_note(
     work_order_id = payload.get("work_order_id")
     note_text = payload.get("note_text")
 
-    # Note: created_by is NOT NULL, use existing tenant user ID
+    # Note: created_by is NOT NULL, use authenticated user_id
     # Note: note_type must be 'general' or 'progress'
     # Note: pms_work_order_notes does NOT have yacht_id column - ledger trigger fetches it from parent WO
     raw_note_type = payload.get("note_type", "general")
@@ -219,7 +219,7 @@ async def add_wo_note(
         "work_order_id": work_order_id,
         "note_text": note_text,
         "note_type": note_type,
-        "created_by": _LEGACY_TENANT_USER_ID,
+        "created_by": user_id,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()

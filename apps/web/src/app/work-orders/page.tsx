@@ -7,8 +7,13 @@ import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDet
 import { fetchWorkOrders } from '@/features/work-orders/api';
 import { workOrderToListResult } from '@/features/work-orders/adapter';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { WorkOrderLensContent } from '@/components/lens/WorkOrderLensContent';
+import { WorkOrderContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
 import type { WorkOrder } from '@/features/work-orders/types';
+
+function LensContent() {
+  return <div className={lensStyles.root}><WorkOrderContent /></div>;
+}
 
 // Main page content
 function WorkOrdersPageContent() {
@@ -58,7 +63,7 @@ function WorkOrdersPageContent() {
           <EntityLensPage
             entityType="work_order"
             entityId={selectedId}
-            content={WorkOrderLensContent}
+            content={LensContent}
           />
         )}
       </EntityDetailOverlay>

@@ -5,8 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { EntityList } from '@/features/entity-list/components/EntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
-import { EquipmentLensContent } from '@/components/lens/EquipmentLensContent';
+import { EquipmentContent } from '@/components/lens-v2/entity';
+import lensStyles from '@/components/lens-v2/lens.module.css';
 import { fetchEquipment } from '@/features/equipment/api';
+
+function LensContent() {
+  return <div className={lensStyles.root}><EquipmentContent /></div>;
+}
 import { equipmentToListResult } from '@/features/equipment/adapter';
 import type { Equipment } from '@/features/equipment/types';
 
@@ -42,7 +47,7 @@ function EquipmentPageContent() {
           <EntityLensPage
             entityType="equipment"
             entityId={selectedId}
-            content={EquipmentLensContent}
+            content={LensContent}
           />
         )}
       </EntityDetailOverlay>

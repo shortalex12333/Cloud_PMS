@@ -252,6 +252,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         domain="work_orders",
         variant=ActionVariant.MUTATE,
         search_keywords=["add", "note", "comment", "work", "order", "wo"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("work_order_id", FieldClassification.REQUIRED, auto_populate_from="work_order", lookup_required=True),
+            FieldMetadata("note_text", FieldClassification.REQUIRED),
+        ],
     ),
 
     "start_work_order": ActionDefinition(
@@ -483,7 +488,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/equipment/add-note",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["deckhand", "steward", "chef", "bosun", "engineer", "eto",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
                        "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
         required_fields=["yacht_id", "equipment_id", "text"],
         domain="equipment",
