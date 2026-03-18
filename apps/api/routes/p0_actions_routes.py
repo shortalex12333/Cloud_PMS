@@ -1225,14 +1225,27 @@ async def execute_action(
     if action in _ACTION_HANDLERS:
         tenant_alias = user_context.get("tenant_key_alias", "")
         db_client = get_tenant_supabase_client(tenant_alias)
-        return await _ACTION_HANDLERS[action](
-            payload=payload,
-            context=resolved_context,
-            yacht_id=yacht_id,
-            user_id=user_id,
-            user_context=user_context,
-            db_client=db_client,
-        )
+        try:
+            return await _ACTION_HANDLERS[action](
+                payload=payload,
+                context=resolved_context,
+                yacht_id=yacht_id,
+                user_id=user_id,
+                user_context=user_context,
+                db_client=db_client,
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Handler error for action '{action}': {e}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "status": "error",
+                    "error_code": "HANDLER_ERROR",
+                    "message": str(e),
+                }
+            )
 
     # Legacy elif chain — handles all actions not yet migrated to HANDLERS
     try:

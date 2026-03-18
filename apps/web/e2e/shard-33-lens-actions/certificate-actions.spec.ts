@@ -27,13 +27,13 @@ test.describe('[HOD] Certificate lens actions', () => {
       .toBeVisible({ timeout: 15_000 });
     await assertNoRenderCrash(hodPage);
 
-    const uploadVisible = await hodPage.locator('button:has-text("Upload Document")').first()
-      .isVisible().catch(() => false);
-    const reminderVisible = await hodPage.locator('button:has-text("Set Reminder")').first()
+    // Primary action button or dropdown trigger — always visible if actions are available.
+    // "Upload Document" and "Set Reminder" live inside the dropdown (hidden by default).
+    const primaryVisible = await hodPage.locator('button:has-text("Renew Certificate"), button:has-text("Upload Renewed"), button:has-text("More actions"), button:has-text("Update Certificate"), button:has-text("Link Document")').first()
       .isVisible().catch(() => false);
 
-    expect(uploadVisible || reminderVisible).toBe(true);
-    console.log(`✅ HOD: cert ${cert.id} renders. Upload=${uploadVisible} Reminder=${reminderVisible}`);
+    expect(primaryVisible).toBe(true);
+    console.log(`✅ HOD: cert ${cert.id} renders. Primary action visible=${primaryVisible}`);
   });
 });
 
@@ -51,13 +51,11 @@ test.describe('[Captain] Certificate lens actions', () => {
       .toBeVisible({ timeout: 15_000 });
     await assertNoRenderCrash(captainPage);
 
-    const uploadVisible = await captainPage.locator('button:has-text("Upload Document")').first()
-      .isVisible().catch(() => false);
-    const reminderVisible = await captainPage.locator('button:has-text("Set Reminder")').first()
+    const primaryVisible = await captainPage.locator('button:has-text("Renew Certificate"), button:has-text("Upload Renewed"), button:has-text("More actions"), button:has-text("Update Certificate"), button:has-text("Link Document")').first()
       .isVisible().catch(() => false);
 
-    expect(uploadVisible || reminderVisible).toBe(true);
-    console.log(`✅ Captain: cert ${cert.id} renders. Upload=${uploadVisible} Reminder=${reminderVisible}`);
+    expect(primaryVisible).toBe(true);
+    console.log(`✅ Captain: cert ${cert.id} renders. Primary action visible=${primaryVisible}`);
   });
 });
 
