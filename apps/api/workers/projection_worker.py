@@ -262,7 +262,13 @@ METRICS = Metrics()
 MAPPINGS: Dict[str, Dict] = {}
 
 def load_mappings(cur) -> None:
-    """Load projection mappings from search_projection_map."""
+    """
+    Load projection mappings from search_projection_map.
+
+    NOTE: search_text_cols is loaded but no longer used for building search_text —
+    that is now handled by entity_serializer_sync.py. The column remains because
+    filter_map and payload_map are still read from the same table.
+    """
     global MAPPINGS
     cur.execute("""
         SELECT domain, source_table, object_type, search_text_cols, filter_map, payload_map

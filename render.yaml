@@ -54,7 +54,7 @@ services:
       - key: EMAIL_WATCHER_ENABLED
         value: "true"
       - key: EMAIL_WATCHER_POLL_INTERVAL
-        value: "60"
+        value: "30"
       - key: EMAIL_WATCHER_BATCH_SIZE
         value: "10"
       - key: SUPABASE_URL
@@ -66,69 +66,84 @@ services:
       - key: MICROSOFT_CLIENT_SECRET_READ
         sync: false
 
-  # Documents Health Worker - Lens Ops Monitoring
+  # NOTE: documents-health-worker and shopping-list-health-worker removed.
+  # Python files don't exist yet (base class at tools/ops/monitors/base_health_monitor.py).
+  # Re-add when implemented. Saves $14/month.
+
+  # ============================================================================
+  # Projection Worker - CDC -> search_index.search_text
+  # ============================================================================
+  # LAW 9: Only writes search_text, never touches learned_keywords or embeddings
+  # Uses Supavisor pooler port 6543 for connection pooling
+  #
   - type: worker
-    name: documents-health-worker
+    name: celeste-projection-worker
     runtime: python
     plan: starter
     region: oregon
     branch: main
-    buildCommand: pip install requests PyJWT
-    startCommand: python tools/ops/monitors/documents_health_worker.py
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: cd apps/api && python -m workers.projection_worker
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.6"
-      - key: HEALTH_CHECK_INTERVAL_MINUTES
-        value: "15"
-      - key: API_BASE_URL
-        value: "https://celeste-pipeline-v1.onrender.com"
-      - key: TENANT_SUPABASE_URL
-        value: "https://vzsohavtuotocgrfkfyd.supabase.co"
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
-      - key: TENANT_SUPABASE_JWT_SECRET
-        sync: false
-      - key: TEST_YACHT_ID
-        value: "85fe1119-b04c-41ac-80f1-829d23322598"
-      - key: TEST_HOD_USER_ID
-        value: "05a488fd-e099-4d18-bf86-d87afba4fcdf"
-      - key: TEST_HOD_EMAIL
-        value: "hod.test@alex-short.com"
+      - key: F1_PROJECTION_WORKER_ENABLED
+        value: "true"
+      - key: DATABASE_URL
+        sync: false  # Set in Render dashboard - Supavisor pooler port 6543
       - key: LOG_LEVEL
         value: "INFO"
 
-  # Shopping List Health Worker - Lens Ops Monitoring
+  # ============================================================================
+  # Embedding Worker - search_text -> 1536-dim vectors
+  # ============================================================================
+  # LAW 9: Only writes embedding_1536, never touches search_text or learned_keywords
+  # Circuit breaker: 5 consecutive failures -> 60s pause
+  #
   - type: worker
-    name: shopping-list-health-worker
+    name: celeste-embedding-worker
     runtime: python
     plan: starter
     region: oregon
     branch: main
-    buildCommand: pip install requests PyJWT
-    startCommand: python tools/ops/monitors/shopping_list_health_worker.py
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: cd apps/api && python -m workers.embedding_worker_1536
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.6"
-      - key: HEALTH_CHECK_INTERVAL_MINUTES
-        value: "15"
-      - key: API_BASE_URL
-        value: "https://celeste-pipeline-v1.onrender.com"
-      - key: TENANT_SUPABASE_URL
-        value: "https://vzsohavtuotocgrfkfyd.supabase.co"
-      - key: SUPABASE_SERVICE_KEY
+      - key: DATABASE_URL
+        sync: false  # Set in Render dashboard - Supavisor pooler port 6543
+      - key: OPENAI_API_KEY
         sync: false
-      - key: TENANT_SUPABASE_JWT_SECRET
+      - key: EMBED_MODEL
+        value: "text-embedding-3-small"
+      - key: EMBED_DIMS
+        value: "1536"
+
+  # ============================================================================
+  # Cache Invalidation Listener - pg_notify -> Redis eviction
+  # ============================================================================
+  # Listens for f1_cache_invalidate notifications and evicts stale Redis keys
+  # Uses direct port 5432 (not pooler) for LISTEN/NOTIFY support
+  #
+  - type: worker
+    name: celeste-cache-listener
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: cd apps/api && python -m cache.invalidation_listener
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.6"
+      - key: READ_DB_DSN
+        sync: false  # Set in Render dashboard - direct port 5432
+      - key: REDIS_URL
         sync: false
-      - key: TEST_YACHT_ID
-        value: "85fe1119-b04c-41ac-80f1-829d23322598"
-      - key: TEST_HOD_USER_ID
-        value: "05a488fd-e099-4d18-bf86-d87afba4fcdf"
-      - key: TEST_HOD_EMAIL
-        value: "hod.test@alex-short.com"
-      - key: LOG_LEVEL
-        value: "INFO"
 
   # ============================================================================
   # Nightly Counterfactual Feedback Loop - Self-Healing Search
