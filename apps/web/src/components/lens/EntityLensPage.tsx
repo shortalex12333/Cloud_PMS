@@ -246,7 +246,7 @@ export function EntityLensPage({
   } else {
     bodyContent = (
       <EntityLensProvider value={contextValue}>
-        <div className="max-w-3xl mx-auto p-6 space-y-6">
+        <div className="mx-auto px-10 py-6 space-y-6" style={{ maxWidth: '720px' }}>
           <Content />
           {/* Shell action bar — lifecycle, entity, and compliance actions */}
           {shellActions.length > 0 && (
@@ -308,9 +308,9 @@ export function EntityLensPage({
                 <p className="text-xs text-white/40 uppercase tracking-wider">
                   {entityType.replace(/_/g, ' ')}
                 </p>
-                <h1 className="text-lg font-semibold text-white truncate max-w-md">
+                <p className="text-lg font-semibold text-white truncate max-w-md">
                   {entityTitle}
-                </h1>
+                </p>
               </div>
             </div>
             <ShowRelatedButton

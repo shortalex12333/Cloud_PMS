@@ -1,4 +1,4 @@
-// @ts-nocheck - Phase 4: Type compatibility with action payload
+// apps/web/src/components/actions/modals/CreateWorkOrderModal.tsx
 /**
  * CreateWorkOrderModal Component
  *
@@ -40,7 +40,8 @@ import { toast } from 'sonner';
 const workOrderSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']),
+  priority: z.enum(['routine', 'important', 'critical']),
+  type: z.enum(['scheduled', 'corrective', 'unplanned']),
   equipment_id: z.string().optional(),
   fault_id: z.string().optional(),
   assigned_to: z.string().optional(),
@@ -83,13 +84,15 @@ export function CreateWorkOrderModal({
     defaultValues: {
       title: context.suggested_title || '',
       description: context.fault_description || '',
-      priority: 'medium',
+      priority: 'routine',
+      type: 'corrective',
       equipment_id: context.equipment_id || '',
       fault_id: context.fault_id || '',
     },
   });
 
   const priority = watch('priority');
+  const woType = watch('type');
 
   // Reset form when modal opens
   useEffect(() => {
@@ -97,7 +100,8 @@ export function CreateWorkOrderModal({
       reset({
         title: context.suggested_title || '',
         description: context.fault_description || '',
-        priority: 'medium',
+        priority: 'routine',
+        type: 'corrective',
         equipment_id: context.equipment_id || '',
         fault_id: context.fault_id || '',
       });
@@ -114,8 +118,9 @@ export function CreateWorkOrderModal({
           description: `Work order "${data.title}" has been created.`,
         });
         onOpenChange(false);
-        if (onSuccess && response.data?.work_order_id) {
-          onSuccess(response.data.work_order_id);
+        const respData = response.data as Record<string, unknown> | undefined;
+        if (onSuccess && respData?.work_order_id) {
+          onSuccess(String(respData.work_order_id));
         }
       }
     } catch (error) {
@@ -189,15 +194,42 @@ export function CreateWorkOrderModal({
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectItem value="routine">Routine</SelectItem>
+                <SelectItem value="important">Important</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
               </SelectContent>
             </Select>
             {errors.priority && (
               <p className="typo-body text-destructive">
                 {errors.priority.message}
+              </p>
+            )}
+          </div>
+
+          {/* Type */}
+          <div className="space-y-2">
+            <Label htmlFor="type">
+              Type <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={woType}
+              onValueChange={(value) =>
+                setValue('type', value as WorkOrderFormData['type'])
+              }
+              disabled={isLoading}
+            >
+              <SelectTrigger id="type">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="corrective">Corrective</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="unplanned">Unplanned</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.type && (
+              <p className="typo-body text-destructive">
+                {errors.type.message}
               </p>
             )}
           </div>
