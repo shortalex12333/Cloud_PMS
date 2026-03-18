@@ -232,6 +232,17 @@ export default defineConfig({
       },
     },
     // =========================================================================
+    // SHARD 33: Lens Actions (Stage 3 action mutation suite — Part 1)
+    // =========================================================================
+    {
+      name: 'shard-33-lens-actions',
+      testDir: './e2e/shard-33-lens-actions',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // =========================================================================
+    // SHARD 34: Lens Actions (Stage 3 action mutation suite — Part 2, helpers)
+    // =========================================================================
     {
       name: 'shard-34-lens-actions',
       testDir: './e2e/shard-34-lens-actions',
@@ -239,6 +250,87 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
       },
+    },
+    // =========================================================================
+    // SHARDS 35–47: Stage 3 domain action tests (Phase 4/5 migration coverage)
+    // =========================================================================
+    {
+      name: 'shard-35-shopping-parts',
+      testDir: './e2e/shard-35-shopping-parts',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-36-receiving',
+      testDir: './e2e/shard-36-receiving',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-37-hours-of-rest',
+      testDir: './e2e/shard-37-hours-of-rest',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-38-fault-actions',
+      testDir: './e2e/shard-38-fault-actions',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-39-wo-equipment',
+      testDir: './e2e/shard-39-wo-equipment',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-40-purchase-handover',
+      testDir: './e2e/shard-40-purchase-handover',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-41-wo-extended',
+      testDir: './e2e/shard-41-wo-extended',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-42-fault-equipment',
+      testDir: './e2e/shard-42-fault-equipment',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-43-docs-certs',
+      testDir: './e2e/shard-43-docs-certs',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-44-parts-shopping',
+      testDir: './e2e/shard-44-parts-shopping',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-45-receiving-po',
+      testDir: './e2e/shard-45-receiving-po',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-46-hor-extended',
+      testDir: './e2e/shard-46-hor-extended',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'shard-47-handover-misc',
+      testDir: './e2e/shard-47-handover-misc',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 

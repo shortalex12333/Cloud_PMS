@@ -540,12 +540,18 @@ class RelatedHandlers:
     async def _get_explicit_links(
         self, yacht_id: str, entity_type: str, entity_id: str, limit: int
     ) -> Optional[Dict]:
-        """Query 6: Explicit links from pms_entity_links."""
+        """Query 6: Explicit links from pms_entity_links (bidirectional).
+
+        GAP-06 fix: query both directions — entity as source OR as target.
+        A→B links must appear in B's panel, so we check target columns too.
+        """
         items = []
+        seen_ids: set = set()
         try:
             # pms_entity_links has NO deleted_at (hard delete only)
-            # Get links where this entity is the source
-            result = self.db.table("pms_entity_links").select(
+
+            # Direction 1: entity is the source
+            result_source = self.db.table("pms_entity_links").select(
                 "id, target_entity_type, target_entity_id, link_type, note, created_at"
             ).eq("yacht_id", yacht_id).eq(
                 "source_entity_type", entity_type
@@ -553,14 +559,44 @@ class RelatedHandlers:
                 "created_at", desc=True
             ).limit(limit).execute()
 
-            if result.data:
-                for link in result.data:
+            if result_source.data:
+                for link in result_source.data:
+                    link_id = link["id"]
+                    if link_id in seen_ids:
+                        continue
+                    seen_ids.add(link_id)
                     items.append({
                         "entity_id": link["target_entity_id"],
                         "entity_type": link["target_entity_type"],
                         "title": link.get("note") or "Manually linked",
                         "subtitle": link.get("created_at", "")[:10] if link.get("created_at") else "",
-                        "link_id": link["id"],
+                        "link_id": link_id,
+                        "match_reasons": [f"explicit_link:{link.get('link_type', 'related')}"],
+                        "weight": 70,
+                        "open_action": "focus"
+                    })
+
+            # Direction 2: entity is the target (GAP-06 fix)
+            result_target = self.db.table("pms_entity_links").select(
+                "id, source_entity_type, source_entity_id, link_type, note, created_at"
+            ).eq("yacht_id", yacht_id).eq(
+                "target_entity_type", entity_type
+            ).eq("target_entity_id", entity_id).order(
+                "created_at", desc=True
+            ).limit(limit).execute()
+
+            if result_target.data:
+                for link in result_target.data:
+                    link_id = link["id"]
+                    if link_id in seen_ids:
+                        continue
+                    seen_ids.add(link_id)
+                    items.append({
+                        "entity_id": link["source_entity_id"],
+                        "entity_type": link["source_entity_type"],
+                        "title": link.get("note") or "Manually linked",
+                        "subtitle": link.get("created_at", "")[:10] if link.get("created_at") else "",
+                        "link_id": link_id,
                         "match_reasons": [f"explicit_link:{link.get('link_type', 'related')}"],
                         "weight": 70,
                         "open_action": "focus"

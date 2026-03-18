@@ -62,7 +62,7 @@ class AddEntityLinkRequest(BaseModel):
     source_entity_id: UUID = Field(..., description="Source entity UUID")
     target_entity_type: str = Field(..., description="Target entity type")
     target_entity_id: UUID = Field(..., description="Target entity UUID")
-    link_type: str = Field(default="explicit", description="Link type")
+    link_type: str = Field(default="related", description="Link type (default: 'related')")
     note: Optional[str] = Field(default=None, description="Optional note")
 
 

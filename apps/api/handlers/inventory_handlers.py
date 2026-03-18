@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from actions.action_response_schema import ResponseBuilder
+from routes.handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 
@@ -530,6 +531,24 @@ class InventoryHandlers:
                 }).execute()
             except Exception as e:
                 logger.warning(f"Failed to create audit log: {e}")
+
+            # Write ledger_events row (same pattern as fault/WO handlers)
+            try:
+                self.db.table("ledger_events").insert(build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="create",
+                    entity_type="part",
+                    entity_id=part_id,
+                    action="log_part_usage",
+                    user_role="",
+                    change_summary=f"Used {quantity} of part",
+                    actor_name="",
+                    department="",
+                    event_category="write",
+                )).execute()
+            except Exception as e:
+                logger.warning(f"[Ledger] log_part_usage ledger write failed: {e}")
 
             # Build response
             return ResponseBuilder.success(
