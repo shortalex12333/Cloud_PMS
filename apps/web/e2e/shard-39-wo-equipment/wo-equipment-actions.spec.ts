@@ -135,6 +135,9 @@ test.describe('[Captain] update_equipment_status — HARD PROOF', () => {
 
     // ADVISORY: equipment may be in terminal 'decommissioned' state → 400
     // Accept 200 (success) or 400 (invalid status transition from terminal state)
+    // REMOVE THIS ADVISORY WHEN: getExistingEquipment fixture returns equipment in a
+    // non-terminal state (not 'decommissioned'), or the test seeds a fresh equipment record.
+    // Tighten to: expect(result.status).toBe(200) + verify pms_equipment.status=operational.
     expect([200, 400]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string; new_status?: string };
@@ -245,6 +248,9 @@ test.describe('[Captain] delete_shopping_item — HARD PROOF', () => {
 
     // ADVISORY: backend has unbound 'user_role' variable bug → 500
     // Accept 200 (if fixed) or 500 (current backend bug state)
+    // REMOVE THIS ADVISORY WHEN: delete_shopping_item handler no longer references the unbound
+    // user_role variable (NameError in Python handler resolved).
+    // Tighten to: expect(result.status).toBe(200) + verify item removed from pms_shopping_list_items.
     expect([200, 500]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string };

@@ -55,6 +55,10 @@ test.describe('[Captain] get_document_url — HARD PROOF', () => {
     // ADVISORY: Physical file may not exist in storage for test documents → 404.
     // Backend may return HTTP 200 with success:false when file is missing in storage.
     // Accept 200 (file exists), 200+success:false (missing file), or 404 HTTP error.
+    // REMOVE THIS ADVISORY WHEN: get_document_url returns HTTP 404 (not HTTP 200 with
+    // success:false) when the physical file is absent from storage, AND test environment
+    // seeds at least one document with an actual file in storage.
+    // Tighten to: expect(result.status).toBe(200) + expect(data.status).toBe('success').
     expect([200, 404]).toContain(result.status);
     const data = result.data as { success?: boolean; status?: string; url?: string; signed_url?: string };
     if (result.status === 200 && data.success !== false) {
@@ -138,6 +142,9 @@ test.describe('[Captain] add_document_comment — HARD PROOF', () => {
 
     // ADVISORY: Document comment actions are migrated to action_router (p0_actions_routes.py:6058-6064).
     // They may return INVALID_ACTION via /v1/actions/execute. Accept 200 or 400/500.
+    // REMOVE THIS ADVISORY WHEN: add_document_comment is registered in the action_router and
+    // successfully routes through /v1/actions/execute (no longer returns INVALID_ACTION).
+    // Tighten to: expect(result.status).toBe(200) + expect(data.status).toBe('success').
     expect([200, 400, 500]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string; success?: boolean };
@@ -178,6 +185,8 @@ test.describe('[Captain] list_document_comments — HARD PROOF', () => {
     console.log(`[JSON] list_document_comments: ${JSON.stringify(result.data)}`);
 
     // ADVISORY: Migrated to action_router — may return INVALID_ACTION
+    // REMOVE THIS ADVISORY WHEN: list_document_comments routes through /v1/actions/execute.
+    // Tighten to: expect(result.status).toBe(200) + verify comments array returned.
     expect([200, 400, 500]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string; comments?: unknown[]; success?: boolean; data?: { comments?: unknown[] } };
@@ -213,6 +222,8 @@ test.describe('[Captain] update_document_comment — HARD PROOF', () => {
     await captainPage.waitForLoadState('domcontentloaded');
 
     // ADVISORY: Document comment actions migrated to action_router — may not route via /v1/actions/execute
+    // REMOVE THIS ADVISORY WHEN: update_document_comment routes through /v1/actions/execute.
+    // Tighten to: remove the skip guard, expect(result.status).toBe(200).
     const addResult = await callActionDirect(captainPage, 'add_document_comment', {
       document_id: doc.id,
       comment: `S43 update target ${generateTestId('ut')}`,
@@ -267,6 +278,8 @@ test.describe('[Captain] delete_document_comment — HARD PROOF', () => {
     await captainPage.waitForLoadState('domcontentloaded');
 
     // ADVISORY: Document comment actions migrated to action_router
+    // REMOVE THIS ADVISORY WHEN: delete_document_comment routes through /v1/actions/execute.
+    // Tighten to: remove the skip guard, expect(result.status).toBe(200).
     const addResult = await callActionDirect(captainPage, 'add_document_comment', {
       document_id: doc.id,
       comment: `S43 delete target ${generateTestId('del')}`,
@@ -383,6 +396,9 @@ test.describe('[Captain] link_document_to_certificate — HARD PROOF', () => {
 
     // ADVISORY: cert handler may look up in pms_vessel_certificates while fixture queries pms_certificates.
     // Accept 200 (linked) or 404 (cert table mismatch).
+    // REMOVE THIS ADVISORY WHEN: link_document_to_certificate handler and getExistingCertificate
+    // fixture both use the same table (either both pms_certificates or both pms_vessel_certificates).
+    // Tighten to: expect(result.status).toBe(200).
     expect([200, 404]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string };

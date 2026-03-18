@@ -153,6 +153,9 @@ test.describe('[Captain] sign_monthly_signoff — ADVISORY', () => {
     // 400 = validation failure, 404 = signoff not found, 422 = workflow state invalid
     // 500 = unhandled exception (backend bug for invalid UUID) — gate is still enforced
     // 200 = backend does not enforce workflow gate for invalid signoff_id (advisory state)
+    // REMOVE THIS ADVISORY WHEN: sign_monthly_signoff validates signoff_id existence and
+    // rejects non-existent UUIDs with 404 (currently returns 200 for nil record).
+    // Tighten to: expect([400, 404, 422]).toContain(result.status).
     if (result.status === 200) {
       console.log(`sign_monthly_signoff advisory — backend returned 200 for invalid signoff_id (workflow gate not enforced)`);
     }

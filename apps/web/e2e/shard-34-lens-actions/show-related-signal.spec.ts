@@ -516,6 +516,9 @@ test.describe('[HOD] UI — signal item navigation', () => {
     await hodPage.getByTestId('back-button').click();
     // ADVISORY: router.back() navigates in history but URL change may take time.
     // Wait for URL change or accept current URL (client-side navigation timing).
+    // REMOVE THIS ADVISORY WHEN: router.back() reliably updates the URL within 10s in the
+    // Playwright test environment, OR back-button uses direct router.push() instead of
+    // window.history.back(). Tighten to: await hodPage.waitForURL(...) (hard assert, no catch).
     const backNavigated = await hodPage.waitForURL(`**/work-orders/${wo.id}`, { timeout: 15_000 })
       .then(() => true)
       .catch(() => false);

@@ -149,6 +149,9 @@ test.describe('[Captain] submit_receiving_for_review — ADVISORY', () => {
 
     // 200 = submitted, 400 = validation failure (e.g. no items added), 403 = RBAC
     // Any of these is acceptable for smoke; 500 is not.
+    // REMOVE THIS ADVISORY WHEN: test pre-seeds at least one receiving item before submitting,
+    // so submit_receiving_for_review can succeed. Tighten to: expect(result.status).toBe(200)
+    // + verify pms_receivings.status updated to 'pending_review'.
     expect([200, 400, 403]).toContain(result.status);
     if (result.status === 200) {
       console.log('submit_receiving_for_review returned 200 — submit path confirmed');

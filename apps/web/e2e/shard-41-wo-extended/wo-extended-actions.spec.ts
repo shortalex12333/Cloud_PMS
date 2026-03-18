@@ -80,6 +80,9 @@ test.describe('[Captain] add_note_to_work_order — ADVISORY', () => {
     // ADVISORY: SESSION_JWT uses captain user; backend RBAC requires Engineer/HOD/Manager.
     // All test page fixtures share the captain sub/user_id (global-setup limitation).
     // Accept 200 (if RBAC is relaxed) or 403 (current backend state).
+    // REMOVE THIS ADVISORY WHEN: captain is added to required_roles for add_note_to_work_order,
+    // OR global-setup.ts mints per-role JWTs so hodPage uses a different user sub claim.
+    // Tighten to: expect(result.status).toBe(200) + verify pms_work_order_notes row + ledger.
     if (result.status === 200) {
       const data = result.data as { status?: string; note_id?: string };
       expect(data.status).toBe('success');
@@ -164,6 +167,9 @@ test.describe('[Captain] add_wo_part — HARD PROOF', () => {
 
     // ADVISORY: Backend bug — pms_work_order_parts trigger expects yacht_id column
     // that doesn't exist on the table → 500. Accept 200 (if fixed) or 500 (current bug).
+    // REMOVE THIS ADVISORY WHEN: pms_work_order_parts trigger no longer expects a yacht_id
+    // column (fix the trigger, or add the column to the table).
+    // Tighten to: expect(result.status).toBe(200) + verify pms_work_order_parts row.
     expect([200, 500]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string; message?: string };

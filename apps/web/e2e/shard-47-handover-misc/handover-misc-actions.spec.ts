@@ -82,6 +82,9 @@ test.describe('[Captain] add_worklist_task — HARD PROOF', () => {
 
     // ADVISORY: add_worklist_task may return 403 — required_roles include Engineer/HOD/Manager
     // but captain role mapping may not match. Accept 200 or 403.
+    // REMOVE THIS ADVISORY WHEN: captain is added to required_roles for add_worklist_task, OR
+    // global-setup.ts mints per-role JWTs so hodPage uses a different user sub claim.
+    // Tighten to: expect(result.status).toBe(200) + verify task row in pms_work_orders.
     expect([200, 403]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string; task_id?: string };
@@ -122,6 +125,8 @@ test.describe('[Captain] view_worklist — HARD PROOF', () => {
     console.log(`[JSON] view_worklist: ${JSON.stringify(result.data)}`);
 
     // ADVISORY: view_worklist may return 403 (same RBAC issue as add_worklist_task)
+    // REMOVE THIS ADVISORY WHEN: captain is added to required_roles for view_worklist, OR
+    // global-setup.ts mints per-role JWTs. Tighten to: expect(result.status).toBe(200).
     expect([200, 403]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string; worklist?: unknown[]; total?: number };
