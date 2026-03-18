@@ -91,6 +91,9 @@ test.describe('[Captain] create_shopping_list_item — HARD PROOF', () => {
     // ADVISORY: create_shopping_list_item with known part_id has a backend bug where
     // rpc_insert_shopping_list_item returns 204 (no content) for non-candidate parts,
     // causing PostgREST parse failure. Accept success (if fixed) or error (current state).
+    // REMOVE THIS ADVISORY WHEN: rpc_insert_shopping_list_item returns the created row for
+    // non-candidate parts (204 no-content bug fixed). Tighten to: expect(result.status).toBe(200)
+    // + expect(result.data.success).toBe(true) + verify is_candidate_part=false in DB.
     console.log(`[JSON] create_shopping_list_item (with part_id) status=${result.status} success=${result.data.success}`);
     if (result.status === 200 && result.data.success === true) {
       const inner2 = result.data.data as { shopping_list_item_id?: string };

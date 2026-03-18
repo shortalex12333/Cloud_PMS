@@ -108,6 +108,8 @@ test.describe('[Captain] consume_part — HARD PROOF', () => {
     // but consume_part checks pms_parts.quantity_on_hand (legacy column) — data model split.
     // Pre-receive shows new_stock_level=57 but consume sees 0 available.
     // Accept 200 (if backend syncs the systems), 409 (stock split), or 500 (handler exception).
+    // REMOVE THIS ADVISORY WHEN: consume_part reads stock from pms_inventory_transactions
+    // instead of pms_parts.quantity_on_hand (data model split resolved — tighten to expect(200)).
     expect([200, 409, 500]).toContain(result.status);
     if (result.status === 200) {
       const consumeData = result.data as { status?: string; transaction_id?: string };
@@ -156,6 +158,8 @@ test.describe('[Captain] add_to_shopping_list — HARD PROOF', () => {
     // ADVISORY: backend handler does not set source_type before insert (NOT NULL constraint).
     // Bug: add_to_shopping_list ignores source_type from payload → 500 from DB.
     // Accept 200 (if fixed) or 500 (current backend bug state).
+    // REMOVE THIS ADVISORY WHEN: add_to_shopping_list handler passes source_type to the DB insert
+    // (NOT NULL constraint satisfied — tighten to expect(200) + verify pms_shopping_list_items row).
     expect([200, 500]).toContain(result.status);
     if (result.status === 200) {
       console.log('add_to_shopping_list returned 200 — confirmed success path');

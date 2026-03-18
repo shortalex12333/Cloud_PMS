@@ -17,8 +17,7 @@
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, type LucideIcon } from 'lucide-react';
-import SplineIcon from '@/components/spline/SplineIcon';
+import { X, Settings, BookOpen, Mail, Menu as MenuIcon, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, type LucideIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1276,7 +1275,7 @@ export default function SpotlightSearch({
             aria-label={emailScopeActive ? 'Exit Email' : 'Email'}
             data-testid="utility-email-button"
           >
-            <SplineIcon scene="/spline/icons/mail_icon_dark.splinecode" size={32} renderSize={512} />
+            <Mail className="w-5 h-5" strokeWidth={1.5} />
           </button>
 
           {/* Menu Button with hamburger icon */}
@@ -1295,7 +1294,7 @@ export default function SpotlightSearch({
                 aria-label="Menu"
                 data-testid="utility-menu-button"
               >
-                <SplineIcon scene="/spline/icons/3_lines_icon_dark.splinecode" size={32} renderSize={112} cropX={78} cropY={39} cropSize={20} />
+                <MenuIcon className="w-5 h-5" strokeWidth={1.5} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -1363,7 +1362,7 @@ export default function SpotlightSearch({
             aria-label="Settings"
             data-testid="utility-settings-button"
           >
-            <SplineIcon scene="/spline/icons/setting_icon_dark.splinecode" size={32} renderSize={112} cropX={78} cropY={39} cropSize={20} />
+            <Settings className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
       </div>

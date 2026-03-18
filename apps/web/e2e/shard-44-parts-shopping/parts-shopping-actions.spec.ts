@@ -178,6 +178,9 @@ test.describe('[Captain] consume_part — ADVISORY (bug check)', () => {
     console.log(`[JSON] consume_part (advisory): status=${result.status}`);
 
     // 200 = bug fixed, 409/500 = data model split still present (quantity_on_hand vs pms_inventory_transactions)
+    // REMOVE THIS ADVISORY WHEN: consume_part reads stock from pms_inventory_transactions
+    // instead of pms_parts.quantity_on_hand (data model split resolved).
+    // Tighten to: expect(result.status).toBe(200).
     expect([200, 409, 500]).toContain(result.status);
     if (result.status === 200) {
       console.log('consume_part 200 — data model split bug appears FIXED');
@@ -205,6 +208,8 @@ test.describe('[Captain] add_to_shopping_list — ADVISORY (bug check)', () => {
     console.log(`[JSON] add_to_shopping_list (advisory): status=${result.status}`);
 
     // 200 = bug fixed, 500 = source_type NOT NULL constraint still failing
+    // REMOVE THIS ADVISORY WHEN: add_to_shopping_list handler passes source_type to the DB insert.
+    // Tighten to: expect(result.status).toBe(200).
     expect([200, 500]).toContain(result.status);
     if (result.status === 200) {
       console.log('add_to_shopping_list 200 — source_type bug appears FIXED');
@@ -237,6 +242,9 @@ test.describe('[Captain] delete_shopping_item — ADVISORY (bug check)', () => {
     console.log(`[JSON] delete_shopping_item (advisory): status=${result.status}`);
 
     // 200 = bug fixed, 500 = user_role unbound variable still present
+    // REMOVE THIS ADVISORY WHEN: delete_shopping_item handler no longer references the unbound
+    // user_role variable (NameError in Python handler resolved).
+    // Tighten to: expect(result.status).toBe(200) + verify item removed from pms_shopping_list_items.
     expect([200, 500]).toContain(result.status);
     if (result.status === 200) {
       console.log('delete_shopping_item 200 — user_role bug appears FIXED');

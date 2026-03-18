@@ -56,6 +56,9 @@ test.describe('[HOD] update_equipment_status — ADVISORY', () => {
       console.warn(`Advisory: update_equipment_status returned ${result.status} — known API bug with WO enum`);
     }
     // Advisory: always passes
+    // REMOVE THIS ADVISORY WHEN: update_equipment_status no longer triggers a work_order status
+    // enum conflict (fix the DB trigger or constraint that conflates equipment and WO status enums).
+    // Tighten to: expect(result.status).toBe(200) + verify pms_equipment.status updated.
     expect([200, 400, 500]).toContain(result.status);
   });
 });

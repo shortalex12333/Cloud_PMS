@@ -70,6 +70,9 @@ test.describe('[Captain] adjust_receiving_item — HARD PROOF', () => {
     console.log(`[JSON] adjust_receiving_item: ${JSON.stringify(result.data)}`);
 
     // 200 = success, 400 = validation, 404 = item not found (ID mismatch), 500 = handler error
+    // REMOVE THIS ADVISORY WHEN: create_receiving_item returns item_id in its response (eliminating
+    // the part_id fallback in this test), ensuring adjust_receiving_item targets a real item.
+    // Tighten to: expect(result.status).toBe(200) after fixing the item_id response.
     expect([200, 400, 404, 500]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string };
@@ -150,6 +153,9 @@ test.describe('[Captain] attach_receiving_image_with_comment — ADVISORY', () =
     });
     console.log(`[JSON] attach_receiving_image_with_comment: status=${result.status}`);
 
+    // REMOVE THIS ADVISORY WHEN: attach_receiving_image_with_comment is fully implemented in the
+    // backend (currently may return 500 if image upload handler is incomplete).
+    // Tighten to: expect(result.status).toBe(200).
     expect([200, 400, 500]).toContain(result.status);
   });
 });
