@@ -227,7 +227,7 @@ export default function ActionModal({
           <div className="flex items-center gap-2">
             <h2
               id="action-modal-title"
-              className="typo-title font-semibold text-celeste-text-title"
+              className="typo-title font-semibold text-[var(--txt)]"
             >
               {action.label}
             </h2>
@@ -281,8 +281,8 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-md',
                         'bg-surface-base border border-surface-border',
-                        'typo-body text-celeste-text-title',
-                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
+                        'typo-body text-[var(--txt)]',
+                        'focus:outline-none focus:ring-2 focus:ring-[var(--teal-bg)] focus:border-transparent',
                         'transition-colors duration-fast'
                       )}
                       required
@@ -296,8 +296,8 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-md resize-none',
                         'bg-surface-base border border-surface-border',
-                        'typo-body text-celeste-text-title placeholder:text-txt-tertiary',
-                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
+                        'typo-body text-[var(--txt)] placeholder:text-txt-tertiary',
+                        'focus:outline-none focus:ring-2 focus:ring-[var(--teal-bg)] focus:border-transparent',
                         'transition-colors duration-fast'
                       )}
                       placeholder={`Enter ${label.toLowerCase()}...`}
@@ -312,8 +312,8 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-md',
                         'bg-surface-base border border-surface-border',
-                        'typo-body text-celeste-text-title',
-                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
+                        'typo-body text-[var(--txt)]',
+                        'focus:outline-none focus:ring-2 focus:ring-[var(--teal-bg)] focus:border-transparent',
                         'transition-colors duration-fast'
                       )}
                       required
@@ -334,8 +334,8 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-md',
                         'bg-surface-base border border-surface-border',
-                        'typo-body text-celeste-text-title',
-                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
+                        'typo-body text-[var(--txt)]',
+                        'focus:outline-none focus:ring-2 focus:ring-[var(--teal-bg)] focus:border-transparent',
                         'transition-colors duration-fast'
                       )}
                       required
@@ -357,8 +357,8 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-md',
                         'bg-surface-base border border-surface-border',
-                        'typo-body text-celeste-text-title placeholder:text-txt-tertiary',
-                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
+                        'typo-body text-[var(--txt)] placeholder:text-txt-tertiary',
+                        'focus:outline-none focus:ring-2 focus:ring-[var(--teal-bg)] focus:border-transparent',
                         'transition-colors duration-fast'
                       )}
                       placeholder={`Enter ${label.toLowerCase()}...`}
@@ -383,14 +383,14 @@ export default function ActionModal({
                 <div className="space-y-2 typo-meta">
                   <div className="flex justify-between">
                     <span className="text-txt-tertiary">Bucket:</span>
-                    <span className="text-celeste-text-title font-mono">
+                    <span className="text-[var(--txt)] font-mono">
                       {action.storage_options.bucket}
                     </span>
                   </div>
 
                   <div className="space-y-1">
                     <span className="text-txt-tertiary">Path:</span>
-                    <div className="font-mono typo-meta text-celeste-accent bg-celeste-accent/10 px-2 py-1.5 rounded break-all">
+                    <div className="font-mono typo-meta px-2 py-1.5 rounded break-all" style={{ color: 'var(--mark)', background: 'var(--teal-bg)' }}>
                       {storagePathPreview}
                     </div>
                   </div>
@@ -412,8 +412,8 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-2 py-1.5 rounded',
                         'bg-surface-elevated border border-surface-border',
-                        'typo-meta text-celeste-text-title placeholder:text-txt-tertiary',
-                        'focus:outline-none focus:ring-1 focus:ring-celeste-accent-muted'
+                        'typo-meta text-[var(--txt)] placeholder:text-txt-tertiary',
+                        'focus:outline-none focus:ring-1 focus:ring-[var(--teal-bg)]'
                       )}
                     />
                   </div>

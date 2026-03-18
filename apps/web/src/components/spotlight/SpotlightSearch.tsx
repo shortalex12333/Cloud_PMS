@@ -616,7 +616,8 @@ export default function SpotlightSearch({
       {/* Backdrop - material-based dim */}
       {isModal && (
         <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-colors duration-fast"
+          className="absolute inset-0 backdrop-blur-sm transition-colors duration-fast"
+          style={{ background: 'rgba(0,0,0,0.60)' }}
           onClick={onClose}
           aria-hidden="true"
         />
@@ -667,7 +668,7 @@ export default function SpotlightSearch({
 
             {/* Domain Scope Indicator - shows when in fragmented route */}
             {objectType && !emailScopeActive && (
-              <span className="text-xs text-white/40 mr-2 whitespace-nowrap">
+              <span className="text-xs text-txt-tertiary mr-2 whitespace-nowrap">
                 in {domainLabel}
               </span>
             )}
@@ -927,7 +928,7 @@ export default function SpotlightSearch({
                         {(hasMoreInDomain || (group.totalCount > 4 && !isExpanded)) && (
                           <button
                             onClick={() => toggleDomainExpansion(group.domain)}
-                            className="w-full px-4 py-2 text-left typo-meta text-celeste-accent hover:bg-celeste-bg-tertiary transition-colors flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left typo-meta text-brand-interactive hover:bg-surface-hover transition-colors flex items-center gap-2"
                           >
                             <ChevronDown
                               className={cn(
@@ -956,16 +957,16 @@ export default function SpotlightSearch({
 
               {showNoResults && (
                 <div className="py-10 text-center" data-testid="no-results">
-                  <p className="typo-title text-celeste-text-secondary">No Results</p>
+                  <p className="typo-title text-txt-secondary">No Results</p>
                 </div>
               )}
 
               {error && (
                 <div className="py-10 text-center" data-testid="search-error">
-                  <p className="typo-title text-celeste-text-secondary">{error}</p>
+                  <p className="typo-title text-txt-secondary">{error}</p>
                   <button
                     onClick={() => search(query)}
-                    className="mt-2 typo-label text-celeste-accent hover:text-celeste-accent-hover"
+                    className="mt-2 typo-label text-brand-interactive hover:text-brand-hover"
                   >
                     Try again
                   </button>
@@ -1132,14 +1133,14 @@ export default function SpotlightSearch({
 
       {/* Receiving Upload Modal - Global entry point for logging receivings */}
       <Dialog open={showReceivingUpload} onOpenChange={setShowReceivingUpload}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-celeste-bg-secondary border-celeste-border">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-primary border-surface-border">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-celeste-text-title">
+            <DialogTitle className="flex items-center gap-2 text-txt-primary">
               <Camera className="h-5 w-5 text-brand-interactive" />
               Log Receiving
             </DialogTitle>
           </DialogHeader>
-          <p className="typo-meta text-celeste-text-secondary mb-4">
+          <p className="typo-meta text-txt-secondary mb-4">
             Capture or upload an invoice, packing slip, or photo of received goods.
             We'll extract the details automatically.
           </p>

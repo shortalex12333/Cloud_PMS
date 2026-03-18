@@ -156,10 +156,9 @@ export function LinkEmailModal({
                   onClick={() => toggleType(type.value)}
                   className={cn(
                     'inline-flex items-center gap-1 px-2 py-1 typo-meta rounded-md transition-colors',
-                    isSelected
-                      ? 'bg-celeste-accent-subtle text-celeste-accent'
-                      : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                    !isSelected && 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                   )}
+                  style={isSelected ? { background: 'var(--teal-bg)', color: 'var(--mark)' } : undefined}
                 >
                   <Icon className="h-3 w-3" />
                   {type.label}
@@ -176,7 +175,8 @@ export function LinkEmailModal({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, number, serial..."
-              className="w-full pl-9 pr-3 py-2 typo-meta border border-zinc-200 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted"
+              className="w-full pl-9 pr-3 py-2 typo-meta border rounded-md placeholder:text-zinc-400 focus:outline-none focus:ring-2"
+              style={{ borderColor: 'var(--border-sub)', background: 'var(--surface-el)', color: 'var(--txt)', ['--tw-ring-color' as string]: 'var(--teal-bg)' }}
               autoFocus
             />
             {isSearching && (
@@ -210,20 +210,25 @@ export function LinkEmailModal({
                       onClick={() => setSelectedObject(result)}
                       className={cn(
                         'w-full flex items-center gap-3 p-3 text-left transition-colors',
-                        isSelected
-                          ? 'bg-celeste-accent-subtle'
-                          : 'hover:bg-zinc-50 dark:hover:bg-surface-active'
+                        !isSelected && 'hover:bg-zinc-50 dark:hover:bg-surface-active'
                       )}
+                      style={isSelected ? { background: 'var(--teal-bg)' } : undefined}
                     >
-                      <TypeIcon className={cn(
-                        'h-4 w-4 flex-shrink-0',
-                        isSelected ? 'text-celeste-accent' : 'text-zinc-400'
-                      )} />
+                      <TypeIcon
+                        className={cn(
+                          'h-4 w-4 flex-shrink-0',
+                          !isSelected && 'text-zinc-400'
+                        )}
+                        style={isSelected ? { color: 'var(--mark)' } : undefined}
+                      />
                       <div className="flex-1 min-w-0">
-                        <p className={cn(
-                          'typo-meta truncate',
-                          isSelected ? 'text-celeste-accent font-medium' : 'text-zinc-800 dark:text-zinc-200'
-                        )}>
+                        <p
+                          className={cn(
+                            'typo-meta truncate',
+                            isSelected ? 'font-medium' : 'text-zinc-800 dark:text-zinc-200'
+                          )}
+                          style={isSelected ? { color: 'var(--mark)' } : undefined}
+                        >
                           {result.label}
                         </p>
                         <p className="typo-meta text-zinc-500 capitalize">
@@ -232,7 +237,7 @@ export function LinkEmailModal({
                         </p>
                       </div>
                       {isSelected && (
-                        <CheckCircle className="h-4 w-4 text-celeste-accent flex-shrink-0" />
+                        <CheckCircle className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--mark)' }} />
                       )}
                     </button>
                   );
@@ -243,16 +248,16 @@ export function LinkEmailModal({
 
           {/* Selected Object Display */}
           {selectedObject && (
-            <div className="flex items-center gap-2 p-2 bg-celeste-accent-subtle rounded-md">
-              <CheckCircle className="h-4 w-4 text-celeste-accent" />
-              <span className="typo-meta text-celeste-accent flex-1 truncate">
+            <div className="flex items-center gap-2 p-2 rounded-md" style={{ background: 'var(--teal-bg)' }}>
+              <CheckCircle className="h-4 w-4" style={{ color: 'var(--mark)' }} />
+              <span className="typo-meta flex-1 truncate" style={{ color: 'var(--mark)' }}>
                 {selectedObject.label}
               </span>
               <button
                 onClick={() => setSelectedObject(null)}
-                className="p-1 hover:bg-celeste-accent-subtle rounded"
+                className="p-1 rounded"
               >
-                <X className="h-3 w-3 text-celeste-accent" />
+                <X className="h-3 w-3" style={{ color: 'var(--mark)' }} />
               </button>
             </div>
           )}

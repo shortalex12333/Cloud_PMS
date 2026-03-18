@@ -19,6 +19,9 @@ export { CollapsibleSection, type CollapsibleSectionProps } from './CollapsibleS
 export { LensPill, type LensPillProps, type PillVariant } from './LensPill';
 export { ScrollReveal, type ScrollRevealProps } from './ScrollReveal';
 
+// Popup
+export { ActionPopup, type ActionPopupProps, type ActionPopupField, type ActionPopupGate } from './ActionPopup';
+
 // Sections
 export {
   NotesSection,

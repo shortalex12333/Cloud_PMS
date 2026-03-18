@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 function LoginLoading() {
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="min-h-screen bg-surface-base flex items-center justify-center">
       <div className="w-6 h-6 border-2 border-surface-border border-t-txt-secondary rounded-full animate-spin" />
     </div>
   );

@@ -307,7 +307,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-celeste-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.4)' }} />
 
       {/* Panel */}
       <div
@@ -320,10 +320,10 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-celeste-divider">
+        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--border-sub)' }}>
           <div className="flex items-center gap-3">
-            <BookOpen className="w-5 h-5 text-celeste-accent" strokeWidth={1.5} />
-            <h2 className="text-celeste-text-title font-medium">Ledger</h2>
+            <BookOpen className="w-5 h-5" style={{ color: 'var(--mark)' }} strokeWidth={1.5} />
+            <h2 className="font-medium" style={{ color: 'var(--txt)' }}>Ledger</h2>
           </div>
 
           {/* Me / Department Pill Toggle - Centered */}

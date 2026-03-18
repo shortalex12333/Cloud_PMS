@@ -107,8 +107,8 @@ export function ScheduleMaintenanceModal({
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
           {/* Equipment (if pre-selected) */}
           {context.equipment_name && (
-            <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-md">
-              <p className="typo-body font-medium text-celeste-accent">
+            <div className="p-3 rounded-md" style={{ background: 'var(--teal-bg)', border: '1px solid var(--border-sub)' }}>
+              <p className="typo-body font-medium" style={{ color: 'var(--mark)' }}>
                 Equipment: {context.equipment_name}
               </p>
             </div>

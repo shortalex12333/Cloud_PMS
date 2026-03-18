@@ -74,10 +74,9 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
             }}
             className={cn(
               'px-3 py-1.5 typo-meta rounded-md transition-colors',
-              showLinked
-                ? 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300'
-                : 'bg-celeste-accent-subtle text-celeste-accent'
+              showLinked && 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300'
             )}
+            style={!showLinked ? { background: 'var(--teal-bg)', color: 'var(--mark)' } : undefined}
           >
             {showLinked ? 'Showing All' : 'Showing Unlinked Only'}
           </button>

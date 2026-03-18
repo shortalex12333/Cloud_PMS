@@ -176,12 +176,15 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
         className="w-full flex items-start gap-2 text-left"
       >
         {/* Direction Icon */}
-        <div className={cn(
-          'p-1 rounded',
-          isInbound ? 'bg-celeste-accent-subtle' : 'bg-green-100 dark:bg-green-900/30'
-        )}>
+        <div
+          className={cn(
+            'p-1 rounded',
+            !isInbound && 'bg-green-100 dark:bg-green-900/30'
+          )}
+          style={isInbound ? { background: 'var(--teal-bg)' } : undefined}
+        >
           {isInbound ? (
-            <ArrowDownLeft className="h-3 w-3 text-celeste-accent" />
+            <ArrowDownLeft className="h-3 w-3" style={{ color: 'var(--mark)' }} />
           ) : (
             <ArrowUpRight className="h-3 w-3 text-green-600 dark:text-green-400" />
           )}
@@ -246,7 +249,8 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
           {!showOriginal ? (
             <button
               onClick={() => setShowOriginal(true)}
-              className="inline-flex items-center gap-1.5 typo-meta text-celeste-accent hover:text-celeste-accent transition-colors"
+              className="inline-flex items-center gap-1.5 typo-meta transition-colors"
+              style={{ color: 'var(--mark)' }}
             >
               <Eye className="h-3.5 w-3.5" />
               View original

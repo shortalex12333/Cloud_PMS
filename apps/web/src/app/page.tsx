@@ -14,11 +14,11 @@ export const dynamic = 'force-dynamic';
 
 export default function RootPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-celeste-black via-celeste-bg-tertiary to-celeste-black">
+    <main className="min-h-screen bg-surface-base">
       <div className="relative flex h-screen overflow-hidden">
         <div className="flex-1 flex items-start justify-center pt-[15vh]">
           <div className="w-full max-w-[var(--celeste-spotlight-width)] px-4">
-            <Suspense fallback={<div className="h-14 bg-celeste-bg-tertiary/50 rounded-full" />}>
+            <Suspense fallback={<div className="h-14 bg-surface-hover rounded-full" />}>
               <SpotlightSearch />
             </Suspense>
           </div>
