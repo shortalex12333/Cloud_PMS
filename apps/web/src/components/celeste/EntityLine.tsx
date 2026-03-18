@@ -47,14 +47,15 @@ export default function EntityLine({
     <div
       className={cn(
         'px-4 py-2',
-        'typo-meta text-celeste-text-muted',
+        'typo-meta',
         'font-body',
         className
       )}
+      style={{ color: 'var(--txt3)' }}
     >
       {hasEntities && (
         <div>
-          <span className="text-celeste-text-secondary">Understood:</span>
+          <span style={{ color: 'var(--txt2)' }}>Understood:</span>
           <ul className="mt-1 space-y-0.5">
             {entities.map((entity, i) => (
               <li key={i}>
@@ -67,7 +68,7 @@ export default function EntityLine({
 
       {hasUncertainty && (
         <div className={hasEntities ? 'mt-2' : ''}>
-          <span className="text-celeste-text-secondary">Possible matches:</span>
+          <span style={{ color: 'var(--txt2)' }}>Possible matches:</span>
           <ul className="mt-1 space-y-0.5">
             {uncertainMatches.map((match, i) => (
               <li key={i}>

@@ -33,11 +33,12 @@ export default function StatusLine({
   return (
     <div
       className={cn(
-        'typo-meta text-celeste-text-muted',
+        'typo-meta',
         'font-body',
-        'transition-opacity duration-celeste-fast',
+        'transition-opacity duration-150',
         className
       )}
+      style={{ color: 'var(--txt3)' }}
     >
       {message}
     </div>
