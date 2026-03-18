@@ -1,0 +1,787 @@
+<!--
+  CELESTE PMS — LIGHT MODE TEMPLATE
+  ═══════════════════════════════════════════════════════════════════
+  Theme:        Light (data-theme="light")
+  Surfaces:     Warm cream — #F0EDE7 base, #FFFFFF cards, #FDFCFB elevated
+  Brand:        Teal (#2B7BA3 ambient, #4d94be mark)
+  Hover:        Warm white #F0EDE8 (surface darkens on hover)
+  Orbs:         Radial gradients at 5-10% opacity (same arch as dark)
+
+  TOKEN RULES:
+  - All colours via CSS custom properties (var(--name))
+  - No glass-on-glass: search panel is glass, query-understood is
+    solid teal-washed (rgba teal 6%) — two glass surfaces fight
+  - Asymmetric borders: top edge #000 12% alpha, bottom fades to 4%
+  - Font weight ceiling: 600
+  - body { background: var(--bg) } — single source of truth
+
+  CONTRAST NOTE:
+  --mark-colour (#4d94be): 3.34:1 on white — below WCAG AA (4.5:1)
+  Production swap: #2A7AAF (5.1:1) or darker. Prototype only.
+
+  COMPONENTS (in order):
+  1. Lens backdrop + ambient orbs + light-ambient glow element
+  2. Top bar
+  3. Search panel (frosted glass) + keyboard footer
+  4. Smart pointers (collapsible "Needs your attention")
+  5. Lens pills (centred, no counts)
+  6. Results state (query understood + grouped results)
+  7. Demo controls (bottom-right)
+  ═══════════════════════════════════════════════════════════════════
+-->
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Celeste PMS · Light Mode</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ── SURFACES ── */
+  --bg:               #F0EDE7;
+  --surface-primary:  #FFFFFF;
+  --surface-elevated: #FDFCFB;
+  --surface-hover:    #F0EDE8;
+  --surface-active:   #E8E3DC;
+  --border:           rgba(0,0,0,0.08);
+  --border-top:       rgba(0,0,0,0.13);
+  --border-subtle:    rgba(0,0,0,0.05);
+
+  /* ── TEXT ── */
+  --txt-primary:   rgba(15,12,9,0.90);
+  --txt-secondary: rgba(15,12,9,0.62);
+  --txt-tertiary:  rgba(15,12,9,0.52);
+  --txt-ghost:     rgba(15,12,9,0.28);
+
+  /* ── SIGNAL COLOURS ── */
+  --red:    #B83A28;
+  --amber:  #B07020;
+  --blue:   #2B7BA3;
+  --green:  #3A8A5C;
+
+  /* ── BRAND ── */
+  --teal:        #2B7BA3;
+  --mark-colour: #4d94be;   /* query highlight — 3.34:1 on #FFF (below AA; swap before prod) */
+
+  /* ── TYPOGRAPHY ── */
+  --font-sans:  'Inter', system-ui, sans-serif;
+  --font-mono:  'SF Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--txt-primary);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Light mode ambient orbs — same architecture as dark, opacity dialled to 6-8% */
+.lens-backdrop {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 30%, #F5F2EC 0%, #E8E3DA 100%);
+}
+.orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(90px);
+}
+.orb-1 {
+  width: 60vw; height: 50vw; top: -15vw; left: 50%; transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(43,123,163,0.10) 0%, transparent 70%);
+}
+.orb-2 {
+  width: 35vw; height: 35vw; bottom: 15%; right: -5vw;
+  background: radial-gradient(circle, rgba(176,112,32,0.06) 0%, transparent 70%);
+}
+.orb-3 {
+  width: 30vw; height: 25vw; top: 40%; left: -5vw;
+  background: radial-gradient(circle, rgba(43,123,163,0.05) 0%, transparent 70%);
+}
+.app { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100vh; }
+
+/* ── TOP BAR ── */
+.topbar {
+  height: 40px; flex-shrink: 0;
+  display: flex; align-items: center; padding: 0 20px; gap: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(242,240,236,0.88);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  z-index: 10;
+}
+.topbar-brand { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mark-colour); }
+.topbar-sep   { width: 1px; height: 12px; background: var(--border); margin: 0 4px; }
+.topbar-vessel { font-size: 11px; color: var(--txt-tertiary); }
+.topbar-vessel em { font-style: normal; color: rgba(26,107,150,0.85); }
+.topbar-spacer { flex: 1; }
+.topbar-role {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--txt-ghost);
+  background: rgba(0,0,0,0.05);
+  border: 1px solid var(--border);
+  border-radius: 3px; padding: 2px 7px;
+}
+
+/* ── STAGE ── */
+.stage {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start;
+  padding-top: 14vh;
+  overflow-y: auto;
+}
+
+/* Ambient glow — light mode equivalent of dark orbs */
+.light-ambient {
+  position: absolute;
+  width: 480px; height: 220px;
+  top: 8vh; left: 50%; transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgba(43,123,163,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── SEARCH PANEL ── */
+.search-wrap { width: 100%; max-width: 600px; padding: 0 20px; position: relative; z-index: 1; }
+
+.search-panel {
+  width: 100%;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-top:    1px solid rgba(0,0,0,0.12);
+  border-right:  1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-left:   1px solid rgba(0,0,0,0.06);
+  border-radius: 4px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.07),
+              inset 0 1px 0 rgba(255,255,255,0.90);
+  overflow: hidden;
+}
+
+.search-input-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px; height: 50px;
+}
+.search-icon { color: var(--txt-ghost); flex-shrink: 0; }
+.search-icon svg { width: 16px; height: 16px; }
+.search-input {
+  flex: 1; background: none; border: none; outline: none;
+  font-family: var(--font-sans); font-size: 15px;
+  color: var(--txt-primary); caret-color: var(--teal);
+}
+.search-input::placeholder { color: var(--txt-ghost); }
+.search-meta { font-size: 10px; color: var(--txt-ghost); flex-shrink: 0; font-family: var(--font-mono); }
+
+.search-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--teal) 20%, var(--teal) 80%, transparent);
+  opacity: 0.50;
+}
+
+.search-footer {
+  display: flex; align-items: center; gap: 4px;
+  height: 34px; padding: 0 14px;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(0,0,0,0.02);
+}
+.footer-hint { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--txt-ghost); }
+.footer-hint kbd {
+  background: var(--surface-hover); border-radius: 3px;
+  padding: 1px 4px; font-size: 10px; color: var(--txt-tertiary);
+  font-family: var(--font-mono); min-width: 18px; text-align: center;
+  border: 1px solid var(--border);
+}
+.footer-sep { width: 1px; height: 10px; background: var(--border); margin: 0 8px; }
+
+/* ── SMART POINTERS ── */
+.pointers-wrap {
+  width: 100%; max-width: 600px; padding: 0 20px;
+  margin-top: 8px;
+  display: flex; flex-direction: column;
+  position: relative; z-index: 1;
+}
+.pointers-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 2px 6px;
+  cursor: pointer; user-select: none;
+}
+.pointers-header:hover .pointers-label { color: var(--txt-tertiary); }
+.pointers-label {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--txt-ghost); transition: color 80ms;
+}
+.pointers-count {
+  font-size: 9px; font-family: var(--font-mono); color: var(--txt-ghost);
+  display: none;
+}
+.pointers-chevron {
+  width: 10px; height: 10px; color: var(--txt-ghost);
+  transition: transform 200ms; margin-left: auto;
+}
+.pointers-header.collapsed .pointers-chevron { transform: rotate(-90deg); }
+.pointers-body.collapsed { display: none; }
+
+.pointer-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 13px 9px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 80ms;
+  background: var(--surface-primary);
+  border-top:    1px solid rgba(0,0,0,0.10);
+  border-right:  1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-left:   2px solid transparent;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  margin-bottom: 4px;
+}
+.pointer-row:hover { background: var(--surface-hover); }
+.pointer-row.critical { border-left-color: var(--red); }
+.pointer-row.warning  { border-left-color: var(--amber); }
+.pointer-row.info     { border-left-color: var(--blue); }
+.pointer-row.ok       { border-left-color: var(--green); }
+
+.pointer-icon {
+  width: 14px; height: 14px; flex-shrink: 0;
+  color: var(--txt-tertiary);
+}
+.pointer-row.critical .pointer-icon { color: var(--red); }
+.pointer-row.warning  .pointer-icon { color: var(--amber); opacity: 0.90; }
+.pointer-row.info     .pointer-icon { color: var(--blue); }
+.pointer-row.ok       .pointer-icon { color: var(--green); opacity: 0.80; }
+
+.pointer-text { flex: 1; min-width: 0; }
+.pointer-main {
+  font-size: 13px; color: var(--txt-primary); line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pointer-main strong { font-weight: 600; }
+.pointer-sub {
+  font-size: 10.5px; color: var(--txt-tertiary);
+  font-family: var(--font-mono); letter-spacing: 0.03em; margin-top: 1px;
+}
+.ptr-ref { color: var(--mark-colour); font-weight: 500; }
+
+.pointer-time { font-size: 10.5px; color: var(--txt-ghost); font-family: var(--font-mono); flex-shrink: 0; }
+.pointer-row.critical .pointer-time { color: var(--red); opacity: 0.85; }
+.pointer-row.warning  .pointer-time { color: var(--amber); opacity: 0.80; }
+
+.pointer-row.overflow { display: none; }
+.pointer-row.overflow.visible { display: flex; }
+.pointer-expand {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px 6px; cursor: pointer;
+  color: var(--txt-ghost); font-size: 11px;
+  transition: color 80ms; user-select: none; border-radius: 3px;
+}
+.pointer-expand:hover { color: var(--txt-tertiary); background: rgba(0,0,0,0.04); }
+.pointer-expand svg { width: 12px; height: 12px; transition: transform 200ms; }
+.pointer-expand.expanded svg { transform: rotate(180deg); }
+.pointer-expand span { font-family: var(--font-mono); letter-spacing: 0.04em; }
+
+/* ── RESULTS ── */
+.results-wrap {
+  width: 100%; max-width: 600px; padding: 0 20px;
+  margin-top: 0;
+  position: relative; z-index: 1;
+}
+
+/* Query interpretation panel — solid tinted container on light (no glass: two glass surfaces fight) */
+.query-understood {
+  margin-top: 6px; margin-bottom: 2px;
+}
+.query-understood-inner {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px;
+  padding: 5px 10px;
+  border-left: 2px solid var(--teal);
+  border-radius: 0 3px 3px 0;
+  background: rgba(43,123,163,0.06);  /* teal-washed: system is annotating, not decorating */
+  /* opacity intentionally removed — container needs full presence on white */
+}
+.understood-label {
+  font-size: 10px; font-style: italic;
+  color: var(--txt-tertiary); margin-right: 6px; flex-shrink: 0;
+}
+.understood-term {
+  font-size: 11px; font-family: var(--font-mono); font-weight: 500;
+  color: var(--mark-colour);
+}
+.understood-sep {
+  font-size: 10px; color: var(--txt-ghost);
+  user-select: none; padding: 0 2px;
+}
+
+/* Per-domain result containers */
+.results-container {
+  background: var(--surface-primary);
+  border-top:    1px solid rgba(0,0,0,0.10);
+  border-right:  1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-left:   1px solid rgba(0,0,0,0.06);
+  border-radius: 4px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.result-group-label {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--txt-tertiary);    /* was txt-ghost — now 4.5:1+ */
+  padding: 8px 12px 4px;
+}
+
+.result-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; cursor: pointer; min-height: 44px;
+  transition: background 60ms;
+}
+.result-row:hover  { background: rgba(0,0,0,0.04); }
+/* Active state reserved for keyboard nav — not applied by default */
+.result-row.active { background: var(--surface-active); }
+
+.result-icon {
+  width: 14px; height: 14px;
+  color: var(--txt-tertiary);   /* was txt-ghost — now readable */
+  flex-shrink: 0;
+}
+.result-row.active .result-icon { color: var(--txt-secondary); }
+
+.result-text { flex: 1; min-width: 0; }
+.result-title { font-size: 13px; font-weight: 500; color: var(--txt-primary); }
+.result-title mark {
+  background: none; color: var(--mark-colour); font-weight: 600;
+}
+.result-sub {
+  font-size: 10.5px; color: var(--txt-secondary);  /* was txt-tertiary — lift to secondary */
+  font-family: var(--font-mono); letter-spacing: 0.03em; margin-top: 1px;
+}
+
+.result-enter { font-size: 10px; color: var(--txt-ghost); opacity: 0; flex-shrink: 0; }
+.result-row.active .result-enter { opacity: 1; }
+.result-enter kbd {
+  background: var(--surface-hover); border-radius: 3px;
+  padding: 1px 5px; font-size: 10px; color: var(--txt-tertiary);
+  font-family: var(--font-mono); border: 1px solid var(--border);
+}
+
+/* Results footer — hidden on mobile */
+.results-footer-hints {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 2px 4px;
+}
+.results-count {
+  font-size: 10px; color: var(--txt-tertiary);   /* was txt-ghost */
+  font-family: var(--font-mono);
+}
+
+/* ── LENS PILLS ── */
+.lens-strip {
+  width: 100%; max-width: 600px; padding: 0 20px;
+  margin-top: 20px;
+  display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
+  position: relative; z-index: 1;
+}
+.lens-pill {
+  height: 28px; padding: 0 11px; border-radius: 3px;
+  border-top:    1px solid var(--border-top);
+  border-right:  1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
+  border-left:   1px solid var(--border);
+  background: var(--surface-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  font-size: 11px; color: var(--txt-secondary);
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+  transition: background 100ms, color 100ms, border-color 100ms; white-space: nowrap;
+}
+.lens-pill:hover {
+  background: rgba(26,107,150,0.07);
+  color: var(--mark-colour);
+  border-color: rgba(26,107,150,0.28);
+  box-shadow: none;
+}
+.lens-pill .count { font-size: 10px; font-family: var(--font-mono); color: var(--txt-ghost); }
+.lens-pill .count.critical { color: var(--red); font-weight: 600; }
+.lens-pill .count.warning  { color: var(--amber); font-weight: 600; }
+.lens-pill.action:hover {
+  background: rgba(26,107,150,0.12);
+  border-color: rgba(26,107,150,0.40);
+}
+
+/* ── STATE SWITCHING ── */
+.state-idle    { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.state-results { display: none; flex-direction: column; align-items: center; width: 100%; }
+.state-results.visible { display: flex; }
+.state-idle.hidden { display: none; }
+
+/* ── DEMO CONTROLS ── */
+.demo-controls {
+  position: fixed; bottom: 20px; right: 20px; z-index: 200;
+  display: flex; gap: 6px;
+}
+.demo-btn {
+  height: 28px; padding: 0 12px; border-radius: 3px;
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-primary); color: var(--txt-secondary);
+  font-family: var(--font-sans);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  transition: background 80ms;
+  text-decoration: none; display: flex; align-items: center;
+}
+.demo-btn:hover { background: var(--surface-hover); color: var(--txt-primary); }
+.demo-btn.active { background: var(--teal); border-color: transparent; color: #fff; box-shadow: none; }
+.demo-btn.switch { background: var(--surface-elevated); color: var(--txt-secondary); }
+
+/* ── MOBILE ── */
+@media (max-width: 640px) {
+  .search-footer { display: none; }
+  .results-footer-hints { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="lens-backdrop">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="app">
+<header class="topbar">
+  <div class="topbar-brand">Celeste</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-vessel"><em>SY Andromeda</em></div>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-role">Chief Engineer</div>
+</header>
+
+<div class="stage">
+  <!-- Ambient depth glow — teal at 6%, gives glass something to catch -->
+  <div class="light-ambient"></div>
+
+  <!-- ── IDLE STATE ── -->
+  <div class="state-idle" id="stateIdle">
+
+    <div class="search-wrap">
+      <div class="search-panel">
+        <div class="search-input-row">
+          <div class="search-icon">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3 3"/>
+            </svg>
+          </div>
+          <input class="search-input" id="searchInput"
+            placeholder="Find anything, or tell me what to do…"
+            oninput="handleInput(this.value)" />
+          <div class="search-meta">⌘K</div>
+        </div>
+        <div class="search-divider"></div>
+        <div class="search-footer">
+          <div class="footer-hint"><kbd>↑</kbd><kbd>↓</kbd> Navigate</div>
+          <div class="footer-sep"></div>
+          <div class="footer-hint"><kbd>↵</kbd> Open</div>
+          <div class="footer-sep"></div>
+          <div class="footer-hint"><kbd>Esc</kbd> Clear</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pointers-wrap">
+      <div class="pointers-header" id="pointersHeader" onclick="toggleSection()">
+        <span class="pointers-label">Needs your attention</span>
+        <span class="pointers-count" id="pointersCount">(7)</span>
+        <svg class="pointers-chevron" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 3.5l3 3 3-3"/>
+        </svg>
+      </div>
+      <div class="pointers-body" id="pointersBody">
+
+      <div class="pointer-row critical">
+        <svg class="pointer-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M8 3L14 13H2L8 3Z"/><path d="M8 7v2.5M8 11.5v.5"/>
+        </svg>
+        <div class="pointer-text">
+          <div class="pointer-main"><strong>Engine Room — Oil Leak</strong> is open for 2 days</div>
+          <div class="pointer-sub">FAULT · <span class="ptr-ref">WO·1234</span> · ASSIGNED TO YOU</div>
+        </div>
+        <div class="pointer-time">2d open</div>
+      </div>
+
+      <div class="pointer-row critical">
+        <svg class="pointer-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="4" y="2" width="8" height="2" rx="1"/><rect x="3" y="3.5" width="10" height="10.5" rx="1.5"/><path d="M6 8h4M6 10.5h2.5"/>
+        </svg>
+        <div class="pointer-text">
+          <div class="pointer-main"><strong>Main Generator</strong> service is 5 days overdue</div>
+          <div class="pointer-sub">WORK ORDER · <span class="ptr-ref">WO·0892</span> · RUNNING HOURS EXCEEDED</div>
+        </div>
+        <div class="pointer-time">5d overdue</div>
+      </div>
+
+      <div class="pointer-row warning">
+        <svg class="pointer-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2" y="6" width="12" height="8" rx="1"/><path d="M5 6V4.5a3 3 0 016 0V6"/><path d="M2 9.5h12"/>
+        </svg>
+        <div class="pointer-text">
+          <div class="pointer-main"><strong>Oil Filter 5W-40</strong> — 2 units remaining</div>
+          <div class="pointer-sub">INVENTORY · BELOW MIN STOCK · ORDER PENDING</div>
+        </div>
+        <div class="pointer-time">2 left</div>
+      </div>
+
+      <div class="pointer-row warning">
+        <svg class="pointer-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M8 2L13.5 4.5v4c0 3-2.5 4.8-5.5 5.5C3 13.3 2.5 11.5 2.5 8.5V4.5L8 2z"/>
+        </svg>
+        <div class="pointer-text">
+          <div class="pointer-main"><strong>SOLAS Certificate</strong> expires in 14 days</div>
+          <div class="pointer-sub">CERTIFICATE · RENEWAL REQUIRED BEFORE PORT CALL</div>
+        </div>
+        <div class="pointer-time">14 days</div>
+      </div>
+
+      <div class="pointer-row info">
+        <svg class="pointer-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2" y="8" width="12" height="6" rx="1"/><path d="M8 2v7M5.5 6.5L8 9l2.5-2.5"/>
+        </svg>
+        <div class="pointer-text">
+          <div class="pointer-main"><strong>Receiving expected today</strong> — spare parts order</div>
+          <div class="pointer-sub">RECEIVING · <span class="ptr-ref">PO·0441</span> · ETA 14:00 LOCAL</div>
+        </div>
+        <div class="pointer-time">Today</div>
+      </div>
+
+      <div class="pointer-row warning overflow" id="overflow-6">
+        <svg class="pointer-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <circle cx="8" cy="8" r="5.5"/><path d="M8 5.5V8l1.5 1.5"/>
+        </svg>
+        <div class="pointer-text">
+          <div class="pointer-main"><strong>Hours of Rest</strong> — 2 crew near limit this week</div>
+          <div class="pointer-sub">HOURS OF REST · DECK OFFICER + ENGINEER · MLC COMPLIANCE</div>
+        </div>
+        <div class="pointer-time">3 days</div>
+      </div>
+
+      <div class="pointer-row ok overflow" id="overflow-7">
+        <svg class="pointer-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="4" y="2" width="8" height="2" rx="1"/><rect x="3" y="3.5" width="10" height="10.5" rx="1.5"/><path d="M5.5 8.5l2 2 3.5-3.5"/>
+        </svg>
+        <div class="pointer-text">
+          <div class="pointer-main"><strong>WO·1089</strong> marked complete — pending sign-off</div>
+          <div class="pointer-sub">WORK ORDER · <span class="ptr-ref">WO·1089</span> · AWAITING CHIEF ENG</div>
+        </div>
+        <div class="pointer-time">1h ago</div>
+      </div>
+
+      <div class="pointer-expand" id="expandTrigger" onclick="toggleExpand()">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4l4 4 4-4"/>
+        </svg>
+        <span id="expandLabel">+ 2 more</span>
+      </div>
+
+      </div><!-- /pointers-body -->
+    </div><!-- /pointers-wrap -->
+
+    <div class="lens-strip">
+      <div class="lens-pill">Open Faults</div>
+      <div class="lens-pill">Overdue W/O</div>
+      <div class="lens-pill">Upcoming Tasks</div>
+      <div class="lens-pill">Shipment Arriving</div>
+      <div class="lens-pill action">Log HOR</div>
+    </div>
+
+  </div><!-- /state-idle -->
+
+  <!-- ── RESULTS STATE ── -->
+  <div class="state-results" id="stateResults">
+
+    <div class="search-wrap">
+      <div class="search-panel">
+        <div class="search-input-row">
+          <div class="search-icon">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3 3"/>
+            </svg>
+          </div>
+          <input class="search-input" id="searchInput2"
+            placeholder="Find anything…"
+            oninput="syncInput(this.value)" />
+        </div>
+        <div class="search-divider"></div>
+      </div>
+    </div>
+
+    <div class="results-wrap">
+
+      <!-- Query interpretation — entity terms from user's query, not system categories -->
+      <div class="query-understood">
+        <div class="query-understood-inner">
+          <span class="understood-label">Understood</span>
+          <span class="understood-term">oil filter</span>
+          <span class="understood-sep">·</span>
+          <span class="understood-term">main engine</span>
+          <span class="understood-sep">·</span>
+          <span class="understood-term">location</span>
+        </div>
+      </div>
+
+      <!-- Faults domain container -->
+      <div class="results-container">
+        <div class="result-group-label">Faults</div>
+
+        <!-- No .active class — keyboard nav wires this at runtime -->
+        <div class="result-row">
+          <svg class="result-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M8 3L14 13H2L8 3Z"/><path d="M8 7v3M8 11.5v.5"/>
+          </svg>
+          <div class="result-text">
+            <div class="result-title">Engine Room — <mark>Oil</mark> Leak</div>
+            <div class="result-sub">FAULT · WO·1234 · CRITICAL · 2 DAYS OPEN</div>
+          </div>
+          <div class="result-enter"><kbd>↵</kbd></div>
+        </div>
+
+        <div class="result-row">
+          <svg class="result-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="8" cy="8" r="5.5"/><path d="M8 5v3M8 9.5v.5"/>
+          </svg>
+          <div class="result-text">
+            <div class="result-title">Stabiliser Port — <mark>Oil</mark> Contamination</div>
+            <div class="result-sub">FAULT · WO·1156 · HIGH · 1 DAY OPEN</div>
+          </div>
+          <div class="result-enter"><kbd>↵</kbd></div>
+        </div>
+      </div>
+
+      <!-- Inventory domain container -->
+      <div class="results-container">
+        <div class="result-group-label">Inventory</div>
+
+        <div class="result-row">
+          <svg class="result-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="2" y="6" width="12" height="8" rx="1"/><path d="M5 6V4.5a3 3 0 016 0V6"/>
+          </svg>
+          <div class="result-text">
+            <div class="result-title"><mark>Oil</mark> Filter 5W-40</div>
+            <div class="result-sub">INVENTORY · 2 REMAINING OF 10 · CRITICAL STOCK</div>
+          </div>
+          <div class="result-enter"><kbd>↵</kbd></div>
+        </div>
+
+        <div class="result-row">
+          <svg class="result-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="2" y="6" width="12" height="8" rx="1"/><path d="M5 6V4.5a3 3 0 016 0V6"/>
+          </svg>
+          <div class="result-text">
+            <div class="result-title">Hydraulic <mark>Oil</mark> — ISO 46</div>
+            <div class="result-sub">INVENTORY · 8 REMAINING · OK</div>
+          </div>
+          <div class="result-enter"><kbd>↵</kbd></div>
+        </div>
+      </div>
+
+      <!-- Documents domain container -->
+      <div class="results-container">
+        <div class="result-group-label">Documents</div>
+
+        <div class="result-row">
+          <svg class="result-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M6 6h4M6 9h2.5"/>
+          </svg>
+          <div class="result-text">
+            <div class="result-title">Engine <mark>Oil</mark> Change Procedure</div>
+            <div class="result-sub">DOCUMENT · MACHINERY MANUAL · PAGE 42</div>
+          </div>
+          <div class="result-enter"><kbd>↵</kbd></div>
+        </div>
+      </div>
+
+      <!-- Results footer — hidden on mobile via @media -->
+      <div class="results-footer-hints">
+        <span class="results-count">5 results for "oil"</span>
+        <span style="flex:1"></span>
+        <div class="footer-hint"><kbd>↑</kbd><kbd>↓</kbd> Navigate</div>
+        <div class="footer-sep"></div>
+        <div class="footer-hint"><kbd>↵</kbd> Open</div>
+        <div class="footer-sep"></div>
+        <div class="footer-hint"><kbd>Esc</kbd> Clear</div>
+      </div>
+
+    </div>
+
+  </div><!-- /state-results -->
+
+</div><!-- /stage -->
+</div><!-- /app -->
+
+<div class="demo-controls">
+  <button class="demo-btn active" id="btnIdle" onclick="showIdle()">Idle state</button>
+  <button class="demo-btn" id="btnResults" onclick="showResults()">Results state</button>
+  <a class="demo-btn switch" href="/elegant.html">← Dark</a>
+</div>
+
+<script>
+function showIdle() {
+  document.getElementById('stateIdle').classList.remove('hidden');
+  document.getElementById('stateResults').classList.remove('visible');
+  document.getElementById('btnIdle').classList.add('active');
+  document.getElementById('btnResults').classList.remove('active');
+  document.getElementById('searchInput').value = '';
+}
+function showResults() {
+  document.getElementById('stateIdle').classList.add('hidden');
+  document.getElementById('stateResults').classList.add('visible');
+  document.getElementById('btnIdle').classList.remove('active');
+  document.getElementById('btnResults').classList.add('active');
+  document.getElementById('searchInput2').value = 'oil';
+  setTimeout(() => document.getElementById('searchInput2').focus(), 50);
+}
+function handleInput(val) {
+  if (val.length > 0) {
+    collapsePointers();
+    showResults();
+  }
+}
+let sectionCollapsed = false;
+function toggleSection() {
+  sectionCollapsed = !sectionCollapsed;
+  const header = document.getElementById('pointersHeader');
+  const body = document.getElementById('pointersBody');
+  const count = document.getElementById('pointersCount');
+  header.classList.toggle('collapsed', sectionCollapsed);
+  body.classList.toggle('collapsed', sectionCollapsed);
+  count.style.display = sectionCollapsed ? 'inline' : 'none';
+}
+let expanded = false;
+function toggleExpand() {
+  expanded = !expanded;
+  document.getElementById('overflow-6').classList.toggle('visible', expanded);
+  document.getElementById('overflow-7').classList.toggle('visible', expanded);
+  document.getElementById('expandTrigger').classList.toggle('expanded', expanded);
+  document.getElementById('expandLabel').textContent = expanded ? 'Show less' : '+ 2 more';
+}
+function collapsePointers() {
+  expanded = false;
+  document.getElementById('overflow-6').classList.remove('visible');
+  document.getElementById('overflow-7').classList.remove('visible');
+  document.getElementById('expandTrigger').classList.remove('expanded');
+  document.getElementById('expandLabel').textContent = '+ 2 more';
+}
+function syncInput(val) {
+  document.getElementById('searchInput').value = val;
+  if (val.length === 0) showIdle();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') showIdle();
+});
+</script>
+</body>
+</html>
