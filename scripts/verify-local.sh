@@ -58,7 +58,7 @@ else
 fi
 
 header "Step 3: E2E Tests"
-if [[ ! -f "$ENV_FILE" ]]; then fail ".env.e2e not found"; ERRORS=$((ERRORS + 1)); else
+if [[ ! -f "$ENV_FILE" ]]; then fail ".env.e2e not found — copy apps/web/.env.e2e.example to apps/web/.env.e2e and fill in values"; ERRORS=$((ERRORS + 1)); else
   pass "Found .env.e2e"
   cd "$WEB_DIR"
   set -a; source "$ENV_FILE"; set +a

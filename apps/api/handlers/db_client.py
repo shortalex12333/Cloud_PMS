@@ -44,8 +44,9 @@ def _patch_maybe_single_204():
             except APIError as e:
                 if e.details and "The result contains 0 rows" in e.details:
                     return None
-            if not r:
-                # Original code raises here — we return None instead
+                raise  # Re-raise auth errors, network errors, etc.
+            if r is None:
+                # PostgREST 204 — no content, no rows
                 return None
             return r
 
