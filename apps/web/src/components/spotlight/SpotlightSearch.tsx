@@ -29,6 +29,9 @@ import { useCelesteSearch } from '@/hooks/useCelesteSearch';
 import { useDomain } from '@/lib/domain/hooks';
 import type { SearchResult as APISearchResult } from '@/types/search';
 import SpotlightResultRow from './SpotlightResultRow';
+import SmartPointers from './SmartPointers';
+import LensPillStrip from './LensPillStrip';
+import QueryInterpretation from './QueryInterpretation';
 import SettingsModal from '@/components/SettingsModal';
 import { EntityLine, StatusLine } from '@/components/celeste';
 import { EmailInboxView } from '@/components/email/EmailInboxView';
@@ -631,57 +634,54 @@ export default function SpotlightSearch({
         )}
         style={{ maxWidth: 'var(--celeste-spotlight-width)' }}
       >
-        {/* Main Spotlight Panel */}
+        {/* Main Spotlight Panel — inline glass styles per elegant.html */}
         <div
-          className={cn(
-            'w-full font-body',
-            'spotlight-panel',
-            emailScopeActive && 'ring-2 ring-brand-interactive/40'
-          )}
+          style={{
+            width: '100%',
+            background: 'rgba(14,12,10,0.72)',
+            backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
+            borderTop: '1px solid rgba(255,255,255,0.13)',
+            borderRight: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(255,255,255,0.03)',
+            borderLeft: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 4,
+            boxShadow: '0 20px 80px rgba(0,0,0,0.60), 0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.05)',
+            overflow: 'hidden',
+          }}
           data-email-scope={emailScopeActive}
         >
-          {/* Search Input Row - tokenized height and padding */}
-          <div
-            className={cn(
-              'flex items-center',
-              'h-14',
-              'px-ds-4',
-              'gap-ds-2'
-            )}
-          >
-            {/* Leading "+" Button - 32x32 per icon button spec */}
-            <button
-              onClick={() => setShowReceivingUpload(true)}
-              className="btn-icon h-8 w-8"
-              aria-label="Log Receiving"
-              data-testid="spotlight-add-button"
-            >
-              <Plus className="w-[18px] h-[18px]" strokeWidth={1.5} />
-            </button>
+          {/* Search Input Row — 50px height, 14px padding per prototype */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px', height: 50 }}>
+            {/* Search Icon (magnifying glass SVG) */}
+            <div style={{ color: 'var(--txt-ghost)', flexShrink: 0 }}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: 16, height: 16 }}>
+                <circle cx="6.5" cy="6.5" r="4.5" /><path d="M10 10l3 3" />
+              </svg>
+            </div>
 
             {/* Email Scope Badge */}
             {emailScopeActive && (
-              <div className="px-2 py-0.5 bg-brand-interactive text-txt-primary rounded typo-meta font-semibold whitespace-nowrap">
+              <div style={{ padding: '1px 8px', background: 'var(--mark)', color: 'var(--txt)', borderRadius: 3, fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>
                 Email
               </div>
             )}
 
-            {/* Domain Scope Indicator - shows when in fragmented route */}
+            {/* Domain Scope Indicator */}
             {objectType && !emailScopeActive && (
-              <span className="text-xs text-txt-tertiary mr-2 whitespace-nowrap">
+              <span style={{ fontSize: 11, color: 'var(--txt3)', marginRight: 8, whiteSpace: 'nowrap' }}>
                 in {domainLabel}
               </span>
             )}
 
             {/* Search Input */}
-            <div className="flex-1 h-full relative">
+            <div style={{ flex: 1, height: '100%', position: 'relative' }}>
               <input
                 ref={inputRef}
                 type="search"
                 value={query}
                 onFocus={handleUserInteraction}
                 onChange={(e) => {
-                  handleUserInteraction(); // Kill any demo/animation on first keystroke
+                  handleUserInteraction();
                   handleQueryChange(e.target.value);
                   if (e.target.value && showEmailList && !emailScopeActive) {
                     toggleEmailScope(false);
@@ -692,51 +692,43 @@ export default function SpotlightSearch({
                 }}
                 onKeyDown={handleKeyDown}
                 data-testid="search-input"
-                className={cn(
-                  'w-full h-full',
-                  'bg-transparent border-none outline-none',
-                  'typo-title',
-                  'text-txt-primary',
-                  'font-normal tracking-[-0.01em]',
-                  'caret-txt-primary',
-                  'placeholder:text-txt-tertiary',
-                  'relative z-10'
-                )}
+                style={{
+                  width: '100%', height: '100%',
+                  background: 'none', border: 'none', outline: 'none',
+                  fontFamily: 'var(--font-sans)', fontSize: 15,
+                  color: 'var(--txt)', caretColor: 'var(--teal)',
+                  position: 'relative', zIndex: 10,
+                }}
+                placeholder={isMounted && !query && placeholderIndex >= 0 ? PLACEHOLDER_SUGGESTIONS[placeholderIndex] : 'Find anything, or tell me what to do…'}
                 autoComplete="off"
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
               />
-              {/* Animated rolling placeholder */}
-              {!query && isMounted && placeholderIndex >= 0 && (
-                <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
-                  <span
-                    className={cn(
-                      'typo-title text-txt-tertiary font-normal tracking-[-0.01em]',
-                      'transition-all duration-celeste-deliberate ease-out',
-                      isAnimating ? 'opacity-0 -translate-y-3' : 'opacity-100 translate-y-0'
-                    )}
-                  >
-                    {PLACEHOLDER_SUGGESTIONS[placeholderIndex]}
-                  </span>
-                </div>
-              )}
             </div>
 
-            {/* Trailing Icons */}
-            <div className="flex items-center gap-ds-2">
-              {/* Clear Button */}
-              {query && (
-                <button
-                  onClick={handleClear}
-                  className="btn-icon h-8 w-8"
-                  aria-label="Clear"
-                >
-                  <X className="w-[18px] h-[18px] text-surface-elevated" strokeWidth={2} />
-                </button>
-              )}
-            </div>
+            {/* Trailing: ⌘K hint or Clear button */}
+            {query ? (
+              <button
+                onClick={handleClear}
+                aria-label="Clear"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X style={{ width: 16, height: 16, color: 'var(--txt-ghost)' }} strokeWidth={2} />
+              </button>
+            ) : (
+              <div style={{ fontSize: 10, color: 'var(--txt-ghost)', flexShrink: 0, fontFamily: 'var(--font-mono)' }}>
+                ⌘K
+              </div>
+            )}
           </div>
+
+          {/* Teal Gradient Divider */}
+          <div style={{
+            height: 1,
+            background: 'linear-gradient(90deg, transparent, var(--teal) 20%, var(--teal) 80%, transparent)',
+            opacity: 0.50,
+          }} />
 
           {/* Loading sweep — visual indicator */}
           {(effectiveLoading || isStreaming) && (
@@ -757,8 +749,6 @@ export default function SpotlightSearch({
             className="sr-only"
           />
 
-          {/* Entity Line removed - clutter that Apple wouldn't include */}
-
           {/* Suggested Actions - backend-provided action buttons */}
           {hasQuery && actionSuggestions.length > 0 && (
             <SuggestedActions
@@ -774,7 +764,6 @@ export default function SpotlightSearch({
             <FilterChips
               query={query}
               onFilterClick={(filterId, route) => {
-                // Record ledger event for filter click
                 recordLedgerEvent('quick_filter_clicked', {
                   filter_id: filterId,
                   route: route,
@@ -787,7 +776,7 @@ export default function SpotlightSearch({
           {/* Email List (beneath search bar per UX doctrine) */}
           {showEmailList && !hasQuery && (
             <div
-              className="max-h-celeste-search-results overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-surface-primary"
+              style={{ maxHeight: '60vh', overflowY: 'auto', overflowX: 'hidden', background: 'var(--surface-primary)' }}
               data-testid="email-list-inline"
             >
               <EmailInboxView className="p-4" />
@@ -802,7 +791,7 @@ export default function SpotlightSearch({
             >
               {/* Email scope uses flat list */}
               {emailScopeActive && hasResults && (
-                <div className="py-1.5" data-testid="search-results-email">
+                <div style={{ padding: '6px 0' }} data-testid="search-results-email">
                   {results.map((result, index) => (
                     <SpotlightResultRow
                       key={result.id}
@@ -818,12 +807,12 @@ export default function SpotlightSearch({
 
               {/* Non-email: Spotlight-style grouped display */}
               {!emailScopeActive && (groupedResults.topMatch || groupedResults.domains.length > 0) && (
-                <div className="py-1.5" data-testid="search-results-grouped">
-                  {/* Top Match - only shown when confidence is high */}
+                <div style={{ padding: '6px 0' }} data-testid="search-results-grouped">
+                  {/* Top Match */}
                   {groupedResults.topMatch && (
-                    <div className="sr-section">
-                      <div className="sr-section-header-wrapper px-4">
-                        <span className="spotlight-group-header text-brand-ambient">
+                    <div>
+                      <div style={{ padding: '8px 12px 4px' }}>
+                        <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--txt)' }}>
                           Top Result
                         </span>
                       </div>
@@ -894,10 +883,10 @@ export default function SpotlightSearch({
                         sum + (expandedDomains.has(g.domain) ? Math.min(12, g.totalCount) : Math.min(4, g.results.length)), 0);
 
                     return (
-                      <div key={group.domain} className="sr-section">
-                        {/* Domain Header - no icons, no counts (discipline) */}
-                        <div className="sr-section-header-wrapper">
-                          <span className="spotlight-group-header">
+                      <div key={group.domain}>
+                        {/* Domain Header */}
+                        <div style={{ padding: '8px 12px 4px' }}>
+                          <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--txt)' }}>
                             {group.domain}
                           </span>
                         </div>
@@ -928,16 +917,25 @@ export default function SpotlightSearch({
                         {(hasMoreInDomain || (group.totalCount > 4 && !isExpanded)) && (
                           <button
                             onClick={() => toggleDomainExpansion(group.domain)}
-                            className="w-full px-4 py-2 text-left typo-meta text-brand-interactive hover:bg-surface-hover transition-colors flex items-center gap-2"
+                            style={{
+                              width: '100%', padding: '8px 12px', textAlign: 'left',
+                              fontSize: 11, color: 'var(--mark)', background: 'transparent',
+                              border: 'none', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              transition: 'background 100ms',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-hover)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                           >
                             <ChevronDown
-                              className={cn(
-                                "w-3.5 h-3.5 transition-transform",
-                                isExpanded && "rotate-180"
-                              )}
+                              style={{
+                                width: 14, height: 14,
+                                transition: 'transform 200ms',
+                                transform: isExpanded ? 'rotate(180deg)' : 'none',
+                              }}
                             />
                             {isExpanded
-                              ? `Show less`
+                              ? 'Show less'
                               : `Show ${Math.min(group.totalCount - 4, 8)} more in ${group.domain}`
                             }
                           </button>
@@ -946,27 +944,23 @@ export default function SpotlightSearch({
                     );
                   })}
 
-                  {/* Scroll sentinel for auto-loading more results */}
-                  <div
-                    ref={scrollSentinelRef}
-                    className="h-px w-full"
-                    aria-hidden="true"
-                  />
+                  {/* Scroll sentinel */}
+                  <div ref={scrollSentinelRef} style={{ height: 1, width: '100%' }} aria-hidden="true" />
                 </div>
               )}
 
               {showNoResults && (
-                <div className="py-10 text-center" data-testid="no-results">
-                  <p className="typo-title text-txt-secondary">No Results</p>
+                <div style={{ padding: '40px 0', textAlign: 'center' }} data-testid="no-results">
+                  <p style={{ fontSize: 15, color: 'var(--txt2)' }}>No Results</p>
                 </div>
               )}
 
               {error && (
-                <div className="py-10 text-center" data-testid="search-error">
-                  <p className="typo-title text-txt-secondary">{error}</p>
+                <div style={{ padding: '40px 0', textAlign: 'center' }} data-testid="search-error">
+                  <p style={{ fontSize: 15, color: 'var(--txt2)' }}>{error}</p>
                   <button
                     onClick={() => search(query)}
-                    className="mt-2 typo-label text-brand-interactive hover:text-brand-hover"
+                    style={{ marginTop: 8, fontSize: 13, color: 'var(--mark)', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     Try again
                   </button>
@@ -974,30 +968,120 @@ export default function SpotlightSearch({
               )}
             </div>
           )}
-          {/* Footer keyboard hint strip */}
-          <div className="spotlight-footer" aria-label="Keyboard shortcuts">
-            <div className="spotlight-footer-hint">
-              <span className="spotlight-kbd">↑</span>
-              <span className="spotlight-kbd">↓</span>
-              <span className="text-caption text-txt-tertiary ml-1">Navigate</span>
+
+          {/* Footer keyboard hint strip — inline per prototype .search-footer */}
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              height: 34, padding: '0 14px',
+              borderTop: '1px solid var(--border-faint)',
+              background: 'rgba(0,0,0,0.18)',
+            }}
+            aria-label="Keyboard shortcuts"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--txt-ghost)' }}>
+              <kbd style={{ background: 'var(--surface-el)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'rgba(255,255,255,0.30)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>↑</kbd>
+              <kbd style={{ background: 'var(--surface-el)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'rgba(255,255,255,0.30)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>↓</kbd>
+              {' '}Navigate
             </div>
-            <div className="spotlight-footer-sep" aria-hidden="true" />
-            <div className="spotlight-footer-hint">
-              <span className="spotlight-kbd">↵</span>
-              <span className="text-caption text-txt-tertiary ml-1">Open</span>
+            <div style={{ width: 1, height: 10, background: 'var(--border-sub)', margin: '0 8px' }} aria-hidden="true" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--txt-ghost)' }}>
+              <kbd style={{ background: 'var(--surface-el)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'rgba(255,255,255,0.30)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>↵</kbd>
+              {' '}Open
             </div>
-            <div className="spotlight-footer-sep" aria-hidden="true" />
-            <div className="spotlight-footer-hint">
-              <span className="spotlight-kbd">Esc</span>
-              <span className="text-caption text-txt-tertiary ml-1">Clear</span>
+            <div style={{ width: 1, height: 10, background: 'var(--border-sub)', margin: '0 8px' }} aria-hidden="true" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--txt-ghost)' }}>
+              <kbd style={{ background: 'var(--surface-el)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'rgba(255,255,255,0.30)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>Esc</kbd>
+              {' '}Clear
             </div>
+          </div>
+
+          {/* ── Icon Strip (Email / Menu / Settings) ── */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '8px 14px',
+            borderTop: '1px solid rgba(255,255,255,0.04)',
+            background: 'rgba(0,0,0,0.10)',
+          }}>
+            {/* Email toggle */}
+            <button
+              onClick={() => toggleEmailScope(!emailScopeActive)}
+              aria-label="Toggle email scope"
+              style={{
+                width: 32, height: 32, borderRadius: 4,
+                background: emailScopeActive ? 'var(--teal-bg)' : 'transparent',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: emailScopeActive ? 'var(--mark)' : 'var(--txt-ghost)',
+                transition: 'background 100ms, color 100ms',
+              }}
+            >
+              <Mail style={{ width: 16, height: 16 }} strokeWidth={1.6} />
+            </button>
+
+            {/* Menu dropdown (Ledger / Handover / Add Files) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label="Menu"
+                  style={{
+                    width: 32, height: 32, borderRadius: 4,
+                    background: 'transparent',
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--txt-ghost)',
+                    transition: 'background 100ms, color 100ms',
+                  }}
+                >
+                  <MenuIcon style={{ width: 16, height: 16 }} strokeWidth={1.6} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" sideOffset={4}>
+                <DropdownMenuItem onClick={() => setShowLedger(true)}>
+                  <BookOpen style={{ width: 14, height: 14, marginRight: 8 }} />
+                  Ledger
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowHandoverDraft(true)}>
+                  <FileText style={{ width: 14, height: 14, marginRight: 8 }} />
+                  Handover Draft
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowReceivingUpload(true)}>
+                  <Plus style={{ width: 14, height: 14, marginRight: 8 }} />
+                  Log Receiving
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Settings */}
+            <button
+              onClick={() => setShowSettings(true)}
+              aria-label="Settings"
+              style={{
+                width: 32, height: 32, borderRadius: 4,
+                background: 'transparent',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--txt-ghost)',
+                transition: 'background 100ms, color 100ms',
+              }}
+            >
+              <Settings style={{ width: 16, height: 16 }} strokeWidth={1.6} />
+            </button>
           </div>
         </div>
 
+        {/* ── Idle State: SmartPointers + LensPillStrip ── */}
+        {!hasQuery && (
+          <>
+            <SmartPointers />
+            <LensPillStrip />
+          </>
+        )}
 
-        {/* Utility icon row removed — not in prototype.
-            Menu actions (Ledger, Handover, Add Files, Settings)
-            are still accessible via their modal/panel components below. */}
+        {/* ── Search State: QueryInterpretation ── */}
+        {hasQuery && (
+          <QueryInterpretation query={query} />
+        )}
       </div>
 
       {/* Settings Modal */}
