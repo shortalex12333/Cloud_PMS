@@ -98,20 +98,21 @@ async def handle_notification(conn, pid, channel, payload):
             f"yacht={yacht[:8] if yacht else 'N/A'}..., type={object_type}"
         )
 
-        # Key patterns to evict.
-        # API stores result-cache keys as:  rs:{query_hash}:{org_id}:{yacht_id}:{embed_ver}
-        # We know yacht_id from the trigger payload; org_id may or may not be present.
-        # Use wildcard patterns so the scan catches all queries and embed versions for this yacht.
+        # Key patterns to evict — three cache key formats exist:
+        #   rs:{hash}:{org}:{yacht}:{ver}                          (f1_search_streaming)
+        #   v1:{tenant}:{yacht}:{user}:{role}:{ep}:{phase}:{hash} (canonical cache)
+        #   rw:{sha256}                                            (cortex rewrites, no yacht)
         if yacht:
             patterns = [
-                f"rs:*:*:{yacht}:*",   # matches rs:{hash}:{any_org}:{yacht}:{any_ver}
-                f"rw:*:*:{yacht}:*",   # future-proof: rewrite cache same layout
+                f"rs:*:*:{yacht}:*",   # f1 streaming cache
+                f"v1:*:{yacht}:*",     # canonical API cache
+                f"rw:*",               # rewrite cache (no yacht segment, flush all)
             ]
         elif org:
-            # Fallback: org-level eviction when yacht is unknown
             patterns = [
                 f"rs:*:{org}:*",
-                f"rw:*:{org}:*",
+                f"v1:*:{org}:*",
+                f"rw:*",
             ]
         else:
             logger.warning("No org_id or yacht_id in notification payload, skipping eviction")
