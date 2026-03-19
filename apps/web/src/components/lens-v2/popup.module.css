@@ -559,6 +559,21 @@
   color: var(--txt-ghost);
   pointer-events: none;
 }
+.sigPadClear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 11px;
+  color: var(--txt-ghost);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  transition: color 80ms;
+}
+.sigPadClear:hover {
+  color: var(--txt2);
+}
 .sigPadMeta {
   display: flex;
   gap: 12px;

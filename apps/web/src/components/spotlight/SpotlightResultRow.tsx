@@ -122,7 +122,7 @@ export default function SpotlightResultRow({
           </p>
         )}
         {result.subtitle && !result.snippet && (
-          <p className="text-caption font-normal leading-snug truncate text-txt-tertiary">
+          <p className="result-sub-mono truncate">
             {result.subtitle}
           </p>
         )}

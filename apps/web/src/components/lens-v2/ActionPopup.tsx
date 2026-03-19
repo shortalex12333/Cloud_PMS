@@ -351,15 +351,24 @@ function SigL3({
 function SigL4({
   sigName,
   onSigNameChange,
+  onClearPad,
 }: {
   sigName: string;
   onSigNameChange: (v: string) => void;
+  onClearPad?: () => void;
 }) {
   return (
     <div className={s.popupSig}>
       <div className={s.sigLabel}>Wet Signature</div>
       <div className={s.sigPad}>
         <span className={s.sigPadHint}>Draw signature here</span>
+        <button
+          type="button"
+          className={s.sigPadClear}
+          onClick={onClearPad}
+        >
+          Clear
+        </button>
       </div>
       <div className={s.sigPadMeta}>
         <input
@@ -428,7 +437,10 @@ export function ActionPopup({
   onClose,
   previewRows,
 }: ActionPopupProps) {
-  // Internal form state
+  // L0 = tap only — execute inline, no modal needed
+  const isL0 = mode === 'mutate' && signatureLevel === 0;
+
+  // Internal form state (hooks must be called unconditionally)
   const [values, setValues] = React.useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const f of fields) {
@@ -459,6 +471,15 @@ export function ActionPopup({
     if (signatureLevel === 4 && !sigName) return true;
     return false;
   }, [submitDisabled, allGatesSatisfied, fields, values, signatureLevel, sigName, pin]);
+
+  // L0: fire onSubmit immediately, render nothing
+  React.useEffect(() => {
+    if (isL0) {
+      onSubmit({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isL0]);
+  if (isL0) return null;
 
   const handleSubmit = () => {
     if (computedDisabled) return;
@@ -579,7 +600,11 @@ export function ActionPopup({
           <SigL3 pin={pin} onPinChange={setPin} />
         )}
         {mode === 'mutate' && signatureLevel === 4 && (
-          <SigL4 sigName={sigName} onSigNameChange={setSigName} />
+          <SigL4
+            sigName={sigName}
+            onSigNameChange={setSigName}
+            onClearPad={() => setSigName('')}
+          />
         )}
         {mode === 'mutate' && signatureLevel === 5 && <SigL5 />}
 

@@ -54,7 +54,7 @@ export function DocRowsSection({ title, docs, defaultCollapsed = false, icon }: 
               )}
             </div>
             <div className={styles.docInfo}>
-              <div className={styles.docName}>
+              <div className={`${styles.docName}${doc.onClick ? ` ${styles.docNameLink}` : ''}`}>
                 {doc.name}
                 {doc.code && <> <span className={styles.docCode}>{doc.code}</span></>}
               </div>

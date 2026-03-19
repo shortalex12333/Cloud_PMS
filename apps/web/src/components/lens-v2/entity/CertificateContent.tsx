@@ -105,6 +105,7 @@ export function CertificateContent() {
   const renewal_history = ((entity?.renewal_history ?? payload.renewal_history ?? entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
   const related_equipment = ((entity?.related_equipment ?? payload.related_equipment ?? entity?.equipment ?? payload.equipment) as Array<Record<string, unknown>> | undefined) ?? [];
   const related_certificates = ((entity?.related_certificates ?? payload.related_certificates) as Array<Record<string, unknown>> | undefined) ?? [];
+  const holder_certificates = ((entity?.holder_certificates ?? payload.holder_certificates) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
   const renewAction = getAction('renew_certificate');
@@ -264,6 +265,19 @@ export function CertificateContent() {
         : undefined,
   }));
 
+  // Holder's Certificates (DocRows — other certs for the same holder)
+  const holderCertItems: DocRowItem[] = holder_certificates.map((hc, i) => ({
+    id: (hc.id as string) ?? `hcert-${i}`,
+    name: (hc.name ?? hc.title) as string ?? 'Certificate',
+    code: (hc.certificate_number ?? hc.code) as string | undefined,
+    meta: (hc.meta ?? hc.status) as string | undefined,
+    date: (hc.expiry_date ?? hc.date) as string | undefined,
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
+    onClick: (hc.certificate_id ?? hc.id)
+      ? () => router.push(getEntityRoute('certificates' as Parameters<typeof getEntityRoute>[0], (hc.certificate_id ?? hc.id) as string))
+      : undefined,
+  }));
+
   // Notes
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
@@ -305,6 +319,19 @@ export function CertificateContent() {
           ) : undefined
         }
       />
+
+      {/* Holder's Certificates */}
+      {holderCertItems.length > 0 && (
+        <ScrollReveal>
+          <DocRowsSection
+            title={holder_name ? `${holder_name} \u2014 All Documents` : "Holder's Certificates"}
+            docs={holderCertItems}
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>
+            }
+          />
+        </ScrollReveal>
+      )}
 
       {/* Certificate Details / Coverage */}
       {certDetailItems.length > 0 && (

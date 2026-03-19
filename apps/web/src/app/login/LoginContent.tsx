@@ -12,7 +12,7 @@
  * Uses prototype-tokens.css variables (served via /src/styles/tokens.css).
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { isHOD, isFullyActivated } from '@/contexts/AuthContext';
@@ -122,6 +122,42 @@ const LABEL: React.CSSProperties = {
   marginBottom: '6px',
 };
 
+const FORGOT_LINK: React.CSSProperties = {
+  fontSize: '10px',
+  color: 'var(--mark, #5AABCC)',
+  cursor: 'pointer',
+  textDecoration: 'none',
+  transition: 'opacity 80ms',
+};
+
+const FIELD_ERROR_TEXT: React.CSSProperties = {
+  fontSize: '11px',
+  color: 'var(--red, #C0503A)',
+  marginTop: '4px',
+};
+
+/* Injected <style> for placeholder color + mobile responsive */
+const INJECTED_CSS = `
+  .login-field-input::placeholder {
+    color: rgba(255,255,255,0.40) !important;
+  }
+  [data-theme="light"] .login-field-input::placeholder {
+    color: rgba(0,0,0,0.35) !important;
+  }
+  @media (max-width: 480px) {
+    .login-auth-card {
+      max-width: 100% !important;
+      border-radius: 0 !important;
+    }
+    .login-auth-form {
+      padding: 24px 20px 20px !important;
+    }
+    .login-auth-header {
+      padding: 32px 20px 0 !important;
+    }
+  }
+`;
+
 /* ── Theme toggle SVGs ── */
 
 function MoonIcon() {
@@ -158,6 +194,19 @@ export default function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const [justLoggedOut, setJustLoggedOut] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [btnHover, setBtnHover] = useState(false);
+  const [btnActive, setBtnActive] = useState(false);
+  const styleInjected = useRef(false);
+
+  // Inject CSS for placeholder + mobile responsive
+  useEffect(() => {
+    if (styleInjected.current) return;
+    styleInjected.current = true;
+    const style = document.createElement('style');
+    style.textContent = INJECTED_CSS;
+    document.head.appendChild(style);
+    return () => { style.remove(); };
+  }, []);
 
   // Theme toggle
   const toggleTheme = useCallback(() => {
@@ -367,9 +416,9 @@ export default function LoginContent() {
         {/* ── Stage ── */}
         <div style={STAGE}>
           {/* Auth card */}
-          <div style={CARD}>
+          <div className="login-auth-card" style={CARD}>
             {/* Card header */}
-            <div style={{ padding: '32px 32px 0', textAlign: 'center' }}>
+            <div className="login-auth-header" style={{ padding: '32px 32px 0', textAlign: 'center' }}>
               <div style={{
                 fontSize: '9px', fontWeight: 600, letterSpacing: '0.16em',
                 textTransform: 'uppercase', color: 'var(--mark)', marginBottom: '4px',
@@ -385,25 +434,13 @@ export default function LoginContent() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleLogin} style={{ padding: '24px 32px 32px' }}>
-              {/* Error banner */}
-              {displayError && (
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  background: 'var(--red-bg)',
-                  border: '1px solid var(--red-border)',
-                  marginBottom: '16px',
-                }}>
-                  <p style={{ fontSize: '11px', color: 'var(--red)' }}>{displayError}</p>
-                </div>
-              )}
-
+            <form onSubmit={handleLogin} className="login-auth-form" style={{ padding: '24px 32px 32px' }}>
               {/* Email field */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={LABEL}>Email</label>
                 <input
                   type="email"
+                  className="login-field-input"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@vessel.com"
@@ -413,19 +450,37 @@ export default function LoginContent() {
                   style={{
                     ...INPUT_BASE,
                     opacity: loading ? 0.5 : 1,
+                    ...(displayError ? { borderColor: 'var(--red, #C0503A)' } : {}),
                   }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--teal)'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-sub)'; }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = displayError
+                      ? 'var(--red, #C0503A)'
+                      : 'var(--border-sub)';
+                  }}
                 />
+                {displayError && (
+                  <p style={FIELD_ERROR_TEXT}>{displayError}</p>
+                )}
               </div>
 
               {/* Password field */}
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <label style={{ ...LABEL, marginBottom: 0 }}>Password</label>
+                  <a
+                    href="#"
+                    style={FORGOT_LINK}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                    onClick={(e) => { e.preventDefault(); }}
+                  >
+                    Forgot?
+                  </a>
                 </div>
                 <input
                   type="password"
+                  className="login-field-input"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter password"
@@ -435,9 +490,14 @@ export default function LoginContent() {
                   style={{
                     ...INPUT_BASE,
                     opacity: loading ? 0.5 : 1,
+                    ...(displayError ? { borderColor: 'var(--red, #C0503A)' } : {}),
                   }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--teal)'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-sub)'; }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = displayError
+                      ? 'var(--red, #C0503A)'
+                      : 'var(--border-sub)';
+                  }}
                 />
               </div>
 
@@ -449,7 +509,16 @@ export default function LoginContent() {
                   ...SUBMIT_BTN,
                   cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.5 : 1,
+                  ...(btnActive && !loading
+                    ? { background: 'rgba(58,124,157,0.24)' }
+                    : btnHover && !loading
+                      ? { background: 'rgba(58,124,157,0.18)' }
+                      : {}),
                 }}
+                onMouseEnter={() => setBtnHover(true)}
+                onMouseLeave={() => { setBtnHover(false); setBtnActive(false); }}
+                onMouseDown={() => setBtnActive(true)}
+                onMouseUp={() => setBtnActive(false)}
               >
                 {loading ? (
                   <>

@@ -288,6 +288,71 @@ export function ShoppingListContent() {
         }
       />
 
+      {/* Lifecycle Progress */}
+      <ScrollReveal>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, padding: '16px 0', marginBottom: 8 }}>
+          {(['draft', 'submitted', 'approved', 'ordered', 'received', 'archived'] as const).map((step, i, arr) => {
+            const stepIndex = arr.indexOf(step);
+            const currentIndex = arr.indexOf(status as typeof step);
+            const isCompleted = currentIndex >= 0 && stepIndex < currentIndex;
+            const isActive = stepIndex === currentIndex;
+            const isFuture = currentIndex < 0 ? stepIndex > 0 : stepIndex > currentIndex;
+
+            return (
+              <React.Fragment key={step}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      width: isActive ? 12 : 10,
+                      height: isActive ? 12 : 10,
+                      borderRadius: '50%',
+                      background: isCompleted || isActive ? 'var(--green, #4caf50)' : 'none',
+                      border: `2px solid ${isCompleted || isActive ? 'var(--green, #4caf50)' : 'var(--txt-ghost, #666)'}`,
+                      boxShadow: isActive ? '0 0 0 4px var(--green-bg, rgba(76,175,80,0.15))' : 'none',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {isCompleted && (
+                      <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
+                        <polyline points="2.5 6 5 8.5 9.5 3.5" />
+                      </svg>
+                    )}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: isActive ? 600 : 500,
+                      letterSpacing: '0.03em',
+                      color: isActive ? 'var(--green, #4caf50)' : isCompleted ? 'var(--txt3, #999)' : 'var(--txt-ghost, #666)',
+                      marginTop: 8,
+                      textTransform: 'uppercase',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {formatLabel(step)}
+                  </span>
+                </div>
+                {i < arr.length - 1 && (
+                  <div
+                    style={{
+                      flex: 1,
+                      height: 2,
+                      background: isCompleted ? 'var(--green, #4caf50)' : 'var(--border-sub, #444)',
+                      alignSelf: 'flex-start',
+                      marginTop: isActive ? 6 : 5,
+                      minWidth: 8,
+                    }}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </ScrollReveal>
+
       {/* Line Items */}
       <ScrollReveal>
         <PartsSection
