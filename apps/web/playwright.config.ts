@@ -232,6 +232,15 @@ export default defineConfig({
       },
     },
     // =========================================================================
+    // SHARD 32: Ledger History & Audit Trail
+    // =========================================================================
+    {
+      name: 'shard-32-ledger',
+      testDir: './e2e/shard-32-ledger',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // =========================================================================
     // SHARD 33: Lens Actions (Stage 3 action mutation suite — Part 1)
     // =========================================================================
     {
