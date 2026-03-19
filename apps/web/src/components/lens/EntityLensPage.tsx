@@ -17,6 +17,8 @@ import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
 import { getActionDisplay } from '@/types/actions';
 import { ActionPopup } from '@/components/lens-v2/ActionPopup';
 import type { ActionPopupField } from '@/components/lens-v2/ActionPopup';
+import { useEntityLedger } from '@/hooks/useEntityLedger';
+import { HistorySection } from './sections/HistorySection';
 
 // Clusters rendered in the shell action bar (not inline in content)
 const SHELL_CLUSTERS = new Set(['lifecycle', 'entity', 'compliance']);
@@ -81,6 +83,12 @@ function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack:
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
+function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
+  const { data: ledgerHistory = [] } = useEntityLedger(entityType, entityId);
+  if (ledgerHistory.length === 0) return null;
+  return <HistorySection history={ledgerHistory} />;
+}
+
 export interface EntityLensPageProps {
   entityType: EntityType;
   entityId: string;
@@ -206,6 +214,7 @@ export function EntityLensPage({
     bodyContent = (
       <EntityLensProvider value={contextValue}>
         <Content />
+        <LedgerHistory entityType={entityType} entityId={entityId} />
         {/* Shell action bar — lifecycle, entity, and compliance actions */}
         {shellActions.length > 0 && (
           <div
@@ -309,28 +318,36 @@ export function EntityLensPage({
         <div
           style={{
             position: 'fixed',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: '420px',
+            top: '24px',
+            right: '24px',
+            bottom: '24px',
+            width: '600px',
             maxWidth: '100vw',
-            zIndex: 30,
+            zIndex: 100,
             background: 'var(--surface)',
-            borderLeft: '1px solid var(--border-sub)',
-            boxShadow: 'var(--shadow-drop)',
-            overflowY: 'auto',
+            borderTop: '1px solid rgba(255,255,255,0.11)',
+            borderRight: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(255,255,255,0.03)',
+            borderLeft: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '4px',
+            boxShadow: '0 20px 80px rgba(0,0,0,0.60), 0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.05)',
+            overflow: 'hidden',
+            transition: 'opacity 200ms ease, transform 280ms ease',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-sub)' }}>
-            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-sub)', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Related · {totalRelated}
             </span>
             <button
               className={lensStyles.hdrClose}
               onClick={() => setRelatedOpen(false)}
               aria-label="Close related"
+              style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                 <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </button>
