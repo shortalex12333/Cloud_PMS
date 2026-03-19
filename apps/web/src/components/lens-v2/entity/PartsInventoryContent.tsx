@@ -1,18 +1,19 @@
 'use client';
 
 /**
- * PartsInventoryContent — lens-v2 Parts/Inventory entity view.
- * Matches lens-parts.html prototype exactly.
- * Reads all data from useEntityLensContext() — zero props.
+ * PartsInventoryContent — lens-v2 entity view.
+ * Prototype: public/prototypes/lens-parts.html
  *
- * Sections (in prototype order):
- * 1. Identity strip: overline (part number mono), title, context, pills, detail lines, description
- * 2. Stock Details (KVSection — stock level, min, reorder, location)
- * 3. Specifications (KVSection)
- * 4. Where Used (DocRows — equipment/WOs that use this part)
- * 5. Purchase History (AuditTrail)
- * 6. Suppliers (KVSection)
- * 7. Attachments
+ * Data flow:
+ * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
+ * - Actions from availableActions[] → backend /v1/actions/execute
+ * - ActionPopup auto-builds form fields from action.required_fields
+ *
+ * Sections: Identity → Stock Details → Barcode → Specs → Where Used → Purchase History → History → Audit Trail → Suppliers → Notes → Attachments
+ *
+ * TODO notes for next engineer:
+ * - Edit Details handler not wired
+ * - Add Note handler not wired
  */
 
 import * as React from 'react';
@@ -31,12 +32,15 @@ import {
   AttachmentsSection,
   DocRowsSection,
   KVSection,
+  HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
   type DocRowItem,
   type KVItem,
+  type HistoryPeriod,
 } from '../sections';
+import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // ─── Status colour mapping ───
 
@@ -67,7 +71,7 @@ function formatCurrency(amount: number, currency?: string): string {
 
 export function PartsInventoryContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -94,6 +98,8 @@ export function PartsInventoryContent() {
   const where_used = ((entity?.where_used ?? payload.where_used ?? entity?.related_equipment ?? payload.related_equipment) as Array<Record<string, unknown>> | undefined) ?? [];
   const suppliers = ((entity?.suppliers ?? payload.suppliers) as Array<Record<string, unknown>> | undefined) ?? [];
   const specifications = ((entity?.specifications ?? payload.specifications ?? entity?.specs ?? payload.specs) as Array<Record<string, unknown>> | undefined) ?? [];
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+  const auditTrail = ((entity?.audit_trail ?? payload.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
   const takeStockAction = getAction('take_stock');
@@ -103,6 +109,19 @@ export function PartsInventoryContent() {
   const addNoteAction = getAction('add_part_note');
   const adjustStockAction = getAction('adjust_stock_quantity');
   const logUsageAction = getAction('log_part_usage');
+
+  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
+    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  } | null>(null);
+
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    const fields: ActionPopupField[] = action.required_fields
+      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
+      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
+    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  }
 
   // ── Derived display ──
   const statusLabel = formatLabel(status);
@@ -151,36 +170,24 @@ export function PartsInventoryContent() {
     }
   }, [isLowStock, status, executeAction]);
 
-  const dropdownItems: DropdownItem[] = [];
-  if (takeStockAction !== null) {
-    dropdownItems.push({
-      label: 'Take Stock',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12" /></svg>,
-      onClick: () => executeAction('take_stock', {}),
-    });
-  }
-  if (logUsageAction !== null) {
-    dropdownItems.push({
-      label: 'Log Usage',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>,
-      onClick: () => executeAction('log_part_usage', {}),
-    });
-  }
-  if (updateAction !== null) {
-    dropdownItems.push({
-      label: 'Edit Details',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (archiveAction !== null) {
-    dropdownItems.push({
-      label: 'Archive',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>,
-      onClick: () => executeAction('archive_part', {}),
-      danger: true,
-    });
-  }
+  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const DANGER_ACTIONS = new Set(['archive_part', 'delete_part']);
+  const primaryActionId = (isLowStock || status === 'out_of_stock') ? 'reorder_part' : 'adjust_stock_quantity';
+
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => {
+            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
+          },
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
 
   // ── Map section data ──
 
@@ -238,6 +245,21 @@ export function PartsInventoryContent() {
     action: (h.action ?? h.description ?? h.event) as string ?? '',
     actor: (h.actor ?? h.supplier ?? h.vendor ?? h.user_name) as string | undefined,
     timestamp: (h.created_at ?? h.timestamp ?? h.date) as string ?? '',
+  }));
+
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
+  }));
+
+  const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
+    id: (h.id as string) ?? `audit-${i}`,
+    action: (h.action ?? h.description ?? h.event) as string ?? '',
+    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
+    timestamp: (h.created_at ?? h.timestamp) as string ?? '',
   }));
 
   // Suppliers KV
@@ -375,11 +397,15 @@ export function PartsInventoryContent() {
       )}
 
       {/* Purchase History */}
-      {purchaseEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection events={purchaseEvents} defaultCollapsed />
-        </ScrollReveal>
-      )}
+      <ScrollReveal>
+        <AuditTrailSection events={purchaseEvents} defaultCollapsed />
+      </ScrollReveal>
+
+      {/* History */}
+      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+
+      {/* Audit Trail */}
+      <ScrollReveal><AuditTrailSection events={auditEvents} defaultCollapsed /></ScrollReveal>
 
       {/* Suppliers */}
       {supplierItems.length > 0 && (
@@ -402,7 +428,7 @@ export function PartsInventoryContent() {
         <NotesSection
           notes={noteItems}
           onAddNote={handleAddNote}
-          canAddNote={addNoteAction !== null}
+          canAddNote
         />
       </ScrollReveal>
 
@@ -411,9 +437,16 @@ export function PartsInventoryContent() {
         <AttachmentsSection
           attachments={attachmentItems}
           onAddFile={() => {}}
-          canAddFile={false}
+          canAddFile
         />
       </ScrollReveal>
+
+      {actionPopupConfig && (
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+          signatureLevel={actionPopupConfig.signatureLevel}
+          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onClose={() => setActionPopupConfig(null)} />
+      )}
     </>
   );
 }

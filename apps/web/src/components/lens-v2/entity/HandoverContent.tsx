@@ -1,17 +1,19 @@
 'use client';
 
 /**
- * HandoverContent — lens-v2 Handover entity view.
- * Matches lens-handover.html prototype exactly.
- * Reads all data from useEntityLensContext() — zero props.
+ * HandoverContent — lens-v2 entity view.
+ * Prototype: public/prototypes/lens-handover.html
  *
- * Sections (in prototype order):
- * 1. Identity strip: handover_number, title, context (from→to crew), pills, detail lines
- * 2. Rendered Handover Document (previewArea — the main event)
- * 3. Signatures (KVSection — who signed when)
- * 4. Notes
- * 5. Attachments
- * 6. Report footer
+ * Data flow:
+ * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
+ * - Actions from availableActions[] → backend /v1/actions/execute
+ * - ActionPopup auto-builds form fields from action.required_fields
+ *
+ * Sections: Identity → Document Preview → Entity Links → Signatures → Notes → Attachments → History → Audit Trail
+ *
+ * TODO notes for next engineer:
+ * - Export PDF handler not wired (onClick is noop)
+ * - Add Note handler not wired
  */
 
 import * as React from 'react';
@@ -28,11 +30,16 @@ import {
   AttachmentsSection,
   DocRowsSection,
   KVSection,
+  AuditTrailSection,
+  HistorySection,
   type NoteItem,
   type AttachmentItem,
   type DocRowItem,
   type KVItem,
+  type AuditEvent,
+  type HistoryPeriod,
 } from '../sections';
+import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // ─── Colour mapping helpers ───
 
@@ -62,7 +69,7 @@ function formatLabel(str: string): string {
 
 export function HandoverContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -94,6 +101,19 @@ export function HandoverContent() {
   // ── Action gates ──
   // Owner correction: view-only document. Only sign + read-only actions (Export/Print).
   const signAction = getAction('sign_handover');
+
+  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
+    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  } | null>(null);
+
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    const fields: ActionPopupField[] = action.required_fields
+      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
+      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
+    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  }
 
   // ── Derived display ──
   const statusLabel = formatLabel(status);
@@ -143,17 +163,40 @@ export function HandoverContent() {
     await executeAction('sign_handover');
   }, [executeAction]);
 
-  const dropdownItems: DropdownItem[] = [];
-  dropdownItems.push({
-    label: 'Export PDF',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 4-8" /><rect x="2" y="2" width="20" height="20" rx="2" /></svg>,
-    onClick: () => {},
-  });
-  dropdownItems.push({
-    label: 'Print',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>,
-    onClick: () => window.print(),
-  });
+  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const DANGER_ACTIONS = new Set(['archive_handover', 'delete_handover']);
+  const primaryActionId = 'sign_handover';
+
+  // Dynamic items from backend
+  const dynamicItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => {
+            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
+          },
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
+
+  // Client-side items + dynamic items
+  const dropdownItems: DropdownItem[] = [
+    {
+      label: 'Export PDF',
+      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 4-8" /><rect x="2" y="2" width="20" height="20" rx="2" /></svg>,
+      onClick: () => {},
+    },
+    {
+      label: 'Print',
+      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>,
+      onClick: () => window.print(),
+    },
+    ...dynamicItems,
+  ];
 
   // ── Map section data ──
 
@@ -218,6 +261,25 @@ export function HandoverContent() {
     caption: (a.caption ?? a.description) as string | undefined,
     size: (a.size ?? a.file_size) as string | undefined,
     kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
+  }));
+
+  // Prior periods / history
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+  const auditTrail = ((entity?.audit_trail ?? payload.audit_trail ?? entity?.audit_history ?? payload.audit_history) as Array<Record<string, unknown>> | undefined) ?? [];
+
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
+  }));
+
+  const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
+    id: (h.id as string) ?? `audit-${i}`,
+    action: (h.action ?? h.description ?? h.event) as string ?? '',
+    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
+    timestamp: (h.created_at ?? h.timestamp) as string ?? '',
   }));
 
   // Summary stats for inline rendering
@@ -414,31 +476,40 @@ export function HandoverContent() {
         </ScrollReveal>
       )}
 
-      {/* Notes (read-only — no add note for view-only handover) */}
-      {noteItems.length > 0 && (
-        <ScrollReveal>
-          <NotesSection
-            notes={noteItems}
-            canAddNote={false}
-          />
-        </ScrollReveal>
-      )}
+      {/* Notes */}
+      <ScrollReveal>
+        <NotesSection
+          notes={noteItems}
+          canAddNote
+        />
+      </ScrollReveal>
 
       {/* Attachments */}
-      {attachmentItems.length > 0 && (
-        <ScrollReveal>
-          <AttachmentsSection
-            attachments={attachmentItems}
-            onAddFile={() => {}}
-            canAddFile={false}
-          />
-        </ScrollReveal>
-      )}
+      <ScrollReveal>
+        <AttachmentsSection
+          attachments={attachmentItems}
+          onAddFile={() => {}}
+          canAddFile
+        />
+      </ScrollReveal>
+
+      {/* History */}
+      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+
+      {/* Audit Trail */}
+      <ScrollReveal><AuditTrailSection events={auditEvents} defaultCollapsed /></ScrollReveal>
 
       {/* Report Footer */}
       <div className={styles.reportFooter}>
         Generated by Celeste PMS{department ? ` · ${department} Department` : ''}{vessel_name ? ` · ${vessel_name}` : ''}
       </div>
+
+      {actionPopupConfig && (
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+          signatureLevel={actionPopupConfig.signatureLevel}
+          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onClose={() => setActionPopupConfig(null)} />
+      )}
     </>
   );
 }

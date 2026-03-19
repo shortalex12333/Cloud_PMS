@@ -1,18 +1,19 @@
 'use client';
 
 /**
- * FaultContent — lens-v2 Fault entity view.
- * Matches lens-fault.html prototype exactly.
- * Reads all data from useEntityLensContext() — zero props.
+ * FaultContent — lens-v2 entity view.
+ * Prototype: public/prototypes/lens-fault.html
  *
- * Sections (in prototype order):
- * 1. Identity strip: overline, title, context, pills, detail lines
- * 2. Corrective Action (description block via KVSection or plain text)
- * 3. Related Entities (DocRows)
- * 4. Comments / Journal (Notes)
- * 5. Reference Documents (DocRows)
- * 6. Evidence & Attachments
- * 7. Audit Trail (collapsed)
+ * Data flow:
+ * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
+ * - Actions from availableActions[] → backend /v1/actions/execute
+ * - ActionPopup auto-builds form fields from action.required_fields
+ *
+ * Sections: Identity → Corrective Action → RCA → Related → Notes → Docs → History → Audit Trail → Attachments
+ *
+ * TODO notes for next engineer:
+ * - Add Comment handler not wired (onClick is noop)
+ * - File upload modal not wired
  */
 
 import * as React from 'react';
@@ -23,6 +24,7 @@ import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // Sections
 import {
@@ -31,11 +33,13 @@ import {
   AttachmentsSection,
   DocRowsSection,
   KVSection,
+  HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
   type DocRowItem,
   type KVItem,
+  type HistoryPeriod,
 } from '../sections';
 
 // ─── Colour mapping helpers ───
@@ -80,7 +84,7 @@ function formatLabel(str: string): string {
 
 export function FaultContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -108,6 +112,8 @@ export function FaultContent() {
   const history = ((entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
   const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
   const root_cause_items = ((entity?.root_cause_analysis ?? payload.root_cause_analysis) as Array<Record<string, unknown>> | undefined) ?? [];
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+  const auditTrail = ((entity?.audit_trail ?? payload.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
   const investigateAction = getAction('investigate_fault');
@@ -115,6 +121,19 @@ export function FaultContent() {
   const closeAction = getAction('close_fault');
   const addNoteAction = getAction('add_fault_note');
   const archiveAction = getAction('archive_fault');
+
+  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
+    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  } | null>(null);
+
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    const fields: ActionPopupField[] = action.required_fields
+      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
+      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
+    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  }
 
   // ── Derived display ──
   const statusLabel = formatLabel(status);
@@ -202,43 +221,24 @@ export function FaultContent() {
     }
   }, [primaryAction, executeAction]);
 
-  const dropdownItems: DropdownItem[] = [];
-  if (addNoteAction !== null) {
-    dropdownItems.push({
-      label: 'Add Comment',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (investigateAction !== null && !isOpen) {
-    dropdownItems.push({
-      label: 'Investigate',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>,
-      onClick: () => executeAction('investigate_fault', {}),
-    });
-  }
-  if (resolveAction !== null && !isInvestigating) {
-    dropdownItems.push({
-      label: 'Resolve Fault',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>,
-      onClick: () => executeAction('resolve_fault', {}),
-    });
-  }
-  if (closeAction !== null && primaryAction !== 'close_fault') {
-    dropdownItems.push({
-      label: 'Close Fault',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>,
-      onClick: () => executeAction('close_fault', {}),
-    });
-  }
-  if (archiveAction !== null) {
-    dropdownItems.push({
-      label: 'Archive',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" rx="1" /><line x1="10" y1="12" x2="14" y2="12" /></svg>,
-      onClick: () => executeAction('archive_fault', {}),
-      danger: true,
-    });
-  }
+  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const DANGER_ACTIONS = new Set(['archive_fault', 'delete_fault']);
+  const primaryActionId = primaryAction;
+
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => {
+            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
+          },
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
 
   // ── Map section data ──
 
@@ -281,6 +281,23 @@ export function FaultContent() {
   // History → AuditEvents
   const auditEvents: AuditEvent[] = history.map((h, i) => ({
     id: (h.id as string) ?? `audit-${i}`,
+    action: (h.action ?? h.description ?? h.event) as string ?? '',
+    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
+    timestamp: (h.created_at ?? h.timestamp) as string ?? '',
+  }));
+
+  // Prior Periods → HistoryPeriods
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
+  }));
+
+  // Audit Trail → AuditEvents (distinct from history)
+  const auditEvents2: AuditEvent[] = auditTrail.map((h, i) => ({
+    id: (h.id as string) ?? `audit2-${i}`,
     action: (h.action ?? h.description ?? h.event) as string ?? '',
     actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
@@ -396,7 +413,7 @@ export function FaultContent() {
         <NotesSection
           notes={noteItems}
           onAddNote={handleAddNote}
-          canAddNote={addNoteAction !== null}
+          canAddNote
         />
       </ScrollReveal>
 
@@ -412,15 +429,26 @@ export function FaultContent() {
         <AttachmentsSection
           attachments={attachmentItems}
           onAddFile={() => {}}
-          canAddFile={false}
+          canAddFile
         />
       </ScrollReveal>
 
+      {/* History */}
+      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+
       {/* Audit Trail */}
-      {auditEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection events={auditEvents} defaultCollapsed />
-        </ScrollReveal>
+      <ScrollReveal>
+        <AuditTrailSection events={auditEvents} defaultCollapsed />
+      </ScrollReveal>
+
+      {/* Audit Trail (audit_trail field) */}
+      <ScrollReveal><AuditTrailSection events={auditEvents2} defaultCollapsed /></ScrollReveal>
+
+      {actionPopupConfig && (
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+          signatureLevel={actionPopupConfig.signatureLevel}
+          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onClose={() => setActionPopupConfig(null)} />
       )}
     </>
   );
