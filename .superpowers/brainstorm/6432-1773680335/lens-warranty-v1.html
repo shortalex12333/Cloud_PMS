@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Warranty · v1</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0c0b0a;
+  color: rgba(255,255,255,0.92);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 24px 48px;
+  gap: 20px;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-label { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.20); text-align: center; }
+.page-sub { font-size: 11px; color: rgba(255,255,255,0.28); text-align: center; max-width: 600px; line-height: 1.5; }
+
+.scene { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+.theme-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.theme-label { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.22); }
+
+/* ===================================================================
+   DARK TOKENS
+   =================================================================== */
+:root {
+  --surface:       #181614;
+  --surface-el:    #1e1b18;
+  --surface-hover: #252525;
+  --surface-act:   #2c2925;
+  --border-sub:    rgba(255,255,255,0.045);
+  --border-int:    rgba(255,255,255,0.06);
+  --txt:           rgba(255,255,255,0.92);
+  --txt2:          rgba(255,255,255,0.55);
+  --txt3:          rgba(255,255,255,0.40);
+  --txt-ghost:     rgba(255,255,255,0.20);
+  --mark:          #5AABCC;
+  --teal-bg:       rgba(58,124,157,0.13);
+  --red:           #C0503A;
+  --red-bg:        rgba(192,80,58,0.10);
+  --red-border:    rgba(192,80,58,0.22);
+  --amber:         #C4893B;
+  --amber-bg:      rgba(196,137,59,0.10);
+  --amber-border:  rgba(196,137,59,0.22);
+  --green:         #4CAF81;
+  --green-bg:      rgba(76,175,129,0.10);
+  --green-border:  rgba(76,175,129,0.22);
+  --font-mono:     'SF Mono','Fira Code',monospace;
+}
+
+/* ===================================================================
+   LIGHT TOKENS
+   =================================================================== */
+.light {
+  --surface:       #FFFFFF;
+  --surface-el:    #FDFCFB;
+  --surface-hover: #EDEAE4;
+  --surface-act:   #E8E3DC;
+  --border-sub:    rgba(0,0,0,0.06);
+  --border-int:    rgba(0,0,0,0.08);
+  --txt:           rgba(15,12,9,0.90);
+  --txt2:          rgba(15,12,9,0.60);
+  --txt3:          rgba(15,12,9,0.46);
+  --txt-ghost:     rgba(15,12,9,0.28);
+  --mark:          #2B7BA3;
+  --teal-bg:       rgba(43,123,163,0.09);
+  --red:           #B83A28;
+  --red-bg:        rgba(184,58,40,0.06);
+  --red-border:    rgba(184,58,40,0.20);
+  --amber:         #A67420;
+  --amber-bg:      rgba(166,116,32,0.06);
+  --amber-border:  rgba(166,116,32,0.20);
+  --green:         #2E7D5A;
+  --green-bg:      rgba(46,125,90,0.06);
+  --green-border:  rgba(46,125,90,0.20);
+}
+
+/* ===================================================================
+   PANEL
+   =================================================================== */
+.panel {
+  width: 700px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  border-top:    1px solid rgba(255,255,255,0.13);
+  border-right:  1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-left:   1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.60), 0 28px 80px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.45);
+  background: var(--surface-el);
+}
+.light .panel {
+  border-top:    1px solid rgba(0,0,0,0.12);
+  border-right:  1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-left:   1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 28px 80px rgba(0,0,0,0.13), 0 8px 24px rgba(0,0,0,0.08);
+}
+
+/* ===================================================================
+   LENS HEADER - 56px glass bar
+   =================================================================== */
+.lens-hdr {
+  height: 56px; flex-shrink: 0;
+  display: flex; align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-sub);
+  background: rgba(16,14,12,0.65);
+  backdrop-filter: blur(8px);
+  position: relative;
+}
+.light .lens-hdr { background: rgba(242,240,236,0.88); }
+
+.hdr-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.back-btn {
+  width: 32px; height: 32px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--txt3); background: transparent; border: 1px solid transparent;
+  cursor: pointer; transition: all 100ms ease;
+}
+.back-btn:hover { color: var(--txt); border-color: var(--border-sub); background: var(--surface); }
+
+.hdr-overline {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--txt3);
+  position: absolute; left: 50%; transform: translateX(-50%);
+}
+
+.hdr-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+.hdr-ghost-btn {
+  height: 32px; padding: 0 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  color: var(--txt3); background: transparent;
+  border: 1px solid transparent;
+  font-family: inherit; transition: all 100ms ease;
+}
+.hdr-ghost-btn:hover { color: var(--txt2); border-color: var(--border-sub); }
+
+.close-btn {
+  width: 32px; height: 32px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--txt-ghost); background: transparent; border: 1px solid transparent;
+  cursor: pointer; transition: all 100ms ease;
+}
+.close-btn:hover { color: var(--txt2); border-color: var(--border-sub); }
+
+/* ===================================================================
+   PANEL BODY - scrollable area
+   =================================================================== */
+.panel-body {
+  overflow-y: auto;
+  flex: 1;
+}
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-track { background: transparent; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border-sub); border-radius: 2px; }
+
+/* ===================================================================
+   TITLE BLOCK
+   =================================================================== */
+.title-block {
+  padding: 20px 20px 16px;
+}
+.title-main {
+  font-size: 24px; font-weight: 600; color: var(--txt);
+  line-height: 1.25; margin-bottom: 4px;
+}
+.title-sub {
+  font-size: 14px; font-weight: 400; color: var(--txt2);
+  line-height: 1.4; margin-bottom: 10px;
+}
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 12px; border-radius: 12px;
+  font-size: 12px; font-weight: 500;
+}
+.status-pill.active {
+  color: var(--green); background: var(--green-bg);
+  border: 1px solid var(--green-border);
+}
+.status-pill.expired {
+  color: var(--red); background: var(--red-bg);
+  border: 1px solid var(--red-border);
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+
+/* ===================================================================
+   VITAL SIGNS ROW - 5 indicators
+   =================================================================== */
+.vitals-row {
+  display: flex; align-items: center;
+  height: 40px; padding: 0 20px;
+  border-top: 1px solid var(--border-sub);
+  border-bottom: 1px solid var(--border-sub);
+  gap: 0;
+}
+.vital {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px;
+  position: relative;
+}
+.vital + .vital::before {
+  content: '';
+  position: absolute; left: 0; top: 6px; bottom: 6px;
+  width: 1px; background: var(--border-sub);
+}
+.vital-label {
+  font-size: 9px; font-weight: 500; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--txt-ghost);
+  line-height: 1;
+}
+.vital-value {
+  font-size: 11px; font-weight: 500; color: var(--txt2);
+  line-height: 1;
+}
+.vital-value.green { color: var(--green); }
+.vital-value.red { color: var(--red); }
+.vital-value.link { color: var(--mark); cursor: pointer; }
+.vital-value.link:hover { text-decoration: underline; }
+
+/* ===================================================================
+   EXPIRY COUNTDOWN - shared pattern with certificates
+   =================================================================== */
+.countdown-block {
+  padding: 20px 20px 16px;
+}
+.countdown-value {
+  font-size: 28px; font-weight: 600; line-height: 1.2;
+  margin-bottom: 10px;
+}
+.countdown-value.green { color: var(--green); }
+.countdown-value.red { color: var(--red); }
+
+.progress-track {
+  width: 100%; height: 6px; border-radius: 3px;
+  background: var(--surface); overflow: hidden;
+  margin-bottom: 8px;
+}
+.progress-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 400ms ease;
+}
+.progress-fill.green { background: var(--green); }
+.progress-fill.red { background: var(--red); }
+
+.countdown-range {
+  font-size: 12px; font-weight: 400; color: var(--txt-ghost);
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+}
+
+/* ===================================================================
+   SECTION HEADER - sticky
+   =================================================================== */
+.section-hdr {
+  position: sticky; top: 0; z-index: 2;
+  padding: 12px 20px 6px;
+  font-size: 14px; font-weight: 600; color: var(--txt2);
+  background: var(--surface-el);
+  border-top: 1px solid var(--border-sub);
+}
+
+/* ===================================================================
+   COVERAGE CARD - unique to warranty lens
+   =================================================================== */
+.coverage-card {
+  margin: 8px 20px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-sub);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.coverage-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+}
+.coverage-row {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-sub);
+}
+.coverage-row.full { grid-column: 1 / -1; }
+.coverage-label {
+  font-size: 11px; font-weight: 500; color: var(--txt-ghost);
+  letter-spacing: 0.02em;
+}
+.coverage-value {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+}
+.coverage-value.mono {
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+}
+
+/* Coverage list items with icons */
+.coverage-list {
+  list-style: none; padding: 0; margin: 4px 0 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.coverage-list-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 400; color: var(--txt);
+  line-height: 1.4;
+}
+.coverage-list-item .icon-check {
+  flex-shrink: 0; width: 14px; height: 14px;
+  color: var(--green);
+  display: flex; align-items: center; justify-content: center;
+}
+.coverage-list-item .icon-x {
+  flex-shrink: 0; width: 14px; height: 14px;
+  color: var(--txt-ghost);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.coverage-terms {
+  font-size: 12px; font-weight: 400; color: var(--txt3);
+  line-height: 1.55; margin-top: 4px;
+}
+
+/* ===================================================================
+   ACTION BUTTONS
+   =================================================================== */
+.actions-row {
+  display: flex; gap: 8px;
+  padding: 12px 20px 16px;
+}
+.btn-primary {
+  height: 44px; padding: 0 20px; border-radius: 6px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  color: #fff; background: var(--mark);
+  border: none; font-family: inherit;
+  transition: all 100ms ease;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+
+.btn-ghost {
+  height: 44px; padding: 0 16px; border-radius: 6px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  color: var(--txt3); background: transparent;
+  border: 1px solid var(--border-sub);
+  font-family: inherit; transition: all 100ms ease;
+}
+.btn-ghost:hover { color: var(--txt2); border-color: var(--border-int); background: var(--surface-hover); }
+
+.btn-disabled {
+  height: 44px; padding: 0 20px; border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  color: var(--txt-ghost); background: var(--surface);
+  border: 1px solid var(--border-sub);
+  font-family: inherit; cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ===================================================================
+   CLAIM HISTORY - timeline entries unique to warranty
+   =================================================================== */
+.claim-entry {
+  padding: 12px 20px;
+  transition: background 60ms ease;
+}
+.claim-entry:hover { background: var(--surface-hover); }
+.claim-entry + .claim-entry { border-top: 1px solid var(--border-sub); }
+
+.claim-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 4px;
+}
+.claim-id {
+  font-size: 13px; font-weight: 600; color: var(--txt);
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+}
+.claim-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 20px; padding: 0 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 500;
+}
+.claim-badge.approved {
+  color: var(--green); background: var(--green-bg);
+  border: 1px solid var(--green-border);
+}
+.claim-amount {
+  font-size: 13px; font-weight: 600; color: var(--txt);
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+  margin-left: auto;
+}
+
+.claim-title {
+  font-size: 13px; font-weight: 500; color: var(--txt2);
+  line-height: 1.4; margin-bottom: 4px;
+}
+.claim-date {
+  font-size: 12px; font-weight: 400; color: var(--txt-ghost);
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
+
+.claim-details-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 500; color: var(--mark);
+  cursor: pointer; border: none; background: none;
+  font-family: inherit; padding: 0;
+  transition: color 100ms ease;
+}
+.claim-details-toggle:hover { color: var(--txt); }
+.claim-details-toggle .chevron {
+  width: 12px; height: 12px;
+  transition: transform 150ms ease;
+}
+.claim-details-toggle.open .chevron { transform: rotate(90deg); }
+
+.claim-details-body {
+  display: none;
+  margin-top: 8px; padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-sub);
+  border-radius: 6px;
+  font-size: 12px; font-weight: 400; color: var(--txt3);
+  line-height: 1.55;
+}
+.claim-details-body.open { display: block; }
+
+/* Empty state for claim history */
+.claim-empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 12px; font-weight: 400; color: var(--txt-ghost);
+}
+
+/* ===================================================================
+   FILE CARDS
+   =================================================================== */
+.file-card {
+  display: flex; align-items: center; gap: 10px;
+  height: 48px; padding: 0 20px;
+  cursor: pointer; transition: background 60ms ease;
+}
+.file-card:hover { background: var(--surface-hover); }
+.file-card + .file-card { border-top: 1px solid var(--border-sub); }
+
+.file-icon {
+  width: 20px; height: 20px; flex-shrink: 0;
+  color: var(--txt3); display: flex; align-items: center; justify-content: center;
+}
+.file-name {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-size {
+  font-size: 11px; color: var(--txt-ghost);
+  font-family: var(--font-mono); flex-shrink: 0;
+}
+
+/* ===================================================================
+   EQUIPMENT ROWS
+   =================================================================== */
+.equip-row {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 8px 20px;
+  cursor: pointer; transition: background 60ms ease;
+}
+.equip-row:hover { background: var(--surface-hover); }
+.equip-row + .equip-row { border-top: 1px solid var(--border-sub); }
+
+.equip-icon {
+  width: 18px; height: 18px; flex-shrink: 0;
+  color: var(--txt3); display: flex; align-items: center; justify-content: center;
+}
+.equip-info { flex: 1; min-width: 0; }
+.equip-name {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.equip-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 20px; padding: 0 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 500; flex-shrink: 0;
+}
+.equip-badge.operational {
+  color: var(--green); background: var(--green-bg);
+  border: 1px solid var(--green-border);
+}
+</style>
+</head>
+<body>
+
+<p class="page-label">Lens &middot; Warranty &middot; v1</p>
+<p class="page-sub">Warranty entity detail view with expiry countdown, coverage details card, and claim history. Dark panel shows "Active" state (460 days). Light panel shows "Expired" state (45 days overdue).</p>
+
+<div class="scene">
+
+<!-- ===================================================================
+     DARK PANEL - Active Warranty (460 days remaining)
+     =================================================================== -->
+<div class="theme-col">
+<p class="theme-label">Dark</p>
+<div class="panel" id="dark-panel">
+
+  <!-- LENS HEADER -->
+  <div class="lens-hdr">
+    <div class="hdr-left">
+      <button class="back-btn" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="10,3 5,8 10,13"/></svg>
+      </button>
+    </div>
+    <span class="hdr-overline">Warranty</span>
+    <div class="hdr-right">
+      <button class="hdr-ghost-btn">Related</button>
+      <button class="close-btn" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel-body">
+
+    <!-- TITLE BLOCK -->
+    <div class="title-block">
+      <div class="title-main">Extended Powertrain Warranty</div>
+      <div class="title-sub">Caterpillar Marine &middot; E-007 Main Engine</div>
+      <span class="status-pill active">
+        <span class="status-dot"></span>
+        Active
+      </span>
+    </div>
+
+    <!-- VITAL SIGNS ROW -->
+    <div class="vitals-row">
+      <div class="vital">
+        <span class="vital-label">Status</span>
+        <span class="vital-value green">Active</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Equipment</span>
+        <span class="vital-value link">E-007 Main Engine</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Supplier</span>
+        <span class="vital-value">Caterpillar Marine</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Start</span>
+        <span class="vital-value">15 Jun 2023</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Expires</span>
+        <span class="vital-value">15 Jun 2027</span>
+      </div>
+    </div>
+
+    <!-- EXPIRY COUNTDOWN -->
+    <div class="countdown-block">
+      <div class="countdown-value green">460 days remaining</div>
+      <div class="progress-track">
+        <div class="progress-fill green" style="width: 63%"></div>
+      </div>
+      <div class="countdown-range">Started 15 Jun 2023 &rarr; Expires 15 Jun 2027</div>
+    </div>
+
+    <!-- COVERAGE SECTION -->
+    <div class="section-hdr">Coverage</div>
+    <div class="coverage-card">
+      <div class="coverage-grid">
+        <div class="coverage-row">
+          <span class="coverage-label">Coverage Type</span>
+          <span class="coverage-value">Extended Powertrain</span>
+        </div>
+        <div class="coverage-row">
+          <span class="coverage-label">Maximum Claim</span>
+          <span class="coverage-value mono">$150,000 USD</span>
+        </div>
+        <div class="coverage-row">
+          <span class="coverage-label">Deductible</span>
+          <span class="coverage-value mono">$2,500 USD</span>
+        </div>
+        <div class="coverage-row">
+          <span class="coverage-label">Response Time</span>
+          <span class="coverage-value">48h on-site</span>
+        </div>
+
+        <!-- Components Covered -->
+        <div class="coverage-row full">
+          <span class="coverage-label">Components Covered</span>
+          <ul class="coverage-list">
+            <li class="coverage-list-item">
+              <span class="icon-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg></span>
+              Engine block
+            </li>
+            <li class="coverage-list-item">
+              <span class="icon-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg></span>
+              Turbochargers
+            </li>
+            <li class="coverage-list-item">
+              <span class="icon-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg></span>
+              Fuel injection system
+            </li>
+            <li class="coverage-list-item">
+              <span class="icon-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg></span>
+              Cooling system
+            </li>
+          </ul>
+        </div>
+
+        <!-- Exclusions -->
+        <div class="coverage-row full">
+          <span class="coverage-label">Exclusions</span>
+          <ul class="coverage-list">
+            <li class="coverage-list-item">
+              <span class="icon-x"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg></span>
+              Consumables (filters, fluids)
+            </li>
+            <li class="coverage-list-item">
+              <span class="icon-x"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg></span>
+              Cosmetic damage
+            </li>
+            <li class="coverage-list-item">
+              <span class="icon-x"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg></span>
+              Neglect
+            </li>
+          </ul>
+        </div>
+
+        <!-- Terms -->
+        <div class="coverage-row full">
+          <span class="coverage-label">Terms</span>
+          <p class="coverage-terms">Full parts and labour for covered components. On-site service included within 48h of claim submission.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="actions-row">
+      <button class="btn-primary">Submit Claim</button>
+      <button class="btn-ghost">Renew</button>
+      <button class="btn-ghost">Archive</button>
+    </div>
+
+    <!-- CLAIM HISTORY SECTION -->
+    <div class="section-hdr">Claim History</div>
+    <div class="claim-entry">
+      <div class="claim-header">
+        <span class="claim-id">CLM-2025-003</span>
+        <span class="claim-badge approved">
+          <span class="status-dot"></span>
+          Approved
+        </span>
+        <span class="claim-amount">$12,450.00</span>
+      </div>
+      <div class="claim-title">Turbocharger bearing replacement</div>
+      <div class="claim-date">22 Nov 2025</div>
+      <button class="claim-details-toggle" data-target="claim-detail-1" aria-expanded="false">
+        <svg class="chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,2 8,6 4,10"/></svg>
+        Details
+      </button>
+      <div class="claim-details-body" id="claim-detail-1">
+        Port turbocharger #2 bearing failure at 11,200 running hours. Replaced under warranty. No deductible applied (manufacturing defect).
+      </div>
+    </div>
+
+    <!-- DOCUMENTS SECTION -->
+    <div class="section-hdr">Documents</div>
+    <div class="file-card" role="button" tabindex="0">
+      <div class="file-icon">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6l4 4v9a1.5 1.5 0 01-1.5 1.5h-8.5a1.5 1.5 0 01-1.5-1.5v-12a1.5 1.5 0 011.5-1.5z"/><polyline points="11,2 11,6 15,6"/><line x1="7" y1="10" x2="11" y2="10"/><line x1="7" y1="13" x2="10" y2="13"/></svg>
+      </div>
+      <span class="file-name">Caterpillar_Warranty_Certificate.pdf</span>
+      <span class="file-size">890 KB</span>
+    </div>
+    <div class="file-card" role="button" tabindex="0">
+      <div class="file-icon">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6l4 4v9a1.5 1.5 0 01-1.5 1.5h-8.5a1.5 1.5 0 01-1.5-1.5v-12a1.5 1.5 0 011.5-1.5z"/><polyline points="11,2 11,6 15,6"/><line x1="7" y1="10" x2="11" y2="10"/><line x1="7" y1="13" x2="10" y2="13"/></svg>
+      </div>
+      <span class="file-name">CLM-2025-003_Claim_Report.pdf</span>
+      <span class="file-size">1.2 MB</span>
+    </div>
+
+    <!-- RELATED EQUIPMENT SECTION -->
+    <div class="section-hdr">Related Equipment</div>
+    <div class="equip-row" role="button" tabindex="0">
+      <div class="equip-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="12" height="9" rx="1.2"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/><circle cx="8" cy="9" r="2"/><path d="M8 7v2l1.2 0.8"/></svg>
+      </div>
+      <div class="equip-info">
+        <span class="equip-name">E-007 &mdash; Main Engine</span>
+      </div>
+      <span class="equip-badge operational">Operational</span>
+    </div>
+
+  </div><!-- /panel-body -->
+</div><!-- /panel -->
+</div><!-- /theme-col -->
+
+
+<!-- ===================================================================
+     LIGHT PANEL - Expired Warranty (45 days overdue)
+     =================================================================== -->
+<div class="theme-col light">
+<p class="theme-label">Light</p>
+<div class="panel" id="light-panel">
+
+  <!-- LENS HEADER -->
+  <div class="lens-hdr">
+    <div class="hdr-left">
+      <button class="back-btn" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="10,3 5,8 10,13"/></svg>
+      </button>
+    </div>
+    <span class="hdr-overline">Warranty</span>
+    <div class="hdr-right">
+      <button class="hdr-ghost-btn">Related</button>
+      <button class="close-btn" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel-body">
+
+    <!-- TITLE BLOCK -->
+    <div class="title-block">
+      <div class="title-main">Hull &amp; Machinery Warranty</div>
+      <div class="title-sub">Maritime Insurance Group &middot; Vessel Hull</div>
+      <span class="status-pill expired">
+        <span class="status-dot"></span>
+        Expired
+      </span>
+    </div>
+
+    <!-- VITAL SIGNS ROW -->
+    <div class="vitals-row">
+      <div class="vital">
+        <span class="vital-label">Status</span>
+        <span class="vital-value red">Expired</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Equipment</span>
+        <span class="vital-value">Hull Structure</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Supplier</span>
+        <span class="vital-value">Maritime Ins. Group</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Start</span>
+        <span class="vital-value">01 Feb 2022</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Expires</span>
+        <span class="vital-value red">30 Jan 2026</span>
+      </div>
+    </div>
+
+    <!-- EXPIRY COUNTDOWN - expired state -->
+    <div class="countdown-block">
+      <div class="countdown-value red">Expired 45 days ago</div>
+      <div class="progress-track">
+        <div class="progress-fill red" style="width: 100%"></div>
+      </div>
+      <div class="countdown-range">Started 01 Feb 2022 &rarr; Expired 30 Jan 2026</div>
+    </div>
+
+    <!-- COVERAGE SECTION -->
+    <div class="section-hdr">Coverage</div>
+    <div class="coverage-card">
+      <div class="coverage-grid">
+        <div class="coverage-row">
+          <span class="coverage-label">Coverage Type</span>
+          <span class="coverage-value">Hull &amp; Machinery</span>
+        </div>
+        <div class="coverage-row">
+          <span class="coverage-label">Maximum Claim</span>
+          <span class="coverage-value mono">$500,000 USD</span>
+        </div>
+        <div class="coverage-row">
+          <span class="coverage-label">Deductible</span>
+          <span class="coverage-value mono">$10,000 USD</span>
+        </div>
+        <div class="coverage-row">
+          <span class="coverage-label">Response Time</span>
+          <span class="coverage-value">72h assessment</span>
+        </div>
+
+        <!-- Components Covered -->
+        <div class="coverage-row full">
+          <span class="coverage-label">Components Covered</span>
+          <ul class="coverage-list">
+            <li class="coverage-list-item">
+              <span class="icon-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg></span>
+              Hull structure
+            </li>
+            <li class="coverage-list-item">
+              <span class="icon-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg></span>
+              Propeller
+            </li>
+            <li class="coverage-list-item">
+              <span class="icon-check"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,7.5 6,10.5 11,4"/></svg></span>
+              Rudder
+            </li>
+          </ul>
+        </div>
+
+        <!-- Exclusions -->
+        <div class="coverage-row full">
+          <span class="coverage-label">Exclusions</span>
+          <ul class="coverage-list">
+            <li class="coverage-list-item">
+              <span class="icon-x"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg></span>
+              Antifouling paint
+            </li>
+            <li class="coverage-list-item">
+              <span class="icon-x"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg></span>
+              Wear and tear
+            </li>
+            <li class="coverage-list-item">
+              <span class="icon-x"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="4" y1="4" x2="10" y2="10"/><line x1="10" y1="4" x2="4" y2="10"/></svg></span>
+              Acts of war or piracy
+            </li>
+          </ul>
+        </div>
+
+        <!-- Terms -->
+        <div class="coverage-row full">
+          <span class="coverage-label">Terms</span>
+          <p class="coverage-terms">Structural damage repair and replacement. Survey required within 72 hours of incident report.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIONS - Renew is primary, Submit Claim is disabled -->
+    <div class="actions-row">
+      <button class="btn-disabled" disabled>Submit Claim</button>
+      <button class="btn-primary">Renew</button>
+      <button class="btn-ghost">Archive</button>
+    </div>
+
+    <!-- CLAIM HISTORY SECTION - empty -->
+    <div class="section-hdr">Claim History</div>
+    <div class="claim-empty">No claims filed during this warranty period.</div>
+
+    <!-- DOCUMENTS SECTION -->
+    <div class="section-hdr">Documents</div>
+    <div class="file-card" role="button" tabindex="0">
+      <div class="file-icon">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6l4 4v9a1.5 1.5 0 01-1.5 1.5h-8.5a1.5 1.5 0 01-1.5-1.5v-12a1.5 1.5 0 011.5-1.5z"/><polyline points="11,2 11,6 15,6"/><line x1="7" y1="10" x2="11" y2="10"/><line x1="7" y1="13" x2="10" y2="13"/></svg>
+      </div>
+      <span class="file-name">Hull_Machinery_Warranty_2022.pdf</span>
+      <span class="file-size">1.4 MB</span>
+    </div>
+
+    <!-- RELATED EQUIPMENT SECTION -->
+    <div class="section-hdr">Related Equipment</div>
+    <div class="equip-row" role="button" tabindex="0">
+      <div class="equip-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="12" height="9" rx="1.2"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/><circle cx="8" cy="9" r="2"/><path d="M8 7v2l1.2 0.8"/></svg>
+      </div>
+      <div class="equip-info">
+        <span class="equip-name">H-001 &mdash; Hull Structure</span>
+      </div>
+      <span class="equip-badge operational">Operational</span>
+    </div>
+
+  </div><!-- /panel-body -->
+</div><!-- /panel -->
+</div><!-- /theme-col -->
+
+</div><!-- /scene -->
+
+<script>
+/* No innerHTML - class toggles only */
+document.addEventListener('click', function(e) {
+  var toggle = e.target.closest('.claim-details-toggle');
+  if (!toggle) return;
+  var targetId = toggle.getAttribute('data-target');
+  var body = document.getElementById(targetId);
+  if (!body) return;
+  var isOpen = toggle.classList.contains('open');
+  toggle.classList.toggle('open', !isOpen);
+  body.classList.toggle('open', !isOpen);
+  toggle.setAttribute('aria-expanded', String(!isOpen));
+});
+</script>
+</body>
+</html>

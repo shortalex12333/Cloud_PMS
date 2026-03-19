@@ -10,13 +10,14 @@
  * 1. Extract token from URL
  * 2. Check authentication (redirect to login if needed)
  * 3. Call POST /api/v1/open/resolve with token
- * 4. On success: redirect to /app with entity focus
- * 5. On error: show error and redirect to /app
+ * 4. On success: redirect to entity's fragmented route (e.g. /work-orders/{id})
+ * 5. On error: show error and redirect to /
  */
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { resolveOpenToken, ResolveError } from '@/lib/handoverExportClient';
+import { getEntityRoute } from '@/lib/featureFlags';
 import { Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 
 function OpenTokenResolver() {
@@ -32,7 +33,7 @@ function OpenTokenResolver() {
     if (!token) {
       setStatus('error');
       setErrorMessage('No link token provided');
-      setTimeout(() => router.replace('/app'), 2000);
+      setTimeout(() => router.replace('/'), 2000);
       return;
     }
 
@@ -42,15 +43,14 @@ function OpenTokenResolver() {
       // Resolve the token
       const result = await resolveOpenToken(token);
 
-      // Success - redirect to /app with open_token for the shell to handle
-      // The shell will call showContext with the resolved entity
+      // Success — redirect directly to the entity's fragmented route
       setStatus('success');
 
-      // Store resolution result in sessionStorage for the app shell
-      sessionStorage.setItem('handover_open_result', JSON.stringify(result));
-
-      // Redirect to app - remove token from URL
-      router.replace('/app?open_resolved=1');
+      const entityRoute = getEntityRoute(
+        result.focus.type as Parameters<typeof getEntityRoute>[0],
+        result.focus.id
+      );
+      router.replace(entityRoute);
     } catch (error) {
       setStatus('error');
 
@@ -67,8 +67,8 @@ function OpenTokenResolver() {
         setErrorMessage('An unexpected error occurred');
       }
 
-      // Auto-redirect to app after showing error
-      setTimeout(() => router.replace('/app'), 3000);
+      // Auto-redirect to home after showing error
+      setTimeout(() => router.replace('/'), 3000);
     }
   }, [token, router]);
 
@@ -77,15 +77,15 @@ function OpenTokenResolver() {
   }, [resolveToken]);
 
   return (
-    <div className="min-h-screen bg-celeste-black flex items-center justify-center p-4">
-      <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full border border-surface-border">
+    <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
+      <div className="bg-surface-elevated rounded-lg p-8 max-w-md w-full border border-surface-border">
         {status === 'loading' && (
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-celeste-accent animate-spin mx-auto mb-4" />
-            <h2 className="typo-title font-semibold text-white mb-2">
+            <Loader2 className="w-12 h-12 text-brand-interactive animate-spin mx-auto mb-4" />
+            <h2 className="typo-title font-semibold text-txt-primary mb-2">
               Opening Link
             </h2>
-            <p className="text-celeste-text-muted typo-body">
+            <p className="text-txt-secondary typo-body">
               Resolving handover reference...
             </p>
           </div>
@@ -93,11 +93,11 @@ function OpenTokenResolver() {
 
         {status === 'success' && (
           <div className="text-center">
-            <ExternalLink className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            <h2 className="typo-title font-semibold text-white mb-2">
+            <ExternalLink className="w-12 h-12 text-status-success mx-auto mb-4" />
+            <h2 className="typo-title font-semibold text-txt-primary mb-2">
               Link Resolved
             </h2>
-            <p className="text-celeste-text-muted typo-body">
+            <p className="text-txt-secondary typo-body">
               Redirecting to item...
             </p>
           </div>
@@ -105,18 +105,18 @@ function OpenTokenResolver() {
 
         {status === 'error' && (
           <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="typo-title font-semibold text-white mb-2">
+            <AlertCircle className="w-12 h-12 text-status-critical mx-auto mb-4" />
+            <h2 className="typo-title font-semibold text-txt-primary mb-2">
               Unable to Open Link
             </h2>
-            <p className="text-celeste-text-muted typo-body mb-4">
+            <p className="text-txt-secondary typo-body mb-4">
               {errorMessage}
             </p>
             <button
-              onClick={() => router.replace('/app')}
-              className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-md transition-colors"
+              onClick={() => router.replace('/')}
+              className="btn-primary"
             >
-              Go to App
+              Go to Home
             </button>
           </div>
         )}
@@ -129,8 +129,8 @@ export default function OpenPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-celeste-black flex items-center justify-center">
-          <Loader2 className="w-12 h-12 text-celeste-accent animate-spin" />
+        <div className="min-h-screen bg-surface-base flex items-center justify-center">
+          <Loader2 className="w-12 h-12 text-brand-interactive animate-spin" />
         </div>
       }
     >

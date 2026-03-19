@@ -9,7 +9,7 @@ Usage:
 
 Environment Variables:
     EMAIL_WATCHER_ENABLED=true
-    EMAIL_WATCHER_POLL_INTERVAL=60  (seconds between poll cycles)
+    EMAIL_WATCHER_POLL_INTERVAL=30  (seconds between poll cycles)
     SUPABASE_URL=...
     SUPABASE_SERVICE_KEY=...
 """

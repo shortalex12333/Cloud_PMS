@@ -1,5 +1,3 @@
-version: '3.8'
-
 # =============================================================================
 # Celeste Local Stack — Canonical Orchestration File
 # =============================================================================
@@ -63,7 +61,10 @@ services:
       - yTEST_YACHT_001_SUPABASE_URL=https://vzsohavtuotocgrfkfyd.supabase.co
       - yTEST_YACHT_001_SUPABASE_SERVICE_KEY=${yTEST_YACHT_001_SUPABASE_SERVICE_KEY}
       - DEFAULT_YACHT_CODE=yTEST_YACHT_001
+      - MASTER_SUPABASE_URL=${MASTER_SUPABASE_URL}
+      - MASTER_SUPABASE_SERVICE_KEY=${MASTER_SUPABASE_SERVICE_KEY}
       - MASTER_SUPABASE_JWT_SECRET=${MASTER_SUPABASE_JWT_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - AZURE_READ_APP_ID=41f6dc82-8127-4330-97e0-c6b26e6aa967
       - AZURE_READ_CLIENT_SECRET=${AZURE_READ_CLIENT_SECRET}
       - AZURE_WRITE_APP_ID=f0b8944b-8127-4f0f-8ed5-5487462df50c
@@ -119,7 +120,11 @@ services:
     command: ["python", "cache/invalidation_listener.py"]
     restart: on-failure
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "workers/healthcheck.py", "cache"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     logging: *default-logging
     deploy:
       resources:
@@ -148,7 +153,11 @@ services:
     command: ["python", "workers/projection_worker.py"]
     restart: on-failure
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "workers/healthcheck.py", "projection"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     logging: *default-logging
     deploy:
       resources:
@@ -179,7 +188,11 @@ services:
     command: ["python", "workers/embedding_worker_1536.py"]
     restart: on-failure
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "workers/healthcheck.py", "embedding"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     logging: *default-logging
     deploy:
       resources:
@@ -205,6 +218,7 @@ services:
       - EMAIL_WATCHER_BATCH_SIZE=10
       - SUPABASE_URL=https://vzsohavtuotocgrfkfyd.supabase.co
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - DATABASE_URL=${DATABASE_URL}
       - MICROSOFT_CLIENT_ID_READ=${MICROSOFT_CLIENT_ID_READ}
       - MICROSOFT_CLIENT_SECRET_READ=${MICROSOFT_CLIENT_SECRET_READ}
       - PYTHONUNBUFFERED=1
@@ -212,7 +226,11 @@ services:
     command: ["python", "workers/email_watcher_worker.py"]
     restart: on-failure
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "workers/healthcheck.py", "email"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     logging: *default-logging
     deploy:
       resources:

@@ -8,13 +8,14 @@
  *                             stores in pms_equipment.metadata.notes JSONB
  *                             DOES write ledger_events row
  *
- * ADVISORY tests for:
- *   update_equipment_status — API has a DB bug (work_order enum conflict) → advisory only
+ * HARD PROOF tests for:
+ *   update_equipment_status — DB trigger bug fixed (migration 20260316_004: 'closed' added to
+ *                             work_order_status enum); fixture excludes decommissioned equipment
  *
  * Each test verifies:
  *   1. Full JSON response body (status, message fields)
  *   2. ledger_events row confirmed (action + entity_id) — where applicable
- *   3. Entity state mutation confirmed (pms_equipment.metadata.notes)
+ *   3. Entity state mutation confirmed (pms_equipment.metadata.notes / status)
  *
  * AUTH STRATEGY: callActionDirect() uses a Node.js-minted JWT (same signing key as API)
  * to bypass browser localStorage invalidation by the Supabase client.
@@ -22,8 +23,6 @@
  * IMPLEMENTATION NOTES:
  *   add_equipment_note returns: { status: 'success', message: 'Note added to equipment', notes_count: N }
  *   update_equipment_status returns: { status: 'success', new_status, old_status }
- *     BUT has a DB bug in p0_actions_routes.py: triggers a work_order status update with 'closed'
- *     which is not a valid work_order_status enum value → 500 → tested as advisory only
  */
 
 import { test, expect, generateTestId } from '../rbac-fixtures';
@@ -33,10 +32,11 @@ import { BASE_URL, callActionDirect, pollLedger } from './helpers';
 // update_equipment_status — ADVISORY (API has DB bug: work_order enum conflict)
 // ===========================================================================
 
-test.describe('[HOD] update_equipment_status — ADVISORY', () => {
-  test('[HOD] update_equipment_status → ADVISORY (API bug: WO status enum conflict)', async ({
+test.describe('[HOD] update_equipment_status — HARD PROOF', () => {
+  test('[HOD] update_equipment_status → 200 + pms_equipment status=degraded', async ({
     hodPage,
     getExistingEquipment,
+    supabaseAdmin,
   }) => {
     const equipment = await getExistingEquipment();
 
@@ -46,20 +46,27 @@ test.describe('[HOD] update_equipment_status — ADVISORY', () => {
     const result = await callActionDirect(hodPage, 'update_equipment_status', {
       equipment_id: equipment.id,
       new_status: 'degraded',
-      reason: 'S34 smoke test advisory',
+      reason: 'S34 smoke test',
     });
-    console.log(`[JSON] update_equipment_status advisory response: ${JSON.stringify(result, null, 2)}`);
+    console.log(`[JSON] update_equipment_status: ${JSON.stringify(result.data)}`);
 
-    if (result.status === 200) {
-      console.log('update_equipment_status returned 200 (API bug may have been fixed)');
-    } else {
-      console.warn(`Advisory: update_equipment_status returned ${result.status} — known API bug with WO enum`);
-    }
-    // Advisory: always passes
-    // REMOVE THIS ADVISORY WHEN: update_equipment_status no longer triggers a work_order status
-    // enum conflict (fix the DB trigger or constraint that conflates equipment and WO status enums).
-    // Tighten to: expect(result.status).toBe(200) + verify pms_equipment.status updated.
-    expect([200, 400, 500]).toContain(result.status);
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string; new_status?: string };
+    expect(data.status).toBe('success');
+
+    // Entity state: verify pms_equipment.status set to 'degraded'
+    await expect.poll(
+      async () => {
+        const { data: row } = await supabaseAdmin
+          .from('pms_equipment')
+          .select('status')
+          .eq('id', equipment.id)
+          .single();
+        return (row as { status?: string } | null)?.status;
+      },
+      { intervals: [500, 1000, 1500], timeout: 8_000,
+        message: 'Expected pms_equipment.status=degraded' }
+    ).toBe('degraded');
   });
 });
 

@@ -32,7 +32,7 @@ const buttonVariants = cva(
         // Ghost: Ghost button style
         ghost: 'btn-ghost',
         // Link: Text only with underline
-        link: 'text-celeste-accent underline-offset-4 hover:underline',
+        link: 'text-brand-interactive underline-offset-4 hover:underline',
         // Warning: Danger button style
         warning: 'btn-danger',
       },

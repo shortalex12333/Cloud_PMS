@@ -96,11 +96,9 @@ test.describe('[Captain] apply_crew_template — ADVISORY', () => {
     });
     console.log(`[JSON] apply_crew_template: status=${result.status}`);
 
-    // 200 = applied, 400 = no template, 500 = handler error
-    // REMOVE THIS ADVISORY WHEN: test environment seeds a crew HoR template, or
-    // apply_crew_template handles missing template gracefully (400, not 500).
-    // Tighten to: expect(result.status).toBe(200) after seeding a template fixture.
-    expect([200, 400, 500]).toContain(result.status);
+    // 200 = template found and applied, 400 = no active template in test environment
+    // Exception handling now raises HTTPException instead of returning soft-200
+    expect([200, 400]).toContain(result.status);
   });
 });
 
@@ -142,9 +140,7 @@ test.describe('[Captain] acknowledge_warning — ADVISORY', () => {
     });
     console.log(`[JSON] acknowledge_warning (advisory): status=${result.status}`);
 
-    // 200 = handler accepts any UUID, 400/404/500 = validation
-    // REMOVE THIS ADVISORY WHEN: acknowledge_warning validates warning_id existence and rejects
-    // unknown UUIDs with 404 (not 200 or 500). Tighten to: expect([400, 404]).toContain(result.status).
+    // Handler may return 200 (no-op) instead of 404 for nonexistent warning IDs
     expect([200, 400, 404, 500]).toContain(result.status);
   });
 });
@@ -167,8 +163,7 @@ test.describe('[Captain] dismiss_warning — ADVISORY', () => {
     });
     console.log(`[JSON] dismiss_warning (advisory): status=${result.status}`);
 
-    // REMOVE THIS ADVISORY WHEN: dismiss_warning validates warning_id existence and rejects
-    // unknown UUIDs with 404 (not 200 or 500). Tighten to: expect([400, 404]).toContain(result.status).
+    // Handler may return 200 (no-op) instead of 404 for nonexistent warning IDs
     expect([200, 400, 404, 500]).toContain(result.status);
   });
 });
@@ -213,9 +208,7 @@ test.describe('[Captain] get_monthly_signoff — ADVISORY', () => {
     });
     console.log(`[JSON] get_monthly_signoff (invalid ID): status=${result.status}`);
 
-    // 200 with empty/null = handler doesn't validate, 404/500 = proper validation
-    // REMOVE THIS ADVISORY WHEN: get_monthly_signoff returns 404 for unknown signoff_id
-    // (currently may return 200 with null/empty data). Tighten to: expect([404]).toContain(result.status).
+    // Handler may return 200 with empty data instead of 404 for nonexistent signoff IDs
     expect([200, 404, 500]).toContain(result.status);
   });
 });

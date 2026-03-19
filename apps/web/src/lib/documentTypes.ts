@@ -9,7 +9,7 @@
  * - Compliance docs: Add to Handover hidden in dropdown menu
  */
 
-import type { DocumentClassification } from '@/types/situation';
+export type DocumentClassification = 'operational' | 'compliance';
 
 // ============================================================================
 // CLASSIFICATION KEYWORDS

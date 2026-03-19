@@ -63,9 +63,9 @@ export function EntityDetailOverlay({
           onClick={onClose}
           className={cn(
             'absolute top-4 right-4 z-20',
-            'p-2 rounded-lg',
-            'hover:bg-white/10 transition-colors',
-            'text-white/60 hover:text-white'
+            'p-2 rounded-lg hover:bg-surface-secondary',
+            'transition-colors',
+            'text-txt-secondary hover:text-txt-primary'
           )}
           aria-label="Close"
         >

@@ -263,8 +263,46 @@ export function HoursOfRestContent() {
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
 
+  // -- Compliance alert --
+  const complianceLevel = violations.length > 0 ? 'critical' : (!is_compliant ? 'warning' : null);
+  const violationSummary = violations.length > 0
+    ? violations.map((v) => (v.description ?? v.rule ?? v.message ?? 'Violation') as string).join('; ')
+    : 'Rest hours below MLC 2006 minimum requirement.';
+
   return (
     <>
+      {/* Compliance Alert Banner */}
+      {complianceLevel && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '12px 16px',
+            borderRadius: 6,
+            borderLeft: complianceLevel === 'critical'
+              ? '3px solid var(--red, #c0503a)'
+              : '3px solid var(--amber, #c4893b)',
+            background: complianceLevel === 'critical'
+              ? 'var(--red-bg, rgba(192,80,58,0.12))'
+              : 'var(--amber-bg, rgba(196,137,59,0.12))',
+            color: complianceLevel === 'critical'
+              ? 'var(--red, #c0503a)'
+              : 'var(--amber, #c4893b)',
+            fontSize: 13,
+            fontWeight: 500,
+            marginBottom: 8,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <span>{complianceLevel === 'critical' ? 'Non-Compliant' : 'Warning'}: {violationSummary}</span>
+        </div>
+      )}
+
       {/* Identity Strip */}
       <IdentityStrip
         overline={crew_member_id ?? crew_member_name}

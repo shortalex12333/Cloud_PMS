@@ -57,8 +57,8 @@ function buildSignature4(userId: string): Record<string, string> {
 // add_note_to_work_order — ADVISORY (captain not in required_roles)
 // ===========================================================================
 
-test.describe('[Captain] add_note_to_work_order — ADVISORY', () => {
-  test('add_note_to_work_order → ADVISORY: backend restricts to Engineer/HOD/Manager', async ({
+test.describe('[Captain] add_note_to_work_order — HARD PROOF', () => {
+  test('add_note_to_work_order → 200 + note in pms_work_order_notes + ledger', async ({
     captainPage,
     seedWorkOrder,
     supabaseAdmin,
@@ -77,21 +77,11 @@ test.describe('[Captain] add_note_to_work_order — ADVISORY', () => {
     });
     console.log(`[JSON] add_note_to_work_order: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: SESSION_JWT uses captain user; backend RBAC requires Engineer/HOD/Manager.
-    // All test page fixtures share the captain sub/user_id (global-setup limitation).
-    // Accept 200 (if RBAC is relaxed) or 403 (current backend state).
-    // REMOVE THIS ADVISORY WHEN: captain is added to required_roles for add_note_to_work_order,
-    // OR global-setup.ts mints per-role JWTs so hodPage uses a different user sub claim.
-    // Tighten to: expect(result.status).toBe(200) + verify pms_work_order_notes row + ledger.
-    if (result.status === 200) {
-      const data = result.data as { status?: string; note_id?: string };
-      expect(data.status).toBe('success');
-      expect(typeof data.note_id).toBe('string');
-      await pollLedger(supabaseAdmin, 'add_note_to_work_order', wo.id, testStart);
-    } else {
-      console.log(`add_note_to_work_order advisory — returned ${result.status} (required_roles: Engineer/HOD/Manager)`);
-    }
-    expect([200, 403]).toContain(result.status);
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string; note_id?: string };
+    expect(data.status).toBe('success');
+    expect(typeof data.note_id).toBe('string');
+    await pollLedger(supabaseAdmin, 'add_note_to_work_order', wo.id, testStart);
   });
 });
 
@@ -165,34 +155,25 @@ test.describe('[Captain] add_wo_part — HARD PROOF', () => {
     });
     console.log(`[JSON] add_wo_part: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: Backend bug — pms_work_order_parts trigger expects yacht_id column
-    // that doesn't exist on the table → 500. Accept 200 (if fixed) or 500 (current bug).
-    // REMOVE THIS ADVISORY WHEN: pms_work_order_parts trigger no longer expects a yacht_id
-    // column (fix the trigger, or add the column to the table).
-    // Tighten to: expect(result.status).toBe(200) + verify pms_work_order_parts row.
-    expect([200, 500]).toContain(result.status);
-    if (result.status === 200) {
-      const data = result.data as { status?: string; message?: string };
-      expect(data.status).toBe('success');
-      expect(data.message).toContain('Part added');
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string; message?: string };
+    expect(data.status).toBe('success');
+    expect(data.message).toContain('Part added');
 
-      // Entity state: pms_work_order_parts row exists
-      await expect.poll(
-        async () => {
-          const { data: row } = await supabaseAdmin
-            .from('pms_work_order_parts')
-            .select('work_order_id, part_id, quantity')
-            .eq('work_order_id', wo.id)
-            .eq('part_id', part.id)
-            .maybeSingle();
-          return (row as { quantity?: number } | null)?.quantity;
-        },
-        { intervals: [500, 1000, 1500], timeout: 8_000,
-          message: 'Expected pms_work_order_parts row with quantity=2' }
-      ).toBe(2);
-    } else {
-      console.log('add_wo_part 500 — advisory: trigger expects yacht_id on pms_work_order_parts');
-    }
+    // Entity state: pms_work_order_parts row exists
+    await expect.poll(
+      async () => {
+        const { data: row } = await supabaseAdmin
+          .from('pms_work_order_parts')
+          .select('work_order_id, part_id, quantity')
+          .eq('work_order_id', wo.id)
+          .eq('part_id', part.id)
+          .maybeSingle();
+        return (row as { quantity?: number } | null)?.quantity;
+      },
+      { intervals: [500, 1000, 1500], timeout: 8_000,
+        message: 'Expected pms_work_order_parts row with quantity=2' }
+    ).toBe(2);
   });
 });
 

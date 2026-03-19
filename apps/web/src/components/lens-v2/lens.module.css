@@ -313,7 +313,7 @@
 .splitToggle {
   width: 44px; height: 44px;
   background: var(--teal-bg); color: var(--mark);
-  border: none; border-left: 1px solid var(--mark-thumb);
+  border: none; border-left: 1px solid var(--border-chrome);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   font-family: var(--font-sans); transition: background 60ms;
 }
@@ -437,6 +437,12 @@
 
 .docInfo { flex: 1; }
 .docName { font-size: 13px; font-weight: 500; color: var(--txt); }
+.docNameLink {
+  color: var(--mark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
 .docCode { font-family: var(--font-mono); font-size: 12px; }
 .docSopAction { color: var(--mark); font-weight: 500; }
 .docMeta { font-size: 11px; color: var(--txt3); margin-top: 1px; }
@@ -460,7 +466,7 @@
 .noteTime { font-family: var(--font-mono); font-size: 11px; color: var(--txt3); }
 
 .noteBody {
-  font-size: 14px; font-weight: 400; color: var(--txt2); line-height: 1.6;
+  font-size: 14px; font-weight: 400; color: var(--txt2); line-height: 1.65;
 }
 .noteBodyClamped {
   display: -webkit-box; -webkit-line-clamp: 3;
@@ -533,7 +539,7 @@
 .attachThumbDoc svg { width: 18px; height: 18px; color: var(--txt3); }
 
 .attachInfo { flex: 1; min-width: 0; }
-.attachName { font-size: 13px; font-weight: 500; color: var(--txt); }
+.attachName { font-size: 13px; font-weight: 500; color: var(--txt); font-family: var(--font-mono); }
 .attachCaption {
   font-size: 11px; color: var(--txt3); margin-top: 1px;
   font-style: italic; white-space: nowrap;
@@ -624,6 +630,18 @@
   padding: 0;
 }
 .checkUndo:hover { text-decoration: underline; }
+
+.checkPhoto {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--txt3);
+  font-size: 10px;
+}
+.checkPhoto svg {
+  width: 11px;
+  height: 11px;
+}
 
 /* ═══════════════════════════════════════════════════════════════
    KEY-VALUE ROWS
@@ -779,3 +797,53 @@
   font-size: 12px; color: var(--txt3); margin-top: 4px;
 }
 .periodMono { font-family: var(--font-mono); font-size: 11px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   STATUS PROGRESSION TIMELINE (Fault lens — vertical)
+   ═══════════════════════════════════════════════════════════════ */
+.statusTimeline { padding: 0; display: flex; flex-direction: column; }
+
+.timelineStage {
+  display: flex; gap: 14px;
+  position: relative;
+  padding-bottom: 4px;
+  min-height: 52px;
+}
+.timelineStage:last-child { padding-bottom: 0; }
+
+.timelineTrack {
+  display: flex; flex-direction: column; align-items: center;
+  width: 20px; flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.timelineDot {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.timelineDotDone { background: var(--green); }
+.timelineDotCurrent { background: var(--mark); box-shadow: 0 0 0 3px var(--teal-bg); }
+.timelineDotPending { background: none; border: 1.5px solid var(--txt-ghost); }
+
+.timelineConnector {
+  width: 1.5px; flex: 1;
+  margin-top: 4px;
+}
+.timelineConnectorDone { background: var(--green); opacity: 0.4; }
+.timelineConnectorPending { background: var(--border-sub); }
+.timelineStage:last-child .timelineConnector { display: none; }
+
+.timelineContent { flex: 1; padding-bottom: 12px; }
+
+.timelineLabel {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  line-height: 1.3;
+}
+.timelineStage.future .timelineLabel { color: var(--txt-ghost); }
+
+.timelineMeta {
+  font-size: 11px; color: var(--txt3); margin-top: 2px;
+  display: flex; align-items: center; gap: 8px;
+}
+.timelineMetaTs { font-family: var(--font-mono); font-size: 10px; }
+.timelineMetaWho { font-weight: 500; }

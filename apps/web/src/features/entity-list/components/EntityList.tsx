@@ -25,12 +25,12 @@ function ActiveFilterBanner({
       data-testid="active-filter-banner"
     >
       <div className="flex items-center gap-2">
-        <span className="text-xs text-white/60">Filtered by:</span>
+        <span className="text-xs text-txt-secondary">Filtered by:</span>
         <span className="text-sm font-medium text-brand-interactive">{label}</span>
       </div>
       <button
         onClick={onClear}
-        className="flex items-center gap-1 px-2 py-1 text-xs text-white/60 hover:text-white hover:bg-white/5 rounded transition-colors"
+        className="flex items-center gap-1 px-2 py-1 text-xs text-txt-secondary hover:text-txt-primary hover:bg-surface-secondary rounded transition-colors"
         aria-label="Clear filter"
         data-testid="clear-filter-button"
       >
@@ -48,7 +48,7 @@ function EmptyFilterState({ onClear }: { onClear: () => void }) {
       className="flex flex-col items-center justify-center h-full text-center px-6"
       data-testid="empty-filter-state"
     >
-      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+      <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: 'var(--split-bg)' }}>
         <svg
           width="32"
           height="32"
@@ -56,13 +56,13 @@ function EmptyFilterState({ onClear }: { onClear: () => void }) {
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
-          className="text-white/40"
+          className="text-txt-tertiary"
         >
           <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
         </svg>
       </div>
-      <h3 className="text-lg font-medium text-white mb-2">No matching items</h3>
-      <p className="text-sm text-white/60 max-w-sm mb-4">
+      <h3 className="text-lg font-medium text-txt-primary mb-2">No matching items</h3>
+      <p className="text-sm text-txt-secondary max-w-sm mb-4">
         No items match the current filter criteria.
       </p>
       <button
@@ -141,8 +141,8 @@ export function EntityList<T extends { id: string }>({
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
-          <p className="text-sm text-white/60">Loading...</p>
+          <div className="w-8 h-8 border-2 border-surface-border rounded-full animate-spin" style={{ borderTopColor: 'var(--txt)' }} />
+          <p className="text-sm text-txt-secondary">Loading...</p>
         </div>
       </div>
     );
@@ -197,7 +197,7 @@ export function EntityList<T extends { id: string }>({
         {/* Loading more indicator */}
         {isFetchingNextPage && (
           <div className="flex items-center justify-center py-4">
-            <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-surface-border rounded-full animate-spin" style={{ borderTopColor: 'var(--txt-secondary)' }} />
           </div>
         )}
       </div>

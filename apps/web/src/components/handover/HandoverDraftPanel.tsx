@@ -16,8 +16,9 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { X, FileText, Edit3, Trash2, Send, AlertTriangle, Clock, Loader2, CheckCircle2, Package, Wrench, File, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { useSurface } from '@/contexts/SurfaceContext';
+import { getEntityRoute } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 // External service functions no longer used - export creates local record
 // import { startExportJob, checkJobStatus } from '@/lib/handoverExportClient';
@@ -193,7 +194,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
 
   return (
     <div className="fixed inset-0 z-modal flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose} />
       <div className="relative bg-surface-elevated border border-surface-border rounded-lg shadow-modal w-full max-w-md mx-4 p-6">
         <h3 className="typo-title font-semibold text-txt-primary mb-4">Edit Handover Note</h3>
         <form onSubmit={handleSubmit}>
@@ -254,7 +255,8 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 typo-body font-medium bg-brand-interactive text-white rounded-md hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
+              className="px-4 py-2 typo-body font-medium bg-brand-interactive rounded-md hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
+              style={{ color: 'var(--txt)' }}
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -271,7 +273,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
 
 export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps) {
   const { user } = useAuth();
-  const { showContext } = useSurface();
+  const router = useRouter();
   const [items, setItems] = useState<HandoverItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -338,9 +340,10 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
   // Handle item click - navigate to entity
   const handleItemClick = useCallback((item: HandoverItem) => {
     if (!item.entity_type || !item.entity_id) return;
-    showContext(item.entity_type, item.entity_id);
+    const route = getEntityRoute(item.entity_type as Parameters<typeof getEntityRoute>[0], item.entity_id);
+    router.push(route);
     onClose();
-  }, [showContext, onClose]);
+  }, [router, onClose]);
 
   // Handle edit
   const handleEdit = useCallback(async (id: string, summary: string, category: string, isCritical: boolean, requiresAction: boolean) => {
@@ -516,7 +519,8 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-sidebar bg-black/40"
+        className="fixed inset-0 z-sidebar"
+        style={{ background: 'rgba(0,0,0,0.4)' }}
         onClick={onClose}
       />
 
@@ -561,10 +565,11 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
               className={cn(
                 'w-full flex items-center justify-center gap-2',
                 'px-4 py-2.5 rounded-lg',
-                'bg-brand-interactive text-white font-medium',
+                'bg-brand-interactive font-medium',
                 'hover:bg-brand-interactive/90 transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
+              style={{ color: 'var(--txt)' }}
             >
               {exporting ? (
                 <>

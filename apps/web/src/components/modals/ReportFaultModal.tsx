@@ -123,7 +123,7 @@ export function ReportFaultModal({
       case 'low':
         return 'text-green-700 bg-green-50 border-green-300';
       default:
-        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
+        return '';
     }
   };
 
@@ -144,8 +144,8 @@ export function ReportFaultModal({
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
           {/* Equipment (if pre-selected) */}
           {context.equipment_name && (
-            <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-md">
-              <p className="typo-body font-medium text-celeste-accent">
+            <div className="p-3 rounded-md" style={{ background: 'var(--teal-bg)', borderColor: 'var(--border-sub)', border: '1px solid var(--border-sub)' }}>
+              <p className="typo-body font-medium" style={{ color: 'var(--mark)' }}>
                 Equipment: {context.equipment_name}
               </p>
             </div>
@@ -251,7 +251,7 @@ export function ReportFaultModal({
           </div>
 
           {/* Create Work Order Option */}
-          <div className="flex items-center space-x-2 p-3 bg-celeste-bg-primary rounded-md">
+          <div className="flex items-center space-x-2 p-3 rounded-md" style={{ background: 'var(--surface)' }}>
             <Checkbox
               id="create_work_order"
               checked={createWorkOrder}

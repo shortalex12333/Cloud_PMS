@@ -156,10 +156,9 @@ export function LinkEmailModal({
                   onClick={() => toggleType(type.value)}
                   className={cn(
                     'inline-flex items-center gap-1 px-2 py-1 typo-meta rounded-md transition-colors',
-                    isSelected
-                      ? 'bg-celeste-accent-subtle text-celeste-accent'
-                      : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                    !isSelected && 'bg-surface-hover text-txt-secondary hover:bg-surface-active'
                   )}
+                  style={isSelected ? { background: 'var(--teal-bg)', color: 'var(--mark)' } : undefined}
                 >
                   <Icon className="h-3 w-3" />
                   {type.label}
@@ -170,36 +169,37 @@ export function LinkEmailModal({
 
           {/* Search Input */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, number, serial..."
-              className="w-full pl-9 pr-3 py-2 typo-meta border border-zinc-200 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted"
+              className="w-full pl-9 pr-3 py-2 typo-meta border rounded-md placeholder:text-txt-tertiary focus:outline-none focus:ring-2"
+              style={{ borderColor: 'var(--border-sub)', background: 'var(--surface-el)', color: 'var(--txt)', ['--tw-ring-color' as string]: 'var(--teal-bg)' }}
               autoFocus
             />
             {isSearching && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-zinc-400" />
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-txt-tertiary" />
             )}
           </div>
 
           {/* Search Results */}
-          <div className="border border-zinc-200 dark:border-zinc-700 rounded-md max-h-[240px] overflow-y-auto">
+          <div className="border border-border-sub rounded-md max-h-[240px] overflow-y-auto">
             {debouncedQuery.length < 2 ? (
-              <div className="p-4 text-center typo-meta text-zinc-500">
+              <div className="p-4 text-center typo-meta text-txt-secondary">
                 Type at least 2 characters to search
               </div>
             ) : isSearching ? (
               <div className="p-4 text-center">
-                <Loader2 className="h-5 w-5 animate-spin mx-auto text-zinc-400" />
+                <Loader2 className="h-5 w-5 animate-spin mx-auto text-txt-tertiary" />
               </div>
             ) : !searchResults?.results?.length ? (
-              <div className="p-4 text-center typo-meta text-zinc-500">
+              <div className="p-4 text-center typo-meta text-txt-secondary">
                 No results found for &quot;{debouncedQuery}&quot;
               </div>
             ) : (
-              <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <div className="divide-y divide-border-sub">
                 {searchResults.results.map((result) => {
                   const isSelected = selectedObject?.id === result.id && selectedObject?.type === result.type;
                   const TypeIcon = OBJECT_TYPES.find(t => t.value === result.type)?.icon || Package;
@@ -210,29 +210,34 @@ export function LinkEmailModal({
                       onClick={() => setSelectedObject(result)}
                       className={cn(
                         'w-full flex items-center gap-3 p-3 text-left transition-colors',
-                        isSelected
-                          ? 'bg-celeste-accent-subtle'
-                          : 'hover:bg-zinc-50 dark:hover:bg-surface-active'
+                        !isSelected && 'hover:bg-surface-hover'
                       )}
+                      style={isSelected ? { background: 'var(--teal-bg)' } : undefined}
                     >
-                      <TypeIcon className={cn(
-                        'h-4 w-4 flex-shrink-0',
-                        isSelected ? 'text-celeste-accent' : 'text-zinc-400'
-                      )} />
+                      <TypeIcon
+                        className={cn(
+                          'h-4 w-4 flex-shrink-0',
+                          !isSelected && 'text-txt-tertiary'
+                        )}
+                        style={isSelected ? { color: 'var(--mark)' } : undefined}
+                      />
                       <div className="flex-1 min-w-0">
-                        <p className={cn(
-                          'typo-meta truncate',
-                          isSelected ? 'text-celeste-accent font-medium' : 'text-zinc-800 dark:text-zinc-200'
-                        )}>
+                        <p
+                          className={cn(
+                            'typo-meta truncate',
+                            isSelected ? 'font-medium' : 'text-txt-primary'
+                          )}
+                          style={isSelected ? { color: 'var(--mark)' } : undefined}
+                        >
                           {result.label}
                         </p>
-                        <p className="typo-meta text-zinc-500 capitalize">
+                        <p className="typo-meta text-txt-secondary capitalize">
                           {result.type.replace('_', ' ')}
                           {result.status && ` • ${result.status}`}
                         </p>
                       </div>
                       {isSelected && (
-                        <CheckCircle className="h-4 w-4 text-celeste-accent flex-shrink-0" />
+                        <CheckCircle className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--mark)' }} />
                       )}
                     </button>
                   );
@@ -243,16 +248,16 @@ export function LinkEmailModal({
 
           {/* Selected Object Display */}
           {selectedObject && (
-            <div className="flex items-center gap-2 p-2 bg-celeste-accent-subtle rounded-md">
-              <CheckCircle className="h-4 w-4 text-celeste-accent" />
-              <span className="typo-meta text-celeste-accent flex-1 truncate">
+            <div className="flex items-center gap-2 p-2 rounded-md" style={{ background: 'var(--teal-bg)' }}>
+              <CheckCircle className="h-4 w-4" style={{ color: 'var(--mark)' }} />
+              <span className="typo-meta flex-1 truncate" style={{ color: 'var(--mark)' }}>
                 {selectedObject.label}
               </span>
               <button
                 onClick={() => setSelectedObject(null)}
-                className="p-1 hover:bg-celeste-accent-subtle rounded"
+                className="p-1 rounded"
               >
-                <X className="h-3 w-3 text-celeste-accent" />
+                <X className="h-3 w-3" style={{ color: 'var(--mark)' }} />
               </button>
             </div>
           )}

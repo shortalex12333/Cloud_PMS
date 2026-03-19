@@ -11,7 +11,7 @@ export function EmptyState({ message }: EmptyStateProps) {
 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-6">
-      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+      <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: 'var(--split-bg)' }}>
         <svg
           width="32"
           height="32"
@@ -19,16 +19,16 @@ export function EmptyState({ message }: EmptyStateProps) {
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
-          className="text-white/40"
+          className="text-txt-tertiary"
         >
           <circle cx="11" cy="11" r="8" />
           <path d="M21 21l-4.35-4.35" />
         </svg>
       </div>
-      <h3 className="text-lg font-medium text-white mb-2">
+      <h3 className="text-lg font-medium text-txt-primary mb-2">
         {message || `No ${label || 'items'} found`}
       </h3>
-      <p className="text-sm text-white/60 max-w-sm">
+      <p className="text-sm text-txt-secondary max-w-sm">
         Search is primary. Use the search bar above to find what you&apos;re looking for.
       </p>
     </div>

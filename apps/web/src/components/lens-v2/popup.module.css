@@ -1,0 +1,762 @@
+/* ═══════════════════════════════════════════════════════
+   ActionPopup — CSS Module
+   Converted from popup-journeys.html prototype.
+   Uses design tokens from tokens.css (:root).
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Backdrop ── */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 40px 20px;
+}
+.backdropRead   { background: rgba(0,0,0,0.25); }
+.backdropL1     { background: rgba(0,0,0,0.35); }
+.backdropL2     { background: rgba(0,0,0,0.45); }
+.backdropL3     { background: rgba(0,0,0,0.52); }
+.backdropL4     { background: rgba(0,0,0,0.60); }
+.backdropL5     { background: rgba(0,0,0,0.60); }
+
+/* ── Popup shell ── */
+.popup {
+  width: 100%;
+  background: var(--surface-el);
+  border-radius: 12px;
+  border-top:    1px solid var(--border-top);
+  border-right:  1px solid var(--border-side);
+  border-bottom: 1px solid var(--border-bottom);
+  border-left:   1px solid var(--border-side);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.50), 0 32px 100px rgba(0,0,0,0.70);
+  overflow: hidden;
+}
+.popupRead   { max-width: 440px; }
+.popupMutate { max-width: 560px; }
+
+/* ── Popup header ── */
+.popupHdr {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px 24px 16px;
+  gap: 12px;
+}
+.popupHdrText { flex: 1; }
+.popupTitle {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--txt);
+}
+.popupSubtitle {
+  font-size: 13px;
+  color: var(--txt2);
+  margin-top: 3px;
+}
+.popupClose {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--txt-ghost);
+  background: none;
+  border: none;
+  transition: background 60ms;
+  flex-shrink: 0;
+  margin: -4px -8px 0 0;
+}
+.popupClose:hover {
+  background: var(--surface-hover);
+  color: var(--txt2);
+}
+
+/* ── Body ── */
+.popupBody     { padding: 0 24px 20px; }
+.popupBodyRead { padding: 0 24px 8px; }
+
+/* ── Divider ── */
+.popupDivider {
+  height: 1px;
+  background: var(--border-sub);
+  margin: 0 24px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FIELDS
+   ═══════════════════════════════════════════════════════ */
+.field {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 0;
+}
+.field + .field {
+  border-top: 1px solid var(--border-faint);
+}
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--txt3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 100px;
+  padding-top: 11px;
+  flex-shrink: 0;
+}
+.fieldValue {
+  flex: 1;
+  font-size: 13px;
+  color: var(--txt);
+  padding-top: 11px;
+  line-height: 1.45;
+}
+.fieldValueEntityRef {
+  color: var(--mark);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.fieldValueEntityRef:hover {
+  text-decoration-color: var(--mark);
+}
+.fieldValueMonoRef {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.fieldInput { flex: 1; }
+.fieldInput input,
+.fieldInput textarea {
+  width: 100%;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px;
+  color: var(--txt);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.fieldInput input {
+  height: 40px;
+  padding: 0 12px;
+}
+.fieldInput textarea {
+  min-height: 80px;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.fieldInput input::placeholder,
+.fieldInput textarea::placeholder {
+  color: var(--txt-ghost);
+}
+.fieldInput input:focus,
+.fieldInput textarea:focus {
+  outline: none;
+  border-color: var(--mark);
+  box-shadow: 0 0 0 2px var(--teal-bg);
+}
+
+/* Full-width textarea (no side label) */
+.fieldFull { display: block; }
+.fieldFull textarea {
+  width: 100%;
+  min-height: 100px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px;
+  color: var(--txt);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.fieldFull textarea::placeholder { color: var(--txt-ghost); }
+.fieldFull textarea:focus {
+  outline: none;
+  border-color: var(--mark);
+  box-shadow: 0 0 0 2px var(--teal-bg);
+}
+
+/* ── select ── */
+.selectDisplay {
+  flex: 1;
+  height: 40px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: border-color 60ms;
+  position: relative;
+}
+.selectDisplay:hover { border-color: var(--txt3); }
+.selectDisplayText {
+  flex: 1;
+  font-size: 13px;
+  color: var(--txt);
+}
+.selectDisplayPlaceholder {
+  flex: 1;
+  font-size: 13px;
+  color: var(--txt-ghost);
+}
+.selectDisplayIcon {
+  width: 12px;
+  height: 12px;
+  color: var(--txt3);
+  flex-shrink: 0;
+}
+/* Native select overlay — visually hidden but clickable */
+.selectNative {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── person-assign ── */
+.personDisplay {
+  flex: 1;
+  height: 40px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.personDisplay:hover { border-color: var(--txt3); }
+.personAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--teal-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.personAvatarIcon { width: 12px; height: 12px; color: var(--mark); }
+.personName { font-size: 13px; color: var(--txt); flex: 1; }
+.personRole { font-size: 11px; color: var(--txt3); }
+
+/* ── entity-search ── */
+.entitySearchWrap {
+  flex: 1;
+  position: relative;
+}
+.entitySearchWrap input {
+  width: 100%;
+  height: 40px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px;
+  color: var(--txt);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 0 12px 0 36px;
+  box-sizing: border-box;
+}
+.entitySearchWrap input::placeholder { color: var(--txt-ghost); }
+.entitySearchWrap input:focus {
+  outline: none;
+  border-color: var(--mark);
+  box-shadow: 0 0 0 2px var(--teal-bg);
+}
+.entitySearchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--txt3);
+  pointer-events: none;
+}
+
+/* ── date-pick ── */
+.dateDisplay {
+  flex: 1;
+  height: 40px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px;
+  padding: 0 12px 0 36px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+.dateDisplay:hover { border-color: var(--txt3); }
+.dateDisplayIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--txt3);
+}
+.dateDisplayValue {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--txt);
+}
+.dateDisplayPlaceholder {
+  font-family: var(--font-sans);
+  color: var(--txt-ghost);
+  font-size: 13px;
+}
+/* Native date input overlay */
+.dateNative {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── attachment / upload ── */
+.uploadZone {
+  flex: 1;
+  border: 1.5px dashed var(--border-chrome);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+}
+.uploadZone:hover {
+  border-color: var(--mark);
+  background: var(--teal-bg);
+}
+.uploadZoneIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--txt3);
+  margin-bottom: 4px;
+}
+.uploadText {
+  font-size: 12px;
+  color: var(--txt3);
+}
+.uploadTextTeal {
+  color: var(--mark);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DATA GATES
+   ═══════════════════════════════════════════════════════ */
+.popupGates {
+  padding: 0 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.gateIcon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.gatePending {
+  background: var(--neutral-bg);
+  color: var(--txt2);
+  border: 1px solid var(--border-sub);
+}
+.gateSatisfied {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PREVIEW SUMMARY
+   ═══════════════════════════════════════════════════════ */
+.popupPreview {
+  padding: 0 24px 16px;
+}
+.previewBox {
+  background: var(--surface-base);
+  border: 1px solid var(--border-sub);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.previewHeading {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--txt-ghost);
+  margin-bottom: 8px;
+}
+.previewRow {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  min-height: 22px;
+  align-items: center;
+}
+.previewKey {
+  color: var(--txt3);
+  min-width: 72px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.previewVal { color: var(--txt); }
+
+/* ═══════════════════════════════════════════════════════
+   SIGNATURE COMPONENTS
+   ═══════════════════════════════════════════════════════ */
+.popupSig {
+  border-top: 1px solid var(--border-sub);
+  margin: 0 24px;
+  padding: 16px 0;
+}
+.sigLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--txt3);
+  margin-bottom: 12px;
+}
+
+/* L2 — declaration + name */
+.sigDeclaration {
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.sigDeclarationText {
+  font-size: 13px;
+  color: var(--txt2);
+  line-height: 1.6;
+  font-style: italic;
+}
+.sigNameInput {
+  width: 100%;
+  height: 44px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px;
+  color: var(--txt);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0 12px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.sigNameInput::placeholder {
+  color: var(--txt-ghost);
+  font-weight: 400;
+}
+.sigNameInput:focus {
+  outline: none;
+  border-color: var(--mark);
+  box-shadow: 0 0 0 2px var(--teal-bg);
+}
+.sigNameHint {
+  font-size: 11px;
+  color: var(--txt3);
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* L3 — PIN entry */
+.sigPinLabel {
+  font-size: 13px;
+  color: var(--txt);
+  text-align: center;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+.sigPin {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.pinDigit {
+  width: 48px;
+  height: 56px;
+  background: var(--surface);
+  border: 2px solid var(--txt3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--txt);
+}
+.pinDigitFilled {
+  border-color: var(--mark);
+  background: var(--teal-bg);
+  color: var(--mark);
+}
+.pinDigitActive {
+  border-color: var(--mark);
+  background: var(--teal-bg);
+  box-shadow: 0 0 0 3px rgba(90,171,204,0.25);
+}
+.pinDigitEmpty {
+  color: transparent;
+}
+/* Hidden input that captures keyboard for PIN */
+.pinHiddenInput {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* L4 — wet signature pad */
+.sigPad {
+  border: 1.5px dashed var(--border-chrome);
+  border-radius: 8px;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+  margin-bottom: 12px;
+  position: relative;
+  background: var(--surface-base);
+}
+.sigPadHint {
+  font-size: 13px;
+  color: var(--txt-ghost);
+  pointer-events: none;
+}
+.sigPadClear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 11px;
+  color: var(--txt-ghost);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  transition: color 80ms;
+}
+.sigPadClear:hover {
+  color: var(--txt2);
+}
+.sigPadMeta {
+  display: flex;
+  gap: 12px;
+}
+.sigPadMeta input {
+  flex: 1;
+  height: 40px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px;
+  color: var(--txt);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+.sigPadMeta input::placeholder { color: var(--txt-ghost); }
+.sigPadMeta input:focus {
+  outline: none;
+  border-color: var(--mark);
+  box-shadow: 0 0 0 2px var(--teal-bg);
+}
+.sigPadAutoDate {
+  font-family: var(--font-mono);
+  color: var(--txt3);
+  background: var(--neutral-bg);
+  border-color: transparent;
+  cursor: default;
+}
+
+/* L5 — chain progress */
+.chainProgress {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding: 0 8px;
+}
+.chainStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 80px;
+}
+.chainDot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.chainDotIcon { width: 14px; height: 14px; }
+.chainDotDone {
+  background: var(--green);
+  color: var(--on-status);
+}
+.chainDotCurrent {
+  background: none;
+  border: 2px solid var(--mark);
+  color: var(--mark);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.chainDotPending {
+  background: none;
+  border: 2px solid var(--border-chrome);
+  color: var(--txt-ghost);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.chainLine {
+  flex: 1;
+  height: 2px;
+  background: var(--border-chrome);
+  align-self: center;
+  margin-top: -16px;
+  position: relative;
+  top: 16px;
+}
+.chainLineDone { background: var(--green); }
+.chainRole {
+  font-size: 10px;
+  color: var(--txt3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 6px;
+  font-weight: 600;
+}
+.chainStatus {
+  font-size: 10px;
+  color: var(--txt-ghost);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+.chainStepCurrent .chainRole { color: var(--mark); }
+
+/* ═══════════════════════════════════════════════════════
+   POPUP FOOTER
+   ═══════════════════════════════════════════════════════ */
+.popupFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-sub);
+}
+.popupFooterRead {
+  padding: 8px 24px 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+.btnCancel {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  color: var(--txt2);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 60ms;
+}
+.btnCancel:hover {
+  background: var(--surface-hover);
+  color: var(--txt);
+}
+.btnSubmit {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--teal-bg);
+  color: var(--mark);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 60ms;
+}
+.btnSubmit:hover { background: var(--mark-hover); }
+.btnSubmitIcon { width: 14px; height: 14px; }
+.btnSubmitDisabled {
+  background: var(--split-bg);
+  color: var(--txt-ghost);
+  cursor: default;
+}
+.btnSubmitDisabled:hover { background: var(--split-bg); }
+
+/* ═══════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES
+   ═══════════════════════════════════════════════════════ */
+:global([data-theme="light"]) .popup {
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08), 0 24px 64px rgba(0,0,0,0.12);
+  border-color: rgba(0,0,0,0.10);
+}
+:global([data-theme="light"]) .pinDigit {
+  border-color: rgba(0,0,0,0.15);
+}
+:global([data-theme="light"]) .pinDigitFilled {
+  border-color: var(--mark);
+}
+:global([data-theme="light"]) .pinDigitActive {
+  border-color: var(--mark);
+}
+:global([data-theme="light"]) .sigPad {
+  border-color: rgba(0,0,0,0.12);
+}
+:global([data-theme="light"]) .sigDeclaration {
+  border-color: rgba(0,0,0,0.10);
+}
+:global([data-theme="light"]) .uploadZone {
+  border-color: rgba(0,0,0,0.12);
+}
+:global([data-theme="light"]) .backdrop {
+  background: rgba(0,0,0,0.15);
+}

@@ -54,8 +54,8 @@ import psycopg2.extras
 
 DB_DSN = os.getenv("DATABASE_URL")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-EMBED_MODEL = os.getenv("EMBED_MODEL", os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"))
-EMBED_DIMS = int(os.getenv("EMBED_DIMS", os.getenv("EMBED_DIM", "1536")))
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
+EMBED_DIMS = int(os.getenv("EMBED_DIMS", "1536"))
 EMBED_VERSION = int(os.getenv("EMBEDDING_VERSION", "3"))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100"))
 BATCH_SLEEP_SEC = float(os.getenv("BATCH_SLEEP_SEC", "0.1"))
@@ -410,7 +410,6 @@ def write_embeddings_batch(
             embedding_model = v.model,
             embedding_version = v.version,
             embedding_hash = v.hash,
-            content_hash = v.hash,
             updated_at = NOW()
         FROM (VALUES %s) AS v(id, vec, model, version, hash)
         WHERE si.id = v.id::bigint
@@ -585,10 +584,11 @@ def process_batch(conn) -> int:
             job_id = job['job_id']
 
             try:
-                # Verify dimension
+                # Verify dimension — fail instead of writing garbage zero-vector
                 if len(emb) != EMBED_DIMS:
-                    logger.error(f"Bad embedding dimension {len(emb)} for job {job_id}")
-                    emb = [0.0] * EMBED_DIMS  # Fallback
+                    raise ValueError(
+                        f"Dimension mismatch: expected {EMBED_DIMS}, got {len(emb)}"
+                    )
 
                 # Write single row to search_index
                 row_updated = write_embeddings_batch(cur, [row], [emb])

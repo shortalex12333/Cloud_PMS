@@ -1431,6 +1431,39 @@ async def execute_action(
                 logger.error(f"[RECEIVING] Action '{action}' failed: {type(e).__name__}: {e}")
                 raise
 
+        elif action in ["add_document_comment", "list_document_comments",
+                        "update_document_comment", "delete_document_comment",
+                        "view_worklist", "add_worklist_task", "export_worklist",
+                        "submit_receiving_for_review"]:
+            # Document comments, worklist, and additional receiving actions — dispatch to internal_dispatcher
+            logger.info(f"[INTERNAL] Dispatching action '{action}' to internal_dispatcher")
+
+            from action_router.dispatchers import internal_dispatcher
+
+            user_jwt = authorization
+            if user_jwt and user_jwt.startswith("Bearer "):
+                user_jwt = user_jwt[7:]
+
+            mode = request.context.get("mode")
+
+            handler_params = {
+                "yacht_id": yacht_id,
+                "user_id": user_id,
+                "user_context": user_context,
+                "user_jwt": user_jwt,
+                **payload
+            }
+
+            if mode:
+                handler_params["mode"] = mode
+
+            try:
+                result = await internal_dispatcher.dispatch(action, handler_params)
+                logger.info(f"[INTERNAL] Action '{action}' completed successfully")
+            except Exception as e:
+                logger.error(f"[INTERNAL] Action '{action}' failed: {type(e).__name__}: {e}")
+                raise
+
         else:
             # Unknown action - return 400 (client error with invalid action name)
             logger.warning(f"[ROUTING] Unknown action requested: {action}")

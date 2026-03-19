@@ -147,8 +147,8 @@ export default function AuthCallbackClient() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-base">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-celeste-blue border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white typo-title">{sessionSet ? 'Validating session...' : 'Completing sign in...'}</p>
+          <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{ borderColor: 'var(--teal)', borderTopColor: 'transparent' }} />
+          <p className="text-txt-primary typo-title">{sessionSet ? 'Validating session...' : 'Completing sign in...'}</p>
         </div>
       </div>
     );
@@ -160,12 +160,12 @@ export default function AuthCallbackClient() {
       <div className="min-h-screen flex items-center justify-center bg-surface-base">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-txt-inverse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <p className="text-white typo-title">Sign in successful!</p>
-          <p className="text-celeste-text-muted typo-body mt-2">Redirecting...</p>
+          <p className="text-txt-primary typo-title">Sign in successful!</p>
+          <p className="text-txt-tertiary typo-body mt-2">Redirecting...</p>
         </div>
       </div>
     );
@@ -176,15 +176,16 @@ export default function AuthCallbackClient() {
     <div className="min-h-screen flex items-center justify-center bg-surface-base">
       <div className="text-center max-w-md px-4">
         <div className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-txt-inverse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </div>
-        <p className="text-white typo-title mb-2">Authentication failed</p>
-        <p className="text-celeste-text-muted typo-body mb-4">{error}</p>
+        <p className="text-txt-primary typo-title mb-2">Authentication failed</p>
+        <p className="text-txt-tertiary typo-body mb-4">{error}</p>
         <a
           href="https://auth.celeste7.ai"
-          className="inline-block px-6 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-md text-white transition-colors"
+          className="inline-block px-6 py-2 rounded-md text-txt-inverse transition-colors"
+          style={{ background: 'var(--teal)' }}
         >
           Return to Login
         </a>

@@ -30,10 +30,12 @@ import {
   AttachmentsSection,
   DocRowsSection,
   KVSection,
+  PartsSection,
   type AuditEvent,
   type AttachmentItem,
   type DocRowItem,
   type KVItem,
+  type PartItem,
 } from '../sections';
 
 // ─── Helpers ───
@@ -73,6 +75,8 @@ export function EquipmentContent() {
   const certificates = ((entity?.certificates ?? payload.certificates) as Array<Record<string, unknown>> | undefined) ?? [];
   const history = ((entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history ?? entity?.maintenance_history ?? payload.maintenance_history) as Array<Record<string, unknown>> | undefined) ?? [];
   const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
+  const spare_parts = ((entity?.spare_parts ?? payload.spare_parts) as Array<Record<string, unknown>> | undefined) ?? [];
+  const upcoming_maintenance = ((entity?.upcoming_maintenance ?? payload.upcoming_maintenance) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
   const createWOAction = getAction('create_work_order_for_equipment');
@@ -210,6 +214,39 @@ export function EquipmentContent() {
     kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
   }));
 
+  // Spare Parts → PartItems
+  const sparePartItems: PartItem[] = spare_parts.map((sp, i) => ({
+    id: (sp.id as string) ?? `spare-${i}`,
+    name: (sp.name ?? sp.part_name) as string ?? 'Part',
+    partNumber: (sp.part_number ?? sp.sku) as string | undefined,
+    quantity: (sp.required ?? sp.quantity) !== undefined
+      ? `Req: ${sp.required ?? sp.quantity}`
+      : undefined,
+    stock: (sp.on_hand ?? sp.stock ?? sp.in_stock) !== undefined
+      ? `On hand: ${sp.on_hand ?? sp.stock ?? sp.in_stock}`
+      : undefined,
+    onNavigate: sp.part_id
+      ? () => router.push(getEntityRoute('parts' as Parameters<typeof getEntityRoute>[0], sp.part_id as string))
+      : undefined,
+  }));
+
+  // Upcoming Maintenance → KVItems
+  const upcomingMaintItems: KVItem[] = upcoming_maintenance.map((m, i) => {
+    const title = (m.title ?? m.name ?? m.description) as string ?? `Maintenance ${i + 1}`;
+    const trigger = (m.trigger ?? m.trigger_type) as string | undefined;
+    const due = (m.due_at ?? m.due_date ?? m.due) as string | undefined;
+    const remaining = (m.remaining ?? m.remaining_hours ?? m.remaining_days) as string | number | undefined;
+    const parts: string[] = [];
+    if (trigger) parts.push(`Trigger: ${trigger}`);
+    if (due) parts.push(`Due: ${due}`);
+    if (remaining !== undefined) parts.push(`${remaining} remaining`);
+    return {
+      label: title,
+      value: parts.join(' · ') || '—',
+      mono: true,
+    };
+  });
+
   return (
     <>
       {/* Identity Strip */}
@@ -256,6 +293,16 @@ export function EquipmentContent() {
         </ScrollReveal>
       )}
 
+      {/* Spare Parts */}
+      {sparePartItems.length > 0 && (
+        <ScrollReveal>
+          <PartsSection
+            parts={sparePartItems}
+            canAddPart={false}
+          />
+        </ScrollReveal>
+      )}
+
       {/* Active Work Orders */}
       {woItems.length > 0 && (
         <ScrollReveal>
@@ -283,6 +330,24 @@ export function EquipmentContent() {
                 <path d="M7.13 2.58L1.22 12a1.33 1.33 0 001.14 2h11.28a1.33 1.33 0 001.14-2L8.87 2.58a1.33 1.33 0 00-2.28 0z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
                 <line x1="8" y1="6" x2="8" y2="9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                 <circle cx="8" cy="11" r="0.5" fill="currentColor" />
+              </svg>
+            }
+          />
+        </ScrollReveal>
+      )}
+
+      {/* Upcoming Maintenance */}
+      {upcomingMaintItems.length > 0 && (
+        <ScrollReveal>
+          <KVSection
+            title="Upcoming Maintenance"
+            items={upcomingMaintItems}
+            icon={
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2.67" width="12" height="12" rx="1.33" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                <line x1="10.67" y1="1.33" x2="10.67" y2="4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <line x1="5.33" y1="1.33" x2="5.33" y2="4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <line x1="2" y1="6.67" x2="14" y2="6.67" stroke="currentColor" strokeWidth="1.3" />
               </svg>
             }
           />

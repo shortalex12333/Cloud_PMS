@@ -122,14 +122,19 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 10px;
   min-height: var(--touch-target-min);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   cursor: pointer;
   user-select: none;
-  transition: background var(--duration-fast) var(--ease-out);
+  transition: background 60ms var(--ease-out);
   will-change: background;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+.spotlight-item:first-child {
+  border-top: none;
 }
 
 .spotlight-item:hover {
@@ -141,11 +146,21 @@
 }
 
 .spotlight-item-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
   color: var(--text-tertiary);
   transition: color var(--duration-fast) var(--ease-out);
+}
+
+/* Subtitle mono — matches prototype .result-sub */
+.result-sub-mono {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+  line-height: 1.4;
 }
 
 .spotlight-item[data-selected='true'] .spotlight-item-icon {
@@ -172,12 +187,12 @@
 .spotlight-group-header {
   display: flex;
   align-items: center;
-  padding: var(--space-3) var(--space-3) var(--space-1);
+  padding: 8px 12px 4px;
   font-size: var(--font-size-overline);
   font-weight: var(--font-weight-overline);
   letter-spacing: var(--letter-spacing-overline);
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--txt);
   user-select: none;
 }
 

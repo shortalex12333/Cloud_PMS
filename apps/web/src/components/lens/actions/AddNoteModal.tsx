@@ -93,7 +93,8 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-sidebar bg-black/60"
+        className="fixed inset-0 z-sidebar"
+        style={{ background: 'rgba(0,0,0,0.60)' }}
         onClick={handleCancel}
         aria-hidden="true"
       />

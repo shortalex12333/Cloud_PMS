@@ -16,7 +16,6 @@ import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { inferFilters, hasExplicitFilterMatch, type InferredFilter } from '@/lib/filters/infer';
-import { isFragmentedRoutesEnabled } from '@/lib/featureFlags';
 import {
   AlertTriangle,
   ClipboardList,
@@ -62,16 +61,13 @@ function buildFilterUrl(route: string, queryParams: Record<string, string>): str
 export default function FilterChips({ query, className, onFilterClick }: FilterChipsProps) {
   const router = useRouter();
 
-  // Only show chips if fragmented routes are enabled
-  const fragmentedEnabled = isFragmentedRoutesEnabled();
-
   // Infer filters from query
   const inferredFilters = useMemo(() => {
-    if (!fragmentedEnabled || !query || query.length < 3) {
+    if (!query || query.length < 3) {
       return [];
     }
     return inferFilters(query, 5);
-  }, [query, fragmentedEnabled]);
+  }, [query]);
 
   // Only show if we have explicit matches or high-confidence suggestions
   const hasExplicit = useMemo(() => hasExplicitFilterMatch(query), [query]);

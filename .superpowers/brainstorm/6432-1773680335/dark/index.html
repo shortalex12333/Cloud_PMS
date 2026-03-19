@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Celeste Lens Gallery — Dark Mode</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0c0b0a;
+  color: rgba(255,255,255,0.92);
+  min-height: 100vh;
+  padding: 32px;
+  -webkit-font-smoothing: antialiased;
+}
+h1 {
+  font-size: 14px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: rgba(255,255,255,0.35);
+  text-align: center; margin-bottom: 32px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+a {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px;
+  background: #1e1b18;
+  border: 1px solid rgba(255,255,255,0.045);
+  border-radius: 8px;
+  text-decoration: none;
+  color: rgba(255,255,255,0.92);
+  font-size: 14px; font-weight: 500;
+  transition: all 100ms ease;
+}
+a:hover {
+  background: #252525;
+  border-color: rgba(255,255,255,0.08);
+}
+.icon { color: rgba(255,255,255,0.40); flex-shrink: 0; }
+.name { flex: 1; }
+.arrow { color: rgba(255,255,255,0.20); }
+</style>
+</head>
+<body>
+<h1>Celeste Lens Gallery — Dark Mode</h1>
+<div class="grid">
+  <a href="lens-work-order-v1.html"><span class="icon">📋</span><span class="name">Work Order</span><span class="arrow">→</span></a>
+  <a href="lens-fault-v1.html"><span class="icon">⚠️</span><span class="name">Fault</span><span class="arrow">→</span></a>
+  <a href="lens-equipment-v1.html"><span class="icon">⚙️</span><span class="name">Equipment</span><span class="arrow">→</span></a>
+  <a href="lens-parts-v1.html"><span class="icon">📦</span><span class="name">Parts / Inventory</span><span class="arrow">→</span></a>
+  <a href="lens-certificate-v1.html"><span class="icon">🏅</span><span class="name">Certificate</span><span class="arrow">→</span></a>
+  <a href="lens-document-v1.html"><span class="icon">📄</span><span class="name">Document</span><span class="arrow">→</span></a>
+  <a href="lens-receiving-v1.html"><span class="icon">📥</span><span class="name">Receiving</span><span class="arrow">→</span></a>
+  <a href="lens-shopping-list-v1.html"><span class="icon">🛒</span><span class="name">Shopping List</span><span class="arrow">→</span></a>
+  <a href="lens-purchase-order-v1.html"><span class="icon">🧾</span><span class="name">Purchase Order</span><span class="arrow">→</span></a>
+  <a href="lens-hours-of-rest-v1.html"><span class="icon">🕐</span><span class="name">Hours of Rest</span><span class="arrow">→</span></a>
+  <a href="lens-warranty-v1.html"><span class="icon">🛡️</span><span class="name">Warranty</span><span class="arrow">→</span></a>
+</div>
+</body>
+</html>

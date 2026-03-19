@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Document · v1</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0c0b0a;
+  color: rgba(255,255,255,0.92);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 24px 48px;
+  gap: 20px;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-label { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.20); text-align: center; }
+.page-sub { font-size: 11px; color: rgba(255,255,255,0.28); text-align: center; max-width: 640px; line-height: 1.5; }
+
+.scene { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+.theme-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.theme-label { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.22); }
+
+/* ===================================================================
+   TOKENS
+   =================================================================== */
+:root {
+  --surface:       #181614;
+  --surface-el:    #1e1b18;
+  --surface-hover: #252525;
+  --surface-act:   #2c2925;
+  --border-sub:    rgba(255,255,255,0.045);
+  --border-int:    rgba(255,255,255,0.06);
+  --txt:           rgba(255,255,255,0.92);
+  --txt2:          rgba(255,255,255,0.55);
+  --txt3:          rgba(255,255,255,0.40);
+  --txt-ghost:     rgba(255,255,255,0.20);
+  --mark:          #5AABCC;
+  --teal-bg:       rgba(58,124,157,0.13);
+  --red:           #C0503A;
+  --red-bg:        rgba(192,80,58,0.10);
+  --red-border:    rgba(192,80,58,0.22);
+  --amber:         #C4893B;
+  --amber-bg:      rgba(196,137,59,0.10);
+  --amber-border:  rgba(196,137,59,0.22);
+  --green:         #4CAF81;
+  --green-bg:      rgba(76,175,129,0.10);
+  --green-border:  rgba(76,175,129,0.22);
+  --font-mono:     'SF Mono','Fira Code',monospace;
+}
+
+.light {
+  --surface:       #FFFFFF;
+  --surface-el:    #FDFCFB;
+  --surface-hover: #EDEAE4;
+  --surface-act:   #E8E3DC;
+  --border-sub:    rgba(0,0,0,0.06);
+  --border-int:    rgba(0,0,0,0.08);
+  --txt:           rgba(15,12,9,0.90);
+  --txt2:          rgba(15,12,9,0.60);
+  --txt3:          rgba(15,12,9,0.46);
+  --txt-ghost:     rgba(15,12,9,0.28);
+  --mark:          #2B7BA3;
+  --teal-bg:       rgba(43,123,163,0.09);
+  --red:           #B83A28;
+  --red-bg:        rgba(184,58,40,0.06);
+  --red-border:    rgba(184,58,40,0.20);
+  --amber:         #A67420;
+  --amber-bg:      rgba(166,116,32,0.06);
+  --amber-border:  rgba(166,116,32,0.20);
+  --green:         #2E7D5A;
+  --green-bg:      rgba(46,125,90,0.06);
+  --green-border:  rgba(46,125,90,0.20);
+}
+
+/* ===================================================================
+   PANEL
+   =================================================================== */
+.panel {
+  width: 700px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  border-top:    1px solid rgba(255,255,255,0.13);
+  border-right:  1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-left:   1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.60), 0 28px 80px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.45);
+  background: var(--surface-el);
+}
+.light .panel {
+  border-top:    1px solid rgba(0,0,0,0.12);
+  border-right:  1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-left:   1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 28px 80px rgba(0,0,0,0.13), 0 8px 24px rgba(0,0,0,0.08);
+}
+
+/* ===================================================================
+   LENS HEADER -- 56px, glass effect
+   =================================================================== */
+.lens-hdr {
+  height: 56px; flex-shrink: 0;
+  display: flex; align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-sub);
+  background: rgba(16,14,12,0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  position: sticky; top: 0; z-index: 10;
+}
+.light .lens-hdr { background: rgba(242,240,236,0.88); }
+
+.lens-hdr-left {
+  display: flex; align-items: center; flex-shrink: 0;
+}
+.lens-back {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--txt3); border-radius: 4px;
+  transition: all 100ms ease; font-size: 18px;
+}
+.lens-back:hover { color: var(--txt); background: var(--surface-hover); }
+
+.lens-hdr-center {
+  flex: 1; text-align: center;
+}
+.lens-overline {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--txt3);
+}
+
+.lens-hdr-right {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+}
+.lens-hdr-btn {
+  height: 44px; min-width: 44px; padding: 0 12px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--txt3); border-radius: 4px;
+  font-size: 12px; font-weight: 500; font-family: inherit;
+  transition: all 100ms ease;
+}
+.lens-hdr-btn:hover { color: var(--txt); background: var(--surface-hover); }
+.lens-close {
+  font-size: 18px; line-height: 1;
+}
+
+/* ===================================================================
+   PANEL BODY -- scrollable content area
+   =================================================================== */
+.lens-body {
+  overflow-y: auto;
+  height: 680px;
+  padding: 0;
+}
+.lens-body::-webkit-scrollbar { width: 4px; }
+.lens-body::-webkit-scrollbar-track { background: transparent; }
+.lens-body::-webkit-scrollbar-thumb { background: var(--border-sub); border-radius: 2px; }
+
+/* ===================================================================
+   TITLE BLOCK
+   =================================================================== */
+.lens-title-block {
+  padding: 20px 16px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.lens-title {
+  font-size: 24px; font-weight: 600; color: var(--txt);
+  line-height: 1.25;
+}
+.lens-subtitle {
+  font-size: 14px; font-weight: 400; color: var(--txt2);
+  line-height: 1.4;
+}
+.lens-pills {
+  display: flex; align-items: center; gap: 6px;
+  padding-top: 4px;
+}
+
+/* Status / Classification Pills -- 24px height */
+.status-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 24px; padding: 0 12px; border-radius: 4px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+}
+.status-pill-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.pill-amber {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+}
+.pill-amber .status-pill-dot { background: var(--amber); }
+.pill-red {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid var(--red-border);
+}
+.pill-red .status-pill-dot { background: var(--red); }
+.pill-green {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+}
+.pill-green .status-pill-dot { background: var(--green); }
+
+/* ===================================================================
+   VITAL SIGNS ROW
+   =================================================================== */
+.vitals-row {
+  display: flex; align-items: stretch;
+  height: 40px;
+  border-top: 1px solid var(--border-sub);
+  border-bottom: 1px solid var(--border-sub);
+}
+.vital {
+  flex: 1;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  padding: 0 12px;
+  gap: 1px;
+  min-width: 0;
+}
+.vital + .vital {
+  border-left: 1px solid var(--border-sub);
+}
+.vital-label {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--txt-ghost);
+  line-height: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vital-value {
+  font-size: 13px; font-weight: 500; color: var(--txt2);
+  line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vital-value.mono { font-family: var(--font-mono); font-size: 12px; }
+.vital-value.amber { color: var(--amber); }
+.vital-value.red { color: var(--red); }
+.vital-value.link { color: var(--mark); cursor: pointer; }
+.vital-value.link:hover { opacity: 0.8; }
+
+/* ===================================================================
+   DOCUMENT PREVIEW -- distinctive feature of this lens
+   =================================================================== */
+.doc-preview {
+  margin: 16px 16px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-sub);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* --- PDF Preview --- */
+.pdf-preview-area {
+  display: flex; align-items: center; justify-content: center;
+  height: 200px;
+  padding: 20px;
+  position: relative;
+}
+.pdf-page-sim {
+  width: 140px; height: 180px;
+  background: var(--surface-hover);
+  border-radius: 3px;
+  border: 1px solid var(--border-sub);
+  padding: 16px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.pdf-line {
+  height: 3px;
+  border-radius: 1px;
+  background: var(--txt-ghost);
+  opacity: 0.4;
+}
+.pdf-line.short { width: 60%; }
+.pdf-line.med { width: 85%; }
+.pdf-line.long { width: 100%; }
+.pdf-line.xshort { width: 40%; }
+
+.pdf-page-counter {
+  position: absolute;
+  bottom: 12px; right: 16px;
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--txt-ghost); letter-spacing: 0.02em;
+}
+
+.preview-controls {
+  display: flex; align-items: center;
+  height: 40px; padding: 0 12px;
+  border-top: 1px solid var(--border-sub);
+  gap: 8px;
+}
+.preview-ctrl-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--txt-ghost); border-radius: 4px;
+  transition: all 100ms ease;
+}
+.preview-ctrl-btn:hover { color: var(--txt3); background: var(--surface-hover); }
+.preview-ctrl-spacer { flex: 1; }
+.preview-open-link {
+  font-size: 12px; font-weight: 500; color: var(--mark);
+  cursor: pointer; text-decoration: none;
+  font-family: inherit;
+  background: transparent; border: none;
+  transition: opacity 100ms ease;
+}
+.preview-open-link:hover { opacity: 0.8; }
+
+/* --- Image Preview --- */
+.img-preview-area {
+  height: 240px;
+  position: relative;
+  overflow: hidden;
+}
+.img-placeholder {
+  width: 100%; height: 100%;
+  background: linear-gradient(145deg, var(--surface-hover) 0%, var(--surface) 100%);
+  display: flex; align-items: center; justify-content: center;
+}
+.img-placeholder-icon {
+  color: var(--txt-ghost); opacity: 0.5;
+}
+.img-caption {
+  padding: 8px 12px;
+  font-size: 12px; font-family: var(--font-mono);
+  color: var(--txt-ghost); letter-spacing: 0.02em;
+  border-top: 1px solid var(--border-sub);
+}
+
+/* ===================================================================
+   DETAILS GRID -- 2-column key-value pairs
+   =================================================================== */
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.detail-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-sub);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.detail-item:nth-child(odd) {
+  border-right: 1px solid var(--border-sub);
+}
+.detail-label {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--txt-ghost);
+}
+.detail-value {
+  font-size: 13px; font-weight: 500; color: var(--txt2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.detail-value.mono {
+  font-family: var(--font-mono); font-size: 12px;
+}
+.detail-value.amber { color: var(--amber); }
+
+/* ===================================================================
+   ACTION BUTTONS ROW
+   =================================================================== */
+.action-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 16px 16px;
+  flex-wrap: wrap;
+}
+.act-btn {
+  height: 36px; padding: 0 16px; border-radius: 4px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  font-family: inherit; transition: all 100ms ease;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px;
+}
+.act-btn-primary {
+  color: #fff; background: var(--mark);
+  border: 1px solid transparent;
+}
+.act-btn-primary:hover { opacity: 0.88; }
+.act-btn-ghost {
+  color: var(--txt3); background: transparent;
+  border: 1px solid var(--border-sub);
+}
+.act-btn-ghost:hover {
+  color: var(--txt2); border-color: var(--border-int);
+  background: var(--surface-hover);
+}
+
+/* ===================================================================
+   SECTION HEADERS -- collapsible, 44px, sticky
+   =================================================================== */
+.sect {
+  border-top: 1px solid var(--border-sub);
+}
+.sect-hdr {
+  display: flex; align-items: center;
+  height: 44px; padding: 0 16px;
+  cursor: pointer; user-select: none;
+  position: sticky; top: 0; z-index: 5;
+  background: var(--surface-el);
+  transition: background 60ms ease;
+}
+.sect-hdr:hover { background: var(--surface-hover); }
+.sect-label {
+  font-size: 14px; font-weight: 600; color: var(--txt);
+  flex: 1;
+}
+.sect-chevron {
+  color: var(--txt-ghost); flex-shrink: 0;
+  transition: transform 120ms ease;
+  margin-right: 4px;
+}
+.sect.collapsed .sect-chevron { transform: rotate(-90deg); }
+.sect-body {
+  padding: 0 16px 12px;
+}
+.sect.collapsed .sect-body { display: none; }
+
+/* ===================================================================
+   LINKED ENTITIES
+   =================================================================== */
+.related-entry {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 8px 0;
+  cursor: pointer; transition: background 60ms ease;
+  border-radius: 4px;
+}
+.related-entry:hover { background: var(--surface-hover); }
+.related-entry + .related-entry {
+  border-top: 1px solid var(--border-sub);
+}
+.related-icon {
+  width: 16px; height: 16px; flex-shrink: 0;
+  color: var(--txt3); display: flex; align-items: center; justify-content: center;
+}
+.related-info {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.related-name {
+  font-size: 14px; font-weight: 500; color: var(--txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.related-name:hover { color: var(--mark); }
+.related-type {
+  font-size: 12px; color: var(--txt3);
+}
+.related-chevron {
+  color: var(--txt-ghost); flex-shrink: 0; opacity: 0.35;
+}
+.related-entry:hover .related-chevron { opacity: 0.7; }
+
+/* ===================================================================
+   HISTORY TIMELINE
+   =================================================================== */
+.timeline-entry {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0;
+  position: relative;
+}
+.timeline-dot-col {
+  display: flex; flex-direction: column; align-items: center;
+  width: 16px; flex-shrink: 0;
+  padding-top: 4px;
+}
+.timeline-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border-int); flex-shrink: 0;
+}
+.timeline-line {
+  width: 1px; flex: 1;
+  background: var(--border-sub);
+  margin-top: 4px;
+}
+.timeline-entry:last-child .timeline-line { display: none; }
+.timeline-content {
+  flex: 1; min-width: 0;
+}
+.timeline-time {
+  font-size: 10.5px; font-family: var(--font-mono);
+  color: var(--txt-ghost); letter-spacing: 0.02em;
+}
+.timeline-desc {
+  font-size: 13px; color: var(--txt2);
+  line-height: 1.4; margin-top: 2px;
+}
+</style>
+<style>.theme-col:nth-child(2){display:none!important}.scene{justify-content:center}.theme-label{display:none}</style></head>
+<body>
+
+<p class="page-label">Lens · Document · v1</p>
+<p class="page-sub">Entity detail view (lens) for Documents. Dual-panel dark/light. Inline media preview area renders differently by file type (PDF vs Image). Collapsible sections, vital signs, action buttons, timeline history.</p>
+
+<div class="scene">
+
+<!-- ===================================================================
+     DARK PANEL -- PDF Document
+     =================================================================== -->
+<div class="theme-col">
+<p class="theme-label">Dark</p>
+<div class="panel">
+
+  <!-- LENS HEADER -->
+  <div class="lens-hdr">
+    <div class="lens-hdr-left">
+      <button class="lens-back" title="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="10,3 5,8 10,13"/></svg>
+      </button>
+    </div>
+    <div class="lens-hdr-center">
+      <span class="lens-overline">Document</span>
+    </div>
+    <div class="lens-hdr-right">
+      <button class="lens-hdr-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5.5"/><path d="M7 4.5v5M4.5 7h5"/></svg>
+        Related
+      </button>
+      <button class="lens-hdr-btn lens-close" title="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- SCROLLABLE BODY -->
+  <div class="lens-body">
+
+    <!-- TITLE BLOCK -->
+    <div class="lens-title-block">
+      <h1 class="lens-title">Caterpillar 3516B Service Manual</h1>
+      <p class="lens-subtitle">Technical Manual · Uploaded by R. Chen</p>
+      <div class="lens-pills">
+        <span class="status-pill pill-amber"><span class="status-pill-dot"></span> Confidential</span>
+      </div>
+    </div>
+
+    <!-- VITAL SIGNS ROW -->
+    <div class="vitals-row">
+      <div class="vital">
+        <span class="vital-label">Type</span>
+        <span class="vital-value">PDF</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Size</span>
+        <span class="vital-value mono">4.2 MB</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Class</span>
+        <span class="vital-value amber">Confidential</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Equipment</span>
+        <span class="vital-value link">E-007 Main Engine</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Uploaded</span>
+        <span class="vital-value">10 Mar 2026</span>
+      </div>
+    </div>
+
+    <!-- DOCUMENT PREVIEW -- PDF -->
+    <div class="doc-preview">
+      <div class="pdf-preview-area">
+        <div class="pdf-page-sim">
+          <div class="pdf-line long"></div>
+          <div class="pdf-line med"></div>
+          <div class="pdf-line long"></div>
+          <div class="pdf-line short"></div>
+          <div class="pdf-line long"></div>
+          <div class="pdf-line med"></div>
+          <div class="pdf-line xshort"></div>
+          <div class="pdf-line long"></div>
+          <div class="pdf-line short"></div>
+          <div class="pdf-line med"></div>
+          <div class="pdf-line long"></div>
+          <div class="pdf-line xshort"></div>
+          <div class="pdf-line long"></div>
+          <div class="pdf-line med"></div>
+        </div>
+        <span class="pdf-page-counter">Page 1 of 42</span>
+      </div>
+      <div class="preview-controls">
+        <!-- Zoom out -->
+        <button class="preview-ctrl-btn" title="Zoom Out">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="4.5"/><line x1="9.2" y1="9.2" x2="13" y2="13"/><line x1="4" y1="6" x2="8" y2="6"/></svg>
+        </button>
+        <!-- Zoom in -->
+        <button class="preview-ctrl-btn" title="Zoom In">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="4.5"/><line x1="9.2" y1="9.2" x2="13" y2="13"/><line x1="4" y1="6" x2="8" y2="6"/><line x1="6" y1="4" x2="6" y2="8"/></svg>
+        </button>
+        <span class="preview-ctrl-spacer"></span>
+        <button class="preview-open-link">Open Full View</button>
+      </div>
+    </div>
+
+    <!-- DETAILS SECTION -->
+    <div class="sect" onclick="toggleSect(this, event)">
+      <div class="sect-hdr">
+        <svg class="sect-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,3 5,6 8,3"/></svg>
+        <span class="sect-label">Details</span>
+      </div>
+      <div class="sect-body">
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">Filename</span>
+            <span class="detail-value mono">Caterpillar_3516B_Service_Manual.pdf</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">MIME Type</span>
+            <span class="detail-value mono">application/pdf</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">File Size</span>
+            <span class="detail-value mono">4.2 MB</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Pages</span>
+            <span class="detail-value">42</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Classification</span>
+            <span class="detail-value amber">Confidential</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Uploaded By</span>
+            <span class="detail-value">R. Chen</span>
+          </div>
+          <div class="detail-item" style="grid-column: 1 / -1; border-right: none;">
+            <span class="detail-label">Upload Date</span>
+            <span class="detail-value">10 Mar 2026</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="action-row">
+      <button class="act-btn act-btn-primary">Download</button>
+      <button class="act-btn act-btn-ghost">Link to Entity</button>
+      <button class="act-btn act-btn-ghost">Share</button>
+      <button class="act-btn act-btn-ghost">Archive</button>
+    </div>
+
+    <!-- LINKED ENTITIES SECTION -->
+    <div class="sect" onclick="toggleSect(this, event)">
+      <div class="sect-hdr">
+        <svg class="sect-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,3 5,6 8,3"/></svg>
+        <span class="sect-label">Linked Entities</span>
+      </div>
+      <div class="sect-body">
+        <div class="related-entry">
+          <div class="related-icon">
+            <!-- Machine/Equipment icon -->
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h10v2H3zM3 7h10v8H3z"/><path d="M6 5v2M10 5v2"/></svg>
+          </div>
+          <div class="related-info">
+            <span class="related-name">E-007 — Main Engine</span>
+            <span class="related-type">Equipment</span>
+          </div>
+          <svg class="related-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+        <div class="related-entry">
+          <div class="related-icon">
+            <!-- Clipboard/Work Order icon -->
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2" width="10" height="12" rx="1.2"/><path d="M6 5h4M6 7.5h4M6 10h2"/></svg>
+          </div>
+          <div class="related-info">
+            <span class="related-name">WO-1042 — Emergency Valve Replacement</span>
+            <span class="related-type">Work Order</span>
+          </div>
+          <svg class="related-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCUMENT HISTORY SECTION -->
+    <div class="sect" onclick="toggleSect(this, event)">
+      <div class="sect-hdr">
+        <svg class="sect-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,3 5,6 8,3"/></svg>
+        <span class="sect-label">Document History</span>
+      </div>
+      <div class="sect-body">
+        <div class="timeline-entry">
+          <div class="timeline-dot-col">
+            <span class="timeline-dot"></span>
+            <span class="timeline-line"></span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-time">10 Mar 2026</span>
+            <p class="timeline-desc">R. Chen — Uploaded</p>
+          </div>
+        </div>
+        <div class="timeline-entry">
+          <div class="timeline-dot-col">
+            <span class="timeline-dot"></span>
+            <span class="timeline-line"></span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-time">10 Mar 2026</span>
+            <p class="timeline-desc">System — Indexed for search (42 pages, 156 chunks)</p>
+          </div>
+        </div>
+        <div class="timeline-entry">
+          <div class="timeline-dot-col">
+            <span class="timeline-dot"></span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-time">10 Mar 2026</span>
+            <p class="timeline-desc">R. Chen — Linked to E-007</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .lens-body -->
+
+</div><!-- .panel -->
+</div><!-- .theme-col -->
+
+<!-- ===================================================================
+     LIGHT PANEL -- Image Document
+     =================================================================== -->
+<div class="theme-col light">
+<p class="theme-label" style="color:rgba(0,0,0,0.30)">Light</p>
+<div class="panel">
+
+  <!-- LENS HEADER -->
+  <div class="lens-hdr">
+    <div class="lens-hdr-left">
+      <button class="lens-back" title="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="10,3 5,8 10,13"/></svg>
+      </button>
+    </div>
+    <div class="lens-hdr-center">
+      <span class="lens-overline">Document</span>
+    </div>
+    <div class="lens-hdr-right">
+      <button class="lens-hdr-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5.5"/><path d="M7 4.5v5M4.5 7h5"/></svg>
+        Related
+      </button>
+      <button class="lens-hdr-btn lens-close" title="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="3" x2="11" y2="11"/><line x1="11" y1="3" x2="3" y2="11"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- SCROLLABLE BODY -->
+  <div class="lens-body">
+
+    <!-- TITLE BLOCK -->
+    <div class="lens-title-block">
+      <h1 class="lens-title">Engine Room Photo — Port Side</h1>
+      <p class="lens-subtitle">Photograph · Uploaded by R. Chen</p>
+      <div class="lens-pills">
+        <span class="status-pill pill-green"><span class="status-pill-dot"></span> General</span>
+      </div>
+    </div>
+
+    <!-- VITAL SIGNS ROW -->
+    <div class="vitals-row">
+      <div class="vital">
+        <span class="vital-label">Type</span>
+        <span class="vital-value">Image</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Size</span>
+        <span class="vital-value mono">2.4 MB</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Class</span>
+        <span class="vital-value">General</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Equipment</span>
+        <span class="vital-value link">E-007 Main Engine</span>
+      </div>
+      <div class="vital">
+        <span class="vital-label">Uploaded</span>
+        <span class="vital-value">10 Mar 2026</span>
+      </div>
+    </div>
+
+    <!-- DOCUMENT PREVIEW -- Image -->
+    <div class="doc-preview">
+      <div class="img-preview-area">
+        <div class="img-placeholder">
+          <svg class="img-placeholder-icon" width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="6" width="36" height="36" rx="3"/>
+            <circle cx="18" cy="18" r="4"/>
+            <path d="M42 32L32 22L14 42"/>
+            <path d="M28 36L22 30L6 42"/>
+          </svg>
+        </div>
+      </div>
+      <div class="img-caption">engine_room_port_20260310.jpg</div>
+    </div>
+
+    <!-- DETAILS SECTION -->
+    <div class="sect" onclick="toggleSect(this, event)">
+      <div class="sect-hdr">
+        <svg class="sect-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,3 5,6 8,3"/></svg>
+        <span class="sect-label">Details</span>
+      </div>
+      <div class="sect-body">
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">Filename</span>
+            <span class="detail-value mono">engine_room_port_20260310.jpg</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">MIME Type</span>
+            <span class="detail-value mono">image/jpeg</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">File Size</span>
+            <span class="detail-value mono">2.4 MB</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Dimensions</span>
+            <span class="detail-value mono">4032 x 3024</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Classification</span>
+            <span class="detail-value">General</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Uploaded By</span>
+            <span class="detail-value">R. Chen</span>
+          </div>
+          <div class="detail-item" style="grid-column: 1 / -1; border-right: none;">
+            <span class="detail-label">Upload Date</span>
+            <span class="detail-value">10 Mar 2026</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="action-row">
+      <button class="act-btn act-btn-primary">Download</button>
+      <button class="act-btn act-btn-ghost">Link to Entity</button>
+      <button class="act-btn act-btn-ghost">Share</button>
+      <button class="act-btn act-btn-ghost">Archive</button>
+    </div>
+
+    <!-- LINKED ENTITIES SECTION -->
+    <div class="sect" onclick="toggleSect(this, event)">
+      <div class="sect-hdr">
+        <svg class="sect-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,3 5,6 8,3"/></svg>
+        <span class="sect-label">Linked Entities</span>
+      </div>
+      <div class="sect-body">
+        <div class="related-entry">
+          <div class="related-icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h10v2H3zM3 7h10v8H3z"/><path d="M6 5v2M10 5v2"/></svg>
+          </div>
+          <div class="related-info">
+            <span class="related-name">E-007 — Main Engine</span>
+            <span class="related-type">Equipment</span>
+          </div>
+          <svg class="related-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+        <div class="related-entry">
+          <div class="related-icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2" width="10" height="12" rx="1.2"/><path d="M6 5h4M6 7.5h4M6 10h2"/></svg>
+          </div>
+          <div class="related-info">
+            <span class="related-name">WO-1042 — Emergency Valve Replacement</span>
+            <span class="related-type">Work Order</span>
+          </div>
+          <svg class="related-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,2 7,5 3,8"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCUMENT HISTORY SECTION -- collapsed to show that state -->
+    <div class="sect collapsed" onclick="toggleSect(this, event)">
+      <div class="sect-hdr">
+        <svg class="sect-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,3 5,6 8,3"/></svg>
+        <span class="sect-label">Document History</span>
+      </div>
+      <div class="sect-body">
+        <div class="timeline-entry">
+          <div class="timeline-dot-col">
+            <span class="timeline-dot"></span>
+            <span class="timeline-line"></span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-time">10 Mar 2026</span>
+            <p class="timeline-desc">R. Chen — Uploaded</p>
+          </div>
+        </div>
+        <div class="timeline-entry">
+          <div class="timeline-dot-col">
+            <span class="timeline-dot"></span>
+          </div>
+          <div class="timeline-content">
+            <span class="timeline-time">10 Mar 2026</span>
+            <p class="timeline-desc">R. Chen — Linked to E-007</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .lens-body -->
+
+</div><!-- .panel -->
+</div><!-- .theme-col -->
+
+</div><!-- .scene -->
+
+<script>
+function toggleSect(sect, event) {
+  var hdr = sect.querySelector('.sect-hdr');
+  var target = event.target;
+  var inHeader = false;
+  var node = target;
+  while (node && node !== sect) {
+    if (node === hdr) { inHeader = true; break; }
+    node = node.parentNode;
+  }
+  if (!inHeader) return;
+  sect.classList.toggle('collapsed');
+}
+</script>
+
+</body>
+</html>

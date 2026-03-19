@@ -109,7 +109,7 @@ function MessageCard({ message, isExpanded, onToggle }: { message: EmailMessage;
   return (
     <div className={cn(
       'border rounded-lg overflow-hidden',
-      isInbound ? 'border-surface-border' : 'border-brand-primary/30 bg-brand-primary/5'
+      isInbound ? 'border-surface-border' : 'border-brand-interactive/30 bg-brand-interactive/5'
     )}>
       <button
         onClick={onToggle}
@@ -118,7 +118,7 @@ function MessageCard({ message, isExpanded, onToggle }: { message: EmailMessage;
         <div className="flex items-center gap-3">
           <div className={cn(
             'w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium',
-            isInbound ? 'bg-surface-elevated text-txt-secondary' : 'bg-brand-primary/20 text-brand-primary'
+            isInbound ? 'bg-surface-elevated text-txt-secondary' : 'bg-brand-interactive/20 text-brand-interactive'
           )}>
             {isInbound ? '←' : '→'}
           </div>
@@ -189,7 +189,7 @@ function MessageContentView({ providerMessageId, attachments }: { providerMessag
 
       {/* Body - sanitized with DOMPurify */}
       <div
-        className="px-4 py-4 prose prose-sm prose-invert max-w-none text-txt-primary [&_a]:text-brand-primary [&_a:hover]:underline"
+        className="px-4 py-4 prose prose-sm prose-invert max-w-none text-txt-primary [&_a]:text-brand-interactive [&_a:hover]:underline"
         dangerouslySetInnerHTML={{ __html: bodyHtml }}
       />
 
@@ -243,7 +243,7 @@ function LinkedObjectsPanel({ links }: { links: ThreadLink[] }) {
             <span className={cn(
               'px-2 py-0.5 rounded text-xs font-medium',
               link.confidence_level === 'deterministic' ? 'bg-status-success/20 text-status-success' :
-              link.confidence_level === 'user_confirmed' ? 'bg-brand-primary/20 text-brand-primary' :
+              link.confidence_level === 'user_confirmed' ? 'bg-brand-interactive/20 text-brand-interactive' :
               'bg-status-warning/20 text-status-warning'
             )}>
               {link.object_type.replace(/_/g, ' ')}
@@ -338,7 +338,7 @@ function ThreadContent({ threadId }: { threadId: string }) {
         <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors">
           Link to Object
         </button>
-        <button className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 rounded-lg text-sm text-white transition-colors">
+        <button className="px-4 py-2 bg-brand-interactive hover:bg-brand-interactive/90 rounded-lg text-sm text-txt-inverse transition-colors">
           Create Work Order
         </button>
       </div>

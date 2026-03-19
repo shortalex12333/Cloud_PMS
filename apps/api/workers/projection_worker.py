@@ -262,7 +262,13 @@ METRICS = Metrics()
 MAPPINGS: Dict[str, Dict] = {}
 
 def load_mappings(cur) -> None:
-    """Load projection mappings from search_projection_map."""
+    """
+    Load projection mappings from search_projection_map.
+
+    NOTE: search_text_cols is loaded but no longer used for building search_text —
+    that is now handled by entity_serializer_sync.py. The column remains because
+    filter_map and payload_map are still read from the same table.
+    """
     global MAPPINGS
     cur.execute("""
         SELECT domain, source_table, object_type, search_text_cols, filter_map, payload_map
@@ -697,7 +703,7 @@ def claim_batch(cur, object_types: Optional[List[str]] = None) -> List[Dict]:
         WITH claimed AS (
             SELECT id, object_type, object_id, org_id, yacht_id,
                    payload->>'source_table' as source_table,
-                   COALESCE(source_version, 0) as source_version
+                   COALESCE(source_version, 0) + 1 as source_version
             FROM search_index
             WHERE embedding_status IN ('pending', 'processing')
             {type_filter}
@@ -917,9 +923,23 @@ def run_worker():
                         success, error = process_item(cur, item)
 
                         if success:
-                            mark_done(cur, object_type, object_id)
-                            METRICS.total_processed += 1
-                            logger.debug(f"  OK: {source}")
+                            # Guard: verify search_text was actually written
+                            cur.execute(
+                                "SELECT search_text FROM search_index "
+                                "WHERE object_type = %s AND object_id = %s",
+                                (object_type, object_id)
+                            )
+                            row_check = cur.fetchone()
+                            st = row_check['search_text'] if row_check else None
+                            if st and st.strip():
+                                mark_done(cur, object_type, object_id)
+                                METRICS.total_processed += 1
+                                logger.debug(f"  OK: {source}")
+                            else:
+                                mark_failed(cur, object_type, object_id,
+                                            "search_text empty after processing")
+                                METRICS.total_failed += 1
+                                logger.warning(f"  EMPTY: {source}")
                         else:
                             mark_failed(cur, object_type, object_id, error)
                             METRICS.total_failed += 1

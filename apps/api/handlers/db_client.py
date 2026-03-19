@@ -22,6 +22,41 @@ from supabase import create_client, Client
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Patch: supabase-py 2.12 / postgrest 0.19 throws APIError on 204 (No Content)
+# instead of returning None from .maybe_single().execute().
+# This affects every handler that queries for a single row that might not exist.
+# Fix: return None on empty response instead of raising.
+# Remove this patch when upgrading to a postgrest-py version that fixes it.
+# ---------------------------------------------------------------------------
+def _patch_maybe_single_204():
+    try:
+        from postgrest import SyncMaybeSingleRequestBuilder, SyncSingleRequestBuilder
+        from postgrest.exceptions import APIError
+
+        _original_execute = SyncMaybeSingleRequestBuilder.execute
+
+        def _safe_execute(self):
+            r = None
+            try:
+                r = SyncSingleRequestBuilder.execute(self)
+            except APIError as e:
+                if e.details and "The result contains 0 rows" in e.details:
+                    return None
+            if not r:
+                # Original code raises here — we return None instead
+                return None
+            return r
+
+        SyncMaybeSingleRequestBuilder.execute = _safe_execute
+        logger.info("[db_client] Patched SyncMaybeSingleRequestBuilder.execute for 204 handling")
+    except Exception as e:
+        logger.warning(f"[db_client] Could not patch maybe_single 204 bug: {e}")
+
+_patch_maybe_single_204()
+
+
 # Connection Pooling
 # ==================
 # Reuse database connections across requests to avoid 280-980ms connection overhead

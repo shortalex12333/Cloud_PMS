@@ -81,7 +81,8 @@ export function AddHoursModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-sidebar bg-black/60"
+        className="fixed inset-0 z-sidebar"
+        style={{ background: 'rgba(0,0,0,0.60)' }}
         onClick={onClose}
         aria-hidden="true"
       />

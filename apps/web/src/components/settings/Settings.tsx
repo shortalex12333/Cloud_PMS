@@ -71,8 +71,10 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
     const root = document.documentElement;
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (appearance === 'dark' || (appearance === 'system' && systemDark)) {
+      root.setAttribute('data-theme', 'dark');
       root.classList.add('dark');
     } else {
+      root.setAttribute('data-theme', 'light');
       root.classList.remove('dark');
     }
     localStorage.setItem('celeste_theme', appearance);
@@ -245,14 +247,14 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
 
             <div className="settings-info-box" style={{
               padding: '12px 16px',
-              background: 'var(--settings-bg-highlight, #f0f0f0)',
+              background: 'var(--neutral-bg)',
               borderRadius: '8px',
               marginBottom: '16px',
             }}>
-              <div style={{ fontSize: '13px', color: 'var(--settings-text-primary, #111111)', marginBottom: '4px', fontWeight: 500 }}>
+              <div style={{ fontSize: '13px', color: 'var(--txt)', marginBottom: '4px', fontWeight: 500 }}>
                 We're here to help
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--settings-text-secondary, #5a5a5a)' }}>
+              <div style={{ fontSize: '12px', color: 'var(--txt3)' }}>
                 Replies usually within 24 hours.
               </div>
             </div>
@@ -269,12 +271,12 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                   minHeight: '100px',
                   padding: '10px 12px',
                   fontSize: '13px',
-                  border: '1px solid var(--settings-border, #e7e7e7)',
+                  border: '1px solid var(--border-sub)',
                   borderRadius: '8px',
                   resize: 'vertical',
                   fontFamily: 'inherit',
-                  background: 'var(--settings-bg-main, #ffffff)',
-                  color: 'var(--settings-text-primary, #111111)',
+                  background: 'var(--surface-el)',
+                  color: 'var(--txt)',
                 }}
               />
               <button
@@ -304,8 +306,8 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                   padding: '8px 16px',
                   fontSize: '13px',
                   fontWeight: 500,
-                  background: supportMessage.trim() ? 'var(--settings-accent, #3A7C9D)' : 'var(--settings-bg-highlight, #eeeeee)',
-                  color: supportMessage.trim() ? '#ffffff' : 'var(--settings-text-secondary, #5a5a5a)',
+                  background: supportMessage.trim() ? 'var(--teal-bg)' : 'var(--surface-hover)',
+                  color: supportMessage.trim() ? 'var(--mark)' : 'var(--txt2)',
                   border: 'none',
                   borderRadius: '6px',
                   cursor: supportMessage.trim() ? 'pointer' : 'not-allowed',
@@ -376,9 +378,9 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'row',
-          background: 'var(--settings-bg-main, #ffffff)',
-          border: '1px solid var(--settings-border, #e7e7e7)',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
+          background: 'var(--surface)',
+          border: '1px solid var(--border-sub)',
+          boxShadow: 'var(--shadow-panel)',
           fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -389,8 +391,8 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
           style={{
             width: '180px',
             flexShrink: 0,
-            background: 'var(--settings-bg-left, #f8f8f8)',
-            borderRight: '1px solid var(--settings-border, #e7e7e7)',
+            background: 'var(--surface-base)',
+            borderRight: '1px solid var(--border-sub)',
             padding: '12px',
             overflowY: 'auto',
             display: 'flex',
@@ -410,7 +412,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
               background: 'transparent',
               border: 'none',
               borderRadius: '8px',
-              color: 'var(--settings-text-secondary, #5a5a5a)',
+              color: 'var(--txt-ghost)',
               cursor: 'pointer',
               marginBottom: '12px',
               marginLeft: '-4px',
@@ -439,14 +441,15 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                     fontSize: '14px',
                     fontWeight: isActive ? 600 : 500,
                     lineHeight: '20px',
-                    color: 'var(--settings-text-primary, #111111)',
-                    background: isActive ? 'var(--settings-bg-highlight, #eeeeee)' : 'transparent',
+                    color: isActive ? 'var(--mark)' : 'var(--txt2)',
+                    background: isActive ? 'var(--teal-bg)' : 'transparent',
                     border: 'none',
+                    borderLeft: isActive ? '2px solid var(--mark)' : '2px solid transparent',
                     cursor: 'pointer',
                     textAlign: 'left',
                   }}
                 >
-                  <Icon style={{ width: '18px', height: '18px', flexShrink: 0, color: 'var(--settings-text-secondary, #5a5a5a)' }} />
+                  <Icon style={{ width: '18px', height: '18px', flexShrink: 0, color: isActive ? 'var(--mark)' : 'var(--txt2)' }} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -459,7 +462,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
           className="settings-content"
           style={{
             flex: 1,
-            background: 'var(--settings-bg-center, #f8f8f8)',
+            background: 'var(--surface)',
             padding: '20px 24px 20px',
             overflowY: 'auto',
           }}

@@ -21,8 +21,8 @@ export default function EmailInboxRedirect() {
 
   // Show loading while redirecting
   return (
-    <div className="min-h-screen bg-celeste-black flex items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-celeste-text-muted" />
+    <div className="min-h-screen bg-surface-base flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-txt-tertiary" />
     </div>
   );
 }

@@ -27,15 +27,12 @@ import {
 import { cn } from '@/lib/utils';
 import { useCelesteSearch } from '@/hooks/useCelesteSearch';
 import { useDomain } from '@/lib/domain/hooks';
-import { useSituationState } from '@/hooks/useSituationState';
-import { useSurfaceSafe } from '@/contexts/SurfaceContext';
 import type { SearchResult as APISearchResult } from '@/types/search';
-import type { EntityType, SituationDomain } from '@/types/situation';
 import SpotlightResultRow from './SpotlightResultRow';
 import SettingsModal from '@/components/SettingsModal';
 import { EntityLine, StatusLine } from '@/components/celeste';
 import { EmailInboxView } from '@/components/email/EmailInboxView';
-import SituationRouter from '@/components/situations/SituationRouter';
+
 import SuggestedActions from '@/components/SuggestedActions';
 import FilterChips from './FilterChips';
 import { LedgerPanel } from '@/components/ledger';
@@ -43,7 +40,7 @@ import { HandoverDraftPanel } from '@/components/handover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ReceivingDocumentUpload } from '@/components/receiving/ReceivingDocumentUpload';
 import { toast } from 'sonner';
-import { executeAction } from '@/lib/actionClient';
+
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -53,7 +50,7 @@ import {
   type DomainGroup,
   DOMAIN_ICONS,
 } from '@/lib/spotlightGrouping';
-import { isFragmentedRoutesEnabled, getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/featureFlags';
 
 // Domain icon component mapping
 const DomainIconMap: Record<string, LucideIcon> = {
@@ -253,18 +250,6 @@ export default function SpotlightSearch({
     objectType ? [objectType] : null
   );
 
-  // Pass yacht_id to situation state hook as well
-  const {
-    situation,
-    createSituation,
-    updateSituation,
-    transitionTo,
-    resetToIdle,
-  } = useSituationState(user?.yachtId ?? null);
-
-  // SurfaceContext for email overlay (returns null if not in SurfaceProvider)
-  const surfaceContext = useSurfaceSafe();
-
   // Router for fragmented routes navigation
   const router = useRouter();
 
@@ -294,27 +279,13 @@ export default function SpotlightSearch({
   const [showLedger, setShowLedger] = useState(false);
   const [showHandoverDraft, setShowHandoverDraft] = useState(false);
   const [showReceivingUpload, setShowReceivingUpload] = useState(false);
-  // Local state fallback when not in SurfaceProvider
-  const [localShowEmailList, setLocalShowEmailList] = useState(false);
-  const [localEmailScopeActive, setLocalEmailScopeActive] = useState(false);
+  const [showEmailList, setShowEmailList] = useState(false);
+  const [emailScopeActive, setEmailScopeActive] = useState(false);
 
-  // Use context if available, otherwise local state
-  const emailScopeActive = surfaceContext?.emailPanel.visible ?? localEmailScopeActive;
-  const showEmailList = surfaceContext?.emailPanel.visible ?? localShowEmailList;
-
-  // Helper to toggle email state - uses context when available
   const toggleEmailScope = useCallback((active: boolean) => {
-    if (surfaceContext) {
-      if (active) {
-        surfaceContext.showEmail({ folder: 'inbox' });
-      } else {
-        surfaceContext.hideEmail();
-      }
-    } else {
-      setLocalEmailScopeActive(active);
-      setLocalShowEmailList(active);
-    }
-  }, [surfaceContext]);
+    setEmailScopeActive(active);
+    setShowEmailList(active);
+  }, []);
 
   // Listen for global settings modal open events
   useEffect(() => {
@@ -489,9 +460,9 @@ export default function SpotlightSearch({
   }, [selectedIndex, results.length]);
 
   /**
-   * Map result type to entity type for situation creation
+   * Map result type to entity type for routing
    */
-  const mapResultTypeToEntityType = useCallback((type: string): EntityType => {
+  const mapResultTypeToEntityType = useCallback((type: string): string => {
     if (type.includes('certificate')) return 'certificate';
     if (type.includes('warranty')) return 'warranty';
     if (type.includes('shopping_item') || type.includes('shopping_list')) return 'shopping_list';
@@ -509,57 +480,20 @@ export default function SpotlightSearch({
   }, []);
 
   /**
-   * Map entity type to domain
+   * Map entity type to domain label for ledger events
    */
-  const mapEntityTypeToDomain = useCallback((entityType: EntityType): SituationDomain => {
+  const mapEntityTypeToDomain = useCallback((entityType: string): string => {
     if (entityType === 'document') return 'manuals';
     if (entityType === 'equipment' || entityType === 'work_order' || entityType === 'fault') return 'maintenance';
     if (entityType === 'part' || entityType === 'inventory' || entityType === 'shopping_list' || entityType === 'receiving' || entityType === 'purchase_order') return 'inventory';
     if (entityType === 'email_thread') return 'email';
     if (entityType === 'certificate' || entityType === 'warranty') return 'maintenance';
     if (entityType === 'hours_of_rest') return 'maintenance';
-    return 'manuals'; // Default fallback
+    return 'manuals';
   }, []);
 
   /**
-   * Handle result selection (single click) - Creates CANDIDATE situation
-   */
-  const handleResultSelect = useCallback((result: SpotlightResult, index: number) => {
-    setSelectedIndex(index);
-
-    // Create CANDIDATE situation
-    const entityType = mapResultTypeToEntityType(result.type);
-    const domain = mapEntityTypeToDomain(entityType);
-
-    // Store full result in metadata for later access
-    const situationMetadata = {
-      ...result.metadata,
-      title: result.title,
-      subtitle: result.subtitle,
-      type: result.type,
-      storage_path: result.metadata?.storage_path || result.metadata?.path,
-      name: result.title,
-    };
-
-    createSituation({
-      entity_type: entityType,
-      entity_id: result.id,
-      domain,
-      initial_state: 'CANDIDATE',
-      metadata: situationMetadata,
-    });
-  }, [createSituation, mapResultTypeToEntityType, mapEntityTypeToDomain]);
-
-  /**
-   * Handle result open (double-click or Enter) - Navigate to detail page
-   *
-   * FRAGMENTED ROUTES BEHAVIOR (flag ON):
-   * - Supported types (work_order, fault, equipment, part, email_thread) → router.push
-   * - Unsupported types (document) → legacy ContextPanel or toast
-   *
-   * LEGACY BEHAVIOR (flag OFF):
-   * - Opens EmailOverlay for email_thread
-   * - Opens ContextPanel for all other types
+   * Handle result open (click or Enter) - Navigate to entity route
    */
   const handleResultOpen = useCallback(async (result: SpotlightResult) => {
     console.log('[SpotlightSearch] 🖱️ Click registered:', result.type, result.id);
@@ -578,221 +512,41 @@ export default function SpotlightSearch({
       return;
     }
 
-    // FRAGMENTED ROUTES: Flag-gated navigation
-    if (isFragmentedRoutesEnabled()) {
-      // Map EntityType to getEntityRoute type
-      const routeTypeMap: Record<string, 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving' | 'document' | 'certificate' | 'warranty' | 'purchase_order' | 'hours_of_rest'> = {
-        work_order: 'work_order',
-        fault: 'fault',
-        equipment: 'equipment',
-        part: 'part',
-        inventory: 'part', // inventory uses part type which maps to /inventory
-        email_thread: 'email',
-        shopping_list: 'shopping_list',
-        receiving: 'receiving',
-        document: 'document',
-        certificate: 'certificate',
-        warranty: 'warranty',
-        purchase_order: 'purchase_order',
-        hours_of_rest: 'hours_of_rest',
-      };
+    // Route to entity page
+    const routeTypeMap: Record<string, 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving' | 'document' | 'certificate' | 'warranty' | 'purchase_order' | 'hours_of_rest'> = {
+      work_order: 'work_order',
+      fault: 'fault',
+      equipment: 'equipment',
+      part: 'part',
+      inventory: 'part',
+      email_thread: 'email',
+      shopping_list: 'shopping_list',
+      receiving: 'receiving',
+      document: 'document',
+      certificate: 'certificate',
+      warranty: 'warranty',
+      purchase_order: 'purchase_order',
+      hours_of_rest: 'hours_of_rest',
+    };
 
-      const routeType = routeTypeMap[entityType];
-
-      if (routeType) {
-        // Supported type → route to fragmented page
-        const route = getEntityRoute(routeType, entityId);
-        console.log('[SpotlightSearch] 🚀 Routing to fragmented page:', route);
-
-        // Record ledger event before navigation
-        recordLedgerEvent('artefact_opened', {
-          artefact_type: entityType,
-          artefact_id: entityId,
-          display_name: result.title,
-          domain: domain,
-          route_mode: 'fragmented',
-        });
-
-        router.push(route);
-        onClose?.();
-        return;
-      } else {
-        // Unsupported type (e.g., document) → show toast and fallback to legacy
-        console.log('[SpotlightSearch] ⚠️ Unsupported type for fragmented routes:', entityType);
-        toast.info('Opening in context panel', {
-          description: `${entityType} routes not yet available`,
-        });
-        // Fall through to legacy behavior below
-      }
-    }
-
-    // LEGACY BEHAVIOR: Context panel / Email overlay
-
-    // Special handling for email threads: open EmailOverlay
-    if (entityType === 'email_thread' && surfaceContext) {
-      const threadId = (result.metadata?.thread_id || result.id) as string;
-      surfaceContext.showEmail({ threadId, folder: 'inbox' });
+    const routeType = routeTypeMap[entityType];
+    if (!routeType) {
+      console.warn('[SpotlightSearch] Unknown entity type:', entityType);
       return;
     }
 
-    // Build metadata for ContextPanel display
-    const contextMetadata = {
-      ...result.metadata,
-      title: result.title,
-      subtitle: result.subtitle,
-      type: result.type,
-      storage_path: result.metadata?.storage_path || result.metadata?.path,
-      name: result.title,
-    };
+    const route = getEntityRoute(routeType, entityId);
 
-    if (surfaceContext) {
-      console.log('[SpotlightSearch] 📍 Opening in ContextPanel:', {
-        entityType,
-        entityId,
-        title: result.title,
-        hasMetadata: !!contextMetadata
-      });
-
-      surfaceContext.showContext(entityType, entityId, contextMetadata);
-
-      // Record ledger event for artefact opened
-      recordLedgerEvent('artefact_opened', {
-        artefact_type: entityType,
-        artefact_id: entityId,
-        display_name: result.title,
-        domain: domain,
-        route_mode: 'legacy',
-      });
-
-      onClose?.();
-    } else {
-      // Fallback for when not in SurfaceProvider (shouldn't happen in /app)
-      console.warn('[SpotlightSearch] ⚠️ No SurfaceContext - falling back to situation');
-
-      // Create or transition to ACTIVE situation
-      if (situation && situation.state === 'CANDIDATE') {
-        await updateSituation({
-          evidence: contextMetadata as any,
-        });
-        await transitionTo('ACTIVE', 'User opened entity from CANDIDATE state');
-      } else {
-        await createSituation({
-          entity_type: entityType,
-          entity_id: result.id,
-          domain,
-          initial_state: 'ACTIVE',
-          metadata: contextMetadata,
-        });
-      }
-    }
-  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain, surfaceContext, onClose, router]);
-
-  /**
-   * Handle situation close (any viewer)
-   */
-  const handleSituationClose = useCallback(() => {
-    resetToIdle();
-    inputRef.current?.focus();
-  }, [resetToIdle]);
-
-  /**
-   * Handle situation actions (add to handover, etc.)
-   */
-  const handleSituationAction = useCallback(async (action: string, payload: any) => {
-    console.log('[SpotlightSearch] Situation action:', action, payload);
-
-    try {
-      // Use auth context instead of querying database
-      // Backend handles tenant routing via JWT verification
-      if (!user) {
-        toast.error('Authentication required');
-        return;
-      }
-
-      if (!user.yachtId) {
-        toast.error('No yacht associated with user');
-        return;
-      }
-
-      // Handle different actions
-      switch (action) {
-        case 'add_to_handover':
-          await handleAddToHandover(user.id, user.yachtId, payload);
-          break;
-
-        default:
-          console.warn(`[SpotlightSearch] Unknown action: ${action}`);
-          toast.error(`Action "${action}" not yet implemented`);
-      }
-    } catch (error) {
-      console.error('[SpotlightSearch] Action failed:', error);
-      toast.error(error instanceof Error ? error.message : 'Action failed');
-    }
-  }, [user]);
-
-  /**
-   * Handle add_to_handover action
-   */
-  const handleAddToHandover = async (
-    userId: string,
-    yachtId: string,
-    payload: any
-  ) => {
-    // Map entity type for documents
-    const entityType = payload.type === 'document' || payload.document_id
-      ? 'document_chunk'
-      : payload.type || 'document_chunk';
-
-    // Generate summary from available data
-    const summaryText = payload.document_title || payload.title || payload.name || 'Document reference';
-
-    // Map entity type to category
-    const categoryMap: Record<string, string> = {
-      'fault': 'ongoing_fault',
-      'work_order': 'work_in_progress',
-      'equipment': 'equipment_status',
-      'document': 'important_info',
-      'document_chunk': 'important_info',
-      'part': 'general',
-    };
-    const category = categoryMap[entityType] || 'important_info';
-
-    // Build API request payload
-    const requestPayload = {
-      entity_type: entityType,
-      entity_id: payload.document_id || payload.entity_id || payload.id,
-      summary_text: summaryText,
-      category: category,
-      priority: payload.priority || 'normal',
-    };
-
-    console.log('[SpotlightSearch] Executing add_to_handover:', {
-      action: 'add_to_handover',
-      context: { yacht_id: yachtId, user_id: userId },
-      payload: requestPayload,
+    recordLedgerEvent('artefact_opened', {
+      artefact_type: entityType,
+      artefact_id: entityId,
+      display_name: result.title,
+      domain: domain,
     });
 
-    // Call backend API via actionClient
-    const result = await executeAction(
-      'add_to_handover',
-      {
-        yacht_id: yachtId,
-        user_id: userId,
-      },
-      requestPayload
-    );
-
-    if (result.status === 'error') {
-      throw new Error(result.message || 'Failed to add to handover');
-    }
-
-    // Show success message
-    toast.success('Added to handover', {
-      description: summaryText.substring(0, 80),
-    });
-
-    console.log('[SpotlightSearch] Handover entry created:', result);
-  };
+    router.push(route);
+    onClose?.();
+  }, [mapResultTypeToEntityType, mapEntityTypeToDomain, onClose, router]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     switch (e.key) {
@@ -833,26 +587,19 @@ export default function SpotlightSearch({
   const handleReceivingUploadComplete = useCallback((receivingId: string, documentId: string, extractedData: any) => {
     setShowReceivingUpload(false);
 
-    // Open the new receiving in the context panel
-    if (surfaceContext) {
-      surfaceContext.showContext('receiving', receivingId, {
-        title: 'New Receiving',
-        subtitle: extractedData?.supplier_name || 'Document uploaded',
-        type: 'receiving',
-      });
+    // Navigate to the new receiving entity route
+    recordLedgerEvent('receiving_created', {
+      receiving_id: receivingId,
+      document_id: documentId,
+      has_extracted_data: !!extractedData,
+    });
 
-      // Record ledger event for receiving created
-      recordLedgerEvent('receiving_created', {
-        receiving_id: receivingId,
-        document_id: documentId,
-        has_extracted_data: !!extractedData,
-      });
+    toast.success('Receiving logged', {
+      description: extractedData?.supplier_name || 'Document uploaded successfully',
+    });
 
-      toast.success('Receiving logged', {
-        description: extractedData?.supplier_name || 'Document uploaded successfully',
-      });
-    }
-  }, [surfaceContext]);
+    router.push(getEntityRoute('receiving', receivingId));
+  }, [router]);
 
   const hasResults = results.length > 0 || groupedResults.totalResults > 0;
   const hasQuery = query.trim().length > 0;
@@ -869,7 +616,8 @@ export default function SpotlightSearch({
       {/* Backdrop - material-based dim */}
       {isModal && (
         <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-colors duration-fast"
+          className="absolute inset-0 backdrop-blur-sm transition-colors duration-fast"
+          style={{ background: 'rgba(0,0,0,0.60)' }}
           onClick={onClose}
           aria-hidden="true"
         />
@@ -920,7 +668,7 @@ export default function SpotlightSearch({
 
             {/* Domain Scope Indicator - shows when in fragmented route */}
             {objectType && !emailScopeActive && (
-              <span className="text-xs text-white/40 mr-2 whitespace-nowrap">
+              <span className="text-xs text-txt-tertiary mr-2 whitespace-nowrap">
                 in {domainLabel}
               </span>
             )}
@@ -1036,10 +784,8 @@ export default function SpotlightSearch({
             />
           )}
 
-          {/* Email List (beneath search bar per UX doctrine)
-              Only render inline EmailInboxView when SurfaceContext is NOT available.
-              When SurfaceContext is available, EmailOverlay handles the email UI. */}
-          {showEmailList && !hasQuery && !surfaceContext && (
+          {/* Email List (beneath search bar per UX doctrine) */}
+          {showEmailList && !hasQuery && (
             <div
               className="max-h-celeste-search-results overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-surface-primary"
               data-testid="email-list-inline"
@@ -1182,7 +928,7 @@ export default function SpotlightSearch({
                         {(hasMoreInDomain || (group.totalCount > 4 && !isExpanded)) && (
                           <button
                             onClick={() => toggleDomainExpansion(group.domain)}
-                            className="w-full px-4 py-2 text-left typo-meta text-celeste-accent hover:bg-celeste-bg-tertiary transition-colors flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left typo-meta text-brand-interactive hover:bg-surface-hover transition-colors flex items-center gap-2"
                           >
                             <ChevronDown
                               className={cn(
@@ -1211,16 +957,16 @@ export default function SpotlightSearch({
 
               {showNoResults && (
                 <div className="py-10 text-center" data-testid="no-results">
-                  <p className="typo-title text-celeste-text-secondary">No Results</p>
+                  <p className="typo-title text-txt-secondary">No Results</p>
                 </div>
               )}
 
               {error && (
                 <div className="py-10 text-center" data-testid="search-error">
-                  <p className="typo-title text-celeste-text-secondary">{error}</p>
+                  <p className="typo-title text-txt-secondary">{error}</p>
                   <button
                     onClick={() => search(query)}
-                    className="mt-2 typo-label text-celeste-accent hover:text-celeste-accent-hover"
+                    className="mt-2 typo-label text-brand-interactive hover:text-brand-hover"
                   >
                     Try again
                   </button>
@@ -1249,122 +995,9 @@ export default function SpotlightSearch({
         </div>
 
 
-        {/* Utility Icon Row - Email ≡, Menu ≡, Settings ⚙
-            Centered below search bar, tokenized spacing */}
-        <div className="flex justify-center items-center gap-ds-3 mt-ds-4">
-          {/* Email Button with hamburger icon */}
-          <button
-            onClick={() => {
-              const newEmailScope = !emailScopeActive;
-              toggleEmailScope(newEmailScope);
-              if (!newEmailScope) {
-                setEmailResults([]);
-              }
-              clear();
-              inputRef.current?.focus();
-            }}
-            className={cn(
-              'flex items-center gap-2',
-              'p-ds-2',
-              'rounded-md',
-              'transition-all duration-fast ease-out',
-              emailScopeActive
-                ? 'bg-brand-interactive text-surface-elevated'
-                : 'text-txt-tertiary hover:text-txt-secondary hover:bg-surface-active'
-            )}
-            aria-label={emailScopeActive ? 'Exit Email' : 'Email'}
-            data-testid="utility-email-button"
-          >
-            <Mail className="w-5 h-5" strokeWidth={1.5} />
-          </button>
-
-          {/* Menu Button with hamburger icon */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className={cn(
-                  'flex items-center gap-2',
-                  'p-ds-2',
-                  'rounded-md',
-                  'text-txt-tertiary',
-                  'transition-all duration-fast ease-out',
-                  'hover:text-txt-secondary',
-                  'hover:bg-surface-active'
-                )}
-                aria-label="Menu"
-                data-testid="utility-menu-button"
-              >
-                <MenuIcon className="w-5 h-5" strokeWidth={1.5} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="center"
-              sideOffset={8}
-              className={cn(
-                'min-w-[160px] rounded-lg p-2',
-                'bg-surface-elevated',
-                'border border-surface-border'
-              )}
-            >
-              <DropdownMenuItem
-                onClick={() => setShowLedger(true)}
-                className={cn(
-                  'flex items-center gap-3 h-10 px-3 cursor-pointer',
-                  'typo-body font-medium',
-                  'text-txt-primary',
-                  'focus:bg-surface-hover',
-                  'hover:bg-surface-hover'
-                )}
-              >
-                <BookOpen className="w-4 h-4 text-txt-secondary" strokeWidth={1.5} />
-                <span>Ledger</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setShowHandoverDraft(true)}
-                className={cn(
-                  'flex items-center gap-3 h-10 px-3 cursor-pointer',
-                  'typo-body font-medium',
-                  'text-txt-primary',
-                  'focus:bg-surface-hover',
-                  'hover:bg-surface-hover'
-                )}
-              >
-                <FileText className="w-4 h-4 text-txt-secondary" strokeWidth={1.5} />
-                <span>Handover</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setShowReceivingUpload(true)}
-                className={cn(
-                  'flex items-center gap-3 h-10 px-3 cursor-pointer',
-                  'typo-body font-medium',
-                  'text-txt-primary',
-                  'focus:bg-surface-hover',
-                  'hover:bg-surface-hover'
-                )}
-              >
-                <Paperclip className="w-4 h-4 text-txt-secondary" strokeWidth={1.5} />
-                <span>Add Files</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Settings Button with gear icon */}
-          <button
-            onClick={() => setShowSettings(true)}
-            className={cn(
-              'p-ds-2',
-              'rounded-md',
-              'text-txt-tertiary',
-              'transition-all duration-fast ease-out',
-              'hover:text-txt-secondary',
-              'hover:bg-surface-active'
-            )}
-            aria-label="Settings"
-            data-testid="utility-settings-button"
-          >
-            <Settings className="w-5 h-5" strokeWidth={1.5} />
-          </button>
-        </div>
+        {/* Utility icon row removed — not in prototype.
+            Menu actions (Ledger, Handover, Add Files, Settings)
+            are still accessible via their modal/panel components below. */}
       </div>
 
       {/* Settings Modal */}
@@ -1387,14 +1020,14 @@ export default function SpotlightSearch({
 
       {/* Receiving Upload Modal - Global entry point for logging receivings */}
       <Dialog open={showReceivingUpload} onOpenChange={setShowReceivingUpload}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-celeste-bg-secondary border-celeste-border">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-primary border-surface-border">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-celeste-text-title">
+            <DialogTitle className="flex items-center gap-2 text-txt-primary">
               <Camera className="h-5 w-5 text-brand-interactive" />
               Log Receiving
             </DialogTitle>
           </DialogHeader>
-          <p className="typo-meta text-celeste-text-secondary mb-4">
+          <p className="typo-meta text-txt-secondary mb-4">
             Capture or upload an invoice, packing slip, or photo of received goods.
             We'll extract the details automatically.
           </p>
@@ -1404,12 +1037,6 @@ export default function SpotlightSearch({
         </DialogContent>
       </Dialog>
 
-      {/* Situation Router - Renders appropriate viewer based on situation type */}
-      <SituationRouter
-        situation={situation}
-        onClose={handleSituationClose}
-        onAction={handleSituationAction}
-      />
     </div>
   );
 }

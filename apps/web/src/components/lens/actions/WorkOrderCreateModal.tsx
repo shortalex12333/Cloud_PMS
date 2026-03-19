@@ -218,7 +218,8 @@ export function WorkOrderCreateModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-sidebar bg-black/60"
+        className="fixed inset-0 z-sidebar"
+        style={{ background: 'rgba(0,0,0,0.60)' }}
         onClick={phase !== 'submitting' ? onClose : undefined}
         aria-hidden="true"
       />

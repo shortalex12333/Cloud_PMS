@@ -81,7 +81,7 @@ async function mockSignalEndpoint(
   response: object,
   statusCode = 200
 ) {
-  await page.route('**/v1/show-related-signal/**', async (route) => {
+  await page.route(/\/v1\/show-related-signal/, async (route) => {
     await route.fulfill({
       status: statusCode,
       contentType: 'application/json',
@@ -96,7 +96,7 @@ async function mockSignalEndpointDelayed(
   response: object,
   delayMs = 1500
 ) {
-  await page.route('**/v1/show-related-signal/**', async (route) => {
+  await page.route(/\/v1\/show-related-signal/, async (route) => {
     await new Promise((r) => setTimeout(r, delayMs));
     await route.fulfill({
       status: 200,
@@ -129,7 +129,7 @@ async function mockFKEndpoint(
 
 /** Mock signal endpoint to return 500 */
 async function page500Mock(page: import('@playwright/test').Page) {
-  await page.route('**/v1/show-related-signal/**', async (route) => {
+  await page.route(/\/v1\/show-related-signal/, async (route) => {
     await route.fulfill({
       status: 500,
       contentType: 'application/json',
@@ -149,6 +149,8 @@ test.describe('[HOD] UI: Also Related section — renders with items', () => {
   }) => {
     const wo = await seedWorkOrder(`S34 SUI Items WO ${generateTestId('i')}`);
 
+    // Mock FK endpoint first (empty groups) so RelatedDrawer doesn't stay in isLoading state
+    await mockFKEndpoint(hodPage, []);
     // Set up mock BEFORE navigation so the request is intercepted
     await mockSignalEndpoint(
       hodPage,
@@ -187,6 +189,7 @@ test.describe('[HOD] UI: Also Related section — renders with items', () => {
   }) => {
     const wo = await seedWorkOrder(`S34 SUI Label WO ${generateTestId('l')}`);
 
+    await mockFKEndpoint(hodPage, []);
     await mockSignalEndpoint(hodPage, makeSignalResponse([makeFaultSignalItem()]));
 
     await hodPage.goto(`${FRONTEND_BASE}/work-orders/${wo.id}`);
@@ -337,6 +340,9 @@ test.describe('[HOD] UI: Signal loading state', () => {
   }) => {
     const wo = await seedWorkOrder(`S34 SUI Spinner WO ${generateTestId('s')}`);
 
+    // Mock FK (empty) so RelatedDrawer clears isLoading immediately — without this,
+    // the FK loading spinner renders instead of signal-also-related's loading spinner
+    await mockFKEndpoint(hodPage, []);
     // Delay the signal response by 2s so we can observe the spinner
     await mockSignalEndpointDelayed(
       hodPage,
@@ -373,6 +379,7 @@ test.describe('[HOD] UI: Signal item click navigates to entity lens page', () =>
   }) => {
     const wo = await seedWorkOrder(`S34 SUI NavFault WO ${generateTestId('f')}`);
 
+    await mockFKEndpoint(hodPage, []);
     // Signal returns a fault item — we can navigate to /faults/{id} if
     // fragmented routes are enabled, otherwise legacy /app?entity=fault&id=...
     // Either way, clicking navigates away from the WO lens page.
@@ -411,9 +418,14 @@ test.describe('[HOD] UI: Signal item click navigates to entity lens page', () =>
     const hasBackBtn = await backBtn.isVisible({ timeout: 5_000 }).catch(() => false);
     if (hasBackBtn) {
       await backBtn.click();
-      // Back navigation is also SPA — wait for URL to change
+      // Back navigation is SPA. Wait for URL to be on the WO path itself —
+      // wo.id can appear in the ?from= query param on the fault page before
+      // the back button fires, so we also require /faults/ to be gone.
       await hodPage.waitForFunction(
-        (woId) => window.location.href.includes(woId),
+        (woId) => {
+          const url = window.location.href;
+          return url.includes(`/work-orders/${woId}`) && !url.includes('/faults/');
+        },
         wo.id,
         { timeout: 10_000 }
       );
@@ -431,6 +443,7 @@ test.describe('[HOD] UI: Signal item click navigates to entity lens page', () =>
     const wo = await seedWorkOrder(`S34 SUI NavManual WO ${generateTestId('m')}`);
     const manualId = 'bbbbbbbb-0000-0000-0000-000000000001';
 
+    await mockFKEndpoint(hodPage, []);
     await mockSignalEndpoint(hodPage, makeSignalResponse([makeManualSignalItem(manualId)]));
 
     await hodPage.goto(`${FRONTEND_BASE}/work-orders/${wo.id}`);
@@ -492,7 +505,7 @@ test.describe('[HOD] UI: Signal errors — graceful degradation', () => {
     const wo = await seedWorkOrder(`S34 SUI Abort WO ${generateTestId('ab')}`);
 
     // Abort the signal request (simulates network failure)
-    await hodPage.route('**/v1/show-related-signal/**', (route) => route.abort('failed'));
+    await hodPage.route(/\/v1\/show-related-signal/, (route) => route.abort('failed'));
 
     await hodPage.goto(`${FRONTEND_BASE}/work-orders/${wo.id}`);
     await hodPage.waitForLoadState('domcontentloaded');
@@ -517,6 +530,7 @@ test.describe('[HOD] UI: Panel state management', () => {
   }) => {
     const wo = await seedWorkOrder(`S34 SUI Toggle WO ${generateTestId('t')}`);
 
+    await mockFKEndpoint(hodPage, []);
     await mockSignalEndpoint(hodPage, makeSignalResponse([makeFaultSignalItem()]));
 
     await hodPage.goto(`${FRONTEND_BASE}/work-orders/${wo.id}`);
@@ -546,6 +560,7 @@ test.describe('[HOD] UI: Panel state management', () => {
   }) => {
     const wo = await seedWorkOrder(`S34 SUI Count WO ${generateTestId('c')}`);
 
+    await mockFKEndpoint(hodPage, []);
     await mockSignalEndpoint(
       hodPage,
       makeSignalResponse([makeFaultSignalItem(), makeManualSignalItem()])

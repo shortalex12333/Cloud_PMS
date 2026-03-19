@@ -658,7 +658,13 @@ def _update_equipment_status_adapter(handlers: EquipmentHandlers):
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         equipment_id = params["equipment_id"]
-        new_status = params["status"]
+        new_status = params.get("status") or params.get("new_status")
+        if not new_status:
+            return {
+                "status": "error",
+                "error_code": "VALIDATION_ERROR",
+                "message": "status is required",
+            }
         attention_reason = params.get("attention_reason")
         clear_attention = params.get("clear_attention", False)
         linked_work_order_id = params.get("linked_work_order_id")

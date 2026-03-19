@@ -98,11 +98,25 @@ async def handle_notification(conn, pid, channel, payload):
             f"yacht={yacht[:8] if yacht else 'N/A'}..., type={object_type}"
         )
 
-        # Key patterns to evict (result cache and rewrite cache)
-        patterns = [
-            f"rs::{org}:{yacht or ''}*",
-            f"rw::{org}:{yacht or ''}*",
-        ]
+        # Key patterns to evict — three cache key formats exist:
+        #   rs:{hash}:{org}:{yacht}:{ver}                          (f1_search_streaming)
+        #   v1:{tenant}:{yacht}:{user}:{role}:{ep}:{phase}:{hash} (canonical cache)
+        #   rw:{sha256}                                            (cortex rewrites, no yacht)
+        if yacht:
+            patterns = [
+                f"rs:*:*:{yacht}:*",   # f1 streaming cache
+                f"v1:*:{yacht}:*",     # canonical API cache
+                f"rw:*",               # rewrite cache (no yacht segment, flush all)
+            ]
+        elif org:
+            patterns = [
+                f"rs:*:{org}:*",
+                f"v1:*:{org}:*",
+                f"rw:*",
+            ]
+        else:
+            logger.warning("No org_id or yacht_id in notification payload, skipping eviction")
+            return
 
         evicted = 0
         for pat in patterns:

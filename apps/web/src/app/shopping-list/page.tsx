@@ -83,7 +83,7 @@ function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => vo
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+        <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
       </div>
     );
   }
@@ -104,55 +104,55 @@ function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => vo
     <div className="p-6 space-y-4">
       <div>
         {data.part_number && (
-          <p className="text-xs text-white/40 font-mono">{data.part_number}</p>
+          <p className="text-xs text-txt-tertiary font-mono">{data.part_number}</p>
         )}
-        <h2 className="text-xl font-semibold text-white">
+        <h2 className="text-xl font-semibold text-txt-primary">
           {data.part_name || `Item ${data.part_number || data.id.slice(0, 8)}`}
         </h2>
       </div>
       <div className="flex gap-2">
-        <span className="px-2 py-1 text-xs rounded bg-white/10 text-white/80">
+        <span className="px-2 py-1 text-xs rounded bg-surface-hover text-txt-secondary">
           {data.status?.replace(/_/g, ' ') || 'Pending'}
         </span>
         {data.priority && (
-          <span className="px-2 py-1 text-xs rounded bg-white/10 text-white/80">
+          <span className="px-2 py-1 text-xs rounded bg-surface-hover text-txt-secondary">
             {data.priority}
           </span>
         )}
-        <span className="px-2 py-1 text-xs rounded bg-white/10 text-white/80">
+        <span className="px-2 py-1 text-xs rounded bg-surface-hover text-txt-secondary">
           Qty: {data.quantity_requested}{data.unit_of_measure ? ` ${data.unit_of_measure}` : ''}
         </span>
       </div>
       {data.description && (
-        <p className="text-sm text-white/60">{data.description}</p>
+        <p className="text-sm text-txt-tertiary">{data.description}</p>
       )}
       {data.requested_by_name && (
         <div className="text-sm">
-          <span className="text-white/40">Requested by: </span>
-          <span className="text-white/80">{data.requested_by_name}</span>
+          <span className="text-txt-tertiary">Requested by: </span>
+          <span className="text-txt-secondary">{data.requested_by_name}</span>
         </div>
       )}
       {data.approved_by_name && (
         <div className="text-sm">
-          <span className="text-white/40">Approved by: </span>
-          <span className="text-white/80">{data.approved_by_name}</span>
+          <span className="text-txt-tertiary">Approved by: </span>
+          <span className="text-txt-secondary">{data.approved_by_name}</span>
         </div>
       )}
       {data.notes && (
         <div className="text-sm">
-          <span className="text-white/40">Notes: </span>
-          <span className="text-white/80">{data.notes}</span>
+          <span className="text-txt-tertiary">Notes: </span>
+          <span className="text-txt-secondary">{data.notes}</span>
         </div>
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-2 pt-4 border-t border-white/10">
+      <div className="flex gap-2 pt-4 border-t border-surface-border">
         {canApproveReject && (
           <>
             <button
               onClick={handleApprove}
               disabled={isActionLoading}
-              className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
               data-action-id="approve_shopping_list_item"
             >
               {isActionLoading ? 'Processing...' : 'Approve Item'}
@@ -160,7 +160,7 @@ function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => vo
             <button
               onClick={handleReject}
               disabled={isActionLoading}
-              className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
               data-action-id="reject_shopping_list_item"
             >
               {isActionLoading ? 'Processing...' : 'Reject Item'}
@@ -171,7 +171,7 @@ function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => vo
           <button
             onClick={handlePromoteToPart}
             disabled={isActionLoading}
-            className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
             data-action-id="promote_candidate_to_part"
           >
             {isActionLoading ? 'Processing...' : 'Promote to Part'}
@@ -231,7 +231,7 @@ export default function ShoppingListPage() {
     <React.Suspense
       fallback={
         <div className="h-screen flex items-center justify-center bg-surface-base">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+          <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
         </div>
       }
     >

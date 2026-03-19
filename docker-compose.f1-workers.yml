@@ -82,7 +82,7 @@ services:
     healthcheck:
       disable: true
     environment:
-      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:6543/postgres
+      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
       - F1_PROJECTION_WORKER_ENABLED=true
       - PROJECTION_BATCH_SIZE=50
       - PROJECTION_POLL_INTERVAL=5
@@ -107,7 +107,7 @@ services:
     healthcheck:
       disable: true
     environment:
-      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:6543/postgres
+      - DATABASE_URL=postgresql://postgres.vzsohavtuotocgrfkfyd:%40-Ei-9Pa.uENn6g@aws-0-us-west-1.pooler.supabase.com:6543/postgres
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - EMBED_MODEL=text-embedding-3-small
       - EMBED_DIM=1536
@@ -135,7 +135,7 @@ services:
     healthcheck:
       disable: true
     environment:
-      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:6543/postgres
+      - DATABASE_URL=postgresql://postgres.vzsohavtuotocgrfkfyd:%40-Ei-9Pa.uENn6g@aws-0-us-west-1.pooler.supabase.com:6543/postgres
       - MIN_CLICKS=1
       - LOOKBACK_DAYS=30
       - BATCH_SIZE=100

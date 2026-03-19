@@ -114,7 +114,7 @@ test.describe('[Captain] update_work_order — HARD PROOF', () => {
 // ===========================================================================
 
 test.describe('[Captain] update_equipment_status — HARD PROOF', () => {
-  test('[Captain] update_equipment_status → 200 + pms_equipment status updated', async ({
+  test('[Captain] update_equipment_status → 200 + pms_equipment status=operational', async ({
     captainPage,
     getExistingEquipment,
     supabaseAdmin,
@@ -133,32 +133,23 @@ test.describe('[Captain] update_equipment_status — HARD PROOF', () => {
     });
     console.log(`[JSON] update_equipment_status: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: equipment may be in terminal 'decommissioned' state → 400
-    // Accept 200 (success) or 400 (invalid status transition from terminal state)
-    // REMOVE THIS ADVISORY WHEN: getExistingEquipment fixture returns equipment in a
-    // non-terminal state (not 'decommissioned'), or the test seeds a fresh equipment record.
-    // Tighten to: expect(result.status).toBe(200) + verify pms_equipment.status=operational.
-    expect([200, 400]).toContain(result.status);
-    if (result.status === 200) {
-      const data = result.data as { status?: string; new_status?: string };
-      expect(data.status).toBe('success');
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string; new_status?: string };
+    expect(data.status).toBe('success');
 
-      // Entity state: verify pms_equipment.status set to 'operational'
-      await expect.poll(
-        async () => {
-          const { data: row } = await supabaseAdmin
-            .from('pms_equipment')
-            .select('status')
-            .eq('id', equipment.id)
-            .single();
-          return (row as { status?: string } | null)?.status;
-        },
-        { intervals: [500, 1000, 1500], timeout: 8_000,
-          message: 'Expected pms_equipment.status=operational' }
-      ).toBe('operational');
-    } else {
-      console.log('update_equipment_status returned 400 (advisory — terminal status or invalid transition)');
-    }
+    // Entity state: verify pms_equipment.status set to 'operational'
+    await expect.poll(
+      async () => {
+        const { data: row } = await supabaseAdmin
+          .from('pms_equipment')
+          .select('status')
+          .eq('id', equipment.id)
+          .single();
+        return (row as { status?: string } | null)?.status;
+      },
+      { intervals: [500, 1000, 1500], timeout: 8_000,
+        message: 'Expected pms_equipment.status=operational' }
+    ).toBe('operational');
   });
 });
 
@@ -246,31 +237,22 @@ test.describe('[Captain] delete_shopping_item — HARD PROOF', () => {
     });
     console.log(`[JSON] delete_shopping_item: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: backend has unbound 'user_role' variable bug → 500
-    // Accept 200 (if fixed) or 500 (current backend bug state)
-    // REMOVE THIS ADVISORY WHEN: delete_shopping_item handler no longer references the unbound
-    // user_role variable (NameError in Python handler resolved).
-    // Tighten to: expect(result.status).toBe(200) + verify item removed from pms_shopping_list_items.
-    expect([200, 500]).toContain(result.status);
-    if (result.status === 200) {
-      const data = result.data as { status?: string };
-      expect(data.status).toBe('success');
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string };
+    expect(data.status).toBe('success');
 
-      // Entity state: verify item is gone from pms_shopping_list_items
-      await expect.poll(
-        async () => {
-          const { data: row } = await supabaseAdmin
-            .from('pms_shopping_list_items')
-            .select('id')
-            .eq('id', itemId)
-            .maybeSingle();
-          return row;
-        },
-        { intervals: [500, 1000, 1500], timeout: 8_000,
-          message: 'Expected pms_shopping_list_items row to be deleted' }
-      ).toBeNull();
-    } else {
-      console.log('delete_shopping_item returned 500 (advisory — backend user_role unbound variable bug)');
-    }
+    // Entity state: verify item is gone from pms_shopping_list_items
+    await expect.poll(
+      async () => {
+        const { data: row } = await supabaseAdmin
+          .from('pms_shopping_list_items')
+          .select('id')
+          .eq('id', itemId)
+          .maybeSingle();
+        return row;
+      },
+      { intervals: [500, 1000, 1500], timeout: 8_000,
+        message: 'Expected pms_shopping_list_items row to be deleted' }
+    ).toBeNull();
   });
 });

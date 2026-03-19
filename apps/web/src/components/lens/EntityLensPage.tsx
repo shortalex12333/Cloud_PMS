@@ -2,19 +2,23 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
-import { RouteLayout } from '@/components/layout';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import lensStyles from '@/components/lens-v2/lens.module.css';
 import { useEntityLens } from '@/hooks/useEntityLens';
 import { EntityLensProvider } from '@/contexts/EntityLensContext';
 import { useRelatedDrawer } from '@/hooks/useRelatedDrawer';
 import { useReadBeacon } from '@/hooks/useReadBeacon';
 import { useSignalRelated } from '@/hooks/useSignalRelated';
-import { ShowRelatedButton } from './ShowRelatedButton';
+// ShowRelatedButton removed — inlined into glass header
 import { RelatedDrawer } from './RelatedDrawer';
 import { AddRelatedItemModal } from './AddRelatedItemModal';
 import { getEntityRoute } from '@/lib/featureFlags';
 import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
 import { getActionDisplay } from '@/types/actions';
+import { ActionPopup } from '@/components/lens-v2/ActionPopup';
+import type { ActionPopupField } from '@/components/lens-v2/ActionPopup';
+import { useEntityLedger } from '@/hooks/useEntityLedger';
+import { HistorySection } from './sections/HistorySection';
 
 // Clusters rendered in the shell action bar (not inline in content)
 const SHELL_CLUSTERS = new Set(['lifecycle', 'entity', 'compliance']);
@@ -34,77 +38,24 @@ function hasUnresolvedFields(action: AvailableAction): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Signature modal (PIN collection only — TOTP is a future phase)
-// ---------------------------------------------------------------------------
-function SignatureModal({
-  action,
-  onConfirm,
-  onCancel,
-  error,
-}: {
-  action: AvailableAction;
-  onConfirm: (credentials: { pin: string }) => void;
-  onCancel: () => void;
-  error?: string;
-}) {
-  const [pin, setPin] = React.useState('');
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-[#1a1a1f] border border-white/10 rounded-xl p-6 w-80 space-y-4">
-        <h2 className="text-white font-semibold">Signature Required</h2>
-        <p className="text-sm text-white/60">{action.label} requires authorization.</p>
-        <input
-          type="password"
-          placeholder="PIN"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && pin && onConfirm({ pin })}
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
-          data-testid="signature-pin-input"
-        />
-        {error && (
-          <p className="text-sm text-red-400">{error}</p>
-        )}
-        <div className="flex gap-2">
-          <button
-            onClick={onCancel}
-            className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            disabled={!pin}
-            onClick={() => onConfirm({ pin })}
-            className="flex-1 px-3 py-2 bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 rounded-lg text-sm text-teal-300 disabled:opacity-40 transition-colors"
-            data-testid="signature-confirm-button"
-          >
-            Confirm
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Loading / error / not-found states (shared across all 12 entity pages)
 // ---------------------------------------------------------------------------
 function LoadingState() {
   return (
-    <div className="flex items-center justify-center h-full min-h-64">
-      <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '256px' }}>
+      <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
     </div>
   );
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-6 min-h-64">
-      <h3 className="text-lg font-medium text-white mb-2">Failed to Load</h3>
-      <p className="text-sm text-white/60 max-w-sm mb-4">{message}</p>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '24px', minHeight: '256px' }}>
+      <h3 style={{ fontSize: '18px', fontWeight: 500, color: 'var(--txt)', marginBottom: '8px' }}>Failed to Load</h3>
+      <p style={{ fontSize: '13px', color: 'var(--txt2)', maxWidth: '320px', marginBottom: '16px' }}>{message}</p>
       <button
         onClick={onRetry}
-        className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors"
+        style={{ padding: '8px 16px', background: 'var(--split-bg)', borderRadius: '6px', fontSize: '13px', color: 'var(--txt)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
       >
         Try Again
       </button>
@@ -114,14 +65,14 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 
 function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-6 min-h-64">
-      <h3 className="text-lg font-medium text-white mb-2">Not Found</h3>
-      <p className="text-sm text-white/60 max-w-sm mb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '24px', minHeight: '256px' }}>
+      <h3 style={{ fontSize: '18px', fontWeight: 500, color: 'var(--txt)', marginBottom: '8px' }}>Not Found</h3>
+      <p style={{ fontSize: '13px', color: 'var(--txt2)', maxWidth: '320px', marginBottom: '16px' }}>
         This {entityType.replace(/_/g, ' ')} may have been deleted or you may not have access.
       </p>
       <button
         onClick={onBack}
-        className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors"
+        style={{ padding: '8px 16px', background: 'var(--split-bg)', borderRadius: '6px', fontSize: '13px', color: 'var(--txt)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
       >
         Go Back
       </button>
@@ -132,6 +83,12 @@ function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack:
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
+function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
+  const { data: ledgerHistory = [] } = useEntityLedger(entityType, entityId);
+  if (ledgerHistory.length === 0) return null;
+  return <HistorySection history={ledgerHistory} />;
+}
+
 export interface EntityLensPageProps {
   entityType: EntityType;
   entityId: string;
@@ -148,6 +105,8 @@ export function EntityLensPage({
   pageTitle,
 }: EntityLensPageProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const lens = useEntityLens(entityType, entityId);
 
   const [pendingSignature, setPendingSignature] = React.useState<{
@@ -177,12 +136,20 @@ export function EntityLensPage({
 
   const handleNavigate = React.useCallback(
     (type: string, id: string) => {
-      router.push(getEntityRoute(type as Parameters<typeof getEntityRoute>[0], id));
+      const target = getEntityRoute(type as Parameters<typeof getEntityRoute>[0], id);
+      router.push(`${target}?from=${encodeURIComponent(pathname)}`);
     },
-    [router]
+    [router, pathname]
   );
 
-  const handleBack = React.useCallback(() => router.back(), [router]);
+  const handleBack = React.useCallback(() => {
+    const from = searchParams.get('from');
+    if (from) {
+      router.push(from);
+    } else {
+      router.back();
+    }
+  }, [router, searchParams]);
 
   /**
    * safeExecute wraps lens.executeAction with signature interception.
@@ -246,101 +213,156 @@ export function EntityLensPage({
   } else {
     bodyContent = (
       <EntityLensProvider value={contextValue}>
-        <div className="mx-auto px-10 py-6 space-y-6" style={{ maxWidth: '720px' }}>
-          <Content />
-          {/* Shell action bar — lifecycle, entity, and compliance actions */}
-          {shellActions.length > 0 && (
-            <div
-              className="flex gap-3 pt-4 border-t border-white/10 flex-wrap"
-              data-testid="shell-action-bar"
-            >
-              {shellActions.map((action) => (
-                <button
-                  key={action.action_id}
-                  disabled={action.disabled}
-                  title={action.disabled_reason ?? undefined}
-                  onClick={() => safeExecute(action.action_id)}
-                  data-testid={`action-${action.action_id}`}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm text-white transition-colors flex items-center gap-2"
-                >
-                  {action.label}
-                  {action.variant === 'SIGNED' && (
-                    <span className="text-xs text-yellow-400" title="Requires signature">
-                      ✎
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <Content />
+        <LedgerHistory entityType={entityType} entityId={entityId} />
+        {/* Shell action bar — lifecycle, entity, and compliance actions */}
+        {shellActions.length > 0 && (
+          <div
+            style={{ display: 'flex', gap: '12px', paddingTop: '16px', flexWrap: 'wrap', borderTop: '1px solid var(--border-sub)' }}
+            data-testid="shell-action-bar"
+          >
+            {shellActions.map((action) => (
+              <button
+                key={action.action_id}
+                disabled={action.disabled}
+                title={action.disabled_reason ?? undefined}
+                onClick={() => safeExecute(action.action_id)}
+                data-testid={`action-${action.action_id}`}
+                className={lensStyles.splitMain}
+                style={action.disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+              >
+                {action.label}
+                {action.variant === 'SIGNED' && (
+                  <span style={{ fontSize: '12px', color: 'var(--amber)' }} title="Requires signature">
+                    ✎
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </EntityLensProvider>
     );
   }
 
   return (
-    <main role="main" data-testid={`${entityType}-detail`}>
-      <RouteLayout
-        pageTitle={entityTitle}
-        showTopNav={true}
-        topNavContent={
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleBack}
-                className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-                aria-label="Back"
-                data-testid="back-button"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="text-white/60"
-                >
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
-              </button>
-              <div>
-                <p className="text-xs text-white/40 uppercase tracking-wider">
-                  {entityType.replace(/_/g, ' ')}
-                </p>
-                <p className="text-lg font-semibold text-white truncate max-w-md">
-                  {entityTitle}
-                </p>
-              </div>
-            </div>
-            <ShowRelatedButton
-              onClick={() => setRelatedOpen((open) => !open)}
-              isOpen={relatedOpen}
-              count={totalRelated}
-              isLoading={relatedLoading}
-            />
+    <main
+      role="main"
+      data-testid={`${entityType}-detail`}
+      className={lensStyles.root}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '24px 16px 48px',
+        minHeight: '100vh',
+        background: 'var(--surface-base)',
+      }}
+    >
+      <div className={lensStyles.panel}>
+        {/* Glass Header */}
+        <div className={lensStyles.lensHdr}>
+          <button
+            className={lensStyles.hdrBack}
+            onClick={handleBack}
+            aria-label="Go back"
+            data-testid="back-button"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          <span className={lensStyles.hdrType}>
+            {entityType.replace(/_/g, ' ')}
+          </span>
+
+          <div className={lensStyles.hdrActions}>
+            <button
+              className={lensStyles.hdrBtn}
+              onClick={() => setRelatedOpen((o) => !o)}
+              aria-label={relatedOpen ? 'Close related panel' : 'Show related'}
+              aria-expanded={relatedOpen}
+              data-testid="show-related-button"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M6.5 9.5l3-3M5.75 11.75L4 13.5a1.77 1.77 0 01-2.5-2.5l1.75-1.75M12.25 6.25L14 4.5A1.77 1.77 0 0011.5 2L9.75 3.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <span>Related{totalRelated > 0 ? ` (${totalRelated})` : ''}</span>
+            </button>
+
+            <button
+              className={lensStyles.hdrBtn}
+              onClick={() => {
+                const html = document.documentElement;
+                const current = html.getAttribute('data-theme');
+                html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+              }}
+              aria-label="Toggle theme"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M14 8.5A6 6 0 117.5 2a4.5 4.5 0 006.5 6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
-        }
-        primaryPanel={{
-          visible: relatedOpen,
-          title: 'Related',
-          subtitle: `${totalRelated} item${totalRelated !== 1 ? 's' : ''}`,
-          children: (
-            <RelatedDrawer
-              groups={relatedData?.groups ?? []}
-              isLoading={relatedLoading}
-              error={relatedError ?? null}
-              onNavigate={handleNavigate}
-              onAddRelated={canAddRelated ? () => setShowAddModal(true) : undefined}
-              signalItems={signalData?.items}
-              signalLoading={signalLoading}
-            />
-          ),
-        }}
-        onClosePrimaryPanel={() => setRelatedOpen(false)}
-      >
-        {bodyContent}
-      </RouteLayout>
+        </div>
+
+        {/* Body */}
+        <div className={lensStyles.lensBody}>
+          {bodyContent}
+        </div>
+      </div>
+
+      {/* Related Drawer - rendered outside panel */}
+      {relatedOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            bottom: '24px',
+            width: '600px',
+            maxWidth: '100vw',
+            zIndex: 100,
+            background: 'var(--surface)',
+            borderTop: '1px solid rgba(255,255,255,0.11)',
+            borderRight: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(255,255,255,0.03)',
+            borderLeft: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '4px',
+            boxShadow: '0 20px 80px rgba(0,0,0,0.60), 0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.05)',
+            overflow: 'hidden',
+            transition: 'opacity 200ms ease, transform 280ms ease',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-sub)', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Related · {totalRelated}
+            </span>
+            <button
+              className={lensStyles.hdrClose}
+              onClick={() => setRelatedOpen(false)}
+              aria-label="Close related"
+              style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          <RelatedDrawer
+            groups={relatedData?.groups ?? []}
+            isLoading={relatedLoading}
+            error={relatedError ?? null}
+            onNavigate={handleNavigate}
+            onAddRelated={canAddRelated ? () => setShowAddModal(true) : undefined}
+            signalItems={signalData?.items}
+            signalLoading={signalLoading}
+          />
+        </div>
+      )}
 
       {showAddModal && (
         <AddRelatedItemModal
@@ -350,25 +372,44 @@ export function EntityLensPage({
         />
       )}
 
-      {pendingSignature && (
-        <SignatureModal
-          action={pendingSignature.action}
-          error={signatureError ?? undefined}
-          onConfirm={async (credentials) => {
-            setSignatureError(null);
-            const result = await lens.executeAction(pendingSignature.action.action_id, {
-              ...pendingSignature.payload,
-              ...credentials,
-            });
-            if (result.success) {
-              setPendingSignature(null);
-            } else {
-              setSignatureError(result.message ?? result.error ?? 'Action failed');
-            }
-          }}
-          onCancel={() => { setPendingSignature(null); setSignatureError(null); }}
-        />
-      )}
+      {pendingSignature && (() => {
+        // Determine signature level from action metadata, default to L3 (PIN)
+        const sigLevel = (pendingSignature.action as AvailableAction & { signature_level?: number }).signature_level ?? 3;
+        // Build popup fields from the action's required_fields (excluding auto-handled ones)
+        const popupFields: ActionPopupField[] = pendingSignature.action.required_fields
+          .filter((f) => !BACKEND_AUTO.has(f) && !(f in pendingSignature.action.prefill))
+          .map((f) => ({
+            name: f,
+            label: f.replace(/_/g, ' '),
+            type: 'kv-edit' as const,
+            placeholder: `Enter ${f.replace(/_/g, ' ')}...`,
+            value: (pendingSignature.payload[f] as string) ?? '',
+          }));
+
+        return (
+          <ActionPopup
+            mode="mutate"
+            title="Signature Required"
+            subtitle={`${pendingSignature.action.label} requires authorization.`}
+            fields={popupFields}
+            signatureLevel={sigLevel as 0 | 1 | 2 | 3 | 4 | 5}
+            previewRows={signatureError ? [{ key: 'Error', value: signatureError }] : undefined}
+            onSubmit={async (values) => {
+              setSignatureError(null);
+              const result = await lens.executeAction(pendingSignature.action.action_id, {
+                ...pendingSignature.payload,
+                ...values,
+              });
+              if (result.success) {
+                setPendingSignature(null);
+              } else {
+                setSignatureError(result.message ?? result.error ?? 'Action failed');
+              }
+            }}
+            onClose={() => { setPendingSignature(null); setSignatureError(null); }}
+          />
+        );
+      })()}
     </main>
   );
 }

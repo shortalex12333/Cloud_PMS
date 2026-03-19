@@ -90,12 +90,12 @@ export default function OutlookCallbackContent() {
   return (
     <div className="spotlight-container">
       <div className="w-full max-w-md text-center">
-        <div className="bg-card border border-border rounded-lg p-8">
+        <div className="bg-surface-elevated border border-surface-border rounded-lg p-8">
           {status === 'processing' && (
             <>
-              <div className="h-12 w-12 mx-auto mb-4 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <div className="h-12 w-12 mx-auto mb-4 border-4 border-brand-interactive border-t-transparent rounded-full animate-spin" />
               <h2 className="typo-title font-semibold mb-2">Connecting to Outlook</h2>
-              <p className="typo-body text-muted-foreground">
+              <p className="typo-body text-txt-secondary">
                 Exchanging authorization code for access tokens...
               </p>
             </>
@@ -103,11 +103,11 @@ export default function OutlookCallbackContent() {
 
           {status === 'success' && (
             <>
-              <div className="h-12 w-12 mx-auto mb-4 bg-green-500/10 text-green-600 rounded-full flex items-center justify-center typo-title">
+              <div className="h-12 w-12 mx-auto mb-4 bg-status-success/10 text-status-success rounded-full flex items-center justify-center typo-title">
                 ✓
               </div>
               <h2 className="typo-title font-semibold mb-2">Successfully Connected!</h2>
-              <p className="typo-body text-muted-foreground">
+              <p className="typo-body text-txt-secondary">
                 Redirecting you back to settings...
               </p>
             </>
@@ -115,14 +115,14 @@ export default function OutlookCallbackContent() {
 
           {status === 'error' && (
             <>
-              <div className="h-12 w-12 mx-auto mb-4 bg-destructive/10 text-destructive rounded-full flex items-center justify-center typo-title">
+              <div className="h-12 w-12 mx-auto mb-4 bg-status-critical/10 text-status-critical rounded-full flex items-center justify-center typo-title">
                 ✕
               </div>
               <h2 className="typo-title font-semibold mb-2">Connection Failed</h2>
-              <p className="typo-body text-muted-foreground mb-4">
+              <p className="typo-body text-txt-secondary mb-4">
                 {errorMessage || 'Unable to connect to Outlook'}
               </p>
-              <p className="typo-meta text-muted-foreground">
+              <p className="typo-meta text-txt-tertiary">
                 Redirecting back to settings...
               </p>
             </>

@@ -52,21 +52,16 @@ test.describe('[Captain] get_document_url — HARD PROOF', () => {
     });
     console.log(`[JSON] get_document_url: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: Physical file may not exist in storage for test documents → 404.
-    // Backend may return HTTP 200 with success:false when file is missing in storage.
-    // Accept 200 (file exists), 200+success:false (missing file), or 404 HTTP error.
-    // REMOVE THIS ADVISORY WHEN: get_document_url returns HTTP 404 (not HTTP 200 with
-    // success:false) when the physical file is absent from storage, AND test environment
-    // seeds at least one document with an actual file in storage.
-    // Tighten to: expect(result.status).toBe(200) + expect(data.status).toBe('success').
-    expect([200, 404]).toContain(result.status);
-    const data = result.data as { success?: boolean; status?: string; url?: string; signed_url?: string };
-    if (result.status === 200 && data.success !== false) {
-      expect(data.status).toBe('success');
-      const url = data.url || data.signed_url;
+    // get_document_url returns 200 with ResponseBuilder envelope.
+    // success:true + url = file exists; success:false + error.code:NOT_FOUND = no physical file.
+    // Both are valid for test data — the document DB row exists but file may not be in storage.
+    expect(result.status).toBe(200);
+    const data = result.data as { success?: boolean; status?: string; url?: string; signed_url?: string; data?: { url?: string; signed_url?: string } };
+    if (data.success || data.status === 'success') {
+      const url = data.url || data.signed_url || data.data?.url || data.data?.signed_url;
       expect(typeof url).toBe('string');
     } else {
-      console.log(`get_document_url advisory — file not in storage (status=${result.status}, success=${data.success})`);
+      console.log(`get_document_url → 200 + success:false (no physical file in storage — expected for test data)`);
     }
   });
 });
@@ -140,18 +135,9 @@ test.describe('[Captain] add_document_comment — HARD PROOF', () => {
     });
     console.log(`[JSON] add_document_comment: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: Document comment actions are migrated to action_router (p0_actions_routes.py:6058-6064).
-    // They may return INVALID_ACTION via /v1/actions/execute. Accept 200 or 400/500.
-    // REMOVE THIS ADVISORY WHEN: add_document_comment is registered in the action_router and
-    // successfully routes through /v1/actions/execute (no longer returns INVALID_ACTION).
-    // Tighten to: expect(result.status).toBe(200) + expect(data.status).toBe('success').
-    expect([200, 400, 500]).toContain(result.status);
-    if (result.status === 200) {
-      const data = result.data as { status?: string; success?: boolean };
-      expect(data.status === 'success' || data.success === true).toBe(true);
-    } else {
-      console.log(`add_document_comment ${result.status} — advisory: not routed through /v1/actions/execute`);
-    }
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string; success?: boolean };
+    expect(data.status === 'success' || data.success === true).toBe(true);
   });
 });
 
@@ -184,16 +170,9 @@ test.describe('[Captain] list_document_comments — HARD PROOF', () => {
     });
     console.log(`[JSON] list_document_comments: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: Migrated to action_router — may return INVALID_ACTION
-    // REMOVE THIS ADVISORY WHEN: list_document_comments routes through /v1/actions/execute.
-    // Tighten to: expect(result.status).toBe(200) + verify comments array returned.
-    expect([200, 400, 500]).toContain(result.status);
-    if (result.status === 200) {
-      const data = result.data as { status?: string; comments?: unknown[]; success?: boolean; data?: { comments?: unknown[] } };
-      expect(data.status === 'success' || data.success === true).toBe(true);
-    } else {
-      console.log(`list_document_comments ${result.status} — advisory: not routed through /v1/actions/execute`);
-    }
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string; comments?: unknown[]; success?: boolean; data?: { comments?: unknown[] } };
+    expect(data.status === 'success' || data.success === true).toBe(true);
   });
 });
 
@@ -221,26 +200,15 @@ test.describe('[Captain] update_document_comment — HARD PROOF', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    // ADVISORY: Document comment actions migrated to action_router — may not route via /v1/actions/execute
-    // REMOVE THIS ADVISORY WHEN: update_document_comment routes through /v1/actions/execute.
-    // Tighten to: remove the skip guard, expect(result.status).toBe(200).
     const addResult = await callActionDirect(captainPage, 'add_document_comment', {
       document_id: doc.id,
       comment: `S43 update target ${generateTestId('ut')}`,
     });
-
-    // If add fails (INVALID_ACTION), skip the chained update test
-    if (addResult.status !== 200) {
-      console.log(`update_document_comment — SKIPPED: add_document_comment returned ${addResult.status} (advisory)`);
-      return;
-    }
+    expect(addResult.status).toBe(200);
 
     const addData = addResult.data as { comment_id?: string; data?: { comment_id?: string; id?: string }; id?: string };
     const commentId = addData.comment_id || addData.data?.comment_id || addData.data?.id || addData.id;
-    if (!commentId) {
-      console.log('add_document_comment did not return comment_id — skipping update test');
-      return;
-    }
+    expect(typeof commentId).toBe('string');
 
     const updatedText = `S43 updated comment ${generateTestId('upd')}`;
     const result = await callActionDirect(captainPage, 'update_document_comment', {
@@ -249,7 +217,7 @@ test.describe('[Captain] update_document_comment — HARD PROOF', () => {
     });
     console.log(`[JSON] update_document_comment: ${JSON.stringify(result.data)}`);
 
-    expect([200, 400, 500]).toContain(result.status);
+    expect(result.status).toBe(200);
   });
 });
 
@@ -277,32 +245,22 @@ test.describe('[Captain] delete_document_comment — HARD PROOF', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    // ADVISORY: Document comment actions migrated to action_router
-    // REMOVE THIS ADVISORY WHEN: delete_document_comment routes through /v1/actions/execute.
-    // Tighten to: remove the skip guard, expect(result.status).toBe(200).
     const addResult = await callActionDirect(captainPage, 'add_document_comment', {
       document_id: doc.id,
       comment: `S43 delete target ${generateTestId('del')}`,
     });
-
-    if (addResult.status !== 200) {
-      console.log(`delete_document_comment — SKIPPED: add_document_comment returned ${addResult.status} (advisory)`);
-      return;
-    }
+    expect(addResult.status).toBe(200);
 
     const addData = addResult.data as { comment_id?: string; data?: { comment_id?: string; id?: string }; id?: string };
     const commentId = addData.comment_id || addData.data?.comment_id || addData.data?.id || addData.id;
-    if (!commentId) {
-      console.log('add_document_comment did not return comment_id — skipping delete test');
-      return;
-    }
+    expect(typeof commentId).toBe('string');
 
     const result = await callActionDirect(captainPage, 'delete_document_comment', {
       comment_id: commentId,
     });
     console.log(`[JSON] delete_document_comment: ${JSON.stringify(result.data)}`);
 
-    expect([200, 400, 500]).toContain(result.status);
+    expect(result.status).toBe(200);
   });
 });
 
@@ -394,17 +352,8 @@ test.describe('[Captain] link_document_to_certificate — HARD PROOF', () => {
     });
     console.log(`[JSON] link_document_to_certificate: ${JSON.stringify(result.data)}`);
 
-    // ADVISORY: cert handler may look up in pms_vessel_certificates while fixture queries pms_certificates.
-    // Accept 200 (linked) or 404 (cert table mismatch).
-    // REMOVE THIS ADVISORY WHEN: link_document_to_certificate handler and getExistingCertificate
-    // fixture both use the same table (either both pms_certificates or both pms_vessel_certificates).
-    // Tighten to: expect(result.status).toBe(200).
-    expect([200, 404]).toContain(result.status);
-    if (result.status === 200) {
-      const data = result.data as { status?: string };
-      expect(data.status).toBe('success');
-    } else {
-      console.log('link_document_to_certificate 404 — advisory: cert table mismatch (pms_certificates vs pms_vessel_certificates)');
-    }
+    expect(result.status).toBe(200);
+    const data = result.data as { status?: string };
+    expect(data.status).toBe('success');
   });
 });

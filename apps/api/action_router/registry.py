@@ -95,7 +95,7 @@ class ActionDefinition:
         self.endpoint = endpoint
         self.handler_type = handler_type
         self.method = method.upper()
-        self.allowed_roles = allowed_roles or ["Engineer", "HOD", "Manager"]
+        self.allowed_roles = allowed_roles or ["engineer", "eto", "chief_engineer", "captain", "manager"]
         self.required_fields = required_fields or []
         self.schema_file = schema_file
         self.domain = domain
@@ -127,7 +127,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/add-note",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id", "note_text"],
         schema_file="add_note_to_work_order.json",
     ),
@@ -1227,7 +1227,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/documents/manual-section",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        allowed_roles=["crew", "eto", "engineer", "chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "equipment_id"],
     ),
 
@@ -1240,7 +1240,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/worklist/view",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
         required_fields=["yacht_id"],
     ),
 
@@ -1250,7 +1250,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/worklist/add-task",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
         required_fields=["yacht_id", "task_description"],
     ),
 
@@ -1260,7 +1260,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/worklist/export",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id"],
     ),
 

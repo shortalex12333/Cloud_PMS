@@ -424,6 +424,7 @@ export const test = base.extend<RBACFixtures>({
         .select('id, name')
         .eq('yacht_id', RBAC_CONFIG.yachtId)
         .is('deleted_at', null)
+        .neq('status', 'decommissioned')
         .limit(1)
         .single();
       if (error || !data) throw new Error(`getExistingEquipment: ${error?.message || 'no equipment found'}`);

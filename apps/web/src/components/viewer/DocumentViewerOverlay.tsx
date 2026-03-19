@@ -49,9 +49,9 @@ function getFileIcon(contentType: string) {
     return <FileText className="h-12 w-12 text-restricted-red-400" />;
   }
   if (SAFE_IMAGE_TYPES.some((t) => contentType.startsWith(t))) {
-    return <ImageIcon className="h-12 w-12 text-celeste-accent-400" />;
+    return <ImageIcon className="h-12 w-12 text-brand-interactive" />;
   }
-  return <File className="h-12 w-12 text-celeste-text-muted" />;
+  return <File className="h-12 w-12 text-txt-tertiary" />;
 }
 
 function canPreview(contentType: string): 'pdf' | 'image' | false {
@@ -184,8 +184,8 @@ export default function DocumentViewerOverlay({
           <div className="flex items-center gap-3 min-w-0">
             {getFileIcon(contentType)}
             <div className="min-w-0">
-              <div className="typo-body font-medium text-zinc-200 truncate">{fileName}</div>
-              <div className="typo-meta text-zinc-500">{contentType}</div>
+              <div className="typo-body font-medium text-txt-primary truncate">{fileName}</div>
+              <div className="typo-meta text-txt-tertiary">{contentType}</div>
             </div>
           </div>
 
@@ -235,7 +235,7 @@ export default function DocumentViewerOverlay({
                       onClick={() => handleMicroAction('attach_to_work_order')}
                       className="btn-ghost w-full justify-start"
                     >
-                      <Link2 className="h-4 w-4 text-celeste-accent-400" />
+                      <Link2 className="h-4 w-4 text-brand-interactive" />
                       Attach to Work Order
                     </button>
                     <button
@@ -261,7 +261,7 @@ export default function DocumentViewerOverlay({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto bg-zinc-900">
+        <div className="flex-1 overflow-auto bg-surface-base">
           {previewType === 'pdf' && !pdfError ? (
             <object
               data={blobUrl}
@@ -270,8 +270,8 @@ export default function DocumentViewerOverlay({
               onError={() => setPdfError(true)}
             >
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <FileText className="h-16 w-16 text-zinc-600 mb-4" />
-                <p className="text-zinc-400 mb-4">
+                <FileText className="h-16 w-16 text-txt-tertiary mb-4" />
+                <p className="text-txt-secondary mb-4">
                   PDF preview not available in your browser.
                 </p>
                 <button
@@ -295,10 +295,10 @@ export default function DocumentViewerOverlay({
             // Fallback for unsupported types or errors
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               {getFileIcon(contentType)}
-              <h3 className="typo-title font-medium text-zinc-300 mt-4 mb-2">
+              <h3 className="typo-title font-medium text-txt-primary mt-4 mb-2">
                 Preview not available
               </h3>
-              <p className="typo-body text-zinc-500 mb-6 max-w-md">
+              <p className="typo-body text-txt-secondary mb-6 max-w-md">
                 This file type ({contentType}) cannot be previewed in the browser.
                 {outlookUrl
                   ? ' You can open it in Outlook or download it.'

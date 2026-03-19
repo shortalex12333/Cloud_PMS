@@ -48,7 +48,7 @@ function ReceivingDetail({ id }: { id: string }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+        <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
       </div>
     );
   }
@@ -65,81 +65,81 @@ function ReceivingDetail({ id }: { id: string }) {
     <div className="p-6 space-y-4">
       <div>
         {data.receiving_number && (
-          <p className="text-xs text-white/40 font-mono">{data.receiving_number}</p>
+          <p className="text-xs text-txt-tertiary font-mono">{data.receiving_number}</p>
         )}
-        <h2 className="text-xl font-semibold text-white">
+        <h2 className="text-xl font-semibold text-txt-primary">
           {data.supplier_name || `Receiving ${data.receiving_number || data.id.slice(0, 8)}`}
         </h2>
       </div>
       <div className="flex gap-2">
-        <span className="px-2 py-1 text-xs rounded bg-white/10 text-white/80">
+        <span className="px-2 py-1 text-xs rounded bg-surface-hover text-txt-secondary">
           {data.status?.replace(/_/g, ' ') || 'Pending'}
         </span>
         {data.items_count && (
-          <span className="px-2 py-1 text-xs rounded bg-white/10 text-white/80">
+          <span className="px-2 py-1 text-xs rounded bg-surface-hover text-txt-secondary">
             {data.items_count} items
           </span>
         )}
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
+      <div className="flex flex-wrap gap-2 pt-2 border-t border-surface-border">
         <button
           onClick={() => handleAction('create_receiving')}
           disabled={isActionLoading}
-          className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+          className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
         >
           Start Receiving Event
         </button>
         <button
           onClick={() => handleAction('add_receiving_item')}
           disabled={isActionLoading}
-          className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+          className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
         >
           Add Line Item
         </button>
         <button
           onClick={() => handleAction('accept_receiving')}
           disabled={isActionLoading}
-          className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+          className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
         >
           Complete Receiving
         </button>
         <button
           onClick={() => handleAction('reject_receiving')}
           disabled={isActionLoading}
-          className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+          className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
         >
           Report Discrepancy
         </button>
         <button
           onClick={() => handleAction('adjust_receiving_item')}
           disabled={isActionLoading}
-          className="px-3 py-1.5 text-xs rounded bg-white/10 text-white/80 hover:bg-white/20 transition-colors disabled:opacity-50"
+          className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
         >
           Verify Line Item
         </button>
       </div>
 
       {data.description && (
-        <p className="text-sm text-white/60">{data.description}</p>
+        <p className="text-sm text-txt-tertiary">{data.description}</p>
       )}
       {data.received_date && (
         <div className="text-sm">
-          <span className="text-white/40">Received: </span>
-          <span className="text-white/80">{new Date(data.received_date).toLocaleDateString()}</span>
+          <span className="text-txt-tertiary">Received: </span>
+          <span className="text-txt-secondary">{new Date(data.received_date).toLocaleDateString()}</span>
         </div>
       )}
       {data.expected_date && !data.received_date && (
         <div className="text-sm">
-          <span className="text-white/40">Expected: </span>
-          <span className="text-white/80">{new Date(data.expected_date).toLocaleDateString()}</span>
+          <span className="text-txt-tertiary">Expected: </span>
+          <span className="text-txt-secondary">{new Date(data.expected_date).toLocaleDateString()}</span>
         </div>
       )}
       {data.notes && (
         <div className="text-sm">
-          <span className="text-white/40">Notes: </span>
-          <span className="text-white/80">{data.notes}</span>
+          <span className="text-txt-tertiary">Notes: </span>
+          <span className="text-txt-secondary">{data.notes}</span>
         </div>
       )}
 
@@ -198,7 +198,7 @@ export default function ReceivingPage() {
     <React.Suspense
       fallback={
         <div className="h-screen flex items-center justify-center bg-surface-base">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+          <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
         </div>
       }
     >
