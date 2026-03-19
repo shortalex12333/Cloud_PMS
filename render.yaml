@@ -34,6 +34,12 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      # JWT verification — required for ALL authenticated endpoints
+      - key: TENANT_SUPABASE_JWT_SECRET
+        sync: false
+      # Redis — required for rate limiting and cortex cache
+      - key: REDIS_URL
+        sync: false
       # Feature Flags - Shopping List Lens v1 Canary
       - key: SHOPPING_LIST_LENS_V1_ENABLED
         value: "true"
@@ -61,9 +67,10 @@ services:
         value: "https://vzsohavtuotocgrfkfyd.supabase.co"
       - key: SUPABASE_SERVICE_KEY
         sync: false
-      - key: MICROSOFT_CLIENT_ID_READ
-        sync: false
-      - key: MICROSOFT_CLIENT_SECRET_READ
+      # NOTE: Code reads AZURE_READ_APP_ID (has hardcoded default) and
+      # AZURE_READ_CLIENT_SECRET (no default — MUST be set).
+      # MICROSOFT_CLIENT_ID_READ / MICROSOFT_CLIENT_SECRET_READ are NOT read by code.
+      - key: AZURE_READ_CLIENT_SECRET
         sync: false
 
   # NOTE: documents-health-worker and shopping-list-health-worker removed.
