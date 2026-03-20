@@ -1284,6 +1284,24 @@ async def f1_search_stream(
                     logger.debug(f"[F1Search] Reranked {len(items)} items")
 
             # ================================================================
+            # Phase 4c-pre: Role-gated post-filter for personnel-sensitive types
+            # ================================================================
+            # HoR sign-offs contain personal compliance data. Non-HOD users
+            # should only see their own records in search results.
+            ROLE_GATED_TYPES = {'hours_of_rest_signoff'}
+            HOD_ROLES = {'chief_engineer', 'eto', 'captain', 'manager', 'chief_officer', 'chief_steward', 'purser'}
+            if items:
+                auth_role = ctx.role if hasattr(ctx, 'role') else ''
+                auth_user_id = ctx.user_id if hasattr(ctx, 'user_id') else ''
+                is_hod_plus = auth_role in HOD_ROLES
+                if not is_hod_plus:
+                    items = [
+                        item for item in items
+                        if item.get('object_type') not in ROLE_GATED_TYPES
+                        or (isinstance(item.get('payload'), dict) and item['payload'].get('user_id') == auth_user_id)
+                    ]
+
+            # ================================================================
             # Phase 4c: Generate snippets for each result
             # ================================================================
             for item in items:

@@ -45,8 +45,11 @@ from handlers.receiving_handlers import (
     _accept_receiving_adapter,
     _reject_receiving_adapter,
     _view_receiving_history_adapter,
+    _flag_discrepancy_adapter,
 )
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
+from handlers.stub_handlers import not_yet_implemented as _not_yet_implemented
+from handlers.universal_handlers import soft_delete_entity as _soft_delete_entity
 
 # Lazy-initialized handler instances
 _p3_handlers = None
@@ -126,6 +129,7 @@ def _get_receiving_handlers():
             "accept_receiving": _accept_receiving_adapter(handlers_instance),
             "reject_receiving": _reject_receiving_adapter(handlers_instance),
             "view_receiving_history": _view_receiving_history_adapter(handlers_instance),
+            "flag_discrepancy": _flag_discrepancy_adapter(handlers_instance),
         }
     return _receiving_handlers
 
@@ -170,39 +174,63 @@ def _get_hours_of_rest_handlers():
 
 async def add_note(params: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Add a note to equipment.
+    Add a note to any entity via pms_notes.
 
     Required params:
         - yacht_id: UUID
-        - equipment_id: UUID
         - note_text: str
         - user_id: UUID (from JWT)
+    Plus one of: equipment_id, fault_id, work_order_id, certificate_id,
+                 document_id, part_id, entity_id (generic)
     """
+    import uuid as uuid_lib
     supabase = get_supabase_client()
 
-    # SECURITY FIX P1-002: Verify equipment belongs to yacht before INSERT
-    eq_result = supabase.table("pms_equipment").select("id, name").eq(
-        "id", params["equipment_id"]
-    ).eq("yacht_id", params["yacht_id"]).execute()
+    yacht_id = params["yacht_id"]
+    user_id = params["user_id"]
+    note_text = params.get("note_text") or params.get("text")
+    if not note_text:
+        raise ValueError("note_text is required")
 
-    if not eq_result.data:
-        raise ValueError(f"Equipment {params['equipment_id']} not found or access denied")
+    # Resolve entity reference — accept any known ID field
+    entity_id = (
+        params.get("equipment_id") or params.get("fault_id") or
+        params.get("work_order_id") or params.get("certificate_id") or
+        params.get("document_id") or params.get("part_id") or
+        params.get("entity_id")
+    )
 
-    # Insert note
-    result = supabase.table("notes").insert({
-        "yacht_id": params["yacht_id"],
-        "equipment_id": params["equipment_id"],
-        "note_text": params["note_text"],
-        "created_by": params["user_id"],
-        "created_at": datetime.utcnow().isoformat(),
-    }).execute()
+    note_id = str(uuid_lib.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    note_data = {
+        "id": note_id,
+        "yacht_id": yacht_id,
+        "text": note_text,
+        "note_type": params.get("note_type", "observation"),
+        "created_by": user_id,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    # Attach to the correct entity column if present
+    if params.get("equipment_id"):
+        note_data["equipment_id"] = params["equipment_id"]
+    if params.get("fault_id"):
+        note_data["fault_id"] = params["fault_id"]
+    if params.get("work_order_id"):
+        note_data["work_order_id"] = params["work_order_id"]
+
+    result = supabase.table("pms_notes").insert(note_data).execute()
 
     if not result.data:
         raise Exception("Failed to create note")
 
     return {
-        "note_id": result.data[0]["id"],
-        "created_at": result.data[0]["created_at"],
+        "note_id": note_id,
+        "entity_id": entity_id,
+        "created_at": now,
+        "message": "Note added successfully",
     }
 
 
@@ -491,46 +519,72 @@ async def _doc_list_document_comments(params: Dict[str, Any]) -> Dict[str, Any]:
 
 async def edit_handover_section(params: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Edit a section in a handover document.
+    Edit a section in a handover export's edited_content jsonb.
 
     Required params:
         - yacht_id: UUID
-        - handover_id: UUID
+        - export_id or handover_id: UUID (handover_exports.id)
         - section_name: str
-        - new_text: str
+        - content: str or dict
         - user_id: UUID (from JWT)
     """
     supabase = get_supabase_client()
+    yacht_id = params["yacht_id"]
+    export_id = params.get("export_id") or params.get("handover_id") or params.get("entity_id")
+    section_name = params.get("section_name")
+    content = params.get("new_text") or params.get("content")
 
-    # Get current handover
-    handover_result = supabase.table("handovers").select("*").eq(
-        "id", params["handover_id"]
-    ).eq("yacht_id", params["yacht_id"]).execute()
+    if not export_id:
+        raise ValueError("export_id or handover_id is required")
+    if not section_name:
+        raise ValueError("section_name is required")
 
-    if not handover_result.data:
-        raise ValueError(f"Handover {params['handover_id']} not found or access denied")
+    # Verify export exists + yacht isolation
+    result = supabase.table("handover_exports").select(
+        "id, yacht_id, edited_content, review_status"
+    ).eq("id", export_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-    handover = handover_result.data[0]
+    if not result.data or len(result.data) == 0:
+        raise ValueError(f"Handover export {export_id} not found")
 
-    # Update section content
-    content = handover.get("content", {})
-    content[params["section_name"]] = params["new_text"]
+    export_row = result.data[0]
+    if export_row.get("review_status") not in (None, "pending_review"):
+        raise ValueError("Cannot edit after submission")
 
-    # Update handover
-    # SECURITY FIX P0-005: Add yacht_id filter for tenant isolation
-    result = supabase.table("handovers").update({
-        "content": content,
-        "updated_at": datetime.utcnow().isoformat(),
-        "updated_by": params["user_id"],
-    }).eq("id", params["handover_id"]).eq("yacht_id", params["yacht_id"]).execute()
+    # Merge new section into edited_content
+    edited_content = export_row.get("edited_content") or {}
+    if "sections" not in edited_content:
+        edited_content["sections"] = []
 
-    if not result.data:
-        raise Exception("Failed to update handover section")
+    # Find and update existing section, or append
+    found = False
+    for section in edited_content["sections"]:
+        if section.get("title") == section_name or section.get("id") == section_name:
+            section["content"] = content
+            section["updated_by"] = params.get("user_id")
+            section["updated_at"] = datetime.utcnow().isoformat()
+            found = True
+            break
+
+    if not found:
+        edited_content["sections"].append({
+            "title": section_name,
+            "content": content,
+            "updated_by": params.get("user_id"),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+
+    edited_content["last_saved_at"] = datetime.utcnow().isoformat()
+    edited_content["saved_by"] = params.get("user_id")
+
+    supabase.table("handover_exports").update({
+        "edited_content": edited_content,
+    }).eq("id", export_id).eq("yacht_id", yacht_id).execute()
 
     return {
-        "handover_id": result.data[0]["id"],
-        "section_name": params["section_name"],
-        "updated_at": result.data[0]["updated_at"],
+        "status": "success",
+        "export_id": export_id,
+        "section_name": section_name,
     }
 
 
@@ -1827,6 +1881,7 @@ async def add_work_order_photo(params: Dict[str, Any]) -> Dict[str, Any]:
     attachment_id = str(uuid_lib.uuid4())
     attachment_data = {
         "id": attachment_id,
+        "yacht_id": params["yacht_id"],
         "entity_type": "work_order",
         "entity_id": params["work_order_id"],
         "storage_path": params["photo_url"],
@@ -1836,7 +1891,7 @@ async def add_work_order_photo(params: Dict[str, Any]) -> Dict[str, Any]:
         "uploaded_at": datetime.utcnow().isoformat(),
     }
 
-    result = supabase.table("attachments").insert(attachment_data).execute()
+    result = supabase.table("pms_attachments").insert(attachment_data).execute()
 
     return {
         "attachment_id": attachment_id,
@@ -2141,9 +2196,10 @@ async def _export_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     """Wrapper for P3 export_handover handler."""
     handlers = _get_p3_handlers()
     return await handlers.export_handover_execute(
-        handover_id=params.get("handover_id") or params.get("entity_id"),
         yacht_id=params["yacht_id"],
-        format=params.get("format", "pdf")
+        user_id=params.get("user_id", ""),
+        date_range_hours=int(params.get("date_range_hours", 24)),
+        format=params.get("format", "json"),
     )
 
 
@@ -2189,7 +2245,7 @@ async def _track_delivery(params: Dict[str, Any]) -> Dict[str, Any]:
     """Wrapper for P3 track_delivery handler."""
     handlers = _get_p3_handlers()
     return await handlers.track_delivery_execute(
-        order_id=params.get("order_id") or params.get("entity_id"),
+        purchase_order_id=params.get("purchase_order_id") or params.get("order_id") or params.get("entity_id", ""),
         yacht_id=params["yacht_id"]
     )
 
@@ -2243,15 +2299,21 @@ async def _create_purchase_request(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def _order_part(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Wrapper for P1 order_part handler."""
+    """Wrapper for P1 order_part handler.
+    NOTE: Requires purchase_order_id (adds part to existing PO).
+    Stubbed until frontend passes PO context.
+    """
+    purchase_order_id = params.get("purchase_order_id")
+    if not purchase_order_id:
+        return await _not_yet_implemented(params)
     handlers = _get_p1_purchasing_handlers()
     return await handlers.order_part_execute(
+        purchase_order_id=purchase_order_id,
         part_id=params.get("part_id") or params.get("entity_id"),
         yacht_id=params["yacht_id"],
         user_id=params.get("user_id"),
         quantity=params.get("quantity", 1),
-        supplier_id=params.get("supplier_id"),
-        notes=params.get("notes")
+        notes=params.get("notes"),
     )
 
 
@@ -2458,9 +2520,9 @@ async def _part_view_part_details(params: Dict[str, Any]) -> Dict[str, Any]:
     if not fn:
         raise ValueError("view_part_details handler not registered")
     return await fn(
+        entity_id=params.get("part_id") or params.get("entity_id", ""),
         yacht_id=params["yacht_id"],
         user_id=params["user_id"],
-        part_id=params["part_id"]
     )
 
 
@@ -2470,12 +2532,16 @@ async def _part_add_to_shopping_list(params: Dict[str, Any]) -> Dict[str, Any]:
     fn = handlers.get("add_to_shopping_list")
     if not fn:
         raise ValueError("add_to_shopping_list handler not registered")
+    part_id = params.get("part_id") or params.get("entity_id")
+    if not part_id:
+        raise ValueError("part_id is required")
     return await fn(
         yacht_id=params["yacht_id"],
         user_id=params["user_id"],
-        part_id=params["part_id"],
-        quantity=params["quantity"],
-        reason=params.get("reason")
+        part_id=part_id,
+        quantity_requested=params.get("quantity_requested") or params.get("quantity", 1),
+        urgency=params.get("urgency", "medium"),
+        notes=params.get("reason") or params.get("notes"),
     )
 
 
@@ -2920,6 +2986,15 @@ async def _recv_view_history(params: Dict[str, Any]) -> Dict[str, Any]:
     return await fn(**params)
 
 
+async def _recv_flag_discrepancy(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for flag_discrepancy handler (Receiving Lens)."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("flag_discrepancy")
+    if not fn:
+        raise ValueError("flag_discrepancy handler not registered")
+    return await fn(**params)
+
+
 # ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
@@ -3095,6 +3170,249 @@ async def _hor_dismiss_warning(params: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+# ============================================================================
+# NEW HANDLERS: submit_list, convert_to_po, sign_handover, draft_warranty_claim
+# ============================================================================
+
+
+async def _submit_shopping_list(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Submit a shopping list item for review: candidate → under_review.
+
+    Required params:
+        - yacht_id: UUID
+        - item_id or entity_id: UUID
+    """
+    supabase = get_supabase_client()
+    item_id = params.get("item_id") or params.get("entity_id")
+    yacht_id = params["yacht_id"]
+
+    if not item_id:
+        raise ValueError("item_id or entity_id is required")
+
+    item = supabase.table("pms_shopping_list_items").select(
+        "id, status"
+    ).eq("id", item_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+    if not item.data or len(item.data) == 0:
+        raise ValueError(f"Shopping list item {item_id} not found")
+
+    if item.data[0]["status"] != "candidate":
+        raise ValueError(
+            f"Cannot submit: item is '{item.data[0]['status']}', expected 'candidate'"
+        )
+
+    supabase.table("pms_shopping_list_items").update({
+        "status": "under_review",
+        "updated_at": datetime.utcnow().isoformat(),
+        "updated_by": params.get("user_id"),
+    }).eq("id", item_id).eq("yacht_id", yacht_id).execute()
+
+    return {"status": "success", "item_id": item_id, "new_status": "under_review"}
+
+
+async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create a purchase order from approved shopping list items.
+
+    Required params:
+        - yacht_id: UUID
+    Optional:
+        - item_ids: list of specific item UUIDs (defaults to all approved)
+        - supplier_name: str
+        - notes: str
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+    yacht_id = params["yacht_id"]
+    user_id = params.get("user_id")
+
+    # Get approved items
+    query = supabase.table("pms_shopping_list_items").select(
+        "id, part_name, part_number, manufacturer, quantity_requested, "
+        "quantity_approved, unit"
+    ).eq("yacht_id", yacht_id).eq("status", "approved").is_("deleted_at", "null")
+
+    item_ids = params.get("item_ids")
+    if item_ids:
+        query = query.in_("id", item_ids)
+
+    items_result = query.execute()
+    items = items_result.data or []
+
+    if not items:
+        raise ValueError("No approved shopping list items found")
+
+    # Generate PO number: PO-YYYY-NNN
+    year = datetime.utcnow().year
+    existing = supabase.table("pms_purchase_orders").select(
+        "po_number"
+    ).eq("yacht_id", yacht_id).like("po_number", f"PO-{year}-%").execute()
+
+    next_num = len(existing.data or []) + 1
+    po_number = f"PO-{year}-{next_num:03d}"
+
+    # Create PO
+    po_id = str(uuid_lib.uuid4())
+    po_data = {
+        "id": po_id,
+        "yacht_id": yacht_id,
+        "po_number": po_number,
+        "status": "draft",
+        "ordered_by": user_id,
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    if params.get("supplier_id"):
+        po_data["supplier_id"] = params["supplier_id"]
+    supabase.table("pms_purchase_orders").insert(po_data).execute()
+
+    # Create PO line items + update shopping list status
+    for item in items:
+        line_id = str(uuid_lib.uuid4())
+        supabase.table("pms_purchase_order_items").insert({
+            "id": line_id,
+            "yacht_id": yacht_id,
+            "purchase_order_id": po_id,
+            "part_id": item.get("part_id"),
+            "description": item["part_name"],
+            "quantity_ordered": int(item.get("quantity_approved") or item["quantity_requested"]),
+        }).execute()
+
+    # Mark shopping list items as ordered
+    ordered_ids = [item["id"] for item in items]
+    for oid in ordered_ids:
+        supabase.table("pms_shopping_list_items").update({
+            "status": "ordered",
+            "updated_at": datetime.utcnow().isoformat(),
+            "updated_by": user_id,
+        }).eq("id", oid).eq("yacht_id", yacht_id).execute()
+
+    return {
+        "status": "success",
+        "po_id": po_id,
+        "po_number": po_number,
+        "items_ordered": len(items),
+    }
+
+
+async def _sign_handover(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Sign a handover export (user signature step).
+
+    Sets user_signature + user_signed_at and transitions
+    review_status from pending_review → pending_hod_signature.
+
+    Required params:
+        - yacht_id: UUID
+        - export_id or handover_id or entity_id: UUID
+        - user_id: UUID
+    Optional:
+        - signature: dict (signer_name, signed_at)
+        - notes: str
+    """
+    supabase = get_supabase_client()
+    yacht_id = params["yacht_id"]
+    export_id = (
+        params.get("export_id")
+        or params.get("handover_id")
+        or params.get("entity_id")
+    )
+    user_id = params.get("user_id")
+
+    if not export_id:
+        raise ValueError("export_id or handover_id is required")
+
+    # Verify export exists + yacht isolation
+    result = supabase.table("handover_exports").select(
+        "id, yacht_id, review_status, exported_by_user_id"
+    ).eq("id", export_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+    if not result.data or len(result.data) == 0:
+        raise ValueError(f"Handover export {export_id} not found")
+
+    review_status = result.data[0].get("review_status")
+    if review_status not in (None, "pending_review"):
+        raise ValueError(
+            f"Cannot sign: export is '{review_status}', expected 'pending_review'"
+        )
+
+    now = datetime.utcnow().isoformat()
+    signature = params.get("signature") or {
+        "signer_name": user_id,
+        "signed_at": now,
+    }
+
+    supabase.table("handover_exports").update({
+        "user_signature": signature,
+        "user_signed_at": now,
+        "review_status": "pending_hod_signature",
+    }).eq("id", export_id).eq("yacht_id", yacht_id).execute()
+
+    return {
+        "status": "success",
+        "export_id": export_id,
+        "review_status": "pending_hod_signature",
+    }
+
+
+async def _draft_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create a draft warranty claim.
+
+    Required params:
+        - yacht_id: UUID
+        - title: str
+        - description: str
+    Optional:
+        - equipment_id, fault_id, work_order_id: UUID
+        - vendor_name, manufacturer: str
+        - warranty_expiry: date
+        - claimed_amount: numeric
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+    yacht_id = params["yacht_id"]
+    user_id = params.get("user_id")
+
+    claim_id = str(uuid_lib.uuid4())
+
+    # Generate claim number
+    year = datetime.utcnow().year
+    existing = supabase.table("pms_warranty_claims").select(
+        "claim_number"
+    ).eq("yacht_id", yacht_id).like("claim_number", f"WC-{year}-%").execute()
+
+    next_num = len(existing.data or []) + 1
+    claim_number = f"WC-{year}-{next_num:03d}"
+
+    claim_data = {
+        "id": claim_id,
+        "yacht_id": yacht_id,
+        "claim_number": claim_number,
+        "title": params.get("title", ""),
+        "description": params.get("description", ""),
+        "status": "draft",
+        "drafted_by": user_id,
+        "drafted_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    # Optional FK fields
+    for field in ("equipment_id", "fault_id", "work_order_id",
+                  "vendor_name", "manufacturer", "warranty_expiry",
+                  "claimed_amount"):
+        if params.get(field) is not None:
+            claim_data[field] = params[field]
+    supabase.table("pms_warranty_claims").insert(claim_data).execute()
+
+    return {
+        "status": "success",
+        "claim_id": claim_id,
+        "claim_number": claim_number,
+    }
+
+
 INTERNAL_HANDLERS: Dict[str, Any] = {
     # Original handlers
     "add_note": add_note,
@@ -3115,14 +3433,14 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "view_fault_detail": view_fault_detail,
     "diagnose_fault": diagnose_fault,
     "view_fault_history": view_fault_history,
-    "suggest_parts": suggest_parts,
+    "suggest_parts": _not_yet_implemented,
     "show_manual_section": show_manual_section,
     "add_fault_note": add_fault_note,
     "create_work_order_from_fault": create_work_order_from_fault,
     "reopen_fault": reopen_fault,
     "mark_fault_false_alarm": mark_fault_false_alarm,
     "acknowledge_fault": acknowledge_fault,
-    "classify_fault": classify_fault,
+    "classify_fault": _not_yet_implemented,
 
     # Work order handlers
     "update_work_order": update_work_order,
@@ -3320,6 +3638,61 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "list_crew_warnings": _hor_list_warnings,
     "acknowledge_warning": _hor_acknowledge_warning,
     "dismiss_warning": _hor_dismiss_warning,
+
+    # =========================================================================
+    # Task 2: Frontend→Backend Aliases
+    # =========================================================================
+    "add_certificate_note": add_note,
+    "add_document_note": add_note,
+    "add_part_note": add_note,
+    "add_po_note": add_note,
+    "add_warranty_note": add_note,
+    "add_wo_photo": add_work_order_photo,
+    "apply_template": _hor_apply_template,
+    "approve_list": _sl_approve_item,
+    "add_list_item": _sl_create_item,
+    "sign_handover": _sign_handover,
+    "draft_warranty_claim": _draft_warranty_claim,
+    "file_warranty_claim": _draft_warranty_claim,
+    "investigate_fault": diagnose_fault,
+    "resolve_fault": close_fault,
+    "track_po_delivery": _track_delivery,
+    "update_part_details": _part_view_part_details,
+
+    # =========================================================================
+    # Task 4c: Universal Soft-Delete Aliases
+    # =========================================================================
+    "delete_work_order": _soft_delete_entity,
+    "archive_fault": _soft_delete_entity,
+    "delete_fault": _soft_delete_entity,
+    "archive_certificate": _soft_delete_entity,
+    "suspend_certificate": _soft_delete_entity,
+    "revoke_certificate": _soft_delete_entity,
+    "archive_part": _soft_delete_entity,
+    "delete_part": _soft_delete_entity,
+    "cancel_po": _soft_delete_entity,
+    "delete_po": _soft_delete_entity,
+    "archive_document": _soft_delete_entity,
+    "archive_warranty": _soft_delete_entity,
+    "void_warranty": _soft_delete_entity,
+    "archive_list": _soft_delete_entity,
+    "delete_list": _soft_delete_entity,
+    "archive_handover": _soft_delete_entity,
+    "delete_handover": _soft_delete_entity,
+
+    # =========================================================================
+    # Task 5: Stub Handlers (not yet implemented)
+    # =========================================================================
+    "renew_certificate": _not_yet_implemented,
+    "reorder_part": _part_add_to_shopping_list,
+    "confirm_receiving": _recv_accept,
+    "convert_to_po": _convert_to_po,
+    "submit_list": _submit_shopping_list,
+
+    # =========================================================================
+    # Task 6: Flag Discrepancy (Receiving)
+    # =========================================================================
+    "flag_discrepancy": _recv_flag_discrepancy,
 }
 
 

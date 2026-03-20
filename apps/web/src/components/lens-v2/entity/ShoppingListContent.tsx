@@ -1,16 +1,19 @@
 'use client';
 
 /**
- * ShoppingListContent — lens-v2 Shopping List entity view.
- * Matches lens-shopping-list.html prototype.
- * Reads all data from useEntityLensContext() — zero props.
+ * ShoppingListContent — lens-v2 entity view.
+ * Prototype: public/prototypes/lens-shopping-list.html
  *
- * Sections (in prototype order):
- * 1. Identity strip: overline, title, context, pills, detail lines, description
- * 2. Line Items (PartsSection — items with quantity, unit price, status per line)
- * 3. Cross-Entity Links (DocRows — linked POs, WOs)
- * 4. Notes (timeline)
- * 5. Audit Trail (collapsed by default)
+ * Data flow:
+ * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
+ * - Actions from availableActions[] → backend /v1/actions/execute
+ * - ActionPopup auto-builds form fields from action.required_fields
+ *
+ * Sections: Identity → Lifecycle → Line Items → Links → Notes → History → Audit Trail → Attachments
+ *
+ * TODO notes for next engineer:
+ * - Add Item handler not wired
+ * - File upload modal not wired
  */
 
 import * as React from 'react';
@@ -29,12 +32,17 @@ import {
   PartsSection,
   DocRowsSection,
   KVSection,
+  AttachmentsSection,
+  HistorySection,
   type NoteItem,
   type AuditEvent,
   type PartItem,
   type DocRowItem,
   type KVItem,
+  type AttachmentItem,
+  type HistoryPeriod,
 } from '../sections';
+import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // --- Colour mapping helpers ---
 
@@ -72,7 +80,7 @@ function formatLabel(str: string): string {
 
 export function ShoppingListContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // -- Extract entity fields --
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -105,6 +113,19 @@ export function ShoppingListContent() {
   const archiveAction = getAction('archive_list');
 
   const isArchivable = !['cancelled', 'archived'].includes(status);
+
+  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
+    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  } | null>(null);
+
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    const fields: ActionPopupField[] = action.required_fields
+      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
+      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
+    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  }
 
   // -- Derived display --
   const statusLabel = formatLabel(status);
@@ -187,29 +208,24 @@ export function ShoppingListContent() {
     }
   }, [canConvert, canSubmit, executeAction]);
 
-  const dropdownItems: DropdownItem[] = [];
-  if (addItemAction !== null) {
-    dropdownItems.push({
-      label: 'Add Item',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (approveAction !== null && status === 'submitted') {
-    dropdownItems.push({
-      label: 'Approve List',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>,
-      onClick: () => executeAction('approve_list', {}),
-    });
-  }
-  if (archiveAction !== null && isArchivable) {
-    dropdownItems.push({
-      label: 'Archive List',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>,
-      onClick: () => executeAction('archive_list', {}),
-      danger: true,
-    });
-  }
+  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const DANGER_ACTIONS = new Set(['archive_list', 'delete_list']);
+  const primaryActionId = canConvert ? 'convert_to_po' : 'submit_list';
+
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => {
+            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
+          },
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
 
   // -- Map section data --
   const partItems: PartItem[] = items.map((item, i) => ({
@@ -253,6 +269,25 @@ export function ShoppingListContent() {
     action: (h.action ?? h.description ?? h.event) as string ?? '',
     actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
+  }));
+
+  const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+
+  const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
+    id: (a.id as string) ?? `att-${i}`,
+    name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
+    caption: (a.caption ?? a.description) as string | undefined,
+    size: (a.size ?? a.file_size) as string | undefined,
+    kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
+  }));
+
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
   const handleAddNote = React.useCallback(
@@ -358,7 +393,7 @@ export function ShoppingListContent() {
         <PartsSection
           parts={partItems}
           onAddPart={handleAddPart}
-          canAddPart={addItemAction !== null}
+          canAddPart
         />
       </ScrollReveal>
 
@@ -374,15 +409,32 @@ export function ShoppingListContent() {
         <NotesSection
           notes={noteItems}
           onAddNote={handleAddNote}
-          canAddNote={addItemAction !== null}
+          canAddNote
         />
       </ScrollReveal>
 
+      {/* History */}
+      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+
       {/* Audit Trail */}
-      {auditEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection events={auditEvents} defaultCollapsed />
-        </ScrollReveal>
+      <ScrollReveal>
+        <AuditTrailSection events={auditEvents} defaultCollapsed />
+      </ScrollReveal>
+
+      {/* Attachments */}
+      <ScrollReveal>
+        <AttachmentsSection
+          attachments={attachmentItems}
+          onAddFile={() => {}}
+          canAddFile
+        />
+      </ScrollReveal>
+
+      {actionPopupConfig && (
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+          signatureLevel={actionPopupConfig.signatureLevel}
+          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onClose={() => setActionPopupConfig(null)} />
       )}
     </>
   );

@@ -131,6 +131,7 @@
 .panel {
   width: 720px;
   max-width: 100%;
+  max-height: calc(100vh - 48px);
   border-radius: 8px;
   overflow: hidden;
   border-top: 1px solid var(--border-top);
@@ -313,7 +314,7 @@
 .splitToggle {
   width: 44px; height: 44px;
   background: var(--teal-bg); color: var(--mark);
-  border: none; border-left: 1px solid var(--border-chrome);
+  border: none; border-left: 1px solid var(--mark-thumb);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   font-family: var(--font-sans); transition: background 60ms;
 }
@@ -466,7 +467,7 @@
 .noteTime { font-family: var(--font-mono); font-size: 11px; color: var(--txt3); }
 
 .noteBody {
-  font-size: 14px; font-weight: 400; color: var(--txt2); line-height: 1.65;
+  font-size: 14px; font-weight: 400; color: var(--txt2); line-height: 1.6;
 }
 .noteBodyClamped {
   display: -webkit-box; -webkit-line-clamp: 3;
@@ -539,7 +540,7 @@
 .attachThumbDoc svg { width: 18px; height: 18px; color: var(--txt3); }
 
 .attachInfo { flex: 1; min-width: 0; }
-.attachName { font-size: 13px; font-weight: 500; color: var(--txt); font-family: var(--font-mono); }
+.attachName { font-size: 13px; font-weight: 500; color: var(--txt); }
 .attachCaption {
   font-size: 11px; color: var(--txt3); margin-top: 1px;
   font-style: italic; white-space: nowrap;

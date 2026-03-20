@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Purchase Order · v1</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+/* ═══════════════════════════════════════════════════════
+   PURCHASE ORDER LENS — entity-specific styles
+   ═══════════════════════════════════════════════════════ */
+
+/* Theme toggle button (PO uses a compact variant) */
+.theme-toggle {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--txt3); background: none; border: none;
+  transition: background 60ms;
+}
+.theme-toggle:hover { background: var(--surface-hover); color: var(--txt2); }
+
+/* detail-label width override for PO */
+.detail-label { min-width: 120px; }
+
+/* Budget progress bar (inline in detail lines) */
+.budget-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--txt2);
+  min-height: 32px;
+}
+.budget-bar-wrap {
+  flex: 1; max-width: 200px;
+  display: flex; align-items: center; gap: 10px;
+}
+.budget-bar {
+  flex: 1; height: 4px; border-radius: 2px;
+  background: var(--split-bg); overflow: hidden;
+}
+.budget-bar .fill {
+  height: 100%; border-radius: 2px;
+  background: var(--mark);
+  transition: width 400ms ease;
+}
+.budget-pct {
+  font-family: var(--font-mono); font-size: 11px; color: var(--txt3);
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LINE ITEMS TABLE
+   ═══════════════════════════════════════════════════════ */
+.line-items-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.line-items-table th {
+  font-size: 10px; font-weight: 600; color: var(--txt-ghost);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0 0 10px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--border-sub);
+}
+.line-items-table th:nth-child(1) { width: 48px; }
+.line-items-table th:nth-child(3) { text-align: right; width: 90px; }
+.line-items-table th:nth-child(4) { text-align: right; width: 90px; }
+
+.line-items-table td {
+  padding: 10px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-faint);
+  vertical-align: top;
+}
+.line-items-table tr:last-child td { border-bottom: none; }
+
+.li-qty {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  color: var(--txt2); white-space: nowrap;
+}
+.li-desc { color: var(--txt); font-weight: 400; line-height: 1.45; }
+.li-part-id {
+  font-family: var(--font-mono); font-size: 11px; color: var(--txt3);
+}
+.li-price {
+  font-family: var(--font-mono); font-size: 12px; color: var(--txt2);
+  text-align: right; white-space: nowrap;
+}
+.li-total {
+  font-family: var(--font-mono); font-size: 12px; color: var(--txt);
+  text-align: right; font-weight: 500; white-space: nowrap;
+}
+
+/* Line items summary */
+.li-summary {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-sub);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+}
+.li-summary-row {
+  display: flex; align-items: center; gap: 24px;
+  font-size: 12px;
+}
+.li-summary-label {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  min-width: 80px; text-align: right;
+}
+.li-summary-val {
+  font-family: var(--font-mono); font-size: 12px; color: var(--txt2);
+  min-width: 80px; text-align: right;
+}
+.li-summary-row.total {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-sub);
+}
+.li-summary-row.total .li-summary-label {
+  font-size: 12px; font-weight: 600; color: var(--txt2);
+}
+.li-summary-row.total .li-summary-val {
+  font-size: 14px; font-weight: 600; color: var(--txt);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DELIVERY SCHEDULE
+   ═══════════════════════════════════════════════════════ */
+.delivery-block {
+  padding: 12px 0;
+}
+.delivery-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--txt2);
+  min-height: 32px; flex-wrap: wrap;
+}
+.delivery-label {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  min-width: 120px;
+}
+.delivery-val { color: var(--txt); }
+.delivery-sep {
+  color: var(--txt-ghost); margin: 0 4px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- ═══ LENS HEADER ═══ -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Purchase Order</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Related
+      </button>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+        <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ SCROLLABLE BODY ═══ -->
+  <div class="lens-body">
+
+    <!-- ─── IDENTITY STRIP ─── -->
+    <div class="identity">
+      <!-- Top row: overline left, split button right -->
+      <div class="identity-top-row">
+        <div class="identity-overline">PO-89</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main">Receive Goods</button>
+            <button class="split-toggle" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+              Track Delivery
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49"/></svg>
+              Add Attachment
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/></svg>
+              Download PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1 class="identity-title">Engineering Spares — Q1 Restock</h1>
+
+      <!-- Context — supplier + requested by -->
+      <p class="identity-context">Aegean Marine Supply, Piraeus &middot; Requested by <span class="crew-link">Chief Engineer</span></p>
+
+      <!-- Status pills -->
+      <div class="pills">
+        <span class="pill pill-green"><span class="dot"></span> Signed &amp; Approved</span>
+        <span class="pill pill-neutral"><span class="dot"></span> Awaiting Delivery</span>
+      </div>
+
+      <!-- Key-value detail lines -->
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Order Date</span>
+          <span class="mono-val">08 Mar 2026</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Expected Delivery</span>
+          <span class="mono-val">18 Mar 2026</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Total</span>
+          <span class="mono-val">&euro;2,340.00</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Department</span>
+          <span style="color: var(--txt);">Engineering</span>
+        </div>
+        <!-- Budget context line -->
+        <div class="budget-row">
+          <span class="detail-label">Budget</span>
+          <span class="mono-val" style="margin-right: 8px;">&euro;2,340 / &euro;5,000</span>
+          <div class="budget-bar-wrap">
+            <div class="budget-bar"><div class="fill" style="width: 46.8%"></div></div>
+            <span class="budget-pct">46.8%</span>
+          </div>
+          <span style="font-size: 12px; color: var(--txt3); margin-left: 4px;">Engineering Q1</span>
+          <button style="font-size: 12px; font-weight: 500; color: var(--mark); background: none; border: none; font-family: var(--font-sans); cursor: pointer; padding: 2px 6px; border-radius: 4px; margin-left: 4px; transition: background 60ms;" onmouseover="this.style.background='var(--teal-bg)'" onmouseout="this.style.background='none'">Adjust</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTIONS
+         ═══════════════════════════════════════════════ -->
+
+    <!-- LINE ITEMS (expanded) -->
+    <div class="section reveal" id="sec-line-items">
+      <div class="sec-hdr" onclick="toggleSec('sec-line-items')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        <span class="sec-title">Line Items</span>
+        <span class="sec-count">3</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <table class="line-items-table">
+          <thead>
+            <tr>
+              <th>Qty</th>
+              <th>Description</th>
+              <th>Unit Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="li-qty">&times;2</td>
+              <td class="li-desc">Impeller Kit — Seawater Pump<br><span class="li-part-id">IMP-SW-200</span></td>
+              <td class="li-price">&euro;420.00 ea</td>
+              <td class="li-total">&euro;840.00</td>
+            </tr>
+            <tr>
+              <td class="li-qty">&times;1</td>
+              <td class="li-desc">Mechanical Seal — Generator Cooling<br><span class="li-part-id">MS-GC-115</span></td>
+              <td class="li-price">&euro;780.00 ea</td>
+              <td class="li-total">&euro;780.00</td>
+            </tr>
+            <tr>
+              <td class="li-qty">&times;4</td>
+              <td class="li-desc">Gasket Set — Exhaust Manifold<br><span class="li-part-id">GS-EM-042</span></td>
+              <td class="li-price">&euro;180.00 ea</td>
+              <td class="li-total">&euro;720.00</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="li-summary">
+          <div class="li-summary-row">
+            <span class="li-summary-label">Subtotal</span>
+            <span class="li-summary-val">&euro;2,340.00</span>
+          </div>
+          <div class="li-summary-row">
+            <span class="li-summary-label">Shipping</span>
+            <span class="li-summary-val">&euro;0.00</span>
+          </div>
+          <div class="li-summary-row total">
+            <span class="li-summary-label">Total</span>
+            <span class="li-summary-val">&euro;2,340.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DELIVERY (expanded) -->
+    <div class="section reveal" id="sec-delivery">
+      <div class="sec-hdr" onclick="toggleSec('sec-delivery')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span class="sec-title">Delivery</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="delivery-block">
+          <div class="delivery-row">
+            <span class="delivery-label">Expected</span>
+            <span class="mono-val">18 Mar 2026</span>
+          </div>
+          <div class="delivery-row">
+            <span class="delivery-label">Carrier</span>
+            <span class="delivery-val">ACS Courier</span>
+          </div>
+          <div class="delivery-row">
+            <span class="delivery-label">Tracking</span>
+            <span class="mono-val">ACS-7291038</span>
+          </div>
+          <div class="delivery-row">
+            <span class="delivery-label">Deliver To</span>
+            <span class="delivery-val">Piraeus Marina, Gate 4 — SV Andromeda, Berth D-12</span>
+          </div>
+          <div class="delivery-row">
+            <span class="delivery-label">Contact</span>
+            <span class="delivery-val"><span class="crew-link">1st Officer</span> · +30 694 XXX XXXX</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECEIVING LOG (collapsed, empty) -->
+    <div class="section collapsed reveal" id="sec-receiving">
+      <div class="sec-hdr" onclick="toggleSec('sec-receiving')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+        <span class="sec-title">Receiving Log</span>
+        <span class="sec-count">0</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="empty-state">No deliveries received yet</div>
+      </div>
+    </div>
+
+    <!-- AUDIT TRAIL — SOC-2 compliant event timeline -->
+    <div class="section reveal" id="sec-audit">
+      <div class="sec-hdr" onclick="toggleSec('sec-audit')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sec-title">Audit Trail</span>
+        <span class="sec-count">6</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-info">
+            <div class="audit-action"><span class="crew">Supplier</span> shipped order via ACS Courier</div>
+            <div class="audit-time">14 Mar 2026 10:30</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-info">
+            <div class="audit-action"><span class="crew">Supplier</span> confirmed order and delivery ETA 18 Mar</div>
+            <div class="audit-time">09 Mar 2026 08:45</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-info">
+            <div class="audit-action"><span class="crew">Purser</span> emailed signed PO to supplier</div>
+            <div class="audit-time">08 Mar 2026 15:20</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-info">
+            <div class="audit-action"><span class="crew">Captain</span> authorized order</div>
+            <div class="audit-time">08 Mar 2026 14:05</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-info">
+            <div class="audit-action"><span class="crew">1st Officer</span> approved and forwarded to Captain</div>
+            <div class="audit-time">08 Mar 2026 11:42</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-info">
+            <div class="audit-action"><span class="crew">Chief Engineer</span> created purchase request</div>
+            <div class="audit-time">08 Mar 2026 09:14</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTES (collapsed) -->
+    <div class="section collapsed reveal" id="sec-notes">
+      <div class="sec-hdr" onclick="toggleSec('sec-notes')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="sec-title">Notes</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">Chief Engineer</span>
+            <span class="note-time">08 Mar 2026</span>
+          </div>
+          <p class="note-body">Ordered spares to cover upcoming 500-hour service on main engine and generator. Impeller kits are critical — current stock depleted after last emergency repair.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">1st Officer</span>
+            <span class="note-time">08 Mar 2026</span>
+          </div>
+          <p class="note-body">Approved. Aegean Marine Supply confirmed annual contract pricing. Free shipping on orders over &euro;2,000.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /lens-body -->
+
+</div><!-- /panel -->
+
+<script src="lens-base.js"></script>
+
+</body>
+</html>

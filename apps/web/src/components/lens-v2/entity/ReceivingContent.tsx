@@ -1,20 +1,19 @@
 'use client';
 
 /**
- * ReceivingContent — lens-v2 Receiving entity view.
- * Matches lens-receiving.html prototype.
- * Reads all data from useEntityLensContext() — zero props.
+ * ReceivingContent — lens-v2 entity view.
+ * Prototype: public/prototypes/lens-receiving.html
  *
- * Sections (in prototype order):
- * 1. Identity strip: overline, title, context, pills, detail lines
- * 2. Packing List (PartsSection — items with expected vs received quantities)
- * 3. Print / Barcode button
- * 4. Notes
- * 5. Attachments
- * 6. Audit Trail
+ * Data flow:
+ * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
+ * - Actions from availableActions[] → backend /v1/actions/execute
+ * - ActionPopup auto-builds form fields from action.required_fields
  *
- * Per owner review: discrepancy reason is per-line-item (merged into line items),
- * not a separate section. Confirm button is ghost teal 44px height.
+ * Sections: Identity → Packing List → Print → Related → Notes → Attachments → History → Audit Trail
+ *
+ * TODO notes for next engineer:
+ * - Add Note handler not wired
+ * - File upload modal not wired
  */
 
 import * as React from 'react';
@@ -25,6 +24,7 @@ import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // Sections
 import {
@@ -34,12 +34,14 @@ import {
   PartsSection,
   DocRowsSection,
   KVSection,
+  HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
   type PartItem,
   type DocRowItem,
   type KVItem,
+  type HistoryPeriod,
 } from '../sections';
 
 // --- Colour mapping helpers ---
@@ -65,7 +67,7 @@ function formatLabel(str: string): string {
 
 export function ReceivingContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // -- Extract entity fields --
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -95,6 +97,19 @@ export function ReceivingContent() {
   const barcodeAction = getAction('generate_barcode');
 
   const isConfirmable = ['pending', 'in_progress'].includes(status);
+
+  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
+    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  } | null>(null);
+
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    const fields: ActionPopupField[] = action.required_fields
+      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
+      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
+    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  }
 
   // -- Derived display --
   const statusLabel = formatLabel(status);
@@ -161,28 +176,24 @@ export function ReceivingContent() {
     await executeAction('confirm_receiving', {});
   }, [executeAction]);
 
-  const dropdownItems: DropdownItem[] = [];
-  if (barcodeAction !== null) {
-    dropdownItems.push({
-      label: 'Print Barcodes',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="6" y="6" width="12" height="12" rx="1" /><path d="M6 10h12M10 6v12" /></svg>,
-      onClick: () => executeAction('generate_barcode', {}),
-    });
-  }
-  if (flagAction !== null && status !== 'discrepancy') {
-    dropdownItems.push({
-      label: 'Flag Discrepancy',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>,
-      onClick: () => executeAction('flag_discrepancy', {}),
-    });
-  }
-  if (acceptAction !== null && status !== 'completed') {
-    dropdownItems.push({
-      label: 'Accept Delivery',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>,
-      onClick: () => executeAction('accept_delivery', {}),
-    });
-  }
+  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const DANGER_ACTIONS = new Set(['flag_discrepancy']);
+  const primaryActionId = 'confirm_receiving';
+
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => {
+            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
+          },
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
 
   // -- Map section data --
   const partItems: PartItem[] = items.map((item, i) => {
@@ -233,6 +244,16 @@ export function ReceivingContent() {
     action: (h.action ?? h.description ?? h.event) as string ?? '',
     actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
+  }));
+
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
   const docItems: DocRowItem[] = linked_entities.map((d, i) => ({
@@ -312,7 +333,7 @@ export function ReceivingContent() {
         <NotesSection
           notes={noteItems}
           onAddNote={handleAddNote}
-          canAddNote={false}
+          canAddNote
         />
       </ScrollReveal>
 
@@ -321,15 +342,23 @@ export function ReceivingContent() {
         <AttachmentsSection
           attachments={attachmentItems}
           onAddFile={() => {}}
-          canAddFile={false}
+          canAddFile
         />
       </ScrollReveal>
 
+      {/* History */}
+      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+
       {/* Audit Trail */}
-      {auditEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection events={auditEvents} defaultCollapsed />
-        </ScrollReveal>
+      <ScrollReveal>
+        <AuditTrailSection events={auditEvents} defaultCollapsed />
+      </ScrollReveal>
+
+      {actionPopupConfig && (
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+          signatureLevel={actionPopupConfig.signatureLevel}
+          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onClose={() => setActionPopupConfig(null)} />
       )}
     </>
   );

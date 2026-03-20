@@ -1,21 +1,19 @@
 'use client';
 
 /**
- * HoursOfRestContent — lens-v2 Hours of Rest entity view.
- * Simplified from lens-hours-of-rest.html prototype.
- * Reads all data from useEntityLensContext() — zero props.
+ * HoursOfRestContent — lens-v2 entity view.
+ * Prototype: public/prototypes/lens-hours-of-rest.html
  *
- * The prototype has a full 24h x 48 half-hour grid and 7-day columnar view.
- * This React component SIMPLIFIES the visual to use KV rows and summary data.
- * The complex grid UI is entity-specific CSS that can be added later.
+ * Data flow:
+ * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
+ * - Actions from availableActions[] → backend /v1/actions/execute
+ * - ActionPopup auto-builds form fields from action.required_fields
  *
- * Sections (in simplified order):
- * 1. Identity strip: overline (crew name), title (date), context, pills, details
- * 2. Compliance Summary (KVSection — MLC 2006 + STCW rules)
- * 3. Daily Entry (KVSection — rest/work period totals)
- * 4. Week Summary (KVSection — date range and compliance per day)
- * 5. Template (KVSection — active template name if applied)
- * 6. Notes
+ * Sections: Identity → Compliance → Daily Entry → Week Summary → Template → Notes → Attachments → History → Audit Trail
+ *
+ * TODO notes for next engineer:
+ * - Full 24h grid UI from prototype not yet implemented (KV rows only)
+ * - File upload modal not wired
  */
 
 import * as React from 'react';
@@ -31,9 +29,17 @@ import { getEntityRoute } from '@/lib/featureFlags';
 import {
   NotesSection,
   KVSection,
+  AuditTrailSection,
+  AttachmentsSection,
+  HistorySection,
   type NoteItem,
   type KVItem,
+  type AuditEvent,
+  type AttachmentItem,
+  type HistoryPeriod,
 } from '../sections';
+
+import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // --- Colour mapping helpers ---
 
@@ -58,7 +64,7 @@ function formatLabel(str: string): string {
 
 export function HoursOfRestContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // -- Extract entity fields --
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -99,7 +105,20 @@ export function HoursOfRestContent() {
   // -- Action gates --
   const submitAction = getAction('submit_hours');
   const templateAction = getAction('apply_template');
-  const flagAction = getAction('flag_violation');
+  // flag_violation removed — holds no value per user directive
+
+  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
+    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  } | null>(null);
+
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    const fields: ActionPopupField[] = action.required_fields
+      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
+      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
+    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  }
 
   // -- Derived display --
   const complianceStatus = is_compliant ? 'compliant' : 'non_compliant';
@@ -158,22 +177,24 @@ export function HoursOfRestContent() {
     await executeAction('submit_hours', {});
   }, [executeAction]);
 
-  const dropdownItems: DropdownItem[] = [];
-  if (templateAction !== null) {
-    dropdownItems.push({
-      label: 'Apply Template',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>,
-      onClick: () => executeAction('apply_template', {}),
-    });
-  }
-  if (flagAction !== null && is_compliant) {
-    dropdownItems.push({
-      label: 'Flag Violation',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>,
-      onClick: () => executeAction('flag_violation', {}),
-      danger: true,
-    });
-  }
+  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const DANGER_ACTIONS = new Set<string>();
+  const primaryActionId = 'submit_hours';
+
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => {
+            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
+          },
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
 
   // -- Compliance summary KV items --
   const complianceItems: KVItem[] = [
@@ -261,6 +282,33 @@ export function HoursOfRestContent() {
     author: (n.author ?? n.created_by ?? n.user_name) as string ?? 'Unknown',
     timestamp: (n.created_at ?? n.timestamp) as string ?? '',
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
+  }));
+
+  const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+  const auditTrail = ((entity?.audit_trail ?? payload.audit_trail ?? entity?.audit_history ?? payload.audit_history) as Array<Record<string, unknown>> | undefined) ?? [];
+
+  const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
+    id: (a.id as string) ?? `att-${i}`,
+    name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
+    caption: (a.caption ?? a.description) as string | undefined,
+    size: (a.size ?? a.file_size) as string | undefined,
+    kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
+  }));
+
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
+  }));
+
+  const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
+    id: (h.id as string) ?? `audit-${i}`,
+    action: (h.action ?? h.description ?? h.event) as string ?? '',
+    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
+    timestamp: (h.created_at ?? h.timestamp) as string ?? '',
   }));
 
   // -- Compliance alert --
@@ -392,9 +440,31 @@ export function HoursOfRestContent() {
         <NotesSection
           notes={noteItems}
           onAddNote={() => {}}
-          canAddNote={false}
+          canAddNote
         />
       </ScrollReveal>
+
+      {/* Attachments */}
+      <ScrollReveal>
+        <AttachmentsSection
+          attachments={attachmentItems}
+          onAddFile={() => {}}
+          canAddFile
+        />
+      </ScrollReveal>
+
+      {/* History */}
+      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+
+      {/* Audit Trail */}
+      <ScrollReveal><AuditTrailSection events={auditEvents} defaultCollapsed /></ScrollReveal>
+
+      {actionPopupConfig && (
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+          signatureLevel={actionPopupConfig.signatureLevel}
+          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onClose={() => setActionPopupConfig(null)} />
+      )}
     </>
   );
 }

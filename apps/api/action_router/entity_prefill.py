@@ -27,8 +27,8 @@ ENTITY_TYPE_TO_DOMAIN: Dict[str, Optional[str]] = {
     "shopping_list":   "shopping_list",
     "warranty":        "warranty",
     "hours_of_rest":   "hours_of_rest",
-    "purchase_order":  None,      # no registry domain — returns []
-    "handover_export": None,      # no registry domain — handover actions have no domain= set
+    "purchase_order":  "purchase_orders",
+    "handover_export": "handover",
 }
 
 

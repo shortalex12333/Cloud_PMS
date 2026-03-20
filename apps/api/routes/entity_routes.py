@@ -298,6 +298,88 @@ async def get_hours_of_rest_entity(record_id: str, auth: dict = Depends(get_auth
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── Hours of Rest Monthly Sign-Off ────────────────────────────────────────────
+# Table: pms_hor_monthly_signoffs
+# MLC 2006 Standard A2.3 requires crew → HOD → Captain signing chain.
+# Lens: HoRSignoffContent.tsx
+
+@router.get("/v1/entity/hours_of_rest_signoff/{signoff_id}")
+async def get_hor_signoff_entity(signoff_id: str, auth: dict = Depends(get_authenticated_user)):
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+        supabase = get_tenant_client(tenant_key)
+
+        r = supabase.table("pms_hor_monthly_signoffs").select("*") \
+            .eq("id", signoff_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+        if not r.data or len(r.data) == 0:
+            raise HTTPException(status_code=404, detail="Sign-off record not found")
+
+        data = r.data[0]
+
+        # Look up user name from auth_users_profiles (no FK on signoffs table)
+        user_name = None
+        user_id_val = data.get("user_id")
+        if user_id_val:
+            try:
+                user_result = supabase.table("auth_users_profiles").select(
+                    "name, email"
+                ).eq("id", user_id_val).eq("yacht_id", yacht_id).limit(1).execute()
+                if user_result.data and len(user_result.data) > 0:
+                    u = user_result.data[0]
+                    user_name = u.get("name") or u.get("email")
+            except Exception:
+                pass  # Non-critical — fallback to user_id display
+
+        status = data.get("status", "draft")
+        title = f"HoR Sign-Off — {data.get('month', '')}"
+        if user_name:
+            title = f"{user_name} — {data.get('month', '')}"
+
+        _entity_response = {
+            "id": data.get("id"),
+            "title": title,
+            "crew_name": user_name,
+            "user_id": data.get("user_id"),
+            "department": data.get("department"),
+            "month": data.get("month"),
+            "status": status,
+            "total_rest_hours": data.get("total_rest_hours"),
+            "total_work_hours": data.get("total_work_hours"),
+            "violation_count": data.get("violation_count"),
+            "compliance_percentage": data.get("compliance_percentage"),
+            # Signatures
+            "crew_signature": data.get("crew_signature"),
+            "crew_signed_at": data.get("crew_signed_at"),
+            "crew_signed_by": data.get("crew_signed_by"),
+            "hod_signature": data.get("hod_signature"),
+            "hod_signed_at": data.get("hod_signed_at"),
+            "hod_signed_by": data.get("hod_signed_by"),
+            "master_signature": data.get("master_signature"),
+            "master_signed_at": data.get("master_signed_at"),
+            "master_signed_by": data.get("master_signed_by"),
+            # Metadata
+            "notes": data.get("notes"),
+            "yacht_id": data.get("yacht_id"),
+            "created_at": data.get("created_at"),
+            "updated_at": data.get("updated_at"),
+            "attachments": [],
+            "related_entities": [n for n in [
+                _nav("crew", data.get("user_id"), "Crew Member"),
+            ] if n],
+        }
+        _entity_response["available_actions"] = get_available_actions(
+            "hours_of_rest_signoff", _entity_response, auth.get("role", "crew")
+        )
+        return _entity_response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch hor_signoff {signoff_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ── Shopping List Item ─────────────────────────────────────────────────────────
 # The search result object_id IS a pms_shopping_list_items.id.
 # Returns single item wrapped in items:[...] array for the LensContent component.

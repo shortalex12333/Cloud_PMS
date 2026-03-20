@@ -381,7 +381,7 @@ async def add_work_order_note(
     if not note_text:
         raise HTTPException(status_code=400, detail="note_text is required")
 
-    wo = db_client.table("pms_work_orders").select("id, title, number, metadata").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    wo = db_client.table("pms_work_orders").select("id, title, wo_number, metadata").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
     if not wo.data:
         raise HTTPException(status_code=404, detail="Work order not found")
 

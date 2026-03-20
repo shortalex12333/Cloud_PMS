@@ -1,19 +1,19 @@
 'use client';
 
 /**
- * PurchaseOrderContent — lens-v2 Purchase Order entity view.
- * Matches lens-purchase-order.html prototype exactly.
- * Reads all data from useEntityLensContext() — zero props.
+ * PurchaseOrderContent — lens-v2 entity view.
+ * Prototype: public/prototypes/lens-purchase-order.html
  *
- * Sections (in prototype order):
- * 1. Identity strip: overline (PO number), title, context (supplier + requester), pills, detail lines
- * 2. Line Items (PartsSection-style rows with qty x price)
- * 3. Budget Context (KVSection)
- * 4. Approval Signatures (KVSection)
- * 5. Notes (collapsed)
- * 6. Attachments
- * 7. Receiving Log (AuditTrail — below audit trail per owner review)
- * 8. Audit Trail
+ * Data flow:
+ * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
+ * - Actions from availableActions[] → backend /v1/actions/execute
+ * - ActionPopup auto-builds form fields from action.required_fields
+ *
+ * Sections: Identity → Line Items → Budget → Delivery → Approvals → Notes → Attachments → History → Receiving Log → Audit Trail
+ *
+ * TODO notes for next engineer:
+ * - Edit handler not wired
+ * - Add Note handler not wired
  */
 
 import * as React from 'react';
@@ -24,6 +24,7 @@ import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/featureFlags';
+import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // Sections
 import {
@@ -32,11 +33,13 @@ import {
   AttachmentsSection,
   PartsSection,
   KVSection,
+  HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
   type PartItem,
   type KVItem,
+  type HistoryPeriod,
 } from '../sections';
 
 // ─── Status colour mapping ───
@@ -71,7 +74,7 @@ function formatCurrency(amount: number, currency?: string): string {
 
 export function PurchaseOrderContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -108,6 +111,19 @@ export function PurchaseOrderContent() {
   const editAction = getAction('edit_purchase_order');
   const addAttachmentAction = getAction('add_po_attachment');
   const trackDeliveryAction = getAction('track_po_delivery');
+
+  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
+    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  } | null>(null);
+
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    const fields: ActionPopupField[] = action.required_fields
+      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
+      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
+    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  }
 
   // ── Derived display ──
   const statusLabel = formatLabel(status);
@@ -177,36 +193,24 @@ export function PurchaseOrderContent() {
     await executeAction(primaryActionKey, {});
   }, [primaryActionKey, executeAction]);
 
-  const dropdownItems: DropdownItem[] = [];
-  if (trackDeliveryAction !== null && isApproved) {
-    dropdownItems.push({
-      label: 'Track Delivery',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>,
-      onClick: () => executeAction('track_po_delivery', {}),
-    });
-  }
-  if (editAction !== null && !isFinal) {
-    dropdownItems.push({
-      label: 'Edit',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (addNoteAction !== null) {
-    dropdownItems.push({
-      label: 'Add Note',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (cancelAction !== null && !isFinal) {
-    dropdownItems.push({
-      label: 'Cancel Order',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>,
-      onClick: () => executeAction('cancel_po', {}),
-      danger: true,
-    });
-  }
+  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const DANGER_ACTIONS = new Set(['cancel_po', 'delete_po']);
+  const primaryActionId2 = primaryActionKey;
+
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId2)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => {
+            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
+          },
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
 
   // ── Map section data ──
 
@@ -307,6 +311,17 @@ export function PurchaseOrderContent() {
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
   }));
 
+  // History periods
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
+  }));
+
   const handleAddNote = React.useCallback(() => {}, []);
 
   return (
@@ -394,7 +409,7 @@ export function PurchaseOrderContent() {
         <NotesSection
           notes={noteItems}
           onAddNote={handleAddNote}
-          canAddNote={addNoteAction !== null}
+          canAddNote
         />
       </ScrollReveal>
 
@@ -403,22 +418,28 @@ export function PurchaseOrderContent() {
         <AttachmentsSection
           attachments={attachmentItems}
           onAddFile={() => {}}
-          canAddFile={addAttachmentAction !== null}
+          canAddFile
         />
       </ScrollReveal>
 
-      {/* Receiving Log — moved below audit trail per owner review */}
-      {receivingEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection events={receivingEvents} defaultCollapsed />
-        </ScrollReveal>
-      )}
+      {/* History */}
+      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+
+      {/* Receiving Log */}
+      <ScrollReveal>
+        <AuditTrailSection events={receivingEvents} defaultCollapsed />
+      </ScrollReveal>
 
       {/* Audit Trail */}
-      {auditEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection events={auditEvents} defaultCollapsed />
-        </ScrollReveal>
+      <ScrollReveal>
+        <AuditTrailSection events={auditEvents} defaultCollapsed />
+      </ScrollReveal>
+
+      {actionPopupConfig && (
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+          signatureLevel={actionPopupConfig.signatureLevel}
+          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onClose={() => setActionPopupConfig(null)} />
       )}
     </>
   );

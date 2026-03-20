@@ -1,18 +1,19 @@
 'use client';
 
 /**
- * WarrantyContent — lens-v2 Warranty entity view.
- * Matches lens-warranty.html prototype.
- * Reads all data from useEntityLensContext() — zero props.
+ * WarrantyContent — lens-v2 entity view.
+ * Prototype: public/prototypes/lens-warranty.html
  *
- * Sections (in prototype order):
- * 1. Identity strip: overline, title, context, pills, detail lines (days remaining)
- * 2. Coverage Details (KVSection)
- * 3. Financial Summary (KVSection)
- * 4. Claims History (AuditTrail)
- * 5. Related Equipment (DocRows)
- * 6. Notes
- * 7. Attachments
+ * Data flow:
+ * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
+ * - Actions from availableActions[] → backend /v1/actions/execute
+ * - ActionPopup auto-builds form fields from action.required_fields
+ *
+ * Sections: Identity → Coverage → Financials → Claims → Equipment → Related → History → Audit Trail → Notes → Attachments
+ *
+ * TODO notes for next engineer:
+ * - Upload Document handler not wired
+ * - Add Note handler not wired
  */
 
 import * as React from 'react';
@@ -31,12 +32,15 @@ import {
   AttachmentsSection,
   DocRowsSection,
   KVSection,
+  HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
   type DocRowItem,
   type KVItem,
+  type HistoryPeriod,
 } from '../sections';
+import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // ─── Colour mapping helpers ───
 
@@ -62,7 +66,7 @@ function formatLabel(str: string): string {
 
 export function WarrantyContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -103,6 +107,8 @@ export function WarrantyContent() {
   const claims_history = ((entity?.claims_history ?? payload.claims_history ?? entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
   const related_equipment = ((entity?.related_equipment ?? payload.related_equipment ?? entity?.equipment ?? payload.equipment) as Array<Record<string, unknown>> | undefined) ?? [];
   const related_entities = ((entity?.related_entities ?? payload.related_entities) as Array<Record<string, unknown>> | undefined) ?? [];
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+  const auditTrail = ((entity?.audit_trail ?? payload.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
   const fileClaimAction = getAction('file_warranty_claim');
@@ -110,6 +116,19 @@ export function WarrantyContent() {
   const archiveAction = getAction('archive_warranty');
   const addNoteAction = getAction('add_warranty_note');
   const uploadDocAction = getAction('add_warranty_attachment');
+
+  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
+    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  } | null>(null);
+
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    const fields: ActionPopupField[] = action.required_fields
+      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
+      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
+    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  }
 
   const canFileClaim = fileClaimAction !== null && ['active', 'expiring'].includes(status);
 
@@ -177,36 +196,24 @@ export function WarrantyContent() {
     });
   }, [executeAction, equipment_id]);
 
-  const dropdownItems: DropdownItem[] = [];
-  if (uploadDocAction !== null) {
-    dropdownItems.push({
-      label: 'Upload Document',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (addNoteAction !== null) {
-    dropdownItems.push({
-      label: 'Add Note',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (extendAction !== null) {
-    dropdownItems.push({
-      label: 'Extend Warranty',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
-      onClick: () => executeAction('extend_warranty', {}),
-    });
-  }
-  if (archiveAction !== null) {
-    dropdownItems.push({
-      label: 'Void Warranty',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
-      onClick: () => executeAction('archive_warranty', {}),
-      danger: true,
-    });
-  }
+  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const DANGER_ACTIONS = new Set(['archive_warranty', 'void_warranty']);
+  const primaryActionId = 'file_warranty_claim';
+
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => {
+            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
+          },
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
 
   // ── Map section data ──
 
@@ -235,6 +242,21 @@ export function WarrantyContent() {
     action: (h.action ?? h.description ?? h.event) as string ?? '',
     actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
     timestamp: (h.created_at ?? h.date ?? h.timestamp) as string ?? '',
+  }));
+
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
+  }));
+
+  const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
+    id: (h.id as string) ?? `audit-${i}`,
+    action: (h.action ?? h.description ?? h.event) as string ?? '',
+    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
+    timestamp: (h.created_at ?? h.timestamp) as string ?? '',
   }));
 
   // Related equipment (DocRows)
@@ -338,14 +360,12 @@ export function WarrantyContent() {
       )}
 
       {/* Claims History */}
-      {claimEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection
-            events={claimEvents}
-            title="Claim Log"
-          />
-        </ScrollReveal>
-      )}
+      <ScrollReveal>
+        <AuditTrailSection
+          events={claimEvents}
+          title="Audit Trail"
+        />
+      </ScrollReveal>
 
       {/* Related Equipment */}
       {equipmentItems.length > 0 && (
@@ -361,12 +381,18 @@ export function WarrantyContent() {
         </ScrollReveal>
       )}
 
+      {/* History */}
+      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+
+      {/* Audit Trail */}
+      <ScrollReveal><AuditTrailSection events={auditEvents} defaultCollapsed /></ScrollReveal>
+
       {/* Notes */}
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
           onAddNote={handleAddNote}
-          canAddNote={addNoteAction !== null}
+          canAddNote
         />
       </ScrollReveal>
 
@@ -375,9 +401,16 @@ export function WarrantyContent() {
         <AttachmentsSection
           attachments={attachmentItems}
           onAddFile={() => {}}
-          canAddFile={uploadDocAction !== null}
+          canAddFile
         />
       </ScrollReveal>
+
+      {actionPopupConfig && (
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+          signatureLevel={actionPopupConfig.signatureLevel}
+          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onClose={() => setActionPopupConfig(null)} />
+      )}
     </>
   );
 }

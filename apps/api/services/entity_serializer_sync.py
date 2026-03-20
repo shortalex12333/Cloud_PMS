@@ -166,11 +166,10 @@ def _s_manual(entity_id: str, cur, yacht_id: str) -> Optional[str]:
 
 
 def _s_handover(entity_id: str, cur, yacht_id: str) -> Optional[str]:
-    # handover_exports has NO deleted_at (hard delete only)
     cur.execute("""
         SELECT title, content
         FROM handover_exports
-        WHERE id = %s AND yacht_id = %s
+        WHERE id = %s AND yacht_id = %s AND (deleted_at IS NULL)
     """, (entity_id, yacht_id))
     row = cur.fetchone()
     if not row:
@@ -186,7 +185,7 @@ def _s_certificate(entity_id: str, cur, yacht_id: str) -> Optional[str]:
         SELECT certificate_name, certificate_number, certificate_type,
                issuing_authority, status
         FROM pms_vessel_certificates
-        WHERE id = %s AND yacht_id = %s
+        WHERE id = %s AND yacht_id = %s AND (deleted_at IS NULL)
     """, (entity_id, yacht_id))
     row = cur.fetchone()
     if not row:
@@ -207,7 +206,7 @@ def _s_receiving(entity_id: str, cur, yacht_id: str) -> Optional[str]:
     cur.execute("""
         SELECT vendor_name, vendor_reference, notes, status
         FROM pms_receiving
-        WHERE id = %s AND yacht_id = %s
+        WHERE id = %s AND yacht_id = %s AND (deleted_at IS NULL)
     """, (entity_id, yacht_id))
     row = cur.fetchone()
     if not row:

@@ -1,18 +1,19 @@
 'use client';
 
 /**
- * CertificateContent — lens-v2 Certificate entity view.
- * Matches lens-certificate.html prototype.
- * Reads all data from useEntityLensContext() — zero props.
+ * CertificateContent — lens-v2 entity view.
+ * Prototype: public/prototypes/lens-certificate.html
  *
- * Sections (in prototype order):
- * 1. Identity strip: overline, title, context, pills, detail lines
- * 2. Certificate Details (KVSection — coverage/scope)
- * 3. Related Equipment (DocRows — for machinery certs)
- * 4. Renewal History (AuditTrail)
- * 5. Related Certificates (DocRows with teal cert-link)
- * 6. Notes
- * 7. Attachments
+ * Data flow:
+ * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
+ * - Actions from availableActions[] → backend /v1/actions/execute
+ * - ActionPopup auto-builds form fields from action.required_fields
+ *
+ * Sections: Identity → Holder Certs → Coverage → Equipment → Renewal History → History → Audit Trail → Related Certs → Notes → Attachments
+ *
+ * TODO notes for next engineer:
+ * - Upload Document handler not wired
+ * - Add Note handler not wired
  */
 
 import * as React from 'react';
@@ -31,12 +32,15 @@ import {
   AttachmentsSection,
   DocRowsSection,
   KVSection,
+  HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
   type DocRowItem,
   type KVItem,
+  type HistoryPeriod,
 } from '../sections';
+import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // ─── Colour mapping helpers ───
 
@@ -73,7 +77,7 @@ function formatLabel(str: string): string {
 
 export function CertificateContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -106,6 +110,8 @@ export function CertificateContent() {
   const related_equipment = ((entity?.related_equipment ?? payload.related_equipment ?? entity?.equipment ?? payload.equipment) as Array<Record<string, unknown>> | undefined) ?? [];
   const related_certificates = ((entity?.related_certificates ?? payload.related_certificates) as Array<Record<string, unknown>> | undefined) ?? [];
   const holder_certificates = ((entity?.holder_certificates ?? payload.holder_certificates) as Array<Record<string, unknown>> | undefined) ?? [];
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+  const auditTrail = ((entity?.audit_trail ?? payload.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
   const renewAction = getAction('renew_certificate');
@@ -113,6 +119,19 @@ export function CertificateContent() {
   const archiveAction = getAction('archive_certificate');
   const addNoteAction = getAction('add_certificate_note');
   const uploadDocAction = getAction('link_document_to_certificate');
+
+  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
+    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  } | null>(null);
+
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    const fields: ActionPopupField[] = action.required_fields
+      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
+      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
+    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  }
 
   const isRenewable = renewAction !== null && !['revoked'].includes(status);
 
@@ -189,37 +208,24 @@ export function CertificateContent() {
     await executeAction('renew_certificate', {});
   }, [executeAction]);
 
-  const dropdownItems: DropdownItem[] = [];
-  if (uploadDocAction !== null) {
-    dropdownItems.push({
-      label: 'Upload Document',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (addNoteAction !== null) {
-    dropdownItems.push({
-      label: 'Add Note',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (suspendAction !== null) {
-    dropdownItems.push({
-      label: 'Suspend',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M15 9l-6 6M9 9l6 6" /></svg>,
-      onClick: () => executeAction('suspend_certificate', {}),
-      danger: true,
-    });
-  }
-  if (archiveAction !== null) {
-    dropdownItems.push({
-      label: 'Archive',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>,
-      onClick: () => executeAction('archive_certificate', {}),
-      danger: true,
-    });
-  }
+  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const DANGER_ACTIONS = new Set(['suspend_certificate', 'archive_certificate', 'revoke_certificate']);
+  const primaryActionId = 'renew_certificate';
+
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => {
+            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
+          },
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
 
   // ── Map section data ──
 
@@ -249,6 +255,23 @@ export function CertificateContent() {
     action: (h.action ?? h.description ?? h.label ?? h.event) as string ?? '',
     actor: (h.actor ?? h.authority ?? h.performed_by) as string | undefined,
     timestamp: (h.created_at ?? h.date ?? h.timestamp) as string ?? '',
+  }));
+
+  // History periods
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
+  }));
+
+  // Audit trail events
+  const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
+    id: (h.id as string) ?? `audit-${i}`,
+    action: (h.action ?? h.description ?? h.event) as string ?? '',
+    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
+    timestamp: (h.created_at ?? h.timestamp) as string ?? '',
   }));
 
   // Related certificates (DocRows — teal cert-link)
@@ -354,14 +377,18 @@ export function CertificateContent() {
       )}
 
       {/* Renewal History */}
-      {renewalEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection
-            events={renewalEvents}
-            title="Renewal History"
-          />
-        </ScrollReveal>
-      )}
+      <ScrollReveal>
+        <AuditTrailSection
+          events={renewalEvents}
+          title="Renewal History"
+        />
+      </ScrollReveal>
+
+      {/* History */}
+      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+
+      {/* Audit Trail */}
+      <ScrollReveal><AuditTrailSection events={auditEvents} defaultCollapsed /></ScrollReveal>
 
       {/* Related Certificates */}
       {relatedCertItems.length > 0 && (
@@ -375,7 +402,7 @@ export function CertificateContent() {
         <NotesSection
           notes={noteItems}
           onAddNote={handleAddNote}
-          canAddNote={addNoteAction !== null}
+          canAddNote
         />
       </ScrollReveal>
 
@@ -384,9 +411,16 @@ export function CertificateContent() {
         <AttachmentsSection
           attachments={attachmentItems}
           onAddFile={() => {}}
-          canAddFile={uploadDocAction !== null}
+          canAddFile
         />
       </ScrollReveal>
+
+      {actionPopupConfig && (
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+          signatureLevel={actionPopupConfig.signatureLevel}
+          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onClose={() => setActionPopupConfig(null)} />
+      )}
     </>
   );
 }

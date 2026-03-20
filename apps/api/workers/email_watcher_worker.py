@@ -197,6 +197,11 @@ class EmailWatcherWorker:
 
         logger.info(f"Syncing watcher for user={user_id[:8]}... yacht={yacht_id[:8]}...")
 
+        # Rate limit check — skip this watcher if approaching Microsoft's hourly limit
+        if not await self.rate_limiter.can_make_call(user_id, yacht_id):
+            logger.warning(f"[RateLimit] Skipping watcher user={user_id[:8]}... — rate limit reached")
+            return
+
         # GUARDRAIL: Validate watcher.user_id has a valid token before syncing
         # This prevents the "user_id mismatch" bug where watcher pointed to wrong user
         token_exists = self.supabase.table('auth_microsoft_tokens').select('user_id').eq(
@@ -232,6 +237,9 @@ class EmailWatcherWorker:
             'yacht_id': yacht_id,
             'delta_link_inbox': watcher.get('delta_link_inbox'),
             'delta_link_sent': watcher.get('delta_link_sent'),
+            'delta_link': watcher.get('delta_link'),
+            'sync_version': watcher.get('sync_version', 'folder'),
+            'mailbox_address_hash': watcher.get('mailbox_address_hash', ''),
         }
 
         result = await sync_service.sync_watcher(full_watcher)
@@ -243,9 +251,14 @@ class EmailWatcherWorker:
 
         self.stats['messages_synced'] += total
 
+        # Record API calls for rate limiting
+        api_calls = result.get('api_calls', 0)
+        if api_calls > 0:
+            await self.rate_limiter.record_call(user_id, yacht_id, api_calls)
+
         logger.info(
             f"Synced: inbox={inbox_count}, sent={sent_count}, "
-            f"api_calls={result.get('api_calls', 0)}"
+            f"api_calls={api_calls}"
         )
 
         if result.get('errors'):

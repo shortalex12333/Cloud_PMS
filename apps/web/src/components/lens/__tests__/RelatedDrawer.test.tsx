@@ -212,7 +212,7 @@ describe('RelatedDrawer — loading and error states', () => {
   it('shows FK loading spinner when isLoading=true (signal state irrelevant)', () => {
     renderDrawer({ isLoading: true, signalItems: [SIGNAL_FAULT] });
 
-    expect(screen.getByText('Loading related...')).toBeInTheDocument();
+    expect(screen.getByText('Discovering related...')).toBeInTheDocument();
     expect(screen.queryByTestId('signal-also-related')).not.toBeInTheDocument();
   });
 

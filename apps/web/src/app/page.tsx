@@ -3,11 +3,8 @@
 /**
  * CelesteOS Root Page
  *
- * Search-first landing. Matches elegant.html prototype exactly:
- * - Fixed orb backdrop (3 teal radial-gradient orbs, blur 90px, opacity 0.5)
- * - Glass topbar (40px, brand "CELESTE", vessel name, role badge)
- * - Stage container centered at 14vh, 600px max-width
- * - All inline styles to avoid Tailwind cascade / sub-agent overwrites
+ * Search-first landing. All visual values via CSS tokens in tokens.css.
+ * Dark/light swap is automatic — tokens change, inline styles follow.
  */
 
 import { Suspense } from 'react';
@@ -28,24 +25,21 @@ export default function RootPage() {
     <main style={{ fontFamily: 'var(--font-sans)', background: 'var(--surface-base)', color: 'var(--txt)', height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', fontSize: 13, lineHeight: 1.5, WebkitFontSmoothing: 'antialiased' }}>
 
       {/* ── Orb Backdrop ── */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden', background: 'var(--surface-base)' }}>
-        {/* Orb 1 — top-left, largest */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden', background: 'var(--backdrop-fill)' }}>
         <div style={{
           position: 'absolute', borderRadius: '50%', filter: 'blur(90px)', opacity: 0.5,
           width: '60vw', height: '60vw', top: '-20vw', left: '-8vw',
-          background: 'radial-gradient(circle, rgba(58,124,157,0.50) 0%, transparent 70%)',
+          background: 'var(--orb-1)',
         }} />
-        {/* Orb 2 — bottom-right */}
         <div style={{
           position: 'absolute', borderRadius: '50%', filter: 'blur(90px)', opacity: 0.5,
           width: '45vw', height: '45vw', bottom: '-12vw', right: '-5vw',
-          background: 'radial-gradient(circle, rgba(30,90,130,0.38) 0%, transparent 70%)',
+          background: 'var(--orb-2)',
         }} />
-        {/* Orb 3 — center */}
         <div style={{
           position: 'absolute', borderRadius: '50%', filter: 'blur(90px)', opacity: 0.5,
           width: '35vw', height: '35vw', top: '45%', left: '50%', transform: 'translate(-50%,-50%)',
-          background: 'radial-gradient(circle, rgba(20,60,100,0.22) 0%, transparent 70%)',
+          background: 'var(--orb-3)',
         }} />
       </div>
 
@@ -57,21 +51,21 @@ export default function RootPage() {
           height: 40, flexShrink: 0,
           display: 'flex', alignItems: 'center', padding: '0 20px', gap: 8,
           borderBottom: '1px solid var(--border-faint)',
-          background: 'rgba(12,11,10,0.70)',
+          background: 'var(--topbar-bg)',
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
         }}>
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4A9EC0' }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--topbar-brand-color)' }}>
             Celeste
           </div>
           <div style={{ width: 1, height: 12, background: 'var(--border-sub)', margin: '0 4px' }} />
           <div style={{ fontSize: 11, color: 'var(--txt3)' }}>
-            <em style={{ fontStyle: 'normal', color: 'rgba(74,158,192,0.80)' }}>SY {vesselName}</em>
+            <em style={{ fontStyle: 'normal', color: 'var(--topbar-vessel-em)' }}>SY {vesselName}</em>
           </div>
           <div style={{ flex: 1 }} />
           <div style={{
             fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
             color: 'var(--txt-ghost)',
-            background: 'var(--surface-el)',
+            background: 'var(--topbar-role-bg)',
             border: '1px solid var(--border-sub)',
             borderRadius: 3, padding: '2px 7px',
           }}>

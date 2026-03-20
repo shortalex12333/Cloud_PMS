@@ -10,9 +10,10 @@
  * 2. Official Documents (doc rows)
  * 3. Checklist (progress bar + items)
  * 4. Notes (timeline)
- * 5. History (collapsed by default)
- * 6. Attachments
- * 7. Parts (collapsed by default)
+ * 5. History — prior periods of same WO (collapsed by default)
+ * 6. Audit Trail — user actions: created, edited, closed, etc. (collapsed by default)
+ * 7. Attachments
+ * 8. Parts (collapsed by default)
  */
 
 import * as React from 'react';
@@ -29,12 +30,14 @@ import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
 import {
   NotesSection,
   AuditTrailSection,
+  HistorySection,
   AttachmentsSection,
   PartsSection,
   ChecklistSection,
   DocRowsSection,
   type NoteItem,
   type AuditEvent,
+  type HistoryPeriod,
   type AttachmentItem,
   type PartItem,
   type ChecklistItem,
@@ -78,7 +81,7 @@ function formatLabel(str: string): string {
 
 export function WorkOrderContent() {
   const router = useRouter();
-  const { entity, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // Modal states (simplified — full modals come from production actions/)
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
@@ -103,9 +106,14 @@ export function WorkOrderContent() {
 
   // Section data
   const notes = ((entity?.notes ?? payload.notes) as Array<Record<string, unknown>> | undefined) ?? [];
+  // TODO: Parts data depends on backend view_work_order handler joining pms_wo_parts.
+  // If parts array is empty, verify the backend returns parts for this work order.
   const parts = ((entity?.parts ?? payload.parts) as Array<Record<string, unknown>> | undefined) ?? [];
   const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
-  const history = ((entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
+  // Audit trail = user actions (created, edited, closed, etc.)
+  const auditTrail = ((entity?.audit_trail ?? payload.audit_trail ?? entity?.audit_history ?? payload.audit_history) as Array<Record<string, unknown>> | undefined) ?? [];
+  // History = prior periods of the same entity (year-grouped)
+  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
   const checklist = ((entity?.checklist ?? payload.checklist ?? entity?.checklist_items ?? payload.checklist_items) as Array<Record<string, unknown>> | undefined) ?? [];
   const documents = ((entity?.documents ?? payload.documents ?? entity?.official_documents ?? payload.official_documents) as Array<Record<string, unknown>> | undefined) ?? [];
 
@@ -118,6 +126,7 @@ export function WorkOrderContent() {
   const addHoursAction = getAction('add_wo_hours');
   const assignAction = getAction('reassign_work_order');
   const archiveAction = getAction('archive_work_order');
+  const addAttachmentAction = getAction('add_wo_photo');
 
   const canStart = startAction !== null && ['draft', 'planned', 'open'].includes(status);
   const isCloseable = !['completed', 'closed', 'cancelled'].includes(status);
@@ -179,43 +188,26 @@ export function WorkOrderContent() {
     }
   }, [canStart, executeAction]);
 
-  const dropdownItems: DropdownItem[] = [];
-  if (updateAction !== null && isCloseable) {
-    dropdownItems.push({
-      label: 'Edit Details',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (addNoteAction !== null) {
-    dropdownItems.push({
-      label: 'Add Note',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
-      onClick: () => setAddNoteOpen(true),
-    });
-  }
-  if (addHoursAction !== null && status === 'in_progress') {
-    dropdownItems.push({
-      label: 'Log Hours',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (assignAction !== null) {
-    dropdownItems.push({
-      label: 'Reassign',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>,
-      onClick: () => {},
-    });
-  }
-  if (archiveAction !== null) {
-    dropdownItems.push({
-      label: 'Archive',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>,
-      onClick: () => {},
-      danger: true,
-    });
-  }
+  // Build dropdown from ALL available actions (except the primary action)
+  // Actions with special handlers get wired; everything else calls executeAction directly
+  const SPECIAL_HANDLERS: Record<string, () => void> = {
+    add_wo_note: () => setAddNoteOpen(true),
+    add_wo_part: () => setAddPartOpen(true),
+  };
+  const DANGER_ACTIONS = new Set(['archive_work_order', 'cancel_work_order', 'delete_work_order']);
+
+  const primaryActionId = canStart ? 'start_work_order' : 'close_work_order';
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryActionId)
+    .map((a) => ({
+      label: a.label,
+      onClick: SPECIAL_HANDLERS[a.action_id]
+        ? SPECIAL_HANDLERS[a.action_id]
+        : () => executeAction(a.action_id),
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+    }));
 
   // ── Map section data ──
   const noteItems: NoteItem[] = notes.map((n, i) => ({
@@ -225,11 +217,19 @@ export function WorkOrderContent() {
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
 
-  const auditEvents: AuditEvent[] = history.map((h, i) => ({
+  const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
     id: (h.id as string) ?? `audit-${i}`,
     action: (h.action ?? h.description ?? h.event) as string ?? '',
     actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
+  }));
+
+  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+    id: (p.id as string) ?? `period-${i}`,
+    year: (p.year ?? p.period_year) as string ?? '',
+    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
+    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
   const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
@@ -335,23 +335,26 @@ export function WorkOrderContent() {
         <NotesSection
           notes={noteItems}
           onAddNote={handleAddNote}
-          canAddNote={addNoteAction !== null}
+          canAddNote
         />
       </ScrollReveal>
 
-      {/* History */}
-      {auditEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection events={auditEvents} defaultCollapsed />
-        </ScrollReveal>
-      )}
+      {/* History — prior periods of the same work order */}
+      <ScrollReveal>
+        <HistorySection periods={historyPeriods} defaultCollapsed />
+      </ScrollReveal>
+
+      {/* Audit Trail — user actions on this entity */}
+      <ScrollReveal>
+        <AuditTrailSection events={auditEvents} defaultCollapsed />
+      </ScrollReveal>
 
       {/* Attachments */}
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
-          canAddFile={false}
+          onAddFile={() => {/* TODO: wire to file upload modal */}}
+          canAddFile
         />
       </ScrollReveal>
 
@@ -360,7 +363,7 @@ export function WorkOrderContent() {
         <PartsSection
           parts={partItems}
           onAddPart={handleAddPart}
-          canAddPart={addPartAction !== null}
+          canAddPart
           defaultCollapsed
         />
       </ScrollReveal>

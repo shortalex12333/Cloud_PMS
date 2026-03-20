@@ -14,7 +14,7 @@
 # Logs: /tmp/celeste_watchdog.log
 # =============================================================================
 
-PROJECT_DIR="/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS"
+PROJECT_DIR="/Users/celeste7/Documents/Cloud_PMS"
 LOG_FILE="/tmp/celeste_watchdog.log"
 WORKERS=("cache-listener" "projection-worker" "embedding-worker" "email-watcher")
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
@@ -53,7 +53,7 @@ not_running_count=0
 issues=()
 
 for worker in "${WORKERS[@]}"; do
-    container="back_button_cloud_pms-${worker}-1"
+    container="cloud_pms-${worker}-1"
 
     # Get container status
     status=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null)

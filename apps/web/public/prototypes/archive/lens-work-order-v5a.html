@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Work Order · v5a — Logbook</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   CSS VARIABLES — Design System
+   ═══════════════════════════════════════════════════════ */
+:root {
+  /* Surfaces */
+  --surface-base: #0c0b0a;
+  --surface: #181614;
+  --surface-el: #1e1b18;
+
+  /* Text */
+  --txt: #e8e4df;
+  --txt2: #b5afa6;
+  --txt3: #7a7570;
+  --txt-ghost: #4a4540;
+
+  /* Affordance */
+  --teal: #5AABCC;
+  --teal-bg: rgba(90, 171, 204, 0.12);
+  --teal-border: rgba(90, 171, 204, 0.25);
+
+  /* Status — NEVER teal */
+  --amber: #C4893B;
+  --amber-bg: rgba(196, 137, 59, 0.14);
+  --red: #C0503A;
+  --red-bg: rgba(192, 80, 58, 0.14);
+  --green: #4CAF81;
+  --green-bg: rgba(76, 175, 129, 0.14);
+
+  /* Borders — asymmetric physics */
+  --border-top: rgba(255,255,255,0.09);
+  --border-right: rgba(255,255,255,0.05);
+  --border-bottom: rgba(255,255,255,0.02);
+  --border-left: rgba(255,255,255,0.05);
+  --border-sub: rgba(255,255,255,0.06);
+
+  /* Fonts */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* Layout */
+  --panel-width: 720px;
+  --sheet-radius: 8px;
+  --sheet-gap: 16px;
+  --sheet-pad: 20px;
+  --accent-width: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--surface-base);
+  color: var(--txt);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PANEL CONTAINER
+   ═══════════════════════════════════════════════════════ */
+.panel {
+  max-width: var(--panel-width);
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PAGE LABEL
+   ═══════════════════════════════════════════════════════ */
+.page-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--txt3);
+  margin-bottom: 4px;
+}
+.page-desc {
+  font-size: 12px;
+  color: var(--txt-ghost);
+  margin-bottom: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOGBOOK SHEET — Elevated surface with asymmetric borders
+   ═══════════════════════════════════════════════════════ */
+.sheet {
+  background: var(--surface-el);
+  border-radius: var(--sheet-radius);
+  border-top: 1px solid var(--border-top);
+  border-right: 1px solid var(--border-right);
+  border-bottom: 1px solid var(--border-bottom);
+  border-left: 1px solid var(--border-left);
+  margin-bottom: var(--sheet-gap);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Left accent edge */
+.sheet::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--accent-width);
+  border-radius: var(--sheet-radius) 0 0 var(--sheet-radius);
+}
+.sheet[data-accent="teal"]::before { background: var(--teal); opacity: 0.55; }
+.sheet[data-accent="ghost"]::before { background: rgba(255,255,255,0.08); }
+
+/* Sheet header */
+.sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px var(--sheet-pad) 14px calc(var(--sheet-pad) + var(--accent-width));
+  cursor: pointer;
+  user-select: none;
+  min-height: 44px;
+}
+.sheet-header:hover { background: rgba(255,255,255,0.02); }
+
+.sheet-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--txt3);
+  flex-shrink: 0;
+}
+.sheet-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--txt3);
+}
+.sheet-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--txt3);
+  background: rgba(255,255,255,0.06);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-family: var(--font-mono);
+}
+.sheet-chevron {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  color: var(--txt-ghost);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.sheet.collapsed .sheet-chevron { transform: rotate(-90deg); }
+
+/* Sheet content */
+.sheet-body {
+  padding: 0 var(--sheet-pad) var(--sheet-pad) calc(var(--sheet-pad) + var(--accent-width));
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
+}
+.sheet.collapsed .sheet-body {
+  max-height: 0 !important;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL REVEAL
+   ═══════════════════════════════════════════════════════ */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════════════════
+   IDENTITY STRIP
+   ═══════════════════════════════════════════════════════ */
+.identity {
+  background: var(--surface-el);
+  border-radius: var(--sheet-radius);
+  border-top: 1px solid var(--border-top);
+  border-right: 1px solid var(--border-right);
+  border-bottom: 1px solid var(--border-bottom);
+  border-left: 1px solid var(--border-left);
+  padding: var(--sheet-pad);
+  margin-bottom: var(--sheet-gap);
+}
+
+.identity-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.identity-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--txt);
+  line-height: 1.3;
+}
+.identity-title .wo-num {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.identity-subtitle {
+  font-size: 13px;
+  color: var(--txt2);
+  margin-bottom: 10px;
+}
+
+/* Status pills */
+.pills {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pill--amber { color: var(--amber); background: var(--amber-bg); }
+.pill--red { color: var(--red); background: var(--red-bg); }
+.pill--green { color: var(--green); background: var(--green-bg); }
+
+/* Meta line */
+.meta-line {
+  font-size: 13px;
+  color: var(--txt2);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.meta-line .sep { color: var(--txt-ghost); margin: 0 4px; }
+.meta-line .teal-link {
+  color: var(--teal);
+  cursor: pointer;
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.meta-line .teal-link:hover { text-decoration: underline; }
+.meta-line .mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--txt3);
+}
+
+/* Description */
+.desc-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--txt3);
+  margin-bottom: 6px;
+}
+.desc-text {
+  font-size: 14px;
+  color: var(--txt2);
+  line-height: 1.65;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SPLIT BUTTON — Mark Complete
+   ═══════════════════════════════════════════════════════ */
+.split-btn-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.split-btn {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.split-main, .split-toggle {
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+  min-height: 44px;
+}
+.split-main {
+  padding: 0 14px;
+  background: rgba(255,255,255,0.06);
+  color: var(--txt-ghost);
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.split-toggle {
+  padding: 0 10px;
+  background: rgba(255,255,255,0.06);
+  color: var(--txt-ghost);
+  cursor: pointer;
+}
+.split-toggle:hover {
+  background: rgba(255,255,255,0.10);
+  color: var(--txt3);
+}
+
+/* Tooltip */
+.split-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: var(--surface);
+  color: var(--txt2);
+  font-size: 12px;
+  font-weight: 400;
+  padding: 6px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border-sub);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+}
+.split-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 16px;
+  border: 5px solid transparent;
+  border-top-color: var(--surface);
+}
+.split-main:hover + .split-toggle ~ .split-tooltip,
+.split-btn-wrap:hover .split-tooltip { display: block; }
+
+/* Dropdown */
+.split-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--surface-el);
+  border: 1px solid var(--border-sub);
+  border-radius: 8px;
+  min-width: 180px;
+  padding: 4px;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.split-dropdown.open { display: block; }
+.split-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--txt2);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  border-radius: 5px;
+  cursor: pointer;
+  min-height: 44px;
+}
+.split-dropdown button:hover { background: rgba(255,255,255,0.05); color: var(--txt); }
+.split-dropdown button svg {
+  width: 16px; height: 16px; flex-shrink: 0; color: var(--txt3);
+}
+.split-dropdown .danger { color: var(--red); }
+.split-dropdown .danger svg { color: var(--red); }
+.split-dropdown .dd-sep {
+  height: 1px;
+  background: var(--border-sub);
+  margin: 4px 8px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SOP BANNER
+   ═══════════════════════════════════════════════════════ */
+.sop-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--teal-bg);
+  border: 1px solid var(--teal-border);
+  border-radius: var(--sheet-radius);
+  padding: 14px var(--sheet-pad);
+  margin-bottom: var(--sheet-gap);
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.15s;
+}
+.sop-banner:hover { background: rgba(90, 171, 204, 0.18); }
+.sop-banner svg { width: 18px; height: 18px; color: var(--teal); flex-shrink: 0; }
+.sop-banner .sop-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--teal);
+}
+.sop-banner .sop-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--txt3);
+  margin-left: 4px;
+}
+.sop-banner .sop-chevron {
+  margin-left: auto;
+  width: 16px; height: 16px;
+  color: var(--teal);
+  opacity: 0.6;
+}
+
+/* ═══════════════════════════════════════════════════════
+   OFFICIAL DOCUMENTS
+   ═══════════════════════════════════════════════════════ */
+.doc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-sub);
+  cursor: pointer;
+  min-height: 44px;
+}
+.doc-row:last-child { border-bottom: none; }
+.doc-row:hover .doc-name { text-decoration: underline; }
+.doc-icon { width: 16px; height: 16px; color: var(--teal); flex-shrink: 0; }
+.doc-info { flex: 1; min-width: 0; }
+.doc-name { font-size: 13px; font-weight: 500; color: var(--teal); }
+.doc-meta {
+  font-size: 11px;
+  color: var(--txt3);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+.doc-chevron { width: 14px; height: 14px; color: var(--txt-ghost); flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════
+   CHECKLIST
+   ═══════════════════════════════════════════════════════ */
+.progress-bar-wrap {
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  height: 4px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-sub);
+  min-height: 44px;
+}
+.check-item:last-child { border-bottom: none; }
+
+.check-mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.check-mark.done {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.check-mark.done svg { width: 12px; height: 12px; }
+.check-mark.pending {
+  border: 2px solid var(--txt-ghost);
+  cursor: pointer;
+}
+.check-mark.pending:hover { border-color: var(--teal); }
+
+.check-content { flex: 1; min-width: 0; }
+.check-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--txt2);
+}
+.check-label.done-text {
+  text-decoration: line-through;
+  color: var(--txt3);
+}
+.check-who {
+  font-size: 11px;
+  color: var(--txt3);
+  font-family: var(--font-mono);
+  margin-top: 3px;
+}
+.check-undo {
+  font-size: 11px;
+  color: var(--teal);
+  cursor: pointer;
+  margin-left: 8px;
+  font-family: var(--font-sans);
+}
+.check-undo:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════
+   NOTES
+   ═══════════════════════════════════════════════════════ */
+.note-row {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-sub);
+}
+.note-row:last-child { border-bottom: none; }
+.note-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.note-author { font-size: 13px; font-weight: 500; color: var(--txt); }
+.note-time {
+  font-size: 11px;
+  color: var(--txt3);
+  font-family: var(--font-mono);
+}
+.note-text {
+  font-size: 14px;
+  color: var(--txt2);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.note-text.expanded {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+.note-show-more {
+  font-size: 12px;
+  color: var(--teal);
+  cursor: pointer;
+  margin-top: 4px;
+  display: none;
+}
+.note-show-more:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════
+   HISTORY — Prior Periods
+   ═══════════════════════════════════════════════════════ */
+.period-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-sub);
+}
+.period-row:last-child { border-bottom: none; }
+.period-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-height: 44px;
+}
+.period-header:hover .period-year { color: var(--txt); }
+.period-year {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--txt2);
+  transition: color 0.15s;
+}
+.period-label {
+  font-size: 12px;
+  color: var(--txt3);
+}
+.period-summary {
+  font-size: 11px;
+  color: var(--txt-ghost);
+  font-family: var(--font-mono);
+  margin-left: auto;
+}
+.period-chevron {
+  width: 14px; height: 14px;
+  color: var(--txt-ghost);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.period-row.collapsed .period-chevron { transform: rotate(-90deg); }
+.period-detail {
+  padding: 10px 0 4px 28px;
+  font-size: 13px;
+  color: var(--txt3);
+  line-height: 1.6;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+}
+.period-row.collapsed .period-detail {
+  max-height: 0 !important;
+  opacity: 0;
+  padding: 0 0 0 28px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ATTACHMENTS
+   ═══════════════════════════════════════════════════════ */
+.attach-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-sub);
+}
+.attach-row:last-child { border-bottom: none; }
+
+.attach-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(90,171,204,0.2), rgba(196,137,59,0.15));
+  border: 1px solid var(--border-sub);
+}
+.attach-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-sub);
+}
+.attach-icon svg { width: 18px; height: 18px; color: var(--txt3); }
+
+.attach-info { flex: 1; min-width: 0; }
+.attach-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--txt);
+}
+.attach-caption {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--txt3);
+  margin-top: 2px;
+  line-height: 1.5;
+}
+.attach-meta {
+  font-size: 11px;
+  color: var(--txt-ghost);
+  font-family: var(--font-mono);
+  margin-top: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PARTS
+   ═══════════════════════════════════════════════════════ */
+.part-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-sub);
+  min-height: 44px;
+}
+.part-row:last-child { border-bottom: none; }
+.part-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--teal);
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+.part-name:hover { text-decoration: underline; }
+.part-qty {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--txt2);
+  white-space: nowrap;
+}
+.part-stock {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--txt3);
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILITY
+   ═══════════════════════════════════════════════════════ */
+.divider { height: 1px; background: var(--border-sub); margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- Page label -->
+  <div class="page-label">V5A — Logbook Sheets</div>
+  <div class="page-desc">Each section is a distinct elevated sheet with 16px base-colour gaps between them.</div>
+
+  <!-- ═══════════════════════════════════════════════════
+       IDENTITY STRIP
+       ═══════════════════════════════════════════════════ -->
+  <div class="identity">
+    <div class="identity-top">
+      <div class="identity-title"><span class="wo-num">WO-1042</span> — Emergency Valve Replacement</div>
+
+      <!-- Split button: Mark Complete (disabled) -->
+      <div class="split-btn-wrap">
+        <div class="split-btn">
+          <button class="split-main" disabled>Mark Complete</button>
+          <button class="split-toggle" onclick="toggleDropdown(event)" aria-label="More actions">&#9662;</button>
+          <div class="split-tooltip">Complete all checklist items first</div>
+        </div>
+        <div class="split-dropdown" id="splitDropdown">
+          <button onclick="closeSplitDropdown()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit Details
+          </button>
+          <button onclick="closeSplitDropdown()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            Add Note
+          </button>
+          <button onclick="closeSplitDropdown()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Log Hours
+          </button>
+          <button onclick="closeSplitDropdown()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            Reassign
+          </button>
+          <div class="dd-sep"></div>
+          <button class="danger" onclick="closeSplitDropdown()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            Archive
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="identity-subtitle">Engine Room &middot; Assigned to R. Chen</div>
+
+    <div class="pills">
+      <span class="pill pill--amber">In Progress</span>
+      <span class="pill pill--red">Critical</span>
+    </div>
+
+    <div class="meta-line">
+      <span>Equipment:</span>
+      <a class="teal-link" href="#">E-007 Main Engine</a>
+      <span class="sep">&middot;</span>
+      <span>Due:</span>
+      <span class="mono">17 Mar 2026</span>
+    </div>
+
+    <div class="desc-label">Description</div>
+    <div class="desc-text">Emergency isolation valve on port fuel line requires replacement. Temporary bypass installed — monitor for leaks every 2 hours. Part ETA 17 Mar.</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       SOP BANNER
+       ═══════════════════════════════════════════════════ -->
+  <div class="sop-banner reveal">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <span class="sop-text">Valve Replacement Procedure <span class="sop-code">(SOP-ENG-042)</span></span>
+    <svg class="sop-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       OFFICIAL DOCUMENTS
+       ═══════════════════════════════════════════════════ -->
+  <div class="sheet reveal" data-accent="teal">
+    <div class="sheet-header" onclick="toggleSheet(this)">
+      <svg class="sheet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span class="sheet-title">Official Documents</span>
+      <span class="sheet-badge">2</span>
+      <svg class="sheet-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="sheet-body">
+      <div class="doc-row">
+        <svg class="doc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <div class="doc-info">
+          <div class="doc-name">ISM-F042 Fuel System Isolation</div>
+          <div class="doc-meta">Rev 3 · Eff 01 Jan 2026</div>
+        </div>
+        <svg class="doc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="doc-row">
+        <svg class="doc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <div class="doc-info">
+          <div class="doc-name">Class Certificate Engine Room Fire Safety</div>
+          <div class="doc-meta">Lloyd's · Exp 15 Sep 2027</div>
+        </div>
+        <svg class="doc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       CHECKLIST (expanded by default)
+       ═══════════════════════════════════════════════════ -->
+  <div class="sheet reveal" data-accent="teal">
+    <div class="sheet-header" onclick="toggleSheet(this)">
+      <svg class="sheet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      <span class="sheet-title">Checklist</span>
+      <span class="sheet-badge">3 / 5</span>
+      <svg class="sheet-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="sheet-body">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" style="width: 60%;"></div>
+      </div>
+
+      <!-- Done -->
+      <div class="check-item">
+        <div class="check-mark done">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="check-content">
+          <div class="check-label done-text">Isolate fuel supply</div>
+          <div class="check-who">R. Chen &middot; 14 Mar 10:30 <span class="check-undo">Undo</span></div>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-mark done">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="check-content">
+          <div class="check-label done-text">Install bypass line</div>
+          <div class="check-who">R. Chen &middot; 14 Mar 16:15 <span class="check-undo">Undo</span></div>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-mark done">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="check-content">
+          <div class="check-label done-text">Order replacement valve 774-B</div>
+          <div class="check-who">J. Morrison &middot; 15 Mar 10:15 <span class="check-undo">Undo</span></div>
+        </div>
+      </div>
+
+      <!-- Pending -->
+      <div class="check-item">
+        <div class="check-mark pending"></div>
+        <div class="check-content">
+          <div class="check-label">Replace valve</div>
+        </div>
+      </div>
+
+      <div class="check-item">
+        <div class="check-mark pending"></div>
+        <div class="check-content">
+          <div class="check-label">Pressure test 2.5 bar for 30 min</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       NOTES (expanded by default)
+       ═══════════════════════════════════════════════════ -->
+  <div class="sheet reveal" data-accent="teal">
+    <div class="sheet-header" onclick="toggleSheet(this)">
+      <svg class="sheet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span class="sheet-title">Notes</span>
+      <span class="sheet-badge">3</span>
+      <svg class="sheet-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="sheet-body">
+      <div class="note-row">
+        <div class="note-meta">
+          <span class="note-author">R. Chen</span>
+          <span class="note-time">16 Mar 14:32</span>
+        </div>
+        <p class="note-text">Bypass valve installed. Monitoring pressure gauge every 2 hours. No leaks detected so far.</p>
+        <div class="note-show-more" onclick="toggleNoteExpand(this)">Show more</div>
+      </div>
+      <div class="note-row">
+        <div class="note-meta">
+          <span class="note-author">J. Morrison</span>
+          <span class="note-time">15 Mar 10:15</span>
+        </div>
+        <p class="note-text">Part 774-B ordered via PO-89. ETA 17 Mar from supplier.</p>
+        <div class="note-show-more" onclick="toggleNoteExpand(this)">Show more</div>
+      </div>
+      <div class="note-row">
+        <div class="note-meta">
+          <span class="note-author">R. Chen</span>
+          <span class="note-time">14 Mar 16:45</span>
+        </div>
+        <p class="note-text">Initial inspection complete. Valve seat corroded beyond acceptable limits.</p>
+        <div class="note-show-more" onclick="toggleNoteExpand(this)">Show more</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       HISTORY — PRIOR PERIODS (collapsed by default)
+       ═══════════════════════════════════════════════════ -->
+  <div class="sheet reveal collapsed" data-accent="ghost">
+    <div class="sheet-header" onclick="toggleSheet(this)">
+      <svg class="sheet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="sheet-title">Prior Periods</span>
+      <span class="sheet-badge">2</span>
+      <svg class="sheet-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="sheet-body">
+      <div class="period-row collapsed" onclick="togglePeriod(this)">
+        <div class="period-header">
+          <span class="period-year">2026</span>
+          <span class="period-label">Current period</span>
+          <span class="period-summary">3 notes &middot; 2 uploads &middot; 12.5 hrs</span>
+          <svg class="period-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="period-detail">
+          3 notes by R. Chen and J. Morrison. 2 file uploads (valve photo, procedure PDF). 12.5 hours logged across 4 sessions.
+        </div>
+      </div>
+      <div class="period-row collapsed" onclick="togglePeriod(this)">
+        <div class="period-header">
+          <span class="period-year">2024</span>
+          <span class="period-label">Previous service</span>
+          <span class="period-summary">R. Chen &middot; 1 upload &middot; 2 notes &middot; 6 hrs</span>
+          <svg class="period-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="period-detail">
+          Previous service by R. Chen. 2 notes documenting routine valve inspection and gasket replacement. 1 upload (inspection report). 6 hours logged.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       ATTACHMENTS (expanded by default)
+       ═══════════════════════════════════════════════════ -->
+  <div class="sheet reveal" data-accent="teal">
+    <div class="sheet-header" onclick="toggleSheet(this)">
+      <svg class="sheet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+      <span class="sheet-title">Attachments</span>
+      <span class="sheet-badge">2</span>
+      <svg class="sheet-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="sheet-body">
+      <div class="attach-row">
+        <div class="attach-thumb"></div>
+        <div class="attach-info">
+          <div class="attach-name">valve_inspection_photo.jpg</div>
+          <div class="attach-caption">Leak visible bottom-right near fuel line junction</div>
+          <div class="attach-meta">R. Chen &middot; 2.4 MB</div>
+        </div>
+      </div>
+      <div class="attach-row">
+        <div class="attach-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="attach-info">
+          <div class="attach-name">WO-1042_procedure.pdf</div>
+          <div class="attach-meta">156 KB</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       PARTS (collapsed by default)
+       ═══════════════════════════════════════════════════ -->
+  <div class="sheet reveal collapsed" data-accent="teal">
+    <div class="sheet-header" onclick="toggleSheet(this)">
+      <svg class="sheet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      <span class="sheet-title">Parts</span>
+      <span class="sheet-badge">2</span>
+      <svg class="sheet-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="sheet-body">
+      <div class="part-row">
+        <span class="part-name" onclick="">774-B Impeller Kit</span>
+        <span class="part-qty">&times; 2</span>
+        <span class="part-stock">Stock: 6</span>
+      </div>
+      <div class="part-row">
+        <span class="part-name" onclick="">ORG-114 O-Ring Set</span>
+        <span class="part-qty">&times; 1</span>
+        <span class="part-stock">Stock: 13</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /panel -->
+
+<!-- ═══════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════ -->
+<script>
+/* ---- Sheet collapse/expand ---- */
+function toggleSheet(headerEl) {
+  const sheet = headerEl.closest('.sheet');
+  const body = sheet.querySelector('.sheet-body');
+
+  if (sheet.classList.contains('collapsed')) {
+    // Expand: measure natural height, then animate
+    sheet.classList.remove('collapsed');
+    body.style.maxHeight = body.scrollHeight + 'px';
+    // After transition, remove inline max-height so content can reflow
+    body.addEventListener('transitionend', function handler() {
+      body.style.maxHeight = '';
+      body.removeEventListener('transitionend', handler);
+    });
+  } else {
+    // Collapse: set explicit height first, then collapse
+    body.style.maxHeight = body.scrollHeight + 'px';
+    // Force reflow
+    body.offsetHeight;
+    sheet.classList.add('collapsed');
+  }
+}
+
+/* ---- Split dropdown ---- */
+function toggleDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('splitDropdown');
+  dd.classList.toggle('open');
+}
+function closeSplitDropdown() {
+  document.getElementById('splitDropdown').classList.remove('open');
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.split-btn-wrap')) {
+    closeSplitDropdown();
+  }
+});
+
+/* ---- Period expand/collapse ---- */
+function togglePeriod(rowEl) {
+  const detail = rowEl.querySelector('.period-detail');
+  if (rowEl.classList.contains('collapsed')) {
+    rowEl.classList.remove('collapsed');
+    detail.style.maxHeight = detail.scrollHeight + 'px';
+    detail.addEventListener('transitionend', function handler() {
+      detail.style.maxHeight = '';
+      detail.removeEventListener('transitionend', handler);
+    });
+  } else {
+    detail.style.maxHeight = detail.scrollHeight + 'px';
+    detail.offsetHeight;
+    rowEl.classList.add('collapsed');
+  }
+}
+
+/* ---- Note show more ---- */
+function toggleNoteExpand(btn) {
+  const text = btn.previousElementSibling;
+  if (text.classList.contains('expanded')) {
+    text.classList.remove('expanded');
+    btn.textContent = 'Show more';
+  } else {
+    text.classList.add('expanded');
+    btn.textContent = 'Show less';
+  }
+}
+
+/* Check if note text is clamped and show "Show more" if needed */
+function checkNoteTruncation() {
+  document.querySelectorAll('.note-text').forEach(function(el) {
+    const btn = el.nextElementSibling;
+    if (btn && btn.classList.contains('note-show-more')) {
+      if (el.scrollHeight > el.clientHeight + 2) {
+        btn.style.display = 'block';
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+  });
+}
+
+/* ---- Scroll reveal ---- */
+function initReveal() {
+  const observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(function(el) {
+    observer.observe(el);
+  });
+}
+
+/* ---- Init ---- */
+document.addEventListener('DOMContentLoaded', function() {
+  initReveal();
+  checkNoteTruncation();
+  window.addEventListener('resize', checkNoteTruncation);
+
+  // Set initial max-height for expanded sheets so transitions work from the start
+  document.querySelectorAll('.sheet:not(.collapsed) .sheet-body').forEach(function(body) {
+    // Leave as auto — no inline style needed for expanded state
+  });
+});
+</script>
+
+</body>
+</html>

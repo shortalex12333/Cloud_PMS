@@ -2934,6 +2934,7 @@ async def save_attachment(
 async def sync_now(
     auth: dict = Depends(get_authenticated_user),
     full_resync: bool = False,
+    upgrade_to_mailbox: bool = False,
 ):
     """
     Manual sync trigger.
@@ -2945,6 +2946,9 @@ async def sync_now(
     Args:
         full_resync: If True, clears delta links to force full sync from scratch.
                      Use this to fetch emails that were missed by incremental sync.
+        upgrade_to_mailbox: If True, switches watcher to mailbox-level delta sync.
+                            Clears all delta links and runs a full mailbox sync.
+                            Use with full_resync=True for best results.
 
     Requires service role or admin.
     """
@@ -2980,7 +2984,23 @@ async def sync_now(
             supabase.table('email_watchers').update({
                 'delta_link_inbox': None,
                 'delta_link_sent': None,
+                'delta_link': None,
             }).eq('id', watcher['id']).execute()
+            watcher['delta_link_inbox'] = None
+            watcher['delta_link_sent'] = None
+            watcher['delta_link'] = None
+
+        # If upgrading to mailbox-level sync
+        if upgrade_to_mailbox:
+            logger.info(f"[email/sync/now] Upgrading watcher to mailbox-level delta sync")
+            supabase.table('email_watchers').update({
+                'sync_version': 'mailbox',
+                'delta_link': None,
+                'delta_link_inbox': None,
+                'delta_link_sent': None,
+            }).eq('id', watcher['id']).execute()
+            watcher['sync_version'] = 'mailbox'
+            watcher['delta_link'] = None
             watcher['delta_link_inbox'] = None
             watcher['delta_link_sent'] = None
 
@@ -4334,7 +4354,7 @@ async def get_worker_status(
     try:
         # Get watcher status - use limit(1) instead of maybe_single() to avoid 204 issues
         watcher_result = supabase.table('email_watchers').select(
-            'sync_status, last_sync_at, subscription_expires_at, last_sync_error, delta_link_inbox, updated_at'
+            'sync_status, last_sync_at, subscription_expires_at, last_sync_error, delta_link_inbox, sync_version, updated_at'
         ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq(
             'provider', 'microsoft_graph'
         ).limit(1).execute()
@@ -4354,6 +4374,7 @@ async def get_worker_status(
         return {
             'connected': sync_status not in ['disconnected', 'pending'],
             'sync_status': sync_status,
+            'sync_version': watcher.get('sync_version', 'folder'),
             'last_sync_at': watcher.get('last_sync_at'),
             'subscription_expires_at': watcher.get('subscription_expires_at'),
             'last_error': watcher.get('last_sync_error'),

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Warranty · v1</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+/* ═══════════════════════════════════════════════════════
+   ENTITY-LINK (warranty cross-references)
+   ═══════════════════════════════════════════════════════ */
+.entity-link {
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.entity-link:hover { text-decoration-color: var(--mark); }
+
+/* Days remaining countdown */
+.days-remaining {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--surface-el);
+  border: 1px solid var(--border-sub);
+}
+.days-number {
+  font-family: var(--font-mono); font-size: 32px; font-weight: 600;
+  line-height: 1;
+}
+.days-number.green { color: var(--green); }
+.days-number.amber { color: var(--amber); }
+.days-number.red { color: var(--red); }
+.days-meta {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.days-label {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+}
+.days-sublabel {
+  font-size: 11px; color: var(--txt3); font-family: var(--font-mono);
+}
+
+/* Override detail-label min-width for warranty layout */
+.detail-label { min-width: 110px; }
+
+/* ═══════════════════════════════════════════════════════
+   KEY-VALUE TABLE (Coverage Details)
+   ═══════════════════════════════════════════════════════ */
+.kv-table { width: 100%; }
+.kv-row {
+  display: flex; gap: 16px;
+  padding: 10px 0; min-height: 44px;
+  border-bottom: 1px solid var(--border-faint);
+  align-items: flex-start;
+}
+.kv-row:last-child { border-bottom: none; }
+.kv-label {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  min-width: 140px; flex-shrink: 0;
+  padding-top: 2px;
+}
+.kv-value {
+  font-size: 13px; color: var(--txt); line-height: 1.5;
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CLAIM FINANCIALS TABLE
+   ═══════════════════════════════════════════════════════ */
+.fin-table { width: 100%; }
+.fin-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; min-height: 36px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.fin-row:last-child { border-bottom: none; }
+.fin-row.fin-total {
+  border-top: 1px solid var(--border-sub);
+  border-bottom: none;
+  padding-top: 14px;
+  margin-top: 4px;
+}
+.fin-label {
+  font-size: 13px; color: var(--txt2);
+}
+.fin-label.total-label {
+  font-size: 13px; font-weight: 600; color: var(--txt);
+}
+.fin-value {
+  font-family: var(--font-mono); font-size: 13px; color: var(--txt);
+}
+.fin-value.total-value {
+  font-weight: 600; font-size: 14px;
+}
+.fin-value.approved {
+  color: var(--green);
+}
+
+/* ═══════════════════════════════════════════════════════
+   CLAIM LOG — audit trail extensions
+   ═══════════════════════════════════════════════════════ */
+.audit-body { flex: 1; min-width: 0; }
+.audit-action .entity-link {
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.audit-action .entity-link:hover { text-decoration-color: var(--mark); }
+.audit-action .amount {
+  font-family: var(--font-mono); font-weight: 500; color: var(--green);
+}
+.audit-ts {
+  font-family: var(--font-mono); font-size: 10px; color: var(--txt3);
+  margin-top: 2px;
+}
+.audit-attach {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 4px; font-size: 11px; color: var(--mark);
+  cursor: pointer;
+}
+.audit-attach svg { width: 12px; height: 12px; }
+
+/* ═══════════════════════════════════════════════════════
+   RELATED ENTITY ROWS
+   ═══════════════════════════════════════════════════════ */
+.related-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 6px;
+  cursor: pointer; transition: background 60ms; min-height: 44px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.related-row:last-child { border-bottom: none; }
+.related-row:hover { background: var(--surface-hover); }
+.related-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--teal-bg);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.related-icon svg { width: 14px; height: 14px; color: var(--mark); }
+.related-info { flex: 1; min-width: 0; }
+.related-name {
+  font-size: 13px; font-weight: 500; color: var(--mark);
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.related-name:hover { text-decoration-color: var(--mark); }
+.related-name .rid { font-family: var(--font-mono); font-size: 12px; }
+.related-detail { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+.related-type-tag {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 2px 8px; border-radius: 4px;
+  background: var(--neutral-bg); color: var(--txt3);
+  border: 1px solid var(--border-sub);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   EQUIPMENT ROWS
+   ═══════════════════════════════════════════════════════ */
+.equip-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 6px;
+  cursor: pointer; transition: background 60ms; min-height: 44px;
+}
+.equip-row:hover { background: var(--surface-hover); }
+.equip-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--teal-bg);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.equip-icon svg { width: 14px; height: 14px; color: var(--mark); }
+.equip-info { flex: 1; min-width: 0; }
+.equip-name {
+  font-size: 13px; font-weight: 500; color: var(--mark);
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.equip-name:hover { text-decoration-color: var(--mark); }
+.equip-name .eid { font-family: var(--font-mono); font-size: 12px; }
+.equip-detail { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+.equip-status-tag {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 2px 8px; border-radius: 4px;
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green-border);
+  flex-shrink: 0;
+}
+
+/* Override doc-size (flex-shrink) */
+.doc-size {
+  font-family: var(--font-mono); font-size: 11px; color: var(--txt-ghost);
+  flex-shrink: 0;
+}
+
+/* Override attach-thumb (single style, no .img/.doc variants) */
+.attach-thumb {
+  background: var(--surface-el);
+}
+.attach-thumb svg { width: 18px; height: 18px; color: var(--txt3); }
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- ═══ LENS HEADER ═══ -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Warranty</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn" onclick="toggleTheme()">
+        <svg class="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="hdr-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Related
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ SCROLLABLE BODY ═══ -->
+  <div class="lens-body">
+
+    <!-- ─── IDENTITY STRIP ─── -->
+    <div class="identity">
+      <!-- Top row: overline left, split button right -->
+      <div class="identity-top-row">
+        <div class="identity-overline">WRN-412</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main">Submit Claim</button>
+            <button class="split-toggle" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+              View Claim Status
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload Document
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              Link Equipment
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Add Note
+            </button>
+            <div class="dd-sep"></div>
+            <button class="dd-item danger" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Void Warranty
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1 class="identity-title">Caterpillar Main Engine Warranty</h1>
+
+      <!-- Context line -->
+      <p class="identity-context">Caterpillar Marine &middot; SV Andromeda (60m)</p>
+
+      <!-- Status pills -->
+      <div class="pills">
+        <span class="pill pill-green"><span class="dot"></span> Active</span>
+        <span class="pill pill-green"><span class="dot"></span> 247 days remaining</span>
+      </div>
+
+      <!-- Days remaining countdown -->
+      <div class="days-remaining">
+        <span class="days-number green">247</span>
+        <div class="days-meta">
+          <span class="days-label">Days Remaining</span>
+          <span class="days-sublabel">Expires 19 Nov 2026</span>
+        </div>
+      </div>
+
+      <!-- Detail lines -->
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Equipment</span>
+          <span class="entity-link">E-007 Main Engine Caterpillar 3512C</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Supplier</span>
+          <span>Caterpillar Marine</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Start Date</span>
+          <span class="mono-val">22 Jun 2019</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Expiry Date</span>
+          <span class="mono-val">19 Nov 2026</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Coverage</span>
+          <span>Full Parts &amp; Labour</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Agreement No</span>
+          <span class="mono-val">CSA-2019-AM-4821</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Managed By</span>
+          <span>Chief Engineer</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTIONS
+         ═══════════════════════════════════════════════ -->
+
+    <!-- COVERAGE DETAILS -->
+    <div class="section reveal" id="sec-coverage">
+      <div class="sec-hdr" onclick="toggleSec('sec-coverage')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="sec-title">Coverage Details</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="kv-table">
+          <div class="kv-row">
+            <span class="kv-label">Type</span>
+            <span class="kv-value">Extended Service Agreement</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">Duration</span>
+            <span class="kv-value">8 years from installation</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">Components Covered</span>
+            <span class="kv-value">Internal engine components, turbocharger, injectors, ECU, fuel system, cooling system</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">Exclusions</span>
+            <span class="kv-value">Consumables (filters, belts, fluids), wear items (seals, gaskets), operator negligence</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">Labour</span>
+            <span class="kv-value">Included &mdash; Caterpillar-authorised technicians</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">Parts</span>
+            <span class="kv-value">Genuine Caterpillar parts only</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">Response Time</span>
+            <span class="kv-value">48 hours from claim submission</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-label">Max Claim Value</span>
+            <span class="kv-value">Unlimited (within agreement period)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLAIM FINANCIALS -->
+    <div class="section reveal" id="sec-financials">
+      <div class="sec-hdr" onclick="toggleSec('sec-financials')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <span class="sec-title">Claim Financials</span>
+        <span class="sec-count">CLM-2025-003</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="fin-table">
+          <div class="fin-row">
+            <span class="fin-label">Labour</span>
+            <span class="fin-value">&euro;1,200.00</span>
+          </div>
+          <div class="fin-row">
+            <span class="fin-label">Parts</span>
+            <span class="fin-value">&euro;3,450.00</span>
+          </div>
+          <div class="fin-row">
+            <span class="fin-label">Travel / Shipping</span>
+            <span class="fin-value">&euro;280.00</span>
+          </div>
+          <div class="fin-row fin-total">
+            <span class="fin-label total-label">Total Claimed</span>
+            <span class="fin-value total-value">&euro;4,930.00</span>
+          </div>
+          <div class="fin-row">
+            <span class="fin-label">Approved Amount</span>
+            <span class="fin-value approved">&euro;4,200.00</span>
+          </div>
+          <div class="fin-row">
+            <span class="fin-label">Adjustment Reason</span>
+            <span class="kv-value" style="font-size:13px">Travel costs partially excluded per clause 4.2 (non-EU port surcharge)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLAIM LOG — audit trail of the warranty claim lifecycle -->
+    <div class="section reveal" id="sec-claims">
+      <div class="sec-hdr" onclick="toggleSec('sec-claims')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sec-title">Claim Log</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add Entry</button>
+        <span class="sec-count">CLM-2025-003</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-body">
+            <div class="audit-action"><span class="crew">Caterpillar Marine</span> approved claim &mdash; <span class="amount">&euro;4,200.00</span>. Travel costs partially excluded per clause 4.2</div>
+            <div class="audit-ts">25 Aug 2025 &middot; 14:20</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-body">
+            <div class="audit-action"><span class="crew">Chief Engineer</span> completed repair. Work order closed &mdash; <span class="entity-link">WO-1547</span></div>
+            <div class="audit-ts">25 Aug 2025 &middot; 11:00</div>
+            <div class="audit-attach">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              turbocharger_post_repair.jpg
+            </div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-body">
+            <div class="audit-action">Caterpillar technician on-site, commenced bearing replacement</div>
+            <div class="audit-ts">20 Aug 2025 &middot; 08:30</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-body">
+            <div class="audit-action"><span class="crew">1st Officer</span> emailed Caterpillar Monaco office &mdash; warranty notification sent</div>
+            <div class="audit-ts">18 Aug 2025 &middot; 16:45</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-body">
+            <div class="audit-action"><span class="crew">1st Officer</span> filed claim <span style="font-family:var(--font-mono);font-size:12px">CLM-2025-003</span> &mdash; turbocharger bearing replacement</div>
+            <div class="audit-ts">18 Aug 2025 &middot; 15:30</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-body">
+            <div class="audit-action">Parts ordered &mdash; <span class="entity-link">PO-3291</span> Caterpillar turbocharger bearing kit</div>
+            <div class="audit-ts">16 Aug 2025 &middot; 09:15</div>
+          </div>
+        </div>
+        <div class="audit-event">
+          <div class="audit-dot"></div>
+          <div class="audit-body">
+            <div class="audit-action"><span class="crew">Chief Engineer</span> logged fault &mdash; <span class="entity-link">FLT-0088</span> Turbocharger bearing vibration detected</div>
+            <div class="audit-ts">14 Aug 2025 &middot; 11:20</div>
+            <div class="audit-attach">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              turbocharger_damage_photo.jpg
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RELATED ENTITIES -->
+    <div class="section reveal" id="sec-related">
+      <div class="sec-hdr" onclick="toggleSec('sec-related')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        <span class="sec-title">Related Entities</span>
+        <span class="sec-count">5</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <!-- Equipment -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-name"><span class="rid">E-007</span> Main Engine Caterpillar 3512C (Port)</div>
+            <div class="related-detail">Engine Room &middot; Operational</div>
+          </div>
+          <span class="related-type-tag">Equipment</span>
+        </div>
+        <!-- Fault -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-name"><span class="rid">FLT-0088</span> Turbocharger bearing vibration</div>
+            <div class="related-detail">Logged <span style="font-family:var(--font-mono);font-size:11px">14 Aug 2025</span> &middot; Resolved</div>
+          </div>
+          <span class="related-type-tag">Fault</span>
+        </div>
+        <!-- Work Order -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-name"><span class="rid">WO-1547</span> Replace turbocharger bearings</div>
+            <div class="related-detail">Completed <span style="font-family:var(--font-mono);font-size:11px">25 Aug 2025</span> &middot; Chief Engineer</div>
+          </div>
+          <span class="related-type-tag">Work Order</span>
+        </div>
+        <!-- Purchase Order -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-name"><span class="rid">PO-3291</span> Caterpillar turbocharger bearing kit</div>
+            <div class="related-detail">Ordered <span style="font-family:var(--font-mono);font-size:11px">16 Aug 2025</span> &middot; &euro;3,450.00</div>
+          </div>
+          <span class="related-type-tag">Purchase Order</span>
+        </div>
+        <!-- Certificate -->
+        <div class="related-row">
+          <div class="related-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          </div>
+          <div class="related-info">
+            <div class="related-name"><span class="rid">CERT-0412</span> Caterpillar ESA Certificate</div>
+            <div class="related-detail">Issued <span style="font-family:var(--font-mono);font-size:11px">22 Jun 2019</span> &middot; Valid</div>
+          </div>
+          <span class="related-type-tag">Certificate</span>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- NOTES -->
+    <div class="section collapsed reveal" id="sec-notes">
+      <div class="sec-hdr" onclick="toggleSec('sec-notes')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="sec-title">Notes</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">Chief Engineer</span>
+            <span class="note-time">25 Aug 2025</span>
+          </div>
+          <p class="note-body">Caterpillar Marine technician attended 20-25 Aug for turbocharger work. All covered under warranty. No cost to vessel. Next scheduled inspection due Feb 2026.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">1st Officer</span>
+            <span class="note-time">18 Aug 2025</span>
+          </div>
+          <p class="note-body">Warranty claim filed for turbocharger bearing vibration. Caterpillar regional office in Monaco confirmed coverage. Technician dispatched from Antibes depot.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /lens-body -->
+
+</div><!-- /panel -->
+
+<script src="lens-base.js"></script>
+
+</body>
+</html>

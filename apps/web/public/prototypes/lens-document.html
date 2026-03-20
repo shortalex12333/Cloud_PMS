@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Document · v1</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+/* =========================================================
+   DOCUMENT LENS — entity-specific styles
+   ========================================================= */
+
+/* detail-label width override for document */
+.detail-label { min-width: 110px; }
+
+/* preview-area height override for document (taller than base) */
+.preview-area { min-height: 680px; }
+
+/* preview-link transition override */
+.preview-link { transition: text-decoration-color 60ms; }
+
+/* Rendered PDF page — selectable text for cmd+f */
+.pdf-page {
+  width: 100%; max-width: 560px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-sub);
+  border-radius: 4px;
+  padding: 40px 36px;
+  display: flex; flex-direction: column; gap: 14px;
+  user-select: text;
+}
+.pdf-title {
+  font-size: 16px; font-weight: 700; text-align: center;
+  color: var(--txt); letter-spacing: -0.01em;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-sub);
+}
+.pdf-subtitle {
+  font-size: 11px; font-weight: 500; text-align: center;
+  color: var(--txt3); text-transform: uppercase;
+  letter-spacing: 0.06em; margin-top: -8px;
+}
+.pdf-meta-line {
+  font-size: 11px; color: var(--txt3); text-align: center;
+  font-family: var(--font-mono);
+}
+.pdf-warn {
+  font-size: 11px; font-weight: 600; color: var(--red);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 6px 10px; border-radius: 4px;
+  background: var(--red-bg); border: 1px solid var(--red-border);
+  text-align: center; margin-top: 4px;
+}
+.pdf-section-head {
+  font-size: 13px; font-weight: 600; color: var(--txt);
+  margin-top: 8px;
+}
+.pdf-body {
+  font-size: 12px; color: var(--txt2); line-height: 1.7;
+}
+
+/* OCR banner override — document uses a centered, bordered variant */
+.ocr-banner {
+  font-style: italic;
+  border: 1px solid var(--border-faint);
+  text-align: center;
+}
+
+/* =========================================================
+   VERSION BANNER — shown when viewing old revision
+   ========================================================= */
+.version-banner {
+  display: none; /* hidden by default — shown via JS when viewing old rev */
+  align-items: center; justify-content: center; gap: 8px;
+  padding: 8px 16px; border-radius: 6px;
+  background: var(--red-bg); border: 1px solid var(--red-border);
+  color: var(--red); font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  cursor: pointer; margin-bottom: 16px;
+  transition: background 60ms;
+}
+.version-banner:hover { background: rgba(192,80,58,0.16); }
+.version-banner.active { display: flex; }
+.version-banner svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* =========================================================
+   REVISION HISTORY
+   ========================================================= */
+.rev-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-faint);
+  cursor: pointer; transition: background 60ms;
+  border-radius: 4px; padding: 12px 8px; margin: 0 -8px;
+}
+.rev-item:last-child { border-bottom: none; }
+.rev-item:hover { background: var(--surface-hover); }
+.rev-hdr {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 4px;
+}
+.rev-num {
+  font-family: var(--font-mono); font-size: 12px;
+  font-weight: 600; color: var(--txt);
+}
+.rev-date {
+  font-family: var(--font-mono); font-size: 11px; color: var(--txt3);
+}
+.rev-author {
+  font-size: 13px; font-weight: 500; color: var(--txt2);
+}
+.rev-sep { color: var(--txt-ghost); font-size: 11px; }
+.rev-note {
+  font-size: 13px; font-weight: 400; color: var(--txt2);
+  line-height: 1.5; padding-left: 0;
+}
+.rev-tag {
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 2px 6px; border-radius: 3px;
+}
+.rev-tag.current { color: var(--mark); background: var(--teal-bg); }
+.rev-tag.superseded { color: var(--txt3); background: var(--neutral-bg); }
+
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- ========= LENS HEADER ========= -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Document</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn" onclick="toggleTheme()" title="Toggle light/dark mode">
+        <svg class="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ========= SCROLLABLE BODY ========= -->
+  <div class="lens-body">
+
+    <!-- ---- IDENTITY STRIP ---- -->
+    <div class="identity">
+      <!-- Version banner — hidden unless viewing old revision -->
+      <div class="version-banner" id="version-banner" onclick="document.getElementById('sec-revisions').scrollIntoView({behavior:'smooth'}); document.getElementById('sec-revisions').classList.remove('collapsed');">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Not Latest Version — Click to View Revisions
+      </div>
+
+      <!-- Top row: overline left, split button right -->
+      <div class="identity-top-row">
+        <div class="identity-overline">ISM-F042</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </button>
+            <button class="split-toggle" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Open in New Tab
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload New Revision
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Add Note
+            </button>
+            <div class="dd-sep"></div>
+            <button class="dd-item danger" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Archive
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1 class="identity-title">Fuel System Isolation Procedure</h1>
+
+      <!-- Context -->
+      <p class="identity-context">Engineering · SV Andromeda</p>
+
+      <!-- Status pills -->
+      <div class="pills">
+        <span class="pill pill-green"><span class="dot"></span> Rev. 3 &middot; Effective 01 Jan 2026</span>
+        <span class="pill pill-neutral"><span class="dot"></span> PDF &middot; 1.8 MB &middot; 6 pages</span>
+      </div>
+
+      <!-- Key-value detail lines -->
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Filename</span>
+          <span class="mono-val">ISM-F042_fuel_isolation_rev3.pdf</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Author</span>
+          <span>Chief Engineer</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Supersedes</span>
+          <span>Rev. 2 &middot; <span class="mono-val">15 Jun 2024</span></span>
+        </div>
+      </div>
+
+      <!-- OCR banner — stated once -->
+      <div class="ocr-banner">Fields auto-filled from scanned document</div>
+    </div>
+
+    <!-- ====== SECTION: DOCUMENT PREVIEW (the main event) ====== -->
+    <div class="section reveal" id="sec-preview">
+      <div class="sec-hdr" onclick="toggleSec('sec-preview')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="sec-title">Document Preview</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="preview-area">
+          <!-- Original document badge -->
+          <div class="preview-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Original Document — Unmodified
+          </div>
+
+          <!-- Rendered PDF — selectable text, cmd+f works -->
+          <div class="pdf-page">
+            <div class="pdf-title">Fuel System Isolation Procedure</div>
+            <div class="pdf-subtitle">ISM Safety Procedure</div>
+            <div class="pdf-meta-line">ISM-F042 &middot; Rev. 3 &middot; Effective 01 Jan 2026</div>
+            <div class="pdf-meta-line">SV Andromeda &middot; 60m &middot; Engineering Department</div>
+
+            <div class="pdf-warn">Safety Critical — Read Before Commencing Work</div>
+
+            <div class="pdf-section-head">1. Scope &amp; Application</div>
+            <p class="pdf-body">This procedure applies to all fuel system isolation operations on main engine and generator circuits aboard SV Andromeda. It covers emergency and planned isolation scenarios for both port and starboard fuel trains.</p>
+
+            <div class="pdf-section-head">2. Pre-Isolation Safety Checks</div>
+            <p class="pdf-body">Before commencing isolation, confirm: (a) all running machinery on affected circuit has been shut down, (b) bridge has been notified and acknowledges reduced propulsion capability, (c) fire watch is stationed at isolation point, (d) portable extinguisher is within 3m of work area.</p>
+
+            <div class="pdf-section-head">3. Isolation Valve Sequence</div>
+            <p class="pdf-body">Close valves in the following order: V-101 main supply, V-102 return line, V-103 day tank feed. Wait 60 seconds between each closure to allow pressure equalisation. Verify zero pressure on gauge PG-F04 before proceeding to bypass installation.</p>
+
+            <div class="pdf-section-head">4. Bypass Installation</div>
+            <p class="pdf-body">Install temporary bypass spool piece between flanges F-12A and F-12B. Torque bolts to 45 Nm in star pattern. Conduct 30-minute pressure test at 4 bar before returning system to service. Record test result in engine room log.</p>
+          </div>
+        </div>
+        <div class="preview-actions">
+          <span style="font-size: 11px; color: var(--txt3); font-family: var(--font-mono);">Page 1 of 6</span>
+          <span style="color: var(--txt-ghost);">&middot;</span>
+          <span style="font-size: 11px; color: var(--txt3);">Use &#8984;F to search</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== SECTION: REVISION HISTORY ====== -->
+    <div class="section reveal" id="sec-revisions">
+      <div class="sec-hdr" onclick="toggleSec('sec-revisions')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sec-title">Revision History</span>
+        <button class="sec-action" onclick="event.stopPropagation()">Upload New Revision</button>
+        <span class="sec-count">3</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="rev-item" onclick="viewRevision(3)">
+          <div class="rev-hdr">
+            <span class="rev-num">Rev. 3</span>
+            <span class="rev-sep">&mdash;</span>
+            <span class="rev-date">01 Jan 2026</span>
+            <span class="rev-sep">&mdash;</span>
+            <span class="rev-author">Chief Engineer</span>
+            <span class="rev-tag current">Current</span>
+          </div>
+          <p class="rev-note">Updated pressure test duration from 15 to 30 min per class surveyor recommendation. Added bypass installation diagram.</p>
+        </div>
+        <div class="rev-item" onclick="viewRevision(2)">
+          <div class="rev-hdr">
+            <span class="rev-num">Rev. 2</span>
+            <span class="rev-sep">&mdash;</span>
+            <span class="rev-date">15 Jun 2024</span>
+            <span class="rev-sep">&mdash;</span>
+            <span class="rev-author">Chief Engineer</span>
+            <span class="rev-tag superseded">Superseded</span>
+          </div>
+          <p class="rev-note">Added emergency bypass installation steps for port and starboard circuits</p>
+        </div>
+        <div class="rev-item" onclick="viewRevision(1)">
+          <div class="rev-hdr">
+            <span class="rev-num">Rev. 1</span>
+            <span class="rev-sep">&mdash;</span>
+            <span class="rev-date">01 Mar 2023</span>
+            <span class="rev-sep">&mdash;</span>
+            <span class="rev-author">Captain</span>
+            <span class="rev-tag superseded">Superseded</span>
+          </div>
+          <p class="rev-note">Initial release</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /lens-body -->
+
+</div><!-- /panel -->
+
+<script src="lens-base.js"></script>
+<script>
+// View revision — shows version banner for old revisions
+function viewRevision(rev) {
+  var banner = document.getElementById('version-banner');
+  if (rev < 3) {
+    banner.classList.add('active');
+  } else {
+    banner.classList.remove('active');
+  }
+}
+</script>
+
+</body>
+</html>

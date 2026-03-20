@@ -35,11 +35,25 @@ class EmailSyncService:
     # bodyPreview is needed for extraction trigger and search indexing
     MESSAGE_SELECT = (
         "id,conversationId,subject,from,toRecipients,ccRecipients,"
-        "receivedDateTime,sentDateTime,hasAttachments,internetMessageId,webLink,bodyPreview"
+        "receivedDateTime,sentDateTime,hasAttachments,internetMessageId,webLink,bodyPreview,"
+        "parentFolderId"
     )
 
     # Attachment fields
     ATTACHMENT_SELECT = "id,name,contentType,size"
+
+    # Folders to skip during mailbox-level sync (not relevant for PMS)
+    SKIP_FOLDERS = {'drafts', 'junkemail', 'deleteditems', 'outbox'}
+
+    # Map Microsoft wellKnownName to DB-friendly folder names
+    FOLDER_NAME_MAP = {
+        'inbox': 'inbox',
+        'sentitems': 'sent',
+        'archive': 'archive',
+        'deleteditems': 'deleted',
+        'drafts': 'drafts',
+        'junkemail': 'junk',
+    }
 
     def __init__(self, supabase_client, graph_access_token: str):
         """
@@ -60,14 +74,21 @@ class EmailSyncService:
         max_messages: int = 100
     ) -> Dict[str, Any]:
         """
-        Sync both inbox and sent for a watcher.
+        Sync a watcher's mailbox. Dispatches to folder-level or mailbox-level
+        sync based on the watcher's sync_version field.
+        """
+        if watcher.get('sync_version') == 'mailbox':
+            return await self._sync_watcher_mailbox(watcher, max_messages)
+        return await self._sync_watcher_folder(watcher, max_messages)
 
-        Args:
-            watcher: Watcher record from email_watchers
-            max_messages: Maximum messages to sync per folder
-
-        Returns:
-            Sync result with stats
+    async def _sync_watcher_folder(
+        self,
+        watcher: Dict[str, Any],
+        max_messages: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Original folder-level sync (inbox + sent separately).
+        Used when sync_version='folder' (default).
         """
         user_id = watcher['user_id']
         yacht_id = watcher['yacht_id']
@@ -134,6 +155,199 @@ class EmailSyncService:
         await self._update_watcher_sync_status(watcher['id'], result)
 
         return result
+
+    async def _sync_watcher_mailbox(
+        self,
+        watcher: Dict[str, Any],
+        max_messages: int = 100
+    ) -> Dict[str, Any]:
+        """
+        All-folder delta sync with move detection.
+        Used when sync_version='mailbox'.
+
+        Iterates every non-skip folder via per-folder delta queries
+        (Graph v1.0 doesn't support /me/messages/delta).
+        Uses _process_message_v2() which detects folder moves via
+        parent_folder_id and un-deletes messages that reappear.
+
+        Delta links stored as JSON dict in email_watchers.delta_link:
+          {"folder_guid_1": "https://...deltaLink...", "folder_guid_2": "..."}
+        """
+        import json as _json
+
+        user_id = watcher['user_id']
+        yacht_id = watcher['yacht_id']
+        watcher_id = watcher.get('id')
+        mailbox_address_hash = watcher.get('mailbox_address_hash', '')
+
+        result = {
+            'user_id': user_id,
+            'yacht_id': yacht_id,
+            'synced': 0,
+            'skipped': 0,
+            'deleted': 0,
+            'moved': 0,
+            'api_calls': 0,
+            'errors': [],
+        }
+
+        # Check rate limit
+        if not await self.rate_limiter.can_make_call(user_id, yacht_id):
+            logger.warning(f"[EmailSync] Rate limited for user {user_id}")
+            result['skipped_reason'] = 'rate_limit'
+            return result
+
+        # Build folder GUID → wellKnownName map
+        try:
+            folder_map = await self._get_folder_map()
+        except Exception as e:
+            logger.error(f"[EmailSync] Failed to fetch folder map: {e}")
+            result['errors'].append(f"folder_map: {str(e)}")
+            return result
+
+        result['api_calls'] += 1
+
+        # Load per-folder delta links from JSON blob
+        raw_delta = watcher.get('delta_link') or '{}'
+        try:
+            delta_links = _json.loads(raw_delta) if isinstance(raw_delta, str) else {}
+        except _json.JSONDecodeError:
+            delta_links = {}
+
+        # Filter to folders we care about
+        sync_folders = {
+            fid: name for fid, name in folder_map.items()
+            if name.lower() not in self.SKIP_FOLDERS
+        }
+
+        logger.info(f"[EmailSync] Mailbox sync: {len(sync_folders)} folders to sync")
+
+        # Iterate each folder
+        for folder_id, well_known in sync_folders.items():
+            if not await self.rate_limiter.can_make_call(user_id, yacht_id):
+                logger.warning(f"[EmailSync] Rate limited mid-sync, stopping")
+                break
+
+            folder_name = self.FOLDER_NAME_MAP.get(well_known.lower(), well_known or 'other')
+            folder_delta = delta_links.get(folder_id)
+
+            # Build URL
+            if folder_delta:
+                url = folder_delta
+            else:
+                url = f"{self.GRAPH_BASE_URL}/me/mailFolders/{folder_id}/messages/delta"
+                url += f"?$select={self.MESSAGE_SELECT}&$top=50"
+
+            folder_processed = 0
+
+            try:
+                async with httpx.AsyncClient() as client:
+                    while url and folder_processed < max_messages:
+                        response = await client.get(
+                            url,
+                            headers={'Authorization': f'Bearer {self.access_token}'},
+                            timeout=30.0
+                        )
+                        result['api_calls'] += 1
+                        await self.rate_limiter.record_call(user_id, yacht_id)
+
+                        if response.status_code != 200:
+                            logger.error(
+                                f"[EmailSync] Graph API error on folder {folder_name}: "
+                                f"{response.status_code} {response.text[:200]}"
+                            )
+                            result['errors'].append(f"{folder_name}: {response.status_code}")
+                            break
+
+                        data = response.json()
+                        messages = data.get('value', [])
+
+                        for msg in messages:
+                            if folder_processed >= max_messages:
+                                break
+
+                            # Handle @removed
+                            if '@removed' in msg:
+                                await self._mark_message_deleted(yacht_id, msg)
+                                result['deleted'] += 1
+                                folder_processed += 1
+                                continue
+
+                            # Determine direction from envelope
+                            from_addr = msg.get('from', {}).get('emailAddress', {}).get('address', '')
+                            from_hash = self._hash_email(from_addr)
+                            direction = 'outbound' if from_hash == mailbox_address_hash else 'inbound'
+
+                            thread_id = await self._process_message_v2(
+                                yacht_id=yacht_id,
+                                watcher_id=watcher_id,
+                                msg=msg,
+                                folder=folder_name,
+                                direction=direction,
+                                parent_folder_id=folder_id,
+                            )
+                            if thread_id:
+                                result['synced'] += 1
+                            folder_processed += 1
+
+                        # Next page or delta link
+                        if '@odata.nextLink' in data:
+                            url = data['@odata.nextLink']
+                        elif '@odata.deltaLink' in data:
+                            delta_links[folder_id] = data['@odata.deltaLink']
+                            url = None
+                        else:
+                            url = None
+
+            except Exception as e:
+                logger.error(f"[EmailSync] Error syncing folder {folder_name}: {e}")
+                result['errors'].append(f"{folder_name}: {str(e)}")
+
+        # Persist all delta links as JSON
+        self.supabase.table('email_watchers').update({
+            'delta_link': _json.dumps(delta_links)
+        }).eq('id', watcher_id).execute()
+
+        # Update watcher last_sync_at
+        await self._update_watcher_sync_status(watcher_id, result)
+
+        logger.info(
+            f"[EmailSync] Mailbox sync complete: synced={result['synced']}, "
+            f"deleted={result['deleted']}, moved={result['moved']}, "
+            f"skipped={result['skipped']}, api_calls={result['api_calls']}"
+        )
+
+        return result
+
+    async def _get_folder_map(self) -> Dict[str, str]:
+        """
+        Fetch folder GUID → wellKnownName map from Microsoft Graph.
+
+        Returns dict like: {'AAMk...==': 'inbox', 'AAMk...==': 'sentitems', ...}
+        Unknown folders map to their displayName.
+        """
+        url = f"{self.GRAPH_BASE_URL}/me/mailFolders?$top=100"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url,
+                headers={'Authorization': f'Bearer {self.access_token}'},
+                timeout=15.0
+            )
+
+            if response.status_code != 200:
+                raise Exception(f"Failed to fetch mail folders: {response.status_code} {response.text[:300]}")
+
+            data = response.json()
+            folder_map = {}
+            for folder in data.get('value', []):
+                folder_id = folder.get('id')
+                # Prefer wellKnownName, fall back to displayName
+                # Normalize: "Deleted Items" → "deleteditems" to match SKIP_FOLDERS
+                name = folder.get('wellKnownName') or folder.get('displayName', '')
+                folder_map[folder_id] = name.lower().replace(' ', '')
+
+            return folder_map
 
     async def sync_folder(
         self,
@@ -301,6 +515,172 @@ class EmailSyncService:
         except Exception as e:
             logger.error(f"[EmailSync] Error processing message: {e}")
             return None
+
+    async def _process_message_v2(
+        self,
+        yacht_id: str,
+        watcher_id: str,
+        msg: Dict[str, Any],
+        folder: str,
+        direction: str,
+        parent_folder_id: str,
+    ) -> Optional[str]:
+        """
+        Process a message for mailbox-level sync (v2).
+
+        Unlike _process_message(), direction and folder are passed in
+        (determined from envelope and folder map), and parent_folder_id
+        is stored for move detection.
+        """
+        try:
+            conversation_id = msg.get('conversationId')
+            if not conversation_id:
+                return None
+
+            # Hash email addresses
+            from_addr = msg.get('from', {}).get('emailAddress', {}).get('address', '')
+            from_hash = self._hash_email(from_addr)
+
+            to_hashes = [
+                self._hash_email(r.get('emailAddress', {}).get('address', ''))
+                for r in msg.get('toRecipients', [])
+            ]
+
+            cc_hashes = [
+                self._hash_email(r.get('emailAddress', {}).get('address', ''))
+                for r in msg.get('ccRecipients', [])
+            ]
+
+            all_participants = list(set([from_hash] + to_hashes + cc_hashes))
+
+            # Upsert thread (same as v1)
+            thread_id = await self._upsert_thread(
+                yacht_id=yacht_id,
+                watcher_id=watcher_id,
+                conversation_id=conversation_id,
+                subject=msg.get('subject', ''),
+                participant_hashes=all_participants,
+                has_attachments=msg.get('hasAttachments', False),
+                received_at=msg.get('receivedDateTime'),
+                sent_at=msg.get('sentDateTime'),
+                direction=direction,
+            )
+
+            # Check if message already exists (for move detection)
+            provider_message_id = msg.get('id')
+            existing = self.supabase.table('email_messages').select(
+                'id, parent_folder_id, is_deleted'
+            ).eq(
+                'provider_message_id', provider_message_id
+            ).eq('watcher_id', watcher_id).execute()
+
+            if existing.data:
+                existing_msg = existing.data[0]
+                update_data = {}
+
+                # Folder move detection
+                if existing_msg.get('parent_folder_id') != parent_folder_id:
+                    update_data['parent_folder_id'] = parent_folder_id
+                    update_data['folder'] = folder
+                    logger.info(
+                        f"[EmailSync] Message {provider_message_id[:8]}... moved to {folder}"
+                    )
+
+                # Un-delete if message reappears (was moved, not truly deleted)
+                if existing_msg.get('is_deleted'):
+                    update_data['is_deleted'] = False
+                    update_data['deleted_at'] = None
+
+                if update_data:
+                    self.supabase.table('email_messages').update(
+                        update_data
+                    ).eq('id', existing_msg['id']).execute()
+
+                return thread_id
+
+            # New message — insert
+            await self._insert_message_v2(
+                yacht_id=yacht_id,
+                watcher_id=watcher_id,
+                thread_id=thread_id,
+                msg=msg,
+                folder=folder,
+                direction=direction,
+                from_hash=from_hash,
+                to_hashes=to_hashes,
+                cc_hashes=cc_hashes,
+                parent_folder_id=parent_folder_id,
+            )
+
+            return thread_id
+
+        except Exception as e:
+            logger.error(f"[EmailSync] Error processing message v2: {e}")
+            return None
+
+    async def _insert_message_v2(
+        self,
+        yacht_id: str,
+        watcher_id: str,
+        thread_id: str,
+        msg: Dict[str, Any],
+        folder: str,
+        direction: str,
+        from_hash: str,
+        to_hashes: List[str],
+        cc_hashes: List[str],
+        parent_folder_id: str,
+    ) -> Optional[str]:
+        """
+        Insert email message for mailbox-level sync (v2).
+
+        Same as _insert_message() but with parent_folder_id and
+        direction/folder passed explicitly instead of inferred.
+        """
+        provider_message_id = msg.get('id')
+
+        # Get attachment metadata (not content)
+        attachments = []
+        if msg.get('hasAttachments'):
+            attachments = await self._fetch_attachment_metadata(provider_message_id)
+
+        subject = msg.get('subject', '')
+        from_display_name = msg.get('from', {}).get('emailAddress', {}).get('name', '')
+
+        # Extract body preview (truncate to 200 chars for SOC-2 compliance)
+        body_preview = msg.get('bodyPreview', '') or ''
+        preview_text = body_preview[:200] if body_preview else None
+
+        message_data = {
+            'yacht_id': yacht_id,
+            'watcher_id': watcher_id,
+            'thread_id': thread_id,
+            'provider_message_id': provider_message_id,
+            'internet_message_id': msg.get('internetMessageId'),
+            'subject': subject,
+            'from_address_hash': from_hash,
+            'from_display_name': from_display_name,
+            'to_addresses_hash': to_hashes,
+            'cc_addresses_hash': cc_hashes,
+            'folder': folder,
+            'direction': direction,
+            'received_at': msg.get('receivedDateTime'),
+            'sent_at': msg.get('sentDateTime'),
+            'has_attachments': msg.get('hasAttachments', False),
+            'attachments': attachments,
+            'web_link': msg.get('webLink'),
+            'preview_text': preview_text,
+            'parent_folder_id': parent_folder_id,
+        }
+
+        result = self.supabase.table('email_messages').insert(message_data).execute()
+        message_id = result.data[0]['id'] if result.data else None
+
+        # Generate embeddings for the new message
+        if message_id:
+            await self._embed_message(yacht_id, message_id, subject, from_display_name, attachments)
+
+        return message_id
 
     async def _upsert_thread(
         self,
@@ -486,7 +866,6 @@ class EmailSyncService:
             self.supabase.table('email_messages').update({
                 'is_deleted': True,
                 'deleted_at': datetime.now(timezone.utc).isoformat(),
-                'updated_at': datetime.now(timezone.utc).isoformat()
             }).eq('id', message['id']).execute()
 
             logger.info(f"[EmailSync] ✓ Marked message {provider_message_id[:8]}... as deleted")

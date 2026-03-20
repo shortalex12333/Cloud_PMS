@@ -2,7 +2,7 @@
 
 /**
  * LensPillStrip — Quick filter pills below Smart Pointers
- * Per elegant.html prototype. All inline styles to avoid Tailwind cascade.
+ * All values via CSS tokens — swaps dark/light automatically.
  */
 
 import React from 'react';
@@ -18,13 +18,16 @@ const PILLS = [
 
 const pillStyle: React.CSSProperties = {
   height: 28, padding: '0 11px', borderRadius: 3,
-  borderTop: '1px solid rgba(255,255,255,0.11)',
-  borderRight: '1px solid rgba(255,255,255,0.07)',
-  borderBottom: '1px solid rgba(255,255,255,0.04)',
-  borderLeft: '1px solid rgba(255,255,255,0.07)',
-  background: '#181614', fontSize: 11, color: 'rgba(255,255,255,0.55)',
+  borderTop: '1px solid var(--pill-border-t)',
+  borderRight: '1px solid var(--pill-border-s)',
+  borderBottom: '1px solid var(--pill-border-b)',
+  borderLeft: '1px solid var(--pill-border-s)',
+  background: 'var(--pill-bg)',
+  boxShadow: 'var(--pill-shadow)',
+  fontSize: 11, color: 'var(--pill-color)',
   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
   whiteSpace: 'nowrap', fontFamily: 'var(--font-sans)',
+  transition: 'background 100ms, color 100ms, border-color 100ms',
 };
 
 export default function LensPillStrip() {
@@ -35,17 +38,19 @@ export default function LensPillStrip() {
         <button key={pill.label} style={pillStyle}
           onClick={() => router.push(pill.route)}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(58,124,157,0.10)';
-            e.currentTarget.style.color = '#5AABCC';
-            e.currentTarget.style.borderColor = 'rgba(90,171,204,0.30)';
+            e.currentTarget.style.background = 'var(--pill-hover-bg)';
+            e.currentTarget.style.color = 'var(--pill-hover-color)';
+            e.currentTarget.style.borderColor = 'var(--pill-hover-border)';
+            e.currentTarget.style.boxShadow = 'none';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#181614';
-            e.currentTarget.style.color = 'rgba(255,255,255,0.55)';
-            e.currentTarget.style.borderTop = '1px solid rgba(255,255,255,0.11)';
-            e.currentTarget.style.borderRight = '1px solid rgba(255,255,255,0.07)';
-            e.currentTarget.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
-            e.currentTarget.style.borderLeft = '1px solid rgba(255,255,255,0.07)';
+            e.currentTarget.style.background = 'var(--pill-bg)';
+            e.currentTarget.style.color = 'var(--pill-color)';
+            e.currentTarget.style.borderTop = '1px solid var(--pill-border-t)';
+            e.currentTarget.style.borderRight = '1px solid var(--pill-border-s)';
+            e.currentTarget.style.borderBottom = '1px solid var(--pill-border-b)';
+            e.currentTarget.style.borderLeft = '1px solid var(--pill-border-s)';
+            e.currentTarget.style.boxShadow = 'var(--pill-shadow)';
           }}
         >{pill.label}</button>
       ))}

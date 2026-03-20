@@ -11,6 +11,7 @@ export type EntityType =
   | 'shopping_list'
   | 'warranty'
   | 'hours_of_rest'
+  | 'hours_of_rest_signoff'
   | 'purchase_order'
   | 'handover_export';
 

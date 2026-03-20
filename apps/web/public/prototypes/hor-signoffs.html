@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HoR Monthly Sign-Offs — Prototype</title>
+  <link rel="stylesheet" href="prototype-tokens.css" />
+  <link rel="stylesheet" href="lens-base.css" />
+  <style>
+    body {
+      margin: 0;
+      background: var(--surface-base);
+      color: var(--txt);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Page shell ───────────────────────────────── */
+    .page { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+    .page-hdr { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .page-hdr h1 { font-size: 20px; font-weight: 600; flex: 1; }
+    .page-hdr .badge {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 4px;
+      background: var(--amber-bg, rgba(196,137,59,0.12)); color: var(--amber);
+    }
+
+    /* ── Month selector ──────────────────────────── */
+    .month-select {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 6px;
+      background: var(--surface-el); border: 1px solid var(--border-chrome);
+      color: var(--txt); font-family: var(--font-mono); font-size: 13px;
+      cursor: pointer;
+    }
+    .month-select:hover { background: var(--surface-hover); }
+
+    /* ── Filter tabs ─────────────────────────────── */
+    .filter-tabs {
+      display: flex; gap: 2px; margin-bottom: 24px;
+      background: var(--surface-el); border-radius: 8px; padding: 3px;
+    }
+    .filter-tab {
+      padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+      color: var(--txt3); cursor: pointer; border: none; background: none;
+      font-family: var(--font-sans); transition: all 120ms;
+    }
+    .filter-tab:hover { color: var(--txt2); background: var(--surface-hover); }
+    .filter-tab.active { color: var(--txt); background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .filter-tab .count {
+      font-family: var(--font-mono); font-size: 10px; margin-left: 4px;
+      padding: 1px 5px; border-radius: 3px; background: var(--surface-hover);
+    }
+    .filter-tab.active .count { background: var(--teal-bg); color: var(--mark); }
+
+    /* ── Department sections ─────────────────────── */
+    .dept-section { margin-bottom: 20px; }
+    .dept-hdr {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; margin-bottom: 2px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--txt3);
+    }
+    .dept-hdr::after {
+      content: ''; flex: 1; height: 1px; background: var(--border-faint);
+    }
+
+    /* ── Signoff row ─────────────────────────────── */
+    .signoff-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 6px; cursor: pointer;
+      min-height: 44px; transition: background 80ms;
+    }
+    .signoff-row:hover { background: var(--surface-hover); }
+    .signoff-row.selected { background: var(--mark-hover); }
+
+    .signoff-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--surface-el); display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 600;
+      color: var(--txt3); flex-shrink: 0;
+    }
+    .signoff-info { flex: 1; min-width: 0; }
+    .signoff-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+    .signoff-rank { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+    .signoff-status { font-size: 11px; color: var(--txt2); white-space: nowrap; }
+
+    /* ── Status pills ────────────────────────────── */
+    .pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .pill-green { background: rgba(74,148,104,0.12); color: var(--green); }
+    .pill-green .pill-dot { background: var(--green); }
+    .pill-amber { background: rgba(196,137,59,0.12); color: var(--amber); }
+    .pill-amber .pill-dot { background: var(--amber); }
+    .pill-neutral { background: var(--surface-hover); color: var(--txt3); }
+    .pill-neutral .pill-dot { background: var(--txt-ghost); }
+
+    /* ── Compliance footer ───────────────────────── */
+    .compliance-bar {
+      margin-top: 24px; padding: 14px 16px; border-radius: 8px;
+      background: var(--surface-el);
+      border-top: 1px solid var(--border-top);
+      border-right: 1px solid var(--border-side);
+      border-bottom: 1px solid var(--border-bottom);
+      border-left: 1px solid var(--border-side);
+      font-size: 12px; color: var(--txt2);
+      display: flex; flex-wrap: wrap; gap: 16px;
+    }
+    .compliance-stat { display: flex; align-items: center; gap: 6px; }
+    .compliance-stat strong { color: var(--txt); font-family: var(--font-mono); font-weight: 500; }
+
+    /* ── Detail panel (right) ────────────────────── */
+    .detail-panel {
+      position: fixed; top: 0; right: 0; bottom: 0; width: 480px;
+      background: var(--surface); z-index: 50;
+      border-left: 1px solid var(--border-side);
+      box-shadow: -4px 0 24px rgba(0,0,0,0.3);
+      overflow-y: auto; padding: 24px;
+      transform: translateX(100%); transition: transform 240ms ease;
+    }
+    .detail-panel.open { transform: translateX(0); }
+
+    .detail-close {
+      position: absolute; top: 12px; right: 12px;
+      width: 32px; height: 32px; border-radius: 6px;
+      background: none; border: none; cursor: pointer;
+      color: var(--txt-ghost); display: flex; align-items: center; justify-content: center;
+    }
+    .detail-close:hover { background: var(--surface-hover); color: var(--txt2); }
+
+    .detail-identity { margin-bottom: 20px; }
+    .detail-name { font-size: 18px; font-weight: 600; color: var(--txt); }
+    .detail-context { font-size: 12px; color: var(--txt3); margin-top: 2px; }
+    .detail-pills { display: flex; gap: 6px; margin-top: 8px; }
+
+    .detail-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-faint); }
+    .detail-section-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--txt3); margin-bottom: 10px;
+    }
+
+    .kv-row { display: flex; align-items: baseline; padding: 4px 0; gap: 8px; }
+    .kv-label { font-size: 11px; font-weight: 500; text-transform: uppercase; color: var(--txt3); min-width: 100px; }
+    .kv-value { font-size: 13px; color: var(--txt); }
+    .kv-value.mono { font-family: var(--font-mono); }
+    .kv-value.warn { color: var(--amber); }
+    .kv-value.good { color: var(--green); }
+
+    .violation-row {
+      display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+      border-radius: 4px; background: rgba(192,80,58,0.08); margin-bottom: 4px;
+      font-size: 12px; color: var(--red);
+    }
+
+    .week-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; }
+    .week-label { color: var(--txt3); min-width: 100px; font-family: var(--font-mono); font-size: 11px; }
+    .week-value { color: var(--txt); font-family: var(--font-mono); }
+
+    .sig-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+    .sig-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .sig-icon.done { background: rgba(74,148,104,0.12); color: var(--green); }
+    .sig-icon.pending { background: var(--surface-hover); color: var(--txt-ghost); }
+    .sig-label { font-size: 12px; color: var(--txt3); min-width: 48px; }
+    .sig-name { font-size: 12px; color: var(--txt); flex: 1; }
+    .sig-date { font-size: 11px; color: var(--txt3); font-family: var(--font-mono); }
+
+    /* ── CTA button ──────────────────────────────── */
+    .cta-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 12px; margin-top: 20px;
+      border-radius: 8px; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 600; font-family: var(--font-sans);
+      background: var(--teal-bg); color: var(--mark);
+      transition: background 120ms;
+    }
+    .cta-btn:hover { background: var(--mark-hover); }
+    .cta-btn:disabled { background: var(--split-bg); color: var(--txt-ghost); cursor: not-allowed; }
+
+    /* ── Navigation link ─────────────────────────── */
+    .nav-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--mark); text-decoration: none;
+      margin-bottom: 16px; padding: 4px 0;
+    }
+    .nav-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <!-- Back to daily records link -->
+  <a class="nav-link" href="#">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 12L6 8l4-4" /></svg>
+    Hours of Rest — Daily Records
+  </a>
+
+  <!-- Page header -->
+  <div class="page-hdr">
+    <h1>Monthly Sign-Offs</h1>
+    <span class="badge">5 awaiting</span>
+    <button class="month-select">
+      March 2026
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6l4 4 4-4" /></svg>
+    </button>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="filter-tabs">
+    <button class="filter-tab active">All<span class="count">24</span></button>
+    <button class="filter-tab">Pending<span class="count">8</span></button>
+    <button class="filter-tab">Awaiting HOD<span class="count">5</span></button>
+    <button class="filter-tab">Finalized<span class="count">11</span></button>
+  </div>
+
+  <!-- Deck Department -->
+  <div class="dept-section">
+    <div class="dept-hdr">Deck Department</div>
+    <div class="signoff-row selected" onclick="openDetail()">
+      <div class="signoff-avatar">JM</div>
+      <div class="signoff-info">
+        <div class="signoff-name">J. Morrison</div>
+        <div class="signoff-rank">Bosun</div>
+      </div>
+      <div class="signoff-status">Crew Signed</div>
+      <span class="pill pill-amber"><span class="pill-dot"></span>Awaiting HOD</span>
+    </div>
+    <div class="signoff-row">
+      <div class="signoff-avatar">RC</div>
+      <div class="signoff-info">
+        <div class="signoff-name">R. Chen</div>
+        <div class="signoff-rank">Deckhand</div>
+      </div>
+      <div class="signoff-status">Crew Signed</div>
+      <span class="pill pill-amber"><span class="pill-dot"></span>Awaiting HOD</span>
+    </div>
+    <div class="signoff-row">
+      <div class="signoff-avatar">KP</div>
+      <div class="signoff-info">
+        <div class="signoff-name">K. Petrov</div>
+        <div class="signoff-rank">Deckhand</div>
+      </div>
+      <div class="signoff-status">Draft</div>
+      <span class="pill pill-neutral"><span class="pill-dot"></span>Not Submitted</span>
+    </div>
+  </div>
+
+  <!-- Engineering -->
+  <div class="dept-section">
+    <div class="dept-hdr">Engineering</div>
+    <div class="signoff-row">
+      <div class="signoff-avatar">AW</div>
+      <div class="signoff-info">
+        <div class="signoff-name">A. Williams</div>
+        <div class="signoff-rank">Engineer</div>
+      </div>
+      <div class="signoff-status">HOD Signed</div>
+      <span class="pill pill-amber"><span class="pill-dot"></span>Awaiting Master</span>
+    </div>
+    <div class="signoff-row">
+      <div class="signoff-avatar">SO</div>
+      <div class="signoff-info">
+        <div class="signoff-name">S. Okafor</div>
+        <div class="signoff-rank">ETO</div>
+      </div>
+      <div class="signoff-status">Crew Signed</div>
+      <span class="pill pill-amber"><span class="pill-dot"></span>Awaiting HOD</span>
+    </div>
+  </div>
+
+  <!-- Interior -->
+  <div class="dept-section">
+    <div class="dept-hdr">Interior</div>
+    <div class="signoff-row">
+      <div class="signoff-avatar">LD</div>
+      <div class="signoff-info">
+        <div class="signoff-name">L. Dubois</div>
+        <div class="signoff-rank">Steward</div>
+      </div>
+      <div class="signoff-status">Finalized</div>
+      <span class="pill pill-green"><span class="pill-dot"></span>Complete</span>
+    </div>
+    <div class="signoff-row">
+      <div class="signoff-avatar">MS</div>
+      <div class="signoff-info">
+        <div class="signoff-name">M. Santos</div>
+        <div class="signoff-rank">Chef</div>
+      </div>
+      <div class="signoff-status">Draft</div>
+      <span class="pill pill-neutral"><span class="pill-dot"></span>Not Submitted</span>
+    </div>
+  </div>
+
+  <!-- Compliance summary -->
+  <div class="compliance-bar">
+    <div class="compliance-stat">Ship avg rest: <strong>77.2h/wk</strong></div>
+    <div class="compliance-stat">Violations this month: <strong style="color: var(--red);">3</strong></div>
+    <div class="compliance-stat">Below MLC minimum: <strong style="color: var(--amber);">2 crew</strong></div>
+    <div class="compliance-stat">Dispensations: <strong>1</strong></div>
+  </div>
+</div>
+
+<!-- Detail panel -->
+<div class="detail-panel" id="detailPanel">
+  <button class="detail-close" onclick="closeDetail()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+  </button>
+
+  <div class="detail-identity">
+    <div class="detail-name">J. Morrison</div>
+    <div class="detail-context">Bosun · Deck Department · March 2026</div>
+    <div class="detail-pills">
+      <span class="pill pill-amber"><span class="pill-dot"></span>Awaiting HOD</span>
+    </div>
+  </div>
+
+  <!-- Month Summary -->
+  <div class="detail-section" style="margin-top: 0; padding-top: 0; border-top: none;">
+    <div class="detail-section-title">Month Summary</div>
+    <div class="kv-row"><span class="kv-label">Total Rest</span><span class="kv-value mono">312.5 hrs</span></div>
+    <div class="kv-row"><span class="kv-label">Total Work</span><span class="kv-value mono">375.5 hrs</span></div>
+    <div class="kv-row"><span class="kv-label">Avg Daily Rest</span><span class="kv-value mono">10.1 hrs</span></div>
+    <div class="kv-row"><span class="kv-label">Weekly Min</span><span class="kv-value mono warn">76.8 hrs ⚠</span></div>
+    <div class="kv-row"><span class="kv-label">Violations</span><span class="kv-value mono" style="color: var(--red);">2</span></div>
+    <div class="kv-row"><span class="kv-label">Compliance</span><span class="kv-value mono">93.5%</span></div>
+  </div>
+
+  <!-- Violations -->
+  <div class="detail-section">
+    <div class="detail-section-title">Violations</div>
+    <div class="violation-row">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+      <span style="font-family: var(--font-mono); margin-right: 4px;">2026-03-07</span> Daily rest 9.2h (min 10h)
+    </div>
+    <div class="violation-row">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+      <span style="font-family: var(--font-mono); margin-right: 4px;">2026-03-14</span> Weekly rest 76.8h (min 77h)
+    </div>
+  </div>
+
+  <!-- Weekly Breakdown -->
+  <div class="detail-section">
+    <div class="detail-section-title">Weekly Breakdown</div>
+    <div class="week-row"><span class="week-label">Wk 1 (01–07)</span><span class="week-value warn">71.2h rest ⚠</span></div>
+    <div class="week-row"><span class="week-label">Wk 2 (08–14)</span><span class="week-value warn">76.8h rest ⚠</span></div>
+    <div class="week-row"><span class="week-label">Wk 3 (15–21)</span><span class="week-value good">82.1h rest ✓</span></div>
+    <div class="week-row"><span class="week-label">Wk 4 (22–28)</span><span class="week-value good">82.4h rest ✓</span></div>
+  </div>
+
+  <!-- Signatures -->
+  <div class="detail-section">
+    <div class="detail-section-title">Signatures</div>
+    <div class="sig-row">
+      <div class="sig-icon done">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5" /></svg>
+      </div>
+      <span class="sig-label">Crew</span>
+      <span class="sig-name">J. Morrison</span>
+      <span class="sig-date">28 Mar 2026 14:32</span>
+    </div>
+    <div class="sig-row">
+      <div class="sig-icon pending">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg>
+      </div>
+      <span class="sig-label">HOD</span>
+      <span class="sig-name" style="color: var(--txt-ghost);">Pending</span>
+    </div>
+    <div class="sig-row">
+      <div class="sig-icon pending">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg>
+      </div>
+      <span class="sig-label">Master</span>
+      <span class="sig-name" style="color: var(--txt-ghost);">Pending</span>
+    </div>
+  </div>
+
+  <!-- Crew Declaration -->
+  <div class="detail-section">
+    <div class="detail-section-title">Crew Declaration</div>
+    <p style="font-size: 12px; color: var(--txt2); font-style: italic; margin: 0;">
+      "I confirm that the hours of work and rest recorded herein are an accurate reflection of the schedule maintained during this period."
+    </p>
+  </div>
+
+  <!-- CTA -->
+  <button class="cta-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>
+    Counter-Sign as HOD
+  </button>
+</div>
+
+<script>
+function openDetail() { document.getElementById('detailPanel').classList.add('open'); }
+function closeDetail() { document.getElementById('detailPanel').classList.remove('open'); }
+</script>
+<script src="lens-base.js"></script>
+</body>
+</html>
