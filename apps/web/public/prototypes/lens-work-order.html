@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Work Order · v1</title>
+<link rel="stylesheet" href="lens-base.css">
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- ═══ LENS HEADER ═══ -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Work Order</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn" onclick="toggleTheme()">
+        <svg class="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="hdr-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Related
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ SCROLLABLE BODY ═══ -->
+  <div class="lens-body">
+
+    <!-- ─── IDENTITY STRIP ─── -->
+    <div class="identity">
+      <!-- Top row: overline left, split button right -->
+      <div class="identity-top-row">
+        <div class="identity-overline">WO-1042</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main disabled">Mark Complete</button>
+            <button class="split-toggle disabled" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="split-tooltip">Complete all checklist items first</div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit Details
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Add Note
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Log Hours
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              Reassign
+            </button>
+            <div class="dd-sep"></div>
+            <button class="dd-item danger" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Archive
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Title — standalone, human-readable -->
+      <h1 class="identity-title">Emergency Valve Replacement</h1>
+
+      <!-- Context — location + assignee -->
+      <p class="identity-context">Engine Room · Assigned to <span class="crew-link">Chief Engineer</span></p>
+
+      <!-- Status pills -->
+      <div class="pills">
+        <span class="pill pill-neutral"><span class="dot"></span> In Progress</span>
+        <span class="pill pill-red"><span class="dot"></span> Critical</span>
+      </div>
+
+      <!-- Key-value detail lines -->
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Equipment</span>
+          <span class="equip-link"><span class="mono">E-007</span> Main Engine</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Due</span>
+          <span class="mono-val">17 Mar 2026</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Schedule</span>
+          <span>Every <span class="mono-val">500</span> hrs · Running Hours · Last: <span class="mono-val">12 Feb 2026</span> · Next: <span class="mono-val">~17 Mar 2026</span></span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Time</span>
+          <span>Est: <span class="mono-val">4.0</span> hrs · Actual: <span class="mono-val">3.5</span> hrs</span>
+        </div>
+        <!-- ── DEFERRAL INFO ──────────────────────────────────
+             Show this row when status = deferred.
+             Remove the comment wrapper to activate.
+        <div class="detail-line">
+          <span class="detail-label">Deferred</span>
+          <span>Awaiting class survey — parts held pending hull inspection. <span style="color:var(--txt3)">ISM ref:</span> <span class="mono-val">NCR-2026-017</span></span>
+        </div>
+        ──────────────────────────────────────────────────── -->
+      </div>
+
+      <!-- Description -->
+      <div class="desc-block">
+        <div class="desc-label">Description</div>
+        <p class="desc-text">Emergency isolation valve on port fuel line requires replacement. Temporary bypass installed — monitor for leaks every 2 hours. Part ETA 17 Mar.</p>
+      </div>
+    </div>
+
+    <!-- ─── OFFICIAL DOCUMENTS ─── -->
+    <div class="section" id="sec-docs">
+      <div class="sec-hdr" onclick="toggleSec('sec-docs')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="sec-title">Official Documents</span>
+        <span class="sec-count">3</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <!-- SOP — now a regular doc row with teal "Open SOP" action -->
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name"><span class="doc-sop-action">Open SOP</span> — Valve Replacement Procedure (<span class="doc-code">SOP-ENG-042</span>)</div>
+          </div>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name"><span class="doc-code">ISM-F042</span> — Fuel System Isolation Procedure</div>
+            <div class="doc-meta">Revision 3 · Effective <span class="doc-date">01 Jan 2026</span></div>
+          </div>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name">Class Certificate — Engine Room Fire Safety</div>
+            <div class="doc-meta">Lloyd's Register · Expires <span class="doc-date">15 Sep 2027</span></div>
+          </div>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTIONS — ruled line + 14px/600 heading + whitespace
+         ═══════════════════════════════════════════════ -->
+
+    <!-- CHECKLIST -->
+    <div class="section reveal" id="sec-checklist">
+      <div class="sec-hdr" onclick="toggleSec('sec-checklist')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span class="sec-title">Checklist</span>
+        <span class="sec-count">3/5</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="progress-bar"><div class="fill" style="width:60%"></div></div>
+        <div class="check-item done">
+          <span class="check-step">1.</span>
+          <div class="check-box checked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="check-text">
+            <div class="check-desc">Isolate fuel supply</div>
+            <div class="check-meta">Chief Engineer <span class="ts">14 Mar 10:30</span> <span class="check-photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>1</span> <button class="check-undo">Undo</button></div>
+          </div>
+        </div>
+        <div class="check-item done">
+          <span class="check-step">2.</span>
+          <div class="check-box checked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="check-text">
+            <div class="check-desc">Install temporary bypass</div>
+            <div class="check-meta">Chief Engineer <span class="ts">14 Mar 16:15</span> <span class="check-photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>2</span> <button class="check-undo">Undo</button></div>
+          </div>
+        </div>
+        <div class="check-item done">
+          <span class="check-step">3.</span>
+          <div class="check-box checked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="check-text">
+            <div class="check-desc">Order replacement valve (<span class="mono">774-B</span>)</div>
+            <div class="check-meta">1st Officer <span class="ts">15 Mar 10:15</span> <button class="check-undo">Undo</button></div>
+          </div>
+        </div>
+        <div class="check-item">
+          <span class="check-step">4.</span>
+          <div class="check-box pending"></div>
+          <div class="check-text">
+            <div class="check-desc">Replace valve and reconnect fuel line</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <span class="check-step">5.</span>
+          <div class="check-box pending"></div>
+          <div class="check-text">
+            <div class="check-desc">Pressure test at 2.5 bar for 30 min — confirm zero leaks</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="section reveal" id="sec-notes">
+      <div class="sec-hdr" onclick="toggleSec('sec-notes')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="sec-title">Notes</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">Chief Engineer</span>
+            <span class="note-time">16 Mar 14:32</span>
+          </div>
+          <p class="note-body">Bypass valve installed. Monitoring pressure gauge every 2 hours. No leaks detected so far.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">1st Officer</span>
+            <span class="note-time">15 Mar 10:15</span>
+          </div>
+          <p class="note-body">Part <span class="mono">774-B</span> ordered via <span class="mono">PO-89</span>. ETA 17 Mar from supplier.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">Chief Engineer</span>
+            <span class="note-time">14 Mar 16:45</span>
+          </div>
+          <p class="note-body clamped" id="longNote">Initial inspection complete. Valve seat corroded beyond acceptable limits. The corrosion pattern suggests prolonged exposure to saltwater intrusion through the port-side bilge connection. Recommend a full inspection of adjacent valve assemblies in the same fuel supply circuit before returning to service.</p>
+          <button class="note-more" onclick="document.getElementById('longNote').classList.toggle('clamped'); this.textContent = this.textContent === 'Show more' ? 'Show less' : 'Show more'">Show more</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY — prior periods -->
+    <div class="section collapsed reveal" id="sec-history">
+      <div class="sec-hdr" onclick="toggleSec('sec-history')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sec-title">History</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="period">
+          <div class="period-hdr">
+            <span class="period-year">2026</span>
+            <span class="period-label">Current period</span>
+            <span class="period-tag active">Active</span>
+          </div>
+          <div class="period-summary">
+            <span class="ps-mono">3</span> notes · <span class="ps-mono">2</span> uploads · <span class="ps-mono">12.5</span> hrs logged
+          </div>
+        </div>
+        <div class="period">
+          <div class="period-hdr">
+            <span class="period-year">2024</span>
+            <span class="period-label">Previous service</span>
+            <span class="period-tag closed">Closed</span>
+          </div>
+          <div class="period-summary">
+            Chief Engineer · <span class="ps-mono">1</span> upload · <span class="ps-mono">2</span> notes · <span class="ps-mono">6</span> hrs
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTACHMENTS -->
+    <div class="section reveal" id="sec-attach">
+      <div class="sec-hdr" onclick="toggleSec('sec-attach')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49"/></svg>
+        <span class="sec-title">Attachments</span>
+        <button class="sec-action" onclick="event.stopPropagation()">Upload</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="attach-row">
+          <div class="attach-thumb img"></div>
+          <div class="attach-info">
+            <div class="attach-name">valve_inspection_photo.jpg</div>
+            <div class="attach-caption">"Leak visible bottom-right near fuel line junction" — Chief Engineer</div>
+          </div>
+          <span class="attach-size">2.4 MB</span>
+        </div>
+        <div class="attach-row">
+          <div class="attach-thumb doc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="attach-info">
+            <div class="attach-name">WO-1042_procedure.pdf</div>
+          </div>
+          <span class="attach-size">156 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PARTS -->
+    <div class="section collapsed reveal" id="sec-parts">
+      <div class="sec-hdr" onclick="toggleSec('sec-parts')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <span class="sec-title">Parts</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add</button>
+        <span class="sec-count">2</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="part-row">
+          <span class="part-name"><span class="part-id">774-B</span> Impeller Kit</span>
+          <span class="part-qty">× 2</span>
+          <span class="part-stock">Stock: 6</span>
+        </div>
+        <div class="part-row">
+          <span class="part-name"><span class="part-id">ORG-114</span> O-Ring Set</span>
+          <span class="part-qty">× 1</span>
+          <span class="part-stock">Stock: 13</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /lens-body -->
+
+</div><!-- /panel -->
+
+<script src="lens-base.js"></script>
+
+</body>
+</html>

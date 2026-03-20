@@ -1648,4 +1648,101 @@ __all__ = [
     "_accept_receiving_adapter",
     "_reject_receiving_adapter",
     "_view_receiving_history_adapter",
+    "_flag_discrepancy_adapter",
 ]
+
+
+# ============================================================================
+# FLAG DISCREPANCY (Receiving Lens - structured issue logging)
+# ============================================================================
+
+def _flag_discrepancy_adapter(handlers: ReceivingHandlers):
+    """
+    Flag a shipment discrepancy — missing parts, breakage, partial delivery.
+
+    Required fields: yacht_id, receiving_id, discrepancy_type, description
+    Optional fields: affected_items[]
+    Allowed roles: All crew (crew discovers discrepancies, HOD gets notified)
+    """
+    async def _fn(**params):
+        yacht_id = params.get("yacht_id")
+        receiving_id = params.get("receiving_id")
+        user_id = params.get("user_id")
+        discrepancy_type = params.get("discrepancy_type")
+        description = params.get("description")
+        affected_items = params.get("affected_items", [])
+
+        if not yacht_id:
+            return {"status": "error", "error_code": "MISSING_REQUIRED_FIELD", "message": "yacht_id is required"}
+        if not receiving_id:
+            return {"status": "error", "error_code": "MISSING_REQUIRED_FIELD", "message": "receiving_id is required"}
+        if not discrepancy_type:
+            return {"status": "error", "error_code": "MISSING_REQUIRED_FIELD", "message": "discrepancy_type is required"}
+        valid_types = ["missing", "damaged", "wrong_item", "partial"]
+        if discrepancy_type not in valid_types:
+            return {"status": "error", "error_code": "INVALID_VALUE", "message": f"discrepancy_type must be one of: {', '.join(valid_types)}"}
+        if not description:
+            return {"status": "error", "error_code": "MISSING_REQUIRED_FIELD", "message": "description is required"}
+
+        try:
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create database client: {e}")
+            return {"status": "error", "error_code": "DB_CLIENT_ERROR", "message": "Failed to create database client"}
+
+        # Verify receiving exists + yacht isolation
+        recv_check = db.table("pms_receiving").select("id, status").eq(
+            "id", receiving_id
+        ).eq("yacht_id", yacht_id).execute()
+
+        if not recv_check.data:
+            return {"status": "error", "error_code": "NOT_FOUND", "message": f"Receiving {receiving_id} not found or access denied"}
+
+        # Insert discrepancy event
+        event_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        event_data = {
+            "id": event_id,
+            "receiving_id": receiving_id,
+            "yacht_id": yacht_id,
+            "event_type": "discrepancy",
+            "event_data": {
+                "discrepancy_type": discrepancy_type,
+                "description": description,
+                "affected_items": affected_items,
+            },
+            "created_by": user_id,
+            "created_at": now,
+        }
+
+        try:
+            result = db.table("pms_receiving_events").insert(event_data).execute()
+            if not result.data:
+                return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to record discrepancy"}
+        except Exception as e:
+            logger.error(f"flag_discrepancy insert failed: {e}")
+            return {"status": "error", "error_code": "DB_ERROR", "message": str(map_postgrest_error(e))}
+
+        # Audit log
+        _write_audit_log(db, {
+            "yacht_id": yacht_id,
+            "action": "flag_discrepancy",
+            "entity_type": "receiving",
+            "entity_id": receiving_id,
+            "user_id": user_id,
+            "old_values": None,
+            "new_values": {"event_id": event_id, "discrepancy_type": discrepancy_type},
+        })
+
+        return {
+            "status": "success",
+            "event_id": event_id,
+            "receiving_id": receiving_id,
+            "discrepancy_type": discrepancy_type,
+            "created_at": now,
+            "message": f"Discrepancy ({discrepancy_type}) flagged on receiving {receiving_id}",
+        }
+
+    return _fn

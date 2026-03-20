@@ -12,6 +12,7 @@ export { PurchaseOrderContent } from './PurchaseOrderContent';
 export { DocumentContent } from './DocumentContent';
 export { WarrantyContent } from './WarrantyContent';
 export { HoursOfRestContent } from './HoursOfRestContent';
+export { HoRSignoffContent } from './HoRSignoffContent';
 export { ShoppingListContent } from './ShoppingListContent';
 export { ReceivingContent } from './ReceivingContent';
 export { HandoverContent } from './HandoverContent';

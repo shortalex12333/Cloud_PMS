@@ -29,8 +29,10 @@ from .equipment_handler import HANDLERS as EQUIP_HANDLERS
 from .parts_handler_p5 import HANDLERS as PARTS_P5_HANDLERS
 from .checklist_handler import HANDLERS as CHECKLIST_HANDLERS
 from .compliance_handler import HANDLERS as COMPLIANCE_HANDLERS
+from .internal_adapter import HANDLERS as ADAPTER_HANDLERS
 
 HANDLERS: dict = {
+    # Domain-native Phase 4 handlers (take priority over adapters)
     **WO_HANDLERS, **PO_HANDLERS, **REC_HANDLERS,
     **CREW_HANDLERS, **HOR_HANDLERS,
     **CERT_HANDLERS, **DOC_HANDLERS, **HAND_HANDLERS,
@@ -41,4 +43,13 @@ HANDLERS: dict = {
     **PARTS_P5_HANDLERS,
     **CHECKLIST_HANDLERS,
     **COMPLIANCE_HANDLERS,
+    # Adapted legacy handlers (migration shim — remove as handlers go native)
+    **{k: v for k, v in ADAPTER_HANDLERS.items()
+       if k not in WO_HANDLERS and k not in PO_HANDLERS and k not in REC_HANDLERS
+       and k not in CREW_HANDLERS and k not in HOR_HANDLERS
+       and k not in CERT_HANDLERS and k not in DOC_HANDLERS and k not in HAND_HANDLERS
+       and k not in SHOP_HANDLERS and k not in PM_HANDLERS
+       and k not in WO_COMP_HANDLERS and k not in FAULT_HANDLERS
+       and k not in EQUIP_HANDLERS and k not in PARTS_P5_HANDLERS
+       and k not in CHECKLIST_HANDLERS and k not in COMPLIANCE_HANDLERS},
 }

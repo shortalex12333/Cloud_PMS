@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Celeste — Refinement Study</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Fallback type stack: Georgia covers the serif role if Cormorant blocked ── */
+:root {
+  --ink:    #0a0908;
+  --ink-2:  #111010;
+  --ink-3:  #181614;
+  --ink-4:  #211f1c;
+  --ink-5:  #2c2a26;
+  --border: rgba(255,255,255,0.07);
+  --bmd:    rgba(255,255,255,0.11);
+  --gold:   #b8935a;
+  --teal:   #3A7C9D;
+  --teal-d: rgba(58,124,157,0.18);
+  --t1: rgba(255,255,255,0.92);
+  --t2: rgba(255,255,255,0.50);
+  --t3: rgba(255,255,255,0.28);
+  --t4: rgba(255,255,255,0.13);
+  --red:   #c0503a;
+  --amber: #c08840;
+  --green: #4a9468;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+}
+
+body { background: #06090c; color: var(--t1); padding: 0; }
+
+/* Grain overlay */
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:9999;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity:0.022;
+}
+
+.serif { font-family: Georgia, 'Times New Roman', serif; }
+.mono  { font-family: 'Courier New', monospace; font-size:0.9em; letter-spacing:0.04em; }
+.caps  { font-size:9px; font-weight:600; letter-spacing:0.17em; text-transform:uppercase; color:var(--t4); }
+
+/* Page chrome */
+.meta {
+  padding:16px 40px;
+  font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--t4);
+  border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between;
+}
+
+.frame { padding:0 40px 72px; }
+.frame + .frame { border-top:1px solid var(--border); padding-top:72px; }
+
+.hdr {
+  padding:52px 0 36px;
+  display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:end;
+  border-bottom:1px solid var(--border); margin-bottom:44px;
+}
+
+.hdr-why {
+  font-size:12px; line-height:1.65; color:var(--t3);
+  border-left:2px solid var(--gold); padding-left:16px;
+}
+
+.hdr-why strong { color:var(--gold); font-weight:500; }
+
+.variation-tag {
+  font-size:9px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold); margin-bottom:10px;
+}
+
+.variation-title {
+  font-family: Georgia, serif;
+  font-size:26px; font-weight:400; color:var(--t1); letter-spacing:-0.01em; line-height:1.2;
+}
+
+/* ── comparison grid ── */
+.compare { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.compare-label {
+  font-size:9px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase;
+  margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border);
+}
+.compare-label.now { color:var(--t4); }
+.compare-label.new { color:var(--teal); }
+
+
+/* ═══════════════════════════════════════════
+   VAR 1 — Surface character
+   Problem: flat #1E1E1E feels weightless
+   Fix: warm charcoal + subtle top-catch light
+   ═══════════════════════════════════════════ */
+
+/* CURRENT surface */
+.surface-now {
+  background: #1E1E1E;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+/* REFINED surface */
+.surface-new {
+  background: var(--ink-3);
+  /* Top-catch: 0.5px white line as if light hits the top edge */
+  border-top: 1px solid rgba(255,255,255,0.10);
+  border-left: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-radius: 4px;
+  padding: 20px;
+  /* Subtle inner shadow for depth */
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.45);
+}
+
+.card-demo {
+  display:flex; flex-direction:column; gap:8px;
+}
+.card-demo .lbl { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--t4); }
+.card-demo .val-old { font-size:28px; font-weight:700; color:var(--t1); letter-spacing:-0.02em; }
+.card-demo .val-new {
+  font-family: Georgia, serif;
+  font-size:44px; font-weight:400; letter-spacing:-0.04em; line-height:1; color:var(--t1);
+}
+.card-demo .sub { font-size:10px; color:var(--t3); }
+.card-demo .tag-r { font-size:9px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--red); }
+.card-demo .tag-g { font-size:9px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--green); }
+
+
+/* ═══════════════════════════════════════════
+   VAR 2 — Editorial numbers
+   Problem: Inter 700 for numbers = Notion
+   Fix: Georgia/serif at 300 weight = editorial
+   ═══════════════════════════════════════════ */
+
+.stat-grid-old {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:12px;
+}
+
+.stat-grid-new {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:0;
+  border:1px solid var(--border); border-radius:4px; overflow:hidden;
+}
+
+.stat-old {
+  background:#1E1E1E; border:1px solid #404040; border-radius:8px;
+  padding:16px; display:flex; flex-direction:column; gap:4px;
+}
+.stat-old-n { font-size:32px; font-weight:700; letter-spacing:-0.02em; color:var(--t1); }
+.stat-old-l { font-size:11px; color:var(--t3); }
+
+.stat-new {
+  background:var(--ink-3); padding:16px 18px;
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column; gap:0;
+}
+.stat-new:last-child { border-right:none; }
+.stat-new-l { font-size:8px; letter-spacing:0.17em; text-transform:uppercase; color:var(--t4); margin-bottom:5px; }
+.stat-new-n {
+  font-family: Georgia, serif; font-weight:400;
+  font-size:52px; letter-spacing:-0.04em; line-height:0.95;
+}
+.stat-new-d { font-family:'Courier New',monospace; font-size:9px; color:var(--t4); margin-top:5px; letter-spacing:0.04em; }
+
+
+/* ═══════════════════════════════════════════
+   VAR 3 — Vessel image: one deliberate use
+   Problem: image as permanent backdrop = noise
+   Fix: image only in the vessel identity strip,
+        once, then solid surfaces below.
+   ═══════════════════════════════════════════ */
+
+.vessel-strip {
+  position:relative; height:140px; overflow:hidden; border-radius:4px 4px 0 0;
+  border:1px solid var(--border); border-bottom:none;
+}
+
+.vessel-strip-bg {
+  position:absolute; inset:0;
+  background: url('/yacht-backdrop.png') center 55% / cover no-repeat;
+  filter: brightness(0.42) saturate(0.65);
+}
+
+/* Strong gradient from left — text sits on dark side */
+.vessel-strip-wash {
+  position:absolute; inset:0;
+  background: linear-gradient(
+    90deg,
+    rgba(6,9,12,0.92) 0%,
+    rgba(6,9,12,0.60) 45%,
+    rgba(6,9,12,0.20) 100%
+  );
+}
+
+.vessel-strip-content {
+  position:relative; padding:20px 24px;
+  display:flex; align-items:flex-end; height:100%;
+  gap:24px;
+}
+
+.vessel-name {
+  font-family: Georgia, serif;
+  font-size:32px; font-weight:400; letter-spacing:-0.02em; line-height:1;
+  color:rgba(255,255,255,0.90);
+}
+
+.vessel-meta-col { display:flex; flex-direction:column; gap:3px; }
+.vessel-meta-row { font-size:10px; letter-spacing:0.09em; text-transform:uppercase; }
+
+/* Below the strip — hard transition to solid surface */
+.vessel-data {
+  background:var(--ink-2);
+  border:1px solid var(--border); border-top:none;
+  border-radius:0 0 4px 4px;
+  display:grid; grid-template-columns:repeat(4,1fr);
+  overflow:hidden;
+}
+
+.vd-cell {
+  padding:14px 18px; border-right:1px solid var(--border);
+}
+.vd-cell:last-child { border-right:none; }
+.vd-cell-l { font-size:8px; letter-spacing:0.16em; text-transform:uppercase; color:var(--t4); margin-bottom:4px; }
+.vd-cell-n { font-family:Georgia,serif; font-size:32px; font-weight:400; letter-spacing:-0.03em; line-height:1; }
+
+
+/* ═══════════════════════════════════════════
+   VAR 4 — Spotlight: sharper, more restrained
+   Problem: rounded-md + diffuse glass = soft
+   Fix: 4px radius, thinner border, harder edge,
+        teal accent on the input line only
+   ═══════════════════════════════════════════ */
+
+/* CURRENT */
+.spot-old {
+  background: rgba(10,16,24,0.62);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 16px 70px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.35);
+}
+
+/* REFINED */
+.spot-new {
+  background: rgba(14,12,10,0.85);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border-top: 1px solid rgba(255,255,255,0.10);
+  border-left: 1px solid rgba(255,255,255,0.07);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.65), 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.spot-input-row {
+  display:flex; align-items:center; gap:10px; padding:12px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+.spot-input-row input {
+  flex:1; background:none; border:none; outline:none;
+  font-size:14px; color:var(--t1); font-family:inherit; letter-spacing:-0.01em;
+}
+.spot-input-row input::placeholder { color:var(--t4); }
+.spot-input-row span { color:var(--t4); font-size:14px; }
+
+/* Teal accent on the input line — new only */
+.spot-new .spot-input-row {
+  border-bottom:1px solid rgba(58,124,157,0.22);
+}
+
+/* The thin active-state line at very bottom of input row */
+.spot-new .spot-input-row::after {
+  display:none; /* keeps it clean — teal only on the border, not a second line */
+}
+
+.spot-result {
+  display:flex; align-items:center; gap:10px; padding:9px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer;
+}
+.spot-result:hover { background:rgba(255,255,255,0.03); }
+.spot-result.sel { background:rgba(255,255,255,0.06); }
+
+.spot-icon {
+  width:22px; height:22px; border-radius:3px;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.07);
+  display:grid; place-items:center; font-size:10px; flex-shrink:0;
+}
+
+/* Old: round icons */
+.spot-old .spot-icon { border-radius:7px; }
+/* New: sharp 3px */
+.spot-new .spot-icon { border-radius:2px; }
+
+.spot-t { font-size:12px; color:var(--t1); }
+.spot-s { font-size:10px; font-family:'Courier New',monospace; color:var(--t4); letter-spacing:0.04em; margin-top:1px; }
+
+.spot-footer {
+  display:flex; align-items:center; gap:4px; padding:7px 16px;
+  border-top:1px solid rgba(255,255,255,0.04);
+  font-size:9px; color:var(--t4);
+}
+.kbd {
+  display:inline-flex; align-items:center; justify-content:center;
+  height:16px; min-width:16px; padding:0 4px;
+  border-radius:2px; background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.09); font-size:9px; color:var(--t4);
+}
+
+
+/* ═══════════════════════════════════════════
+   VAR 5 — Colour discipline
+   Problem: teal used for too many roles
+   Fix: teal = interactive/action only.
+        Gold = accent/identity. Mono for rest.
+   ═══════════════════════════════════════════ */
+
+.colour-demo {
+  background:var(--ink-2); border:1px solid var(--border); border-radius:4px; overflow:hidden;
+}
+
+.colour-row {
+  display:flex; align-items:center; gap:14px; padding:11px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+  font-size:12px;
+}
+.colour-row:last-child { border-bottom:none; }
+
+.swatch { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+.colour-rule { font-size:10px; color:var(--t3); margin-left:auto; font-family:'Courier New',monospace; }
+
+/* Nav sample */
+.nav-demo {
+  background:var(--ink-3); border:1px solid var(--border); border-radius:4px; overflow:hidden;
+  padding:8px 0;
+}
+
+.nav-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 14px; font-size:12px; color:var(--t3); cursor:pointer;
+}
+.nav-row:hover { background:rgba(255,255,255,0.02); color:var(--t2); }
+.nav-row.active {
+  color:var(--t1);
+  background:rgba(255,255,255,0.03);
+  border-left:2px solid var(--gold);
+  padding-left:12px;
+}
+.nav-row .c { font-family:'Courier New',monospace; font-size:10px; color:var(--t4); }
+.nav-row .c.u { color:rgba(192,80,58,0.7); }
+
+</style>
+</head>
+<body>
+
+<div class="meta">
+  <span>Celeste PMS · Refinement Study</span>
+  <span>Based on localhost:3002 — targeted improvements only</span>
+</div>
+
+
+<!-- ═══════════ VAR 1 — SURFACE CHARACTER ═══════════ -->
+<div class="frame">
+  <div class="hdr">
+    <div>
+      <p class="variation-tag">Variation 01</p>
+      <h2 class="variation-title">Surface character —<br>Warm vs cold flat</h2>
+    </div>
+    <p class="hdr-why">
+      <strong>Problem:</strong> Current surfaces are #1E1E1E with a single uniform border. Every card feels the same weight — like flat cutouts rather than constructed objects.<br><br>
+      <strong>Fix:</strong> Shift to warm charcoal <strong>#181614</strong>. Asymmetric borders — top edge brighter (light catch), bottom/sides darker. One subtle inner shadow. The surface now feels like it has a top and a bottom — depth without adding any visual noise or glass.
+    </p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <p class="compare-label now">Now — flat cold grey</p>
+      <div class="surface-now">
+        <div class="card-demo">
+          <span class="lbl">Open Faults</span>
+          <span class="val-old">14</span>
+          <span class="sub">↑ 3 critical</span>
+          <span class="tag-r">Critical</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="compare-label new">Refined — warm charcoal, top-catch light</p>
+      <div class="surface-new">
+        <div class="card-demo">
+          <span class="lbl">Open Faults</span>
+          <span class="val-new">14</span>
+          <span class="sub" style="margin-top:4px">3 require immediate action</span>
+          <span class="tag-r">Critical</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ VAR 2 — EDITORIAL NUMBERS ═══════════ -->
+<div class="frame">
+  <div class="hdr">
+    <div>
+      <p class="variation-tag">Variation 02</p>
+      <h2 class="variation-title">Editorial numbers —<br>Serif vs bold Inter</h2>
+    </div>
+    <p class="hdr-why">
+      <strong>Problem:</strong> Inter 700 at 32px for KPIs looks like a fintech dashboard from 2019. Every SaaS uses this. It reads as "metric card component" not "here is a number that means something."<br><br>
+      <strong>Fix:</strong> Georgia (or Cormorant when fonts load) at weight 400, 52px. A light-weight serif at large scale reads as editorial — like a ship's manifest or a Lloyd's Register entry. The number has <strong>gravitas</strong>. Labels stay in 8px uppercase mono above. The scale contrast does the work.
+    </p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <p class="compare-label now">Now — Inter Bold, equal weight throughout</p>
+      <div class="stat-grid-old">
+        <div class="stat-old">
+          <span class="stat-old-l">Open orders</span>
+          <span class="stat-old-n">14</span>
+        </div>
+        <div class="stat-old">
+          <span class="stat-old-l">Critical</span>
+          <span class="stat-old-n" style="color:var(--red)">3</span>
+        </div>
+        <div class="stat-old">
+          <span class="stat-old-l">Compliance</span>
+          <span class="stat-old-n" style="color:var(--green)">96%</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="compare-label new">Refined — Serif 400, label above, mono delta below</p>
+      <div class="stat-grid-new">
+        <div class="stat-new">
+          <span class="stat-new-l">Open orders</span>
+          <span class="stat-new-n">14</span>
+          <span class="stat-new-d">↑2 THIS WEEK</span>
+        </div>
+        <div class="stat-new">
+          <span class="stat-new-l">Critical</span>
+          <span class="stat-new-n" style="color:rgba(192,80,58,0.9)">3</span>
+          <span class="stat-new-d">ACTION REQUIRED</span>
+        </div>
+        <div class="stat-new">
+          <span class="stat-new-l">Compliance</span>
+          <span class="stat-new-n" style="color:rgba(74,148,104,0.85)">96<span style="font-size:22px">%</span></span>
+          <span class="stat-new-d">3 CERTS EXPIRING</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ VAR 3 — VESSEL IMAGE: ONCE, DELIBERATELY ═══════════ -->
+<div class="frame">
+  <div class="hdr">
+    <div>
+      <p class="variation-tag">Variation 03</p>
+      <h2 class="variation-title">Vessel image —<br>Once, deliberately placed</h2>
+    </div>
+    <p class="hdr-why">
+      <strong>Problem:</strong> Using the image as a persistent background competes with every piece of data on screen. The eye keeps being pulled to the content (yacht) instead of the task (engineering data).<br><br>
+      <strong>Fix:</strong> Image appears <strong>once</strong> — in the vessel identity strip at the top of the app or vessel detail. Hard gradient washes left-to-right: solid dark on the left (text lives here), image fades in on the right (atmosphere). Below the strip: instant hard cut to solid dark surface. The image earns its place as identity, then gets out of the way.
+    </p>
+  </div>
+
+  <div>
+    <p class="compare-label new" style="margin-bottom:12px">Vessel identity strip → hard cut → solid data surface</p>
+    <div class="vessel-strip">
+      <div class="vessel-strip-bg"></div>
+      <div class="vessel-strip-wash"></div>
+      <div class="vessel-strip-content">
+        <div>
+          <p class="caps" style="color:var(--gold);letter-spacing:0.18em;margin-bottom:6px">Engineering Systems</p>
+          <p class="vessel-name">SY Andromeda</p>
+        </div>
+        <div class="vessel-meta-col" style="margin-left:32px">
+          <span class="vessel-meta-row" style="color:var(--t4)">68.4m · Lürssen · 2019</span>
+          <span class="vessel-meta-row" style="color:var(--t4)">IMO 9876543</span>
+          <span class="vessel-meta-row" style="color:var(--gold)">Chief Eng: A. Morrison</span>
+        </div>
+      </div>
+    </div>
+    <div class="vessel-data">
+      <div class="vd-cell">
+        <p class="vd-cell-l">Open orders</p>
+        <p class="vd-cell-n">14</p>
+      </div>
+      <div class="vd-cell">
+        <p class="vd-cell-l">Critical</p>
+        <p class="vd-cell-n" style="color:rgba(192,80,58,0.9)">3</p>
+      </div>
+      <div class="vd-cell">
+        <p class="vd-cell-l">Parts low stock</p>
+        <p class="vd-cell-n" style="color:rgba(184,147,90,0.85)">7</p>
+      </div>
+      <div class="vd-cell">
+        <p class="vd-cell-l">Compliance</p>
+        <p class="vd-cell-n" style="color:rgba(74,148,104,0.85)">96<span style="font-size:16px">%</span></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ VAR 4 — SPOTLIGHT: SHARPER ═══════════ -->
+<div class="frame">
+  <div class="hdr">
+    <div>
+      <p class="variation-tag">Variation 04</p>
+      <h2 class="variation-title">Spotlight panel —<br>Soft glass vs sharp glass</h2>
+    </div>
+    <p class="hdr-why">
+      <strong>Problem:</strong> 12px border-radius + diffuse uniform border makes the panel look like a Tailwind component. Soft edges signal "consumer app."<br><br>
+      <strong>Fix:</strong> 4px radius only. Asymmetric border (top edge brightest — simulates a surface with a top light source). The teal accent appears <strong>only</strong> on the input divider line — the one place you're actively "entering." Everything else is near-invisible. The panel reads as sharp, machined, purposeful.
+    </p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <p class="compare-label now">Now — 12px radius, uniform border, diffuse shadow</p>
+      <div class="spot-old">
+        <div class="spot-input-row">
+          <span>⌕</span>
+          <input type="text" value="show open faults" placeholder="Find…" />
+        </div>
+        <div class="spot-result sel">
+          <div class="spot-icon">⚠</div>
+          <div><p class="spot-t">Engine Room — Oil Leak</p><p class="spot-s">FAULT · WO·1234 · 2 DAYS</p></div>
+          <span class="kbd" style="margin-left:auto">↵</span>
+        </div>
+        <div class="spot-result">
+          <div class="spot-icon">⚙</div>
+          <div><p class="spot-t">Main Generator — Service Overdue</p><p class="spot-s">WORK ORDER · WO·0892</p></div>
+        </div>
+        <div class="spot-result">
+          <div class="spot-icon">▣</div>
+          <div><p class="spot-t">Oil Filter 5W-40 — Low Stock</p><p class="spot-s">INVENTORY · 2 REMAINING</p></div>
+        </div>
+        <div class="spot-footer">
+          <span class="kbd">↑</span><span class="kbd">↓</span>
+          <span style="margin:0 4px">Navigate</span>
+          <div style="width:1px;height:10px;background:var(--border);margin:0 6px"></div>
+          <span class="kbd">↵</span><span style="margin:0 4px">Open</span>
+          <div style="width:1px;height:10px;background:var(--border);margin:0 6px"></div>
+          <span class="kbd">Esc</span><span style="margin:0 4px">Clear</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="compare-label new">Refined — 4px radius, asymmetric border, teal on input line only</p>
+      <div class="spot-new">
+        <div class="spot-input-row">
+          <span>⌕</span>
+          <input type="text" value="show open faults" placeholder="Find…" />
+        </div>
+        <div class="spot-result sel">
+          <div class="spot-icon">⚠</div>
+          <div><p class="spot-t">Engine Room — Oil Leak</p><p class="spot-s">FAULT · WO·1234 · 2 DAYS OPEN</p></div>
+          <span class="kbd" style="margin-left:auto">↵</span>
+        </div>
+        <div class="spot-result">
+          <div class="spot-icon">⚙</div>
+          <div><p class="spot-t">Main Generator — Service Overdue</p><p class="spot-s">WORK ORDER · WO·0892 · CHIEF ENG</p></div>
+        </div>
+        <div class="spot-result">
+          <div class="spot-icon">▣</div>
+          <div><p class="spot-t">Oil Filter 5W-40 — Low Stock</p><p class="spot-s">INVENTORY · 2 REMAINING OF 10</p></div>
+        </div>
+        <div class="spot-footer">
+          <span class="kbd">↑</span><span class="kbd">↓</span>
+          <span style="margin:0 4px">Navigate</span>
+          <div style="width:1px;height:10px;background:var(--border);margin:0 6px"></div>
+          <span class="kbd">↵</span><span style="margin:0 4px">Open</span>
+          <div style="width:1px;height:10px;background:var(--border);margin:0 6px"></div>
+          <span class="kbd">Esc</span><span style="margin:0 4px">Clear</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ VAR 5 — COLOUR DISCIPLINE ═══════════ -->
+<div class="frame">
+  <div class="hdr">
+    <div>
+      <p class="variation-tag">Variation 05</p>
+      <h2 class="variation-title">Colour discipline —<br>Teal as action only</h2>
+    </div>
+    <p class="hdr-why">
+      <strong>Problem:</strong> Teal (#3A7C9D) is used for: brand, active states, selected nav, search glow, buttons, links, accent rings. When it appears everywhere it stops meaning anything.<br><br>
+      <strong>Fix:</strong> <strong>Teal = interactive/action only</strong> (buttons, links, focus rings, the search input line). <strong>Gold = identity/vessel accent</strong> (active nav indicator, vessel name, section headers). Monochrome for everything else. The moment you see teal, you know you can click it. The moment you see gold, you know it's a proper noun — the vessel, the system identity.
+    </p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <p class="compare-label now">Colour roles — clear separation</p>
+      <div class="colour-demo">
+        <div class="colour-row">
+          <div class="swatch" style="background:var(--teal)"></div>
+          <span>Teal #3A7C9D</span>
+          <span class="colour-rule">Buttons · Links · Focus · Active input</span>
+        </div>
+        <div class="colour-row">
+          <div class="swatch" style="background:var(--gold)"></div>
+          <span>Gold #B8935A</span>
+          <span class="colour-rule">Active nav · Vessel name · Headers</span>
+        </div>
+        <div class="colour-row">
+          <div class="swatch" style="background:var(--red)"></div>
+          <span>Red #C0503A</span>
+          <span class="colour-rule">Critical · Destructive only</span>
+        </div>
+        <div class="colour-row">
+          <div class="swatch" style="background:var(--amber)"></div>
+          <span>Amber #C08840</span>
+          <span class="colour-rule">Warning · High priority only</span>
+        </div>
+        <div class="colour-row">
+          <div class="swatch" style="background:var(--green)"></div>
+          <span>Green #4A9468</span>
+          <span class="colour-rule">Closed · Compliant · OK only</span>
+        </div>
+        <div class="colour-row">
+          <div class="swatch" style="background:var(--t4);border:1px solid var(--t3)"></div>
+          <span style="color:var(--t3)">Everything else</span>
+          <span class="colour-rule">Monochrome — no colour role</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="compare-label new">Nav applied — gold for identity, teal never appears here</p>
+      <div class="nav-demo">
+        <div class="nav-row" style="padding:4px 14px 8px;font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:var(--t4)">Engineering</div>
+        <div class="nav-row active">Work Orders <span class="c u">14</span></div>
+        <div class="nav-row">Faults <span class="c u">3</span></div>
+        <div class="nav-row">Equipment <span class="c">42</span></div>
+        <div class="nav-row" style="padding:10px 14px 4px;font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:var(--t4)">Stores</div>
+        <div class="nav-row">Inventory <span class="c">284</span></div>
+        <div class="nav-row">Purchasing <span class="c">2</span></div>
+        <div class="nav-row" style="padding:10px 14px 4px;font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:var(--t4)">Compliance</div>
+        <div class="nav-row">Certificates <span class="c u">3</span></div>
+        <div class="nav-row">Hours of Rest</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

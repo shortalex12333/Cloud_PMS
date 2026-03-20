@@ -638,14 +638,14 @@ export default function SpotlightSearch({
         <div
           style={{
             width: '100%',
-            background: 'rgba(14,12,10,0.72)',
-            backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
-            borderTop: '1px solid rgba(255,255,255,0.13)',
-            borderRight: '1px solid rgba(255,255,255,0.06)',
-            borderBottom: '1px solid rgba(255,255,255,0.03)',
-            borderLeft: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--search-glass-bg)',
+            backdropFilter: 'blur(var(--search-glass-blur))', WebkitBackdropFilter: 'blur(var(--search-glass-blur))',
+            borderTop: '1px solid var(--search-glass-border-t)',
+            borderRight: '1px solid var(--search-glass-border-s)',
+            borderBottom: '1px solid var(--search-glass-border-b)',
+            borderLeft: '1px solid var(--search-glass-border-s)',
             borderRadius: 4,
-            boxShadow: '0 20px 80px rgba(0,0,0,0.60), 0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.05)',
+            boxShadow: 'var(--search-glass-shadow)',
             overflow: 'hidden',
           }}
           data-email-scope={emailScopeActive}
@@ -975,23 +975,23 @@ export default function SpotlightSearch({
               display: 'flex', alignItems: 'center', gap: 4,
               height: 34, padding: '0 14px',
               borderTop: '1px solid var(--border-faint)',
-              background: 'rgba(0,0,0,0.18)',
+              background: 'var(--search-footer-bg)',
             }}
             aria-label="Keyboard shortcuts"
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--txt-ghost)' }}>
-              <kbd style={{ background: 'var(--surface-el)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'rgba(255,255,255,0.30)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>↑</kbd>
-              <kbd style={{ background: 'var(--surface-el)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'rgba(255,255,255,0.30)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>↓</kbd>
+              <kbd style={{ background: 'var(--kbd-bg)', border: '1px solid var(--kbd-border)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'var(--kbd-color)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>↑</kbd>
+              <kbd style={{ background: 'var(--kbd-bg)', border: '1px solid var(--kbd-border)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'var(--kbd-color)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>↓</kbd>
               {' '}Navigate
             </div>
             <div style={{ width: 1, height: 10, background: 'var(--border-sub)', margin: '0 8px' }} aria-hidden="true" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--txt-ghost)' }}>
-              <kbd style={{ background: 'var(--surface-el)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'rgba(255,255,255,0.30)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>↵</kbd>
+              <kbd style={{ background: 'var(--kbd-bg)', border: '1px solid var(--kbd-border)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'var(--kbd-color)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>↵</kbd>
               {' '}Open
             </div>
             <div style={{ width: 1, height: 10, background: 'var(--border-sub)', margin: '0 8px' }} aria-hidden="true" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--txt-ghost)' }}>
-              <kbd style={{ background: 'var(--surface-el)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'rgba(255,255,255,0.30)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>Esc</kbd>
+              <kbd style={{ background: 'var(--kbd-bg)', border: '1px solid var(--kbd-border)', borderRadius: 3, padding: '1px 4px', fontSize: 10, color: 'var(--kbd-color)', fontFamily: 'var(--font-mono)', minWidth: 18, textAlign: 'center' }}>Esc</kbd>
               {' '}Clear
             </div>
           </div>
@@ -1000,8 +1000,8 @@ export default function SpotlightSearch({
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '8px 14px',
-            borderTop: '1px solid rgba(255,255,255,0.04)',
-            background: 'rgba(0,0,0,0.10)',
+            borderTop: '1px solid var(--search-icon-strip-border)',
+            background: 'var(--search-icon-strip-bg)',
           }}>
             {/* Email toggle */}
             <button

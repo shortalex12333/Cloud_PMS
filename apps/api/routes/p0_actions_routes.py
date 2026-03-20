@@ -674,7 +674,8 @@ _FAULT_ACTIONS = frozenset({
     "close_fault", "diagnose_fault", "acknowledge_fault", "resolve_fault",
     "reopen_fault", "mark_fault_false_alarm", "create_work_order_from_fault",
     "update_fault", "add_fault_photo", "view_fault_detail",
-    "add_fault_note", "report_fault",
+    "add_fault_note", "report_fault", "classify_fault",
+    "investigate_fault", "archive_fault", "delete_fault",
 })
 
 _WORK_ORDER_ACTIONS = frozenset({
@@ -691,7 +692,7 @@ _WORK_ORDER_ACTIONS = frozenset({
 
 _PART_ACTIONS = frozenset({
     "consume_part", "receive_part", "transfer_part", "adjust_stock_quantity",
-    "write_off_part", "add_to_shopping_list", "view_part_stock",
+    "write_off_part", "add_to_shopping_list", "reorder_part", "view_part_stock",
     "view_part_location", "view_part_usage", "view_linked_equipment",
     "view_part_details", "check_stock_level", "log_part_usage",
 })
@@ -699,10 +700,35 @@ _PART_ACTIONS = frozenset({
 _PO_ACTIONS = frozenset({
     "submit_purchase_order", "approve_purchase_order",
     "mark_po_received", "cancel_purchase_order",
+    "convert_to_po",
 })
 
 _RECEIVING_ACTIONS = frozenset({
     "submit_receiving_for_review", "edit_receiving",
+    "confirm_receiving", "accept_receiving", "reject_receiving",
+    "flag_discrepancy", "create_receiving",
+    "attach_receiving_image_with_comment", "extract_receiving_candidates",
+    "update_receiving_fields", "add_receiving_item", "adjust_receiving_item",
+    "link_invoice_document", "view_receiving_history",
+})
+
+_SHOPPING_LIST_ACTIONS = frozenset({
+    "submit_list", "approve_list", "add_list_item",
+    "create_shopping_list_item", "approve_shopping_list_item",
+    "reject_shopping_list_item", "promote_candidate_to_part",
+    "view_shopping_list_history", "delete_shopping_item",
+    "archive_list", "delete_list",
+})
+
+_HANDOVER_ACTIONS = frozenset({
+    "sign_handover", "edit_handover_section", "add_to_handover",
+    "export_handover", "archive_handover", "delete_handover",
+})
+
+_WARRANTY_ACTIONS = frozenset({
+    "file_warranty_claim", "draft_warranty_claim",
+    "archive_warranty", "void_warranty",
+    "add_warranty_note",
 })
 
 
@@ -732,6 +758,13 @@ def resolve_entity_context(action: str, context: dict) -> dict:
             ctx.setdefault("purchase_order_id", entity_id)
         elif action in _RECEIVING_ACTIONS:
             ctx.setdefault("receiving_id", entity_id)
+        elif action in _SHOPPING_LIST_ACTIONS:
+            ctx.setdefault("item_id", entity_id)
+        elif action in _HANDOVER_ACTIONS:
+            ctx.setdefault("export_id", entity_id)
+            ctx.setdefault("handover_id", entity_id)
+        elif action in _WARRANTY_ACTIONS:
+            ctx.setdefault("warranty_id", entity_id)
 
     return ctx
 
@@ -1226,7 +1259,7 @@ async def execute_action(
         tenant_alias = user_context.get("tenant_key_alias", "")
         db_client = get_tenant_supabase_client(tenant_alias)
         try:
-            return await _ACTION_HANDLERS[action](
+            result = await _ACTION_HANDLERS[action](
                 payload=payload,
                 context=resolved_context,
                 yacht_id=yacht_id,
@@ -1234,8 +1267,25 @@ async def execute_action(
                 user_context=user_context,
                 db_client=db_client,
             )
+            # Handlers that return {"status": "error", ...} should be HTTP 400
+            if isinstance(result, dict) and result.get("status") == "error":
+                raise HTTPException(
+                    status_code=400,
+                    detail=result,
+                )
+            return result
         except HTTPException:
             raise
+        except (ValueError, KeyError) as e:
+            logger.warning(f"Validation error for action '{action}': {e}")
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "error_code": "VALIDATION_ERROR",
+                    "message": str(e),
+                }
+            )
         except Exception as e:
             logger.error(f"Handler error for action '{action}': {e}", exc_info=True)
             raise HTTPException(
@@ -1392,80 +1442,8 @@ async def execute_action(
                         "message": "Failed to create work order"
                     }
 
-        elif action in ["create_receiving", "attach_receiving_image_with_comment",
-                        "extract_receiving_candidates", "update_receiving_fields",
-                        "add_receiving_item", "adjust_receiving_item",
-                        "link_invoice_document", "accept_receiving",
-                        "reject_receiving", "view_receiving_history"]:
-            # Receiving Lens v1 actions - dispatch to internal_dispatcher
-            logger.info(f"[RECEIVING] Dispatching action '{action}' to internal_dispatcher")
-
-            from action_router.dispatchers import internal_dispatcher
-
-            # Extract JWT token for RLS enforcement (remove "Bearer " prefix)
-            user_jwt = authorization
-            if user_jwt and user_jwt.startswith("Bearer "):
-                user_jwt = user_jwt[7:]
-
-            # Extract mode from context if present (for prepare/execute pattern)
-            mode = request.context.get("mode")
-
-            # Merge context and payload for internal dispatcher
-            # CRITICAL: Pass user_jwt so handlers can create RLS-enforced clients
-            handler_params = {
-                "yacht_id": yacht_id,
-                "user_id": user_id,
-                "user_context": user_context,
-                "user_jwt": user_jwt,  # For RLS enforcement
-                **payload
-            }
-
-            # Add mode if present (for prepare/execute pattern)
-            if mode:
-                handler_params["mode"] = mode
-
-            try:
-                result = await internal_dispatcher.dispatch(action, handler_params)
-                logger.info(f"[RECEIVING] Action '{action}' completed successfully")
-            except Exception as e:
-                logger.error(f"[RECEIVING] Action '{action}' failed: {type(e).__name__}: {e}")
-                raise
-
-        elif action in ["add_document_comment", "list_document_comments",
-                        "update_document_comment", "delete_document_comment",
-                        "view_worklist", "add_worklist_task", "export_worklist",
-                        "submit_receiving_for_review"]:
-            # Document comments, worklist, and additional receiving actions — dispatch to internal_dispatcher
-            logger.info(f"[INTERNAL] Dispatching action '{action}' to internal_dispatcher")
-
-            from action_router.dispatchers import internal_dispatcher
-
-            user_jwt = authorization
-            if user_jwt and user_jwt.startswith("Bearer "):
-                user_jwt = user_jwt[7:]
-
-            mode = request.context.get("mode")
-
-            handler_params = {
-                "yacht_id": yacht_id,
-                "user_id": user_id,
-                "user_context": user_context,
-                "user_jwt": user_jwt,
-                **payload
-            }
-
-            if mode:
-                handler_params["mode"] = mode
-
-            try:
-                result = await internal_dispatcher.dispatch(action, handler_params)
-                logger.info(f"[INTERNAL] Action '{action}' completed successfully")
-            except Exception as e:
-                logger.error(f"[INTERNAL] Action '{action}' failed: {type(e).__name__}: {e}")
-                raise
-
         else:
-            # Unknown action - return 400 (client error with invalid action name)
+            # Unknown action — all known actions are in _ACTION_HANDLERS (Phase 4)
             logger.warning(f"[ROUTING] Unknown action requested: {action}")
             raise HTTPException(
                 status_code=400,

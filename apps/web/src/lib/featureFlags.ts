@@ -9,7 +9,7 @@
  * Get the route for an entity type
  */
 export function getEntityRoute(
-  entityType: 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving' | 'document' | 'certificate' | 'warranty' | 'purchase_order' | 'hours_of_rest' | 'manual',
+  entityType: 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving' | 'document' | 'certificate' | 'warranty' | 'purchase_order' | 'hours_of_rest' | 'hours_of_rest_signoff' | 'manual',
   entityId?: string
 ): string {
   const routeMap: Record<string, string> = {
@@ -25,6 +25,7 @@ export function getEntityRoute(
     warranty: '/warranties',
     purchase_order: '/purchasing',
     hours_of_rest: '/hours-of-rest',
+    hours_of_rest_signoff: '/hours-of-rest/signoffs',
     manual: '/documents',
   };
 

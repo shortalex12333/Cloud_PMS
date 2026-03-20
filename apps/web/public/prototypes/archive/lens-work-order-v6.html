@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Work Order · v6</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --surface-base: #0c0b0a;
+  --surface:      #181614;
+  --surface-el:   #1e1b18;
+  --surface-hover:#252118;
+  --border-sub:   rgba(255,255,255,0.06);
+  --txt:          rgba(255,255,255,0.92);
+  --txt2:         rgba(255,255,255,0.55);
+  --txt3:         rgba(255,255,255,0.40);
+  --txt-ghost:    rgba(255,255,255,0.20);
+  --mark:         #5AABCC;
+  --teal-bg:      rgba(58,124,157,0.13);
+  --red:          #C0503A;
+  --red-bg:       rgba(192,80,58,0.10);
+  --red-border:   rgba(192,80,58,0.22);
+  --amber:        #C4893B;
+  --amber-bg:     rgba(196,137,59,0.10);
+  --amber-border: rgba(196,137,59,0.22);
+  --green:        #4CAF81;
+  --green-bg:     rgba(76,175,129,0.10);
+  --green-border: rgba(76,175,129,0.22);
+  --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:    'SF Mono','Fira Code', ui-monospace, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--surface-base);
+  color: var(--txt);
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 16px 48px;
+  font-size: 14px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════ */
+.panel {
+  width: 720px;
+  border-radius: 8px; overflow: hidden;
+  border-top:    1px solid rgba(255,255,255,0.13);
+  border-right:  1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-left:   1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.60), 0 28px 80px rgba(0,0,0,0.80);
+  background: var(--surface);
+  display: flex; flex-direction: column;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LENS HEADER — glass nav bar
+   ═══════════════════════════════════════════════════════ */
+.lens-hdr {
+  height: 56px; flex-shrink: 0;
+  display: flex; align-items: center; padding: 0 16px;
+  border-bottom: 1px solid var(--border-sub);
+  background: rgba(16,14,12,0.65);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.hdr-back {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--txt2); background: none; border: none;
+  transition: background 60ms; margin-right: 8px;
+}
+.hdr-back:hover { background: var(--surface-hover); color: var(--txt); }
+.hdr-type {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--txt2); flex: 1; text-transform: uppercase;
+}
+.hdr-actions { display: flex; align-items: center; gap: 4px; }
+.hdr-btn {
+  height: 28px; border-radius: 6px; padding: 0 10px;
+  display: flex; align-items: center; gap: 5px;
+  cursor: pointer; color: var(--txt3); font-size: 11px; font-weight: 500;
+  background: none; border: none; font-family: var(--font-sans);
+  transition: background 60ms;
+}
+.hdr-btn:hover { background: var(--surface-hover); color: var(--txt2); }
+.hdr-close {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--txt-ghost); background: none; border: none;
+  transition: background 60ms;
+}
+.hdr-close:hover { background: var(--surface-hover); color: var(--txt2); }
+
+/* ═══════════════════════════════════════════════════════
+   BODY — scroll container
+   ═══════════════════════════════════════════════════════ */
+.lens-body {
+  flex: 1; overflow-y: auto; padding: 0 40px 40px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   IDENTITY STRIP — structured hierarchy
+   ═══════════════════════════════════════════════════════ */
+.identity { padding-top: 32px; padding-bottom: 28px; }
+
+/* Top row — overline left, action right */
+.identity-top-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+/* WO number as overline — document reference stamp */
+.identity-overline {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  color: var(--txt3); letter-spacing: 0.04em;
+}
+
+/* Title — standalone, breathing room */
+.identity-title {
+  font-size: 22px; font-weight: 600; line-height: 1.25;
+  letter-spacing: -0.01em; margin-bottom: 8px;
+}
+
+/* Context line — location + assignee */
+.identity-context {
+  font-size: 13px; font-weight: 400; color: var(--txt2);
+  margin-bottom: 16px;
+}
+.crew-link {
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: rgba(90,171,204,0.3);
+  text-underline-offset: 2px;
+}
+.crew-link:hover { text-decoration-color: var(--mark); }
+
+/* Status pills — with breathing room */
+.pills { display: flex; gap: 8px; margin-bottom: 20px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 6px;
+  font-size: 12px; font-weight: 500;
+}
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+.pill-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.pill-amber .dot { background: var(--amber); }
+.pill-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.pill-red .dot { background: var(--red); }
+
+/* Key-value detail lines */
+.detail-lines { margin-bottom: 24px; }
+.detail-line {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--txt2);
+  min-height: 32px;
+}
+.detail-label {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  min-width: 80px;
+}
+.equip-link {
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: rgba(90,171,204,0.3);
+  text-underline-offset: 2px;
+}
+.equip-link:hover { text-decoration-color: var(--mark); }
+.mono { font-family: var(--font-mono); }
+.mono-val { font-family: var(--font-mono); font-size: 13px; color: var(--txt); }
+
+/* Description */
+.desc-block { margin-bottom: 24px; }
+.desc-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--txt3); margin-bottom: 6px;
+}
+.desc-text {
+  font-size: 14px; font-weight: 400; color: var(--txt2);
+  line-height: 1.65; max-width: 600px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SPLIT BUTTON — disabled state
+   ═══════════════════════════════════════════════════════ */
+.split-wrap { position: relative; flex-shrink: 0; }
+.split-btn { display: flex; border-radius: 8px; overflow: hidden; }
+.split-main {
+  padding: 0 16px; height: 36px;
+  background: rgba(255,255,255,0.06); color: var(--txt-ghost);
+  font-size: 13px; font-weight: 500; border: none;
+  font-family: var(--font-sans); cursor: default;
+  display: flex; align-items: center;
+}
+.split-toggle {
+  width: 32px; height: 36px;
+  background: rgba(255,255,255,0.06); color: var(--txt-ghost);
+  border: none; border-left: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-sans); transition: background 60ms;
+}
+.split-toggle:hover { background: rgba(255,255,255,0.10); }
+.split-tooltip {
+  display: none; position: absolute; top: 42px; right: 0;
+  background: var(--surface-el); color: var(--txt2);
+  font-size: 11px; padding: 6px 10px; border-radius: 6px;
+  white-space: nowrap; border: 1px solid var(--border-sub);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  pointer-events: none; z-index: 20;
+}
+.split-main:hover ~ .split-tooltip,
+.split-main:hover + .split-toggle + .split-tooltip { display: block; }
+/* Also show on wrap hover */
+.split-wrap:hover .split-tooltip { display: block; }
+
+/* Dropdown */
+.dropdown {
+  display: none; position: absolute; top: 42px; right: 0;
+  background: var(--surface-el); border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.50);
+  min-width: 190px; padding: 4px; z-index: 30;
+}
+.dropdown.open { display: block; }
+.dd-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 6px;
+  font-size: 13px; font-weight: 400; color: var(--txt);
+  cursor: pointer; width: 100%; border: none;
+  background: none; font-family: var(--font-sans); text-align: left;
+  transition: background 60ms;
+}
+.dd-item:hover { background: var(--surface-hover); }
+.dd-item svg { width: 14px; height: 14px; color: var(--txt3); flex-shrink: 0; }
+.dd-item.danger { color: var(--red); }
+.dd-item.danger svg { color: var(--red); }
+.dd-sep { height: 1px; background: var(--border-sub); margin: 4px 8px; }
+
+/* ═══════════════════════════════════════════════════════
+   DOCUMENT ROWS
+   ═══════════════════════════════════════════════════════ */
+.doc-sop-action {
+  color: var(--mark); font-weight: 500;
+}
+.doc-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 6px;
+  cursor: pointer; transition: background 60ms; min-height: 44px;
+}
+.doc-row:hover { background: var(--surface-hover); }
+.doc-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--teal-bg);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.doc-icon svg { width: 14px; height: 14px; color: var(--mark); }
+.doc-info { flex: 1; }
+.doc-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+.doc-name .doc-code { font-family: var(--font-mono); font-size: 12px; }
+.doc-meta { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+.doc-meta .doc-date { font-family: var(--font-mono); font-size: 10px; }
+.doc-chevron { color: var(--txt-ghost); }
+
+/* ═══════════════════════════════════════════════════════
+   SECTION SYSTEM — ruled line + 14px 600 heading + whitespace
+   ═══════════════════════════════════════════════════════ */
+.section {
+  border-top: 1px solid var(--border-sub);
+  padding-top: 24px;
+  margin-top: 32px;
+}
+.section:first-child { margin-top: 24px; }
+
+.sec-hdr {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; user-select: none;
+  padding-bottom: 12px;
+  min-height: 44px;
+}
+.sec-hdr:hover .sec-title { color: var(--txt2); }
+.sec-icon { width: 16px; height: 16px; color: var(--txt3); flex-shrink: 0; }
+.sec-title {
+  font-size: 14px; font-weight: 600; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  transition: color 120ms; flex: 1;
+}
+.sec-action {
+  font-size: 13px; font-weight: 500; color: var(--mark);
+  cursor: pointer; background: none; border: none; font-family: var(--font-sans);
+  padding: 4px 8px; border-radius: 4px; transition: background 60ms;
+}
+.sec-action:hover { background: var(--teal-bg); }
+.sec-count {
+  font-size: 11px; color: var(--txt-ghost); font-family: var(--font-mono);
+}
+.sec-chevron {
+  width: 16px; height: 16px; color: var(--txt-ghost);
+  transition: transform 200ms ease; flex-shrink: 0;
+}
+.section.collapsed .sec-chevron { transform: rotate(-90deg); }
+
+.sec-body {
+  overflow: hidden;
+  transition: max-height 300ms ease, opacity 250ms ease;
+}
+.section.collapsed .sec-body {
+  max-height: 0 !important; opacity: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHECKLIST
+   ═══════════════════════════════════════════════════════ */
+.progress-bar {
+  height: 3px; width: 100%; border-radius: 2px;
+  background: rgba(255,255,255,0.06); overflow: hidden;
+  margin-bottom: 12px;
+}
+.progress-bar .fill {
+  height: 100%; border-radius: 2px; background: var(--mark);
+}
+
+.check-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0; min-height: 44px;
+}
+.check-item.done { opacity: 0.5; }
+.check-box {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  margin-top: 2px; display: flex; align-items: center; justify-content: center;
+}
+.check-box.checked { background: var(--green); }
+.check-box.checked svg { width: 11px; height: 11px; color: #fff; }
+.check-box.pending {
+  background: none; border: 1.5px solid var(--txt3); cursor: pointer;
+}
+.check-box.pending:hover { border-color: var(--mark); }
+.check-text { flex: 1; }
+.check-desc {
+  font-size: 13px; font-weight: 400; color: var(--txt); line-height: 1.45;
+}
+.check-item.done .check-desc { text-decoration: line-through; color: var(--txt3); }
+.check-meta {
+  font-size: 11px; color: var(--txt3); margin-top: 2px;
+  display: flex; align-items: center; gap: 8px;
+}
+.check-meta .ts { font-family: var(--font-mono); font-size: 10px; }
+.check-undo {
+  font-size: 11px; font-weight: 500; color: var(--mark);
+  cursor: pointer; background: none; border: none; font-family: var(--font-sans);
+  padding: 0;
+}
+.check-undo:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════
+   NOTES
+   ═══════════════════════════════════════════════════════ */
+.note {
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.note:last-child { border-bottom: none; }
+.note-meta {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.note-author { font-size: 13px; font-weight: 500; color: var(--txt); }
+.note-time { font-family: var(--font-mono); font-size: 11px; color: var(--txt3); }
+.note-body {
+  font-size: 14px; font-weight: 400; color: var(--txt2); line-height: 1.6;
+}
+.note-body.clamped {
+  display: -webkit-box; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.note-more {
+  font-size: 12px; font-weight: 500; color: var(--mark);
+  cursor: pointer; background: none; border: none;
+  font-family: var(--font-sans); padding: 0; margin-top: 4px;
+}
+.note-more:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════
+   HISTORY — prior service periods
+   ═══════════════════════════════════════════════════════ */
+.period {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.period:last-child { border-bottom: none; }
+.period-hdr {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; min-height: 36px;
+}
+.period-year {
+  font-family: var(--font-mono); font-size: 13px;
+  font-weight: 600; color: var(--txt);
+}
+.period-label { font-size: 12px; color: var(--txt2); }
+.period-tag {
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 2px 6px; border-radius: 3px;
+  margin-left: auto;
+}
+.period-tag.active { color: var(--amber); background: var(--amber-bg); }
+.period-tag.closed { color: var(--txt3); background: rgba(255,255,255,0.05); }
+.period-summary {
+  font-size: 12px; color: var(--txt3); margin-top: 4px;
+  padding-left: 0;
+}
+.period-summary .ps-mono { font-family: var(--font-mono); font-size: 11px; }
+
+/* ═══════════════════════════════════════════════════════
+   ATTACHMENTS
+   ═══════════════════════════════════════════════════════ */
+.attach-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; min-height: 44px;
+  cursor: pointer; border-radius: 6px;
+  transition: background 60ms;
+}
+.attach-row:hover { background: var(--surface-hover); margin: 0 -8px; padding: 10px 8px; }
+.attach-thumb {
+  width: 40px; height: 40px; border-radius: 6px;
+  flex-shrink: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.attach-thumb.img {
+  background: linear-gradient(135deg, #2a2520 0%, #3d3228 50%, #2a2018 100%);
+}
+.attach-thumb.img::after {
+  content: ''; display: block; width: 20px; height: 14px;
+  border-radius: 2px; background: rgba(90,171,204,0.25);
+}
+.attach-thumb.doc {
+  background: var(--surface-el);
+}
+.attach-thumb.doc svg { width: 18px; height: 18px; color: var(--txt3); }
+.attach-info { flex: 1; min-width: 0; }
+.attach-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+.attach-caption {
+  font-size: 11px; color: var(--txt3); margin-top: 1px;
+  font-style: italic; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.attach-size {
+  font-family: var(--font-mono); font-size: 11px; color: var(--txt-ghost);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PARTS
+   ═══════════════════════════════════════════════════════ */
+.part-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; min-height: 44px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.part-row:last-child { border-bottom: none; }
+.part-name {
+  font-size: 13px; font-weight: 500; flex: 1;
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: rgba(90,171,204,0.3);
+  text-underline-offset: 2px;
+}
+.part-name:hover { text-decoration-color: var(--mark); }
+.part-name .part-id { font-family: var(--font-mono); font-size: 12px; }
+.part-qty {
+  font-family: var(--font-mono); font-size: 12px;
+  font-weight: 500; color: var(--txt2);
+}
+.part-stock {
+  font-family: var(--font-mono); font-size: 11px; color: var(--txt3);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL REVEAL
+   ═══════════════════════════════════════════════════════ */
+.reveal {
+  opacity: 0; transform: translateY(10px);
+  transition: opacity 350ms ease, transform 350ms ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+svg { display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- ═══ LENS HEADER ═══ -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Work Order</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Related
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ SCROLLABLE BODY ═══ -->
+  <div class="lens-body">
+
+    <!-- ─── IDENTITY STRIP ─── -->
+    <div class="identity">
+      <!-- Top row: overline left, split button right -->
+      <div class="identity-top-row">
+        <div class="identity-overline">WO-1042</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main">Mark Complete</button>
+            <button class="split-toggle" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="split-tooltip">Complete all checklist items first</div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit Details
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Add Note
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Log Hours
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              Reassign
+            </button>
+            <div class="dd-sep"></div>
+            <button class="dd-item danger" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Archive
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Title — standalone, human-readable -->
+      <h1 class="identity-title">Emergency Valve Replacement</h1>
+
+      <!-- Context — location + assignee -->
+      <p class="identity-context">Engine Room · Assigned to <span class="crew-link">R. Chen</span></p>
+
+      <!-- Status pills -->
+      <div class="pills">
+        <span class="pill pill-amber"><span class="dot"></span> In Progress</span>
+        <span class="pill pill-red"><span class="dot"></span> Critical</span>
+      </div>
+
+      <!-- Key-value detail lines -->
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Equipment</span>
+          <span class="equip-link"><span class="mono">E-007</span> Main Engine</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Due</span>
+          <span class="mono-val">17 Mar 2026</span>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="desc-block">
+        <div class="desc-label">Description</div>
+        <p class="desc-text">Emergency isolation valve on port fuel line requires replacement. Temporary bypass installed — monitor for leaks every 2 hours. Part ETA 17 Mar.</p>
+      </div>
+    </div>
+
+    <!-- ─── OFFICIAL DOCUMENTS ─── -->
+    <div class="section" id="sec-docs">
+      <div class="sec-hdr" onclick="toggleSec('sec-docs')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="sec-title">Official Documents</span>
+        <span class="sec-count">3</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <!-- SOP — now a regular doc row with teal "Open SOP" action -->
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name"><span class="doc-sop-action">Open SOP</span> — Valve Replacement Procedure (<span class="doc-code">SOP-ENG-042</span>)</div>
+          </div>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name"><span class="doc-code">ISM-F042</span> — Fuel System Isolation Procedure</div>
+            <div class="doc-meta">Revision 3 · Effective <span class="doc-date">01 Jan 2026</span></div>
+          </div>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name">Class Certificate — Engine Room Fire Safety</div>
+            <div class="doc-meta">Lloyd's Register · Expires <span class="doc-date">15 Sep 2027</span></div>
+          </div>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTIONS — ruled line + 14px/600 heading + whitespace
+         ═══════════════════════════════════════════════ -->
+
+    <!-- CHECKLIST -->
+    <div class="section reveal" id="sec-checklist">
+      <div class="sec-hdr" onclick="toggleSec('sec-checklist')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span class="sec-title">Checklist</span>
+        <span class="sec-count">3/5</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="progress-bar"><div class="fill" style="width:60%"></div></div>
+        <div class="check-item done">
+          <div class="check-box checked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="check-text">
+            <div class="check-desc">Isolate fuel supply</div>
+            <div class="check-meta">R. Chen <span class="ts">14 Mar 10:30</span> <button class="check-undo">Undo</button></div>
+          </div>
+        </div>
+        <div class="check-item done">
+          <div class="check-box checked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="check-text">
+            <div class="check-desc">Install temporary bypass</div>
+            <div class="check-meta">R. Chen <span class="ts">14 Mar 16:15</span> <button class="check-undo">Undo</button></div>
+          </div>
+        </div>
+        <div class="check-item done">
+          <div class="check-box checked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="check-text">
+            <div class="check-desc">Order replacement valve (<span class="mono">774-B</span>)</div>
+            <div class="check-meta">J. Morrison <span class="ts">15 Mar 10:15</span> <button class="check-undo">Undo</button></div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-box pending"></div>
+          <div class="check-text">
+            <div class="check-desc">Replace valve and reconnect fuel line</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-box pending"></div>
+          <div class="check-text">
+            <div class="check-desc">Pressure test at 2.5 bar for 30 min — confirm zero leaks</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="section reveal" id="sec-notes">
+      <div class="sec-hdr" onclick="toggleSec('sec-notes')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="sec-title">Notes</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">R. Chen</span>
+            <span class="note-time">16 Mar 14:32</span>
+          </div>
+          <p class="note-body">Bypass valve installed. Monitoring pressure gauge every 2 hours. No leaks detected so far.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">J. Morrison</span>
+            <span class="note-time">15 Mar 10:15</span>
+          </div>
+          <p class="note-body">Part <span class="mono">774-B</span> ordered via <span class="mono">PO-89</span>. ETA 17 Mar from supplier.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">R. Chen</span>
+            <span class="note-time">14 Mar 16:45</span>
+          </div>
+          <p class="note-body clamped" id="longNote">Initial inspection complete. Valve seat corroded beyond acceptable limits. The corrosion pattern suggests prolonged exposure to saltwater intrusion through the port-side bilge connection. Recommend a full inspection of adjacent valve assemblies in the same fuel supply circuit before returning to service.</p>
+          <button class="note-more" onclick="document.getElementById('longNote').classList.toggle('clamped'); this.textContent = this.textContent === 'Show more' ? 'Show less' : 'Show more'">Show more</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY — prior periods -->
+    <div class="section collapsed reveal" id="sec-history">
+      <div class="sec-hdr" onclick="toggleSec('sec-history')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sec-title">History</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="period">
+          <div class="period-hdr">
+            <span class="period-year">2026</span>
+            <span class="period-label">Current period</span>
+            <span class="period-tag active">Active</span>
+          </div>
+          <div class="period-summary">
+            <span class="ps-mono">3</span> notes · <span class="ps-mono">2</span> uploads · <span class="ps-mono">12.5</span> hrs logged
+          </div>
+        </div>
+        <div class="period">
+          <div class="period-hdr">
+            <span class="period-year">2024</span>
+            <span class="period-label">Previous service</span>
+            <span class="period-tag closed">Closed</span>
+          </div>
+          <div class="period-summary">
+            R. Chen · <span class="ps-mono">1</span> upload · <span class="ps-mono">2</span> notes · <span class="ps-mono">6</span> hrs
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTACHMENTS -->
+    <div class="section reveal" id="sec-attach">
+      <div class="sec-hdr" onclick="toggleSec('sec-attach')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49"/></svg>
+        <span class="sec-title">Attachments</span>
+        <button class="sec-action" onclick="event.stopPropagation()">Upload</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="attach-row">
+          <div class="attach-thumb img"></div>
+          <div class="attach-info">
+            <div class="attach-name">valve_inspection_photo.jpg</div>
+            <div class="attach-caption">"Leak visible bottom-right near fuel line junction" — R. Chen</div>
+          </div>
+          <span class="attach-size">2.4 MB</span>
+        </div>
+        <div class="attach-row">
+          <div class="attach-thumb doc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="attach-info">
+            <div class="attach-name">WO-1042_procedure.pdf</div>
+          </div>
+          <span class="attach-size">156 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PARTS -->
+    <div class="section collapsed reveal" id="sec-parts">
+      <div class="sec-hdr" onclick="toggleSec('sec-parts')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <span class="sec-title">Parts</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add</button>
+        <span class="sec-count">2</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="part-row">
+          <span class="part-name"><span class="part-id">774-B</span> Impeller Kit</span>
+          <span class="part-qty">× 2</span>
+          <span class="part-stock">Stock: 6</span>
+        </div>
+        <div class="part-row">
+          <span class="part-name"><span class="part-id">ORG-114</span> O-Ring Set</span>
+          <span class="part-qty">× 1</span>
+          <span class="part-stock">Stock: 13</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /lens-body -->
+
+</div><!-- /panel -->
+
+<script>
+// Section collapse/expand
+function toggleSec(id) {
+  document.getElementById(id).classList.toggle('collapsed');
+}
+
+// Dropdown
+function toggleDd(e) {
+  e.stopPropagation();
+  document.getElementById('dd').classList.toggle('open');
+}
+function closeDd() {
+  document.getElementById('dd').classList.remove('open');
+}
+document.addEventListener('click', closeDd);
+
+// Scroll reveal
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+setTimeout(() => {
+  document.querySelectorAll('.reveal').forEach(el => {
+    if (el.getBoundingClientRect().top < window.innerHeight) {
+      el.classList.add('visible'); obs.unobserve(el);
+    }
+  });
+}, 80);
+</script>
+
+</body>
+</html>

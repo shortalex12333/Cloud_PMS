@@ -10,3 +10,4 @@ export { PartsSection, type PartItem, type PartsSectionProps } from './PartsSect
 export { ChecklistSection, type ChecklistItem, type ChecklistSectionProps } from './ChecklistSection';
 export { DocRowsSection, type DocRowItem, type DocRowsSectionProps } from './DocRowsSection';
 export { KVSection, type KVItem, type KVSectionProps } from './KVSection';
+export { HistorySection, type HistoryPeriod, type HistorySectionProps } from './HistorySection';

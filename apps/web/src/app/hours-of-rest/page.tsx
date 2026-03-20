@@ -14,6 +14,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { RouteLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { cn } from '@/lib/utils';
 
@@ -311,6 +312,21 @@ function HoursOfRestPageContent() {
       topNavContent={
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-semibold text-txt-primary">Hours of Rest</h1>
+          {isHOD(user) && (
+            <button
+              onClick={() => router.push('/hours-of-rest/signoffs')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '4px 12px', borderRadius: 6,
+                background: 'var(--teal-bg)', color: 'var(--mark)',
+                fontSize: 12, fontWeight: 500, border: 'none',
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>
+              Monthly Sign-Offs
+            </button>
+          )}
         </div>
       }
       primaryPanel={

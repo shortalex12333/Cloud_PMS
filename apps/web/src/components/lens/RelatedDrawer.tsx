@@ -29,20 +29,18 @@ export function RelatedDrawer({
 }: RelatedDrawerProps) {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 border-2 border-border-subtle border-t-txt-primary rounded-full animate-spin" />
-          <p className="text-xs text-txt-tertiary">Loading related...</p>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '48px 16px', flex: 1 }}>
+        <div style={{ width: '24px', height: '24px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <span style={{ fontSize: '12px', color: 'var(--txt3)' }}>Discovering related...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-sm text-status-critical mb-2">Failed to load related items</p>
-        <p className="text-xs text-txt-tertiary">{error.message}</p>
+      <div style={{ padding: '24px', textAlign: 'center' }}>
+        <p style={{ fontSize: '13px', color: 'var(--red)', marginBottom: '8px' }}>Failed to load related items</p>
+        <p style={{ fontSize: '11px', color: 'var(--txt3)' }}>{error.message}</p>
       </div>
     );
   }
@@ -66,12 +64,12 @@ export function RelatedDrawer({
   // Must NOT early-return while signal is loading or has items to show.
   if (totalItems === 0 && !signalLoading && novelSignalItems.length === 0) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-sm text-txt-secondary mb-4">No related items found.</p>
+      <div style={{ padding: '24px', textAlign: 'center' }}>
+        <p style={{ fontSize: '13px', color: 'var(--txt2)', marginBottom: '16px' }}>No related items found.</p>
         {onAddRelated && (
           <button
             onClick={onAddRelated}
-            className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors"
+            style={{ padding: '8px 16px', background: 'var(--surface-el)', borderRadius: '6px', fontSize: '13px', color: 'var(--txt)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
           >
             Add Related
           </button>
@@ -118,9 +116,9 @@ export function RelatedDrawer({
             )}
           </div>
           {signalLoading ? (
-            <div className="flex items-center gap-2 px-3 py-2">
-              <div className="w-3 h-3 border border-border-subtle border-t-txt-tertiary rounded-full animate-spin" />
-              <span className="text-xs text-txt-tertiary">Discovering related…</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px' }}>
+              <div style={{ width: '12px', height: '12px', border: '1.5px solid var(--border-sub)', borderTopColor: 'var(--txt3)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <span style={{ fontSize: '11px', color: 'var(--txt3)' }}>Discovering related…</span>
             </div>
           ) : (
             <div>
@@ -163,10 +161,10 @@ export function RelatedDrawer({
       )}
 
       {onAddRelated && (
-        <div className="pt-4 border-t border-border-subtle">
+        <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border-sub)' }}>
           <button
             onClick={onAddRelated}
-            className="w-full px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors text-left"
+            style={{ width: '100%', padding: '8px 12px', background: 'var(--surface-el)', borderRadius: '6px', fontSize: '13px', color: 'var(--txt)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
           >
             + Add Explicit Link
           </button>

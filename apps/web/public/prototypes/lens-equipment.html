@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Equipment · v1</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+/* ═══ Page-specific tokens ═══ */
+:root {
+  --amber-bg-hover:rgba(196,137,59,0.18);
+}
+[data-theme="light"] {
+  --amber-bg-hover:rgba(196,137,59,0.12);
+}
+
+/* ===================================================================
+   IDENTITY — equipment-specific extensions
+   =================================================================== */
+.identity-hierarchy {
+  font-size: 11px; font-weight: 400; color: var(--txt3);
+  margin-bottom: 6px;
+}
+.identity-hierarchy .hier-sep {
+  margin: 0 4px; opacity: 0.5;
+}
+
+/* Criticality label */
+.criticality-label {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; margin-bottom: 20px;
+}
+.criticality-label.safety-critical { color: var(--red); }
+.criticality-label.safety-critical .crit-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--red);
+}
+.criticality-label.non-critical { color: var(--txt3); }
+.criticality-label.non-critical .crit-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--txt3);
+}
+
+/* Detail label width override */
+.detail-label { min-width: 110px; }
+
+/* ===================================================================
+   SPLIT BUTTON — equipment variant
+   =================================================================== */
+.split-main {
+  border-right: 1px solid rgba(90,171,204,0.22);
+}
+.split-toggle {
+  border-left: 1px solid rgba(90,171,204,0.22);
+}
+
+/* Dropdown — equipment variant */
+.dropdown {
+  top: 42px;
+  min-width: 220px;
+}
+
+/* ===================================================================
+   SPECIFICATIONS — key-value grid
+   =================================================================== */
+.spec-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.spec-item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 0; min-height: 44px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.spec-item:nth-last-child(-n+2) { border-bottom: none; }
+.spec-label {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.spec-value {
+  font-size: 13px; font-weight: 400; color: var(--txt);
+}
+
+/* ===================================================================
+   WORK ORDER / FAULT ROWS
+   =================================================================== */
+.entity-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 6px;
+  cursor: pointer; transition: background 60ms; min-height: 44px;
+}
+.entity-row:hover { background: var(--surface-hover); }
+.entity-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.entity-icon.wo { background: var(--teal-bg); }
+.entity-icon.wo svg { width: 14px; height: 14px; color: var(--mark); }
+.entity-icon.fault { background: var(--teal-bg); }
+.entity-icon.fault svg { width: 14px; height: 14px; color: var(--mark); }
+.entity-icon.history { background: var(--teal-bg); }
+.entity-icon.history svg { width: 14px; height: 14px; color: var(--mark); }
+.entity-info { flex: 1; min-width: 0; }
+.entity-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+.entity-name .entity-id { font-family: var(--font-mono); font-size: 12px; }
+.entity-meta { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+.entity-meta .meta-mono { font-family: var(--font-mono); font-size: 10px; }
+.entity-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 10px; font-weight: 500; flex-shrink: 0;
+}
+.entity-pill.amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.entity-pill.green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.entity-pill.neutral { background: var(--neutral-bg); color: var(--txt3); border: 1px solid var(--border-sub); }
+.entity-pill.red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.entity-chevron { color: var(--txt-ghost); flex-shrink: 0; }
+
+/* ===================================================================
+   SPARE PARTS TABLE
+   =================================================================== */
+.spare-hdr {
+  display: grid; grid-template-columns: 1fr 70px 70px 100px 90px;
+  gap: 8px; padding: 0 0 8px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.spare-hdr span {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--txt3);
+}
+.spare-hdr span:nth-child(n+2) { text-align: right; }
+.spare-row {
+  display: grid; grid-template-columns: 1fr 70px 70px 100px 90px;
+  gap: 8px; padding: 10px 0; min-height: 44px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-faint);
+}
+.spare-row:last-child { border-bottom: none; }
+.spare-name {
+  font-size: 13px; font-weight: 500;
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.spare-name:hover { text-decoration-color: var(--mark); }
+.spare-qty {
+  font-family: var(--font-mono); font-size: 12px;
+  font-weight: 500; color: var(--txt2); text-align: right;
+}
+.spare-stock {
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--txt); text-align: right;
+}
+.spare-loc {
+  font-size: 12px; color: var(--txt2); text-align: right;
+}
+.spare-reorder {
+  display: flex; justify-content: flex-end;
+}
+.reorder-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 10px; font-weight: 500;
+}
+.reorder-pill.ok { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.reorder-pill.low { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.reorder-pill.out { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+
+/* ===================================================================
+   MAINTENANCE SCHEDULE
+   =================================================================== */
+.maint-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0; min-height: 44px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.maint-row:last-child { border-bottom: none; }
+.maint-indicator {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  margin-top: 2px;
+}
+.maint-indicator.next { background: var(--teal-bg); }
+.maint-indicator.next svg { width: 14px; height: 14px; color: var(--mark); }
+.maint-indicator.last { background: var(--neutral-bg); }
+.maint-indicator.last svg { width: 14px; height: 14px; color: var(--txt3); }
+.maint-info { flex: 1; }
+.maint-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--txt3); margin-bottom: 2px;
+}
+.maint-title { font-size: 13px; font-weight: 500; color: var(--txt); }
+.maint-meta { font-size: 11px; color: var(--txt3); margin-top: 2px; }
+.maint-remaining {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--amber); font-weight: 500; flex-shrink: 0;
+  align-self: center;
+}
+
+/* ===================================================================
+   DOCUMENT / CERTIFICATE ROWS — equipment extensions
+   =================================================================== */
+.doc-icon.cert { background: var(--teal-bg); }
+.doc-icon.cert svg { color: var(--mark); }
+.doc-status-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 10px; font-weight: 500; flex-shrink: 0;
+}
+.doc-status-pill.valid { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+
+/* Attachment name — equipment uses monospace */
+.attach-name {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 400; color: var(--txt);
+}
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- === LENS HEADER === -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Equipment</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn" onclick="toggleTheme()">
+        <svg class="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="hdr-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Related
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- === SCROLLABLE BODY === -->
+  <div class="lens-body">
+
+    <!-- --- IDENTITY STRIP --- -->
+    <div class="identity">
+      <!-- Top row: overline left, split button right -->
+      <div class="identity-top-row">
+        <div class="identity-overline">E-007</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main">Create Work Order</button>
+            <button class="split-toggle" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Log Fault
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Schedule Maintenance
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Edit Details
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Add Note
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49"/></svg>
+              Add Attachment
+            </button>
+            <div class="dd-sep"></div>
+            <button class="dd-item danger" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              Decommission
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hierarchy path -->
+      <div class="identity-hierarchy">
+        SV Andromeda <span class="hier-sep">&rsaquo;</span> Propulsion <span class="hier-sep">&rsaquo;</span> Main Engine
+      </div>
+
+      <!-- Title -->
+      <h1 class="identity-title">Main Engine &mdash; Caterpillar 3516B</h1>
+
+      <!-- Context -->
+      <p class="identity-context">Engine Room &middot; Port Side &middot; Responsible: <span class="crew-link">2nd Engineer</span></p>
+
+      <!-- Criticality indicator (static classification) -->
+      <div class="criticality-label safety-critical">
+        <span class="crit-dot"></span> Safety-Critical
+      </div>
+
+      <!-- Key-value detail lines -->
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Manufacturer</span>
+          <span>Caterpillar Marine</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Model</span>
+          <span class="mono-val">3516B</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Serial</span>
+          <span class="mono-val">CAT-3516B-48291</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Installed</span>
+          <span class="mono-val">22 Jun 2019</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Next Service</span>
+          <span class="mono-val">15 Apr 2026</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Last Known Running Hours</span>
+          <span class="mono-val">12,450</span>
+          <span style="font-size:11px; color:var(--txt3); margin-left:4px;">Updated via WO-0987 · <span style="font-family:var(--font-mono); font-size:10px;">28 Feb 2026</span></span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================
+         SECTIONS
+         ============================================================ -->
+
+    <!-- SPECIFICATIONS -->
+    <div class="section reveal" id="sec-specs">
+      <div class="sec-hdr" onclick="toggleSec('sec-specs')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span class="sec-title">Specifications</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div style="font-size:11px; color:var(--txt3); margin-bottom:12px; font-style:italic;">Source: OEM data sheet &middot; entered during onboarding</div>
+        <div class="spec-grid">
+          <div class="spec-item">
+            <span class="spec-label">Power Output</span>
+            <span class="spec-value"><span class="mono">2,000</span> HP / <span class="mono">1,492</span> kW</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Fuel Type</span>
+            <span class="spec-value">Marine Diesel Oil (MDO)</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Cooling</span>
+            <span class="spec-value">Raw Water + Freshwater Circuit</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Weight</span>
+            <span class="spec-value"><span class="mono">9,500</span> kg dry</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Dimensions</span>
+            <span class="spec-value"><span class="mono">3,099 &times; 1,635 &times; 2,044</span> mm</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Classification</span>
+            <span class="spec-value">Lloyd's Register Type Approved</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPARE PARTS -->
+    <div class="section reveal" id="sec-spares">
+      <div class="sec-hdr" onclick="toggleSec('sec-spares')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <span class="sec-title">Spare Parts</span>
+        <span class="sec-count">5</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="spare-hdr">
+          <span>Part</span>
+          <span>Required</span>
+          <span>On Hand</span>
+          <span>Location</span>
+          <span>Reorder</span>
+        </div>
+        <div class="spare-row">
+          <span class="spare-name">Fuel Injector Nozzle</span>
+          <span class="spare-qty">8</span>
+          <span class="spare-stock">12</span>
+          <span class="spare-loc">ER Store B3</span>
+          <span class="spare-reorder"><span class="reorder-pill ok">Stocked</span></span>
+        </div>
+        <div class="spare-row">
+          <span class="spare-name">Turbocharger Cartridge</span>
+          <span class="spare-qty">2</span>
+          <span class="spare-stock">1</span>
+          <span class="spare-loc">ER Store A1</span>
+          <span class="spare-reorder"><span class="reorder-pill low">Low</span></span>
+        </div>
+        <div class="spare-row">
+          <span class="spare-name">Raw Water Pump Impeller</span>
+          <span class="spare-qty">2</span>
+          <span class="spare-stock">4</span>
+          <span class="spare-loc">ER Store B3</span>
+          <span class="spare-reorder"><span class="reorder-pill ok">Stocked</span></span>
+        </div>
+        <div class="spare-row">
+          <span class="spare-name">Oil Filter Element</span>
+          <span class="spare-qty">4</span>
+          <span class="spare-stock">8</span>
+          <span class="spare-loc">ER Store C2</span>
+          <span class="spare-reorder"><span class="reorder-pill ok">Stocked</span></span>
+        </div>
+        <div class="spare-row">
+          <span class="spare-name">Exhaust Valve Assembly</span>
+          <span class="spare-qty">4</span>
+          <span class="spare-stock">0</span>
+          <span class="spare-loc">&mdash;</span>
+          <span class="spare-reorder"><span class="reorder-pill out">Out of Stock</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVE WORK ORDERS -->
+    <div class="section reveal" id="sec-workorders">
+      <div class="sec-hdr" onclick="toggleSec('sec-workorders')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+        <span class="sec-title">Work Orders</span>
+        <span class="sec-count">2</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="entity-row">
+          <div class="entity-icon wo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-id">WO-1042</span> &mdash; Emergency Valve Replacement</div>
+            <div class="entity-meta">Chief Engineer</div>
+          </div>
+          <span class="entity-pill neutral">In Progress</span>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="entity-row">
+          <div class="entity-icon wo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-id">WO-1038</span> &mdash; Scheduled Oil Analysis</div>
+            <div class="entity-meta">1st Officer</div>
+          </div>
+          <span class="entity-pill neutral">Planned</span>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAINTENANCE HISTORY -->
+    <div class="section reveal" id="sec-maint-history">
+      <div class="sec-hdr" onclick="toggleSec('sec-maint-history')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sec-title">History</span>
+        <span class="sec-count">6</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="entity-row">
+          <div class="entity-icon history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-id">WO-0987</span> &mdash; 250-Hour Service</div>
+            <div class="entity-meta">Chief Engineer &middot; <span class="meta-mono">28 Feb 2026</span> &middot; <span class="meta-mono">6.5</span> hrs</div>
+          </div>
+          <span class="entity-pill green">Completed</span>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="entity-row">
+          <div class="entity-icon history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-id">WO-0912</span> &mdash; Turbocharger Inspection</div>
+            <div class="entity-meta">Chief Engineer &middot; <span class="meta-mono">15 Dec 2025</span> &middot; <span class="meta-mono">12</span> hrs</div>
+          </div>
+          <span class="entity-pill green">Completed</span>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="entity-row">
+          <div class="entity-icon history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-id">WO-0845</span> &mdash; Fuel Injector Replacement (All 8)</div>
+            <div class="entity-meta">Chief Engineer &middot; <span class="meta-mono">03 Oct 2025</span> &middot; <span class="meta-mono">18</span> hrs</div>
+          </div>
+          <span class="entity-pill green">Completed</span>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="entity-row">
+          <div class="entity-icon history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-id">WO-0701</span> &mdash; 10,000-Hour Major Overhaul</div>
+            <div class="entity-meta">Chief Engineer, ETO &middot; <span class="meta-mono">20 Jun 2025</span> &middot; <span class="meta-mono">120</span> hrs</div>
+          </div>
+          <span class="entity-pill green">Completed</span>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <!-- Fault entries in history -->
+        <div class="entity-row">
+          <div class="entity-icon fault">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-id">F-2847</span> &mdash; Port Fuel Isolation Valve Leak</div>
+            <div class="entity-meta">Chief Engineer &middot; <span class="meta-mono">14 Mar 2026</span></div>
+          </div>
+          <span class="entity-pill red">Fault</span>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="entity-row">
+          <div class="entity-icon fault">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-id">F-2201</span> &mdash; Turbocharger Bearing Vibration</div>
+            <div class="entity-meta">2nd Engineer &middot; <span class="meta-mono">10 Nov 2025</span></div>
+          </div>
+          <span class="entity-pill neutral">Resolved</span>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVE FAULTS -->
+    <div class="section reveal" id="sec-faults">
+      <div class="sec-hdr" onclick="toggleSec('sec-faults')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span class="sec-title">Active Faults</span>
+        <span class="sec-count">1</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="entity-row">
+          <div class="entity-icon fault">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-id">F-0221</span> &mdash; Hydraulic Pressure Loss</div>
+            <div class="entity-meta">Chief Engineer</div>
+          </div>
+          <span class="entity-pill neutral">Open</span>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- UPCOMING MAINTENANCE — distinct from open WOs. Shows FUTURE triggers, not current tasks. -->
+    <div class="section reveal" id="sec-maint">
+      <div class="sec-hdr" onclick="toggleSec('sec-maint')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="sec-title">Upcoming Maintenance</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="maint-row">
+          <div class="maint-indicator next">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="maint-info">
+            <div class="maint-title">500-Hour Service</div>
+            <div class="maint-meta">Trigger: Running Hours &middot; Due at <span class="mono">12,500</span> hrs &middot; <span class="mono">~15 Apr 2026</span></div>
+          </div>
+          <span class="maint-remaining" style="color:var(--mark); font-family:var(--font-mono); font-size:11px;">50 hrs away</span>
+        </div>
+        <div class="maint-row">
+          <div class="maint-indicator next">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="maint-info">
+            <div class="maint-title">Annual Class Survey</div>
+            <div class="maint-meta">Trigger: Calendar &middot; Due <span class="mono">22 Jun 2026</span></div>
+          </div>
+          <span class="maint-remaining" style="color:var(--txt3); font-family:var(--font-mono); font-size:11px;">97 days</span>
+        </div>
+        <div class="maint-row">
+          <div class="maint-indicator next">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="maint-info">
+            <div class="maint-title">1,000-Hour Service</div>
+            <div class="maint-meta">Trigger: Running Hours &middot; Due at <span class="mono">13,000</span> hrs &middot; <span class="mono">~Aug 2026</span></div>
+          </div>
+          <span class="maint-remaining" style="color:var(--txt3); font-family:var(--font-mono); font-size:11px;">550 hrs away</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CERTIFICATES -->
+    <div class="section collapsed reveal" id="sec-certs">
+      <div class="sec-hdr" onclick="toggleSec('sec-certs')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="sec-title">Certificates</span>
+        <span class="sec-count">3</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="doc-row">
+          <div class="doc-icon cert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name"><span class="doc-code">CERT-2024-018</span> &mdash; SOLAS Safety Equipment</div>
+            <div class="doc-meta">Expires <span class="doc-date">15 Mar 2027</span></div>
+          </div>
+          <span class="doc-status-pill valid">Valid</span>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="doc-row">
+          <div class="doc-icon cert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name"><span class="doc-code">CERT-2024-022</span> &mdash; Class Certificate - Machinery</div>
+            <div class="doc-meta">Expires <span class="doc-date">22 Jun 2027</span></div>
+          </div>
+          <span class="doc-status-pill valid">Valid</span>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+        <div class="doc-row">
+          <div class="doc-icon cert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name"><span class="doc-code">CERT-2023-005</span> &mdash; NOx Technical Code</div>
+            <div class="doc-meta">Expires <span class="doc-date">01 Jan 2028</span></div>
+          </div>
+          <span class="doc-status-pill valid">Valid</span>
+          <span class="doc-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+
+
+  </div><!-- /lens-body -->
+
+</div><!-- /panel -->
+
+<script src="lens-base.js"></script>
+
+</body>
+</html>

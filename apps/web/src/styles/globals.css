@@ -380,39 +380,29 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+}
+
+/* Body — outside @layer so it cannot be overridden by Tailwind reset or browser defaults */
+html, body {
+  background-color: var(--surface-base);
+  color: var(--txt);
+  font-family: var(--font-sans);
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Spotlight-inspired centered container */
 .spotlight-container {
   @apply flex flex-col items-center justify-start pt-[15vh] px-4;
-  min-height: calc(100vh - 80px); /* Account for bottom nav */
-  background: linear-gradient(
-    to bottom,
-    hsl(var(--background)),
-    hsl(var(--muted) / 0.3)
-  );
+  min-height: calc(100vh - 80px);
+  background: var(--surface-base);
 }
 
 /* Full screen centered layout (login, etc) */
 .centered-screen {
   @apply min-h-screen flex flex-col items-center justify-center px-4;
-  background: linear-gradient(
-    to bottom,
-    hsl(var(--background)),
-    hsl(var(--muted) / 0.3)
-  );
-}
-
-/* Smooth transitions */
-* {
-  @apply transition-colors duration-200;
+  background: var(--surface-base);
 }
 
 /* Custom scrollbar */
@@ -737,39 +727,9 @@
 
 }
 
-/* Backdrop */
-.settings-backdrop {
-  background: rgba(0, 0, 0, 0.35);
-}
+/* Modal Container — dimensions set inline in Settings.tsx */
 
-/* Modal Container - 1040x720 */
-.settings-modal {
-  position: relative;
-  width: 1040px;
-  height: 720px;
-  max-width: calc(100vw - 48px);
-  max-height: calc(100vh - 48px);
-  border-radius: 16px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: row;
-  background: var(--surface);
-  border: 1px solid var(--border-sub);
-  box-shadow: var(--shadow-panel);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
-}
-
-/* Sidebar - 280px left pane */
-.settings-sidebar {
-  width: 280px;
-  flex-shrink: 0;
-  background: var(--surface-base);
-  border-right: 1px solid var(--border-sub);
-  padding: 16px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
+/* Sidebar — dimensions set inline in Settings.tsx */
 
 /* Close button - 32x32 hit area, 20px icon, 8px radius per spec */
 .settings-close-button {

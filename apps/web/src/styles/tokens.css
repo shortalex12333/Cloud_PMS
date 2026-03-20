@@ -106,6 +106,54 @@
   --shadow-sm: var(--shadow-tip);
   --shadow-md: var(--shadow-drop);
   --shadow-lg: var(--shadow-panel);
+
+  /* ── Homepage: Topbar ── */
+  --topbar-bg:          rgba(12,11,10,0.70);
+  --topbar-brand-color: #4A9EC0;
+  --topbar-vessel-em:   rgba(74,158,192,0.80);
+  --topbar-role-bg:     var(--surface-el);
+
+  /* ── Homepage: Search panel glass ── */
+  --search-glass-bg:       rgba(14,12,10,0.72);
+  --search-glass-blur:     28px;
+  --search-glass-border-t: rgba(255,255,255,0.13);
+  --search-glass-border-s: rgba(255,255,255,0.06);
+  --search-glass-border-b: rgba(255,255,255,0.03);
+  --search-glass-shadow:   0 20px 80px rgba(0,0,0,0.60), 0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.05);
+
+  /* ── Homepage: Footer / kbd ── */
+  --search-footer-bg:   rgba(0,0,0,0.18);
+  --search-icon-strip-bg: rgba(0,0,0,0.10);
+  --search-icon-strip-border: rgba(255,255,255,0.04);
+  --kbd-bg:              var(--surface-el);
+  --kbd-color:           rgba(255,255,255,0.30);
+  --kbd-border:          transparent;
+
+  /* ── Homepage: Lens pills ── */
+  --pill-bg:        var(--surface);
+  --pill-color:     var(--txt2);
+  --pill-border-t:  rgba(255,255,255,0.11);
+  --pill-border-s:  rgba(255,255,255,0.07);
+  --pill-border-b:  rgba(255,255,255,0.04);
+  --pill-hover-bg:  rgba(58,124,157,0.10);
+  --pill-hover-color: var(--mark);
+  --pill-hover-border: rgba(90,171,204,0.30);
+  --pill-shadow:    none;
+
+  /* ── Homepage: Orbs ── */
+  --orb-1: radial-gradient(circle, rgba(58,124,157,0.50) 0%, transparent 70%);
+  --orb-2: radial-gradient(circle, rgba(30,90,130,0.38) 0%, transparent 70%);
+  --orb-3: radial-gradient(circle, rgba(20,60,100,0.22) 0%, transparent 70%);
+  --backdrop-fill: var(--surface-base);
+
+  /* ── Settings modal ── */
+  --settings-modal-bg:       var(--surface-el);
+  --settings-modal-border-t: rgba(255,255,255,0.13);
+  --settings-modal-border-s: rgba(255,255,255,0.06);
+  --settings-modal-border-b: rgba(255,255,255,0.03);
+  --settings-modal-shadow:   0 0 0 1px rgba(0,0,0,0.60), 0 28px 80px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
+  --settings-header-bg:      rgba(16,14,12,0.65);
+  --settings-backdrop:       rgba(0,0,0,0.35);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -203,16 +251,64 @@
   --shadow-sm: var(--shadow-tip);
   --shadow-md: var(--shadow-drop);
   --shadow-lg: var(--shadow-panel);
+
+  /* ── Homepage: Topbar ── */
+  --topbar-bg:          rgba(242,240,236,0.88);
+  --topbar-brand-color: var(--mark);
+  --topbar-vessel-em:   rgba(26,107,150,0.85);
+  --topbar-role-bg:     rgba(0,0,0,0.05);
+
+  /* ── Homepage: Search panel glass ── */
+  --search-glass-bg:       rgba(255,255,255,0.92);
+  --search-glass-blur:     20px;
+  --search-glass-border-t: rgba(0,0,0,0.12);
+  --search-glass-border-s: rgba(0,0,0,0.06);
+  --search-glass-border-b: rgba(0,0,0,0.04);
+  --search-glass-shadow:   0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.90);
+
+  /* ── Homepage: Footer / kbd ── */
+  --search-footer-bg:   rgba(0,0,0,0.02);
+  --search-icon-strip-bg: rgba(0,0,0,0.02);
+  --search-icon-strip-border: rgba(0,0,0,0.06);
+  --kbd-bg:              var(--surface-hover);
+  --kbd-color:           var(--txt3);
+  --kbd-border:          var(--border-sub);
+
+  /* ── Homepage: Lens pills ── */
+  --pill-bg:        var(--surface);
+  --pill-color:     var(--txt2);
+  --pill-border-t:  var(--border-top);
+  --pill-border-s:  var(--border-sub);
+  --pill-border-b:  var(--border-faint);
+  --pill-hover-bg:  rgba(26,107,150,0.07);
+  --pill-hover-color: var(--mark);
+  --pill-hover-border: rgba(26,107,150,0.28);
+  --pill-shadow:    0 1px 3px rgba(0,0,0,0.05);
+
+  /* ── Homepage: Orbs ── */
+  --orb-1: radial-gradient(circle, rgba(43,123,163,0.10) 0%, transparent 70%);
+  --orb-2: radial-gradient(circle, rgba(176,112,32,0.06) 0%, transparent 70%);
+  --orb-3: radial-gradient(circle, rgba(43,123,163,0.05) 0%, transparent 70%);
+  --backdrop-fill: radial-gradient(ellipse at 50% 30%, #F5F2EC 0%, #E8E3DA 100%);
+
+  /* ── Settings modal ── */
+  --settings-modal-bg:       var(--surface-el);
+  --settings-modal-border-t: rgba(0,0,0,0.12);
+  --settings-modal-border-s: rgba(0,0,0,0.06);
+  --settings-modal-border-b: rgba(0,0,0,0.04);
+  --settings-modal-shadow:   0 0 0 1px rgba(0,0,0,0.05), 0 28px 80px rgba(0,0,0,0.13), 0 8px 24px rgba(0,0,0,0.08), inset 0 1px 0 #fff;
+  --settings-header-bg:      rgba(242,240,236,0.88);
+  --settings-backdrop:       rgba(0,0,0,0.25);
 }
 
 /* ═══════════════════════════════════════════════════════
    SHARED TOKENS (same in both themes)
    ═══════════════════════════════════════════════════════ */
 :root {
-  /* Typography - Per Spec Font Stack */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Typography - System Font Stack (no web font loading required) */
+  --font-sans: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-family: var(--font-sans);
-  --font-mono: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  --font-mono: 'SF Mono', ui-monospace, 'Fira Code', monospace;
 
   /* Spacing (4px base) */
   --space-1: 4px;   --space-2: 8px;   --space-3: 12px;

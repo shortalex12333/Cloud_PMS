@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Hours of Rest · v1</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+/* ═══════════════════════════════════════════════════════
+   HOURS OF REST — entity-specific overrides + unique components
+   ═══════════════════════════════════════════════════════ */
+
+/* Panel — wider for 7-day grid */
+.panel { width: 780px; }
+
+/* Detail label — wider for this entity */
+.detail-label { min-width: 100px; }
+
+/* Split button — custom border treatment for HOR */
+.split-main {
+  border: 1px solid rgba(90,171,204,0.22);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+}
+.split-toggle {
+  border: 1px solid rgba(90,171,204,0.22);
+  border-left: 1px solid rgba(90,171,204,0.12);
+  border-radius: 0 8px 8px 0;
+}
+
+/* Work cell fill — muted teal warmth, not traffic-light red/green */
+:root {
+  --work-fill: rgba(58,124,157,0.18);
+  --work-fill-hover: rgba(58,124,157,0.28);
+  --violation-tint: rgba(192,80,58,0.22);
+}
+[data-theme="light"] {
+  --work-fill: rgba(43,127,163,0.12);
+  --work-fill-hover: rgba(43,127,163,0.22);
+  --violation-tint: rgba(192,80,58,0.15);
+}
+
+/* =======================================================
+   ALERT BANNER
+   ======================================================= */
+.alert-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: 8px;
+  margin-top: 20px; margin-bottom: -8px;
+  font-size: 13px; font-weight: 500;
+}
+.alert-banner svg { width: 16px; height: 16px; flex-shrink: 0; }
+.alert-banner-amber {
+  background: var(--amber-bg); color: var(--amber);
+  border: 1px solid var(--amber-border);
+}
+.alert-banner .alert-action {
+  margin-left: auto; font-size: 12px; font-weight: 600;
+  color: var(--mark); cursor: pointer; background: none; border: none;
+  font-family: var(--font-sans); text-decoration: underline;
+  text-underline-offset: 2px; white-space: nowrap;
+}
+.alert-banner .alert-action:hover { text-decoration-color: var(--mark); }
+
+/* =======================================================
+   WEEK NAVIGATOR
+   ======================================================= */
+.week-nav {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px;
+}
+.week-nav-btn {
+  width: 32px; height: 32px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--txt3); background: none;
+  border: 1px solid var(--border-sub); transition: all 60ms;
+}
+.week-nav-btn:hover { background: var(--surface-hover); color: var(--txt); border-color: var(--border-chrome); }
+.week-nav-btn svg { width: 14px; height: 14px; }
+.week-nav-label {
+  font-family: var(--font-mono); font-size: 14px; font-weight: 500;
+  color: var(--txt); letter-spacing: 0.02em;
+}
+.week-nav-today {
+  margin-left: auto; font-size: 11px; font-weight: 500;
+  color: var(--mark); cursor: pointer; background: none; border: none;
+  font-family: var(--font-sans); padding: 4px 10px; border-radius: 4px;
+  transition: background 60ms;
+}
+.week-nav-today:hover { background: var(--teal-bg); }
+
+/* =======================================================
+   COMPLIANCE STATUS BAR — simple slide at top of grid
+   ======================================================= */
+.compliance-slide {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 6px;
+  margin-bottom: 12px; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 80ms;
+}
+.compliance-slide svg { width: 14px; height: 14px; flex-shrink: 0; }
+.compliance-slide.compliant {
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green-border);
+}
+.compliance-slide.violation {
+  background: var(--red-bg); color: var(--red);
+  border: 1px solid var(--red-border);
+}
+.compliance-slide .cs-detail {
+  margin-left: auto; font-size: 11px; opacity: 0.7;
+}
+
+/* =======================================================
+   TEMPLATE TOOLBAR — pills above the grid
+   ======================================================= */
+.template-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.template-toolbar-label {
+  font-size: 11px; font-weight: 600; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+.tmpl-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 5px;
+  font-size: 11px; font-weight: 500; color: var(--txt2);
+  background: var(--neutral-bg); border: 1px solid var(--border-sub);
+  cursor: pointer; transition: all 80ms;
+  font-family: var(--font-sans); white-space: nowrap;
+}
+.tmpl-pill:hover { background: var(--teal-bg); color: var(--mark); border-color: rgba(90,171,204,0.22); }
+.tmpl-pill.active { background: var(--teal-bg); color: var(--mark); border-color: rgba(90,171,204,0.22); }
+.tmpl-pill-mini {
+  display: inline-flex; height: 6px; width: 36px; border-radius: 2px;
+  overflow: hidden; border: 1px solid var(--border-faint);
+}
+.tmpl-pill-mini .tpm-cell { flex: 1; }
+.tmpl-pill-mini .tpm-cell.tpm-work { background: var(--work-fill); }
+.tmpl-save {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 5px;
+  font-size: 11px; font-weight: 600; color: var(--mark);
+  background: none; border: 1px dashed rgba(90,171,204,0.22);
+  cursor: pointer; transition: all 80ms;
+  font-family: var(--font-sans); white-space: nowrap;
+  margin-left: 2px;
+}
+.tmpl-save:hover { background: var(--teal-bg); border-style: solid; }
+
+/* =======================================================
+   7-DAY COLUMNAR GRID — 7 cols x 48 rows (30-min slots)
+   ======================================================= */
+.col-grid-wrap {
+  overflow-x: auto; overflow-y: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--border-sub);
+  margin-bottom: 16px;
+}
+
+.col-grid {
+  display: grid;
+  /* time-label col + 7 day cols + summary col */
+  grid-template-columns: 44px repeat(7, 1fr) 48px;
+  min-width: 620px;
+}
+
+/* Column headers */
+.cg-header {
+  position: sticky; top: 0; z-index: 5;
+  display: contents;
+}
+.cg-corner {
+  background: var(--surface-el);
+  border-bottom: 1px solid var(--border-chrome);
+  padding: 6px 4px;
+}
+.cg-day-hdr {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 6px 2px;
+  background: var(--surface-el);
+  border-bottom: 1px solid var(--border-chrome);
+  border-left: 1px solid var(--border-faint);
+  cursor: pointer; transition: background 80ms;
+}
+.cg-day-hdr:hover { background: var(--surface-hover); }
+.cg-day-hdr.today-col { background: var(--teal-bg); }
+.cg-day-hdr.missing-col { opacity: 0.5; }
+.cg-day-name {
+  font-size: 10px; font-weight: 600; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.cg-day-hdr.today-col .cg-day-name { color: var(--mark); }
+.cg-day-hdr.missing-col .cg-day-name { color: var(--amber); }
+.cg-day-date {
+  font-family: var(--font-mono); font-size: 9px; color: var(--txt-ghost);
+}
+.cg-sum-hdr {
+  background: var(--surface-el);
+  border-bottom: 1px solid var(--border-chrome);
+  border-left: 1px solid var(--border-faint);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 600; color: var(--txt-ghost);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+/* Time label cells */
+.cg-time {
+  font-family: var(--font-mono); font-size: 8px; color: var(--txt-ghost);
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 4px;
+  border-top: 1px solid transparent;
+  min-height: 14px;
+}
+.cg-time.hour-mark { color: var(--txt3); font-weight: 500; }
+
+/* Data cells */
+.cg-cell {
+  min-height: 14px;
+  border-top: 1px solid var(--border-faint);
+  border-left: 1px solid var(--border-faint);
+  cursor: pointer;
+  transition: background 60ms;
+  position: relative;
+}
+.cg-cell:hover { box-shadow: inset 0 0 0 1px var(--mark); z-index: 2; }
+.cg-cell.work { background: var(--work-fill); }
+.cg-cell.work:hover { background: var(--work-fill-hover); }
+.cg-cell.hour-border { border-top: 1px solid var(--border-chrome); }
+.cg-cell.six-hour-border { border-top: 1px solid var(--txt-ghost); }
+.cg-cell.v-tint { background: var(--violation-tint); }
+.cg-cell.work.v-tint { background: var(--violation-tint); }
+.cg-cell.missing-col { opacity: 0.35; pointer-events: none; }
+
+/* Summary cells (right column) */
+.cg-sum-cell {
+  min-height: 14px;
+  border-top: 1px solid transparent;
+  border-left: 1px solid var(--border-faint);
+}
+
+/* Day footer summaries below the grid */
+.cg-footer { display: contents; }
+.cg-footer-corner {
+  background: var(--surface-el);
+  border-top: 1px solid var(--border-chrome);
+  padding: 6px 4px;
+}
+.cg-footer-day {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 6px 2px;
+  background: var(--surface-el);
+  border-top: 1px solid var(--border-chrome);
+  border-left: 1px solid var(--border-faint);
+}
+.cg-footer-day .cg-rest-val {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500; color: var(--txt2);
+}
+.cg-footer-day .cg-work-val {
+  font-family: var(--font-mono); font-size: 9px; color: var(--txt3);
+}
+.cg-footer-sum {
+  background: var(--surface-el);
+  border-top: 1px solid var(--border-chrome);
+  border-left: 1px solid var(--border-faint);
+}
+
+/* Grid legend */
+.grid-legend {
+  display: flex; align-items: center; gap: 14px; margin-top: 10px;
+}
+.grid-legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--txt3);
+}
+.legend-swatch {
+  width: 10px; height: 10px; border-radius: 2px;
+}
+.legend-swatch.rest-swatch {
+  background: transparent; border: 1px solid var(--border-chrome);
+}
+.legend-swatch.work-swatch { background: var(--work-fill); border: 1px solid var(--mark); }
+.grid-hint {
+  margin-left: auto;
+  font-size: 11px; color: var(--txt3); font-style: italic;
+}
+
+/* =======================================================
+   TEMPLATES (section — detail view)
+   ======================================================= */
+.template-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 6px;
+  border: 1px solid var(--border-sub);
+  margin-bottom: 8px; cursor: pointer;
+  transition: all 80ms;
+}
+.template-item:hover { border-color: var(--border-chrome); background: var(--surface-hover); }
+.template-info { flex: 1; min-width: 0; }
+.template-name {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  margin-bottom: 2px;
+}
+.template-desc {
+  font-size: 11px; color: var(--txt3);
+}
+/* Mini 24h preview bar */
+.template-bar {
+  display: flex; height: 10px; border-radius: 2px;
+  overflow: hidden; border: 1px solid var(--border-sub);
+  margin-top: 6px; width: 100%;
+}
+.template-bar .tb-cell {
+  flex: 1;
+}
+.template-bar .tb-cell.tb-work { background: var(--work-fill); }
+.template-apply {
+  font-size: 11px; font-weight: 600; color: var(--mark);
+  cursor: pointer; background: none; border: 1px solid rgba(90,171,204,0.22);
+  border-radius: 4px; padding: 4px 10px;
+  font-family: var(--font-sans); white-space: nowrap;
+  transition: background 60ms;
+}
+.template-apply:hover { background: var(--teal-bg); }
+.template-actions-btn {
+  width: 28px; height: 28px; border-radius: 4px;
+  background: none; border: none; cursor: pointer;
+  color: var(--txt3); font-size: 16px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 60ms; flex-shrink: 0;
+}
+.template-actions-btn:hover { background: var(--split-bg); color: var(--txt2); }
+.template-new {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500; color: var(--mark);
+  cursor: pointer; background: none; border: none;
+  font-family: var(--font-sans); padding: 8px 0 0;
+}
+.template-new:hover { text-decoration: underline; }
+
+/* =======================================================
+   STCW CONDITIONAL BADGE
+   ======================================================= */
+.stcw-notice {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 6px;
+  background: var(--teal-bg); border: 1px solid rgba(90,171,204,0.15);
+  font-size: 12px; color: var(--txt2); margin-bottom: 16px;
+}
+.stcw-notice svg { width: 14px; height: 14px; color: var(--mark); flex-shrink: 0; }
+.stcw-notice strong { color: var(--mark); font-weight: 600; }
+
+/* =======================================================
+   PRE-SUBMISSION CHECK
+   ======================================================= */
+.presubmit-grid { display: grid; gap: 0; }
+.presubmit-row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  align-items: center; gap: 12px;
+  padding: 10px 0; min-height: 40px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.presubmit-row:last-child { border-bottom: none; }
+.presubmit-label {
+  font-size: 13px; font-weight: 400; color: var(--txt2);
+}
+.presubmit-value {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  color: var(--txt); min-width: 50px; text-align: right;
+}
+.presubmit-status {
+  font-size: 11px; font-weight: 600; min-width: 40px; text-align: right;
+}
+.presubmit-status.pass { color: var(--green); }
+.presubmit-status.fail { color: var(--red); }
+.presubmit-status.warn { color: var(--amber); }
+.presubmit-divider {
+  font-size: 10px; font-weight: 600; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 14px 0 6px; border-bottom: 1px solid var(--border-sub);
+  display: flex; align-items: center; gap: 8px;
+}
+.presubmit-divider .c-tag {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  padding: 1px 5px; border-radius: 3px;
+}
+.c-tag.mlc { color: var(--mark); background: var(--teal-bg); }
+.c-tag.stcw { color: var(--mark); background: var(--teal-bg); }
+
+/* =======================================================
+   APPROVAL
+   ======================================================= */
+.approval-block {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--surface-el);
+  border: 1px solid var(--border-sub);
+}
+.approval-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--neutral-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600; color: var(--txt3); flex-shrink: 0;
+}
+.approval-info { flex: 1; }
+.approval-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+.approval-role { font-size: 11px; color: var(--txt3); }
+.approval-ts {
+  font-family: var(--font-mono); font-size: 11px; color: var(--txt3);
+}
+.approval-pending {
+  font-size: 12px; font-weight: 500; color: var(--txt3);
+  font-style: italic;
+}
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- === LENS HEADER === -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Hours of Rest</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Related
+      </button>
+      <button class="hdr-btn" onclick="toggleTheme()">
+        <svg class="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- === SCROLLABLE BODY === -->
+  <div class="lens-body">
+
+    <!-- --- IDENTITY STRIP --- -->
+    <div class="identity">
+      <div class="identity-top-row">
+        <div class="identity-overline">HOR-2026-W11</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main" id="mainAction">Send to HOD for Signature</button>
+            <button class="split-toggle" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit Previous Day
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              Save as Template
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              View Crew Summary
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Export Week (PDF)
+            </button>
+            <div class="dd-sep"></div>
+            <button class="dd-item danger" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Flag Non-Compliance
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Title — personal to this crew member -->
+      <h1 class="identity-title">L. Torres</h1>
+
+      <!-- Context — role, department, vessel -->
+      <p class="identity-context">Bosun · Deck Department · SV Andromeda</p>
+
+      <!-- Status pills — workflow states are NEUTRAL/GREY, not amber -->
+      <div class="pills">
+        <span class="pill pill-green"><span class="dot"></span> Compliant</span>
+        <span class="pill pill-neutral"><span class="dot"></span> Awaiting HOD Review</span>
+      </div>
+
+      <!-- Key-value detail lines -->
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Period</span>
+          <span class="mono-val">10 &mdash; 16 Mar 2026</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Week Rest</span>
+          <span class="mono-val" id="weekRestDisplay">96.0h</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Week Work</span>
+          <span class="mono-val" id="weekWorkDisplay">72.0h</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">HOD</span>
+          <span><span class="crew-link">J. Morrison</span> <span style="color:var(--txt3)">(1st Officer)</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================
+         SECTIONS
+         ================================================= -->
+
+    <!-- 7-DAY ENTRY GRID -->
+    <div class="section reveal" id="sec-grid">
+      <div class="sec-hdr" onclick="toggleSec('sec-grid')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sec-title">Weekly Hours Grid</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <!-- Week navigator -->
+        <div class="week-nav">
+          <button class="week-nav-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <span class="week-nav-label">10 &mdash; 16 Mar 2026</span>
+          <button class="week-nav-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          <button class="week-nav-today" onclick="scrollToToday()">Today</button>
+        </div>
+
+        <!-- Compliance status bar — simple slide -->
+        <div class="compliance-slide compliant" id="complianceSlide" onclick="toggleSec('sec-presubmit')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <span id="complianceSlideText">All checks passing</span>
+          <span class="cs-detail">View details</span>
+        </div>
+
+        <!-- Template toolbar — pills above grid -->
+        <div class="template-toolbar" id="templateToolbar">
+          <span class="template-toolbar-label">Templates</span>
+          <!-- Built by JS -->
+        </div>
+
+        <!-- 7-day columnar grid (7 cols x 48 rows of 30-min slots) -->
+        <div class="col-grid-wrap" id="colGridWrap">
+          <div class="col-grid" id="colGrid">
+            <!-- Built by JS -->
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="grid-legend">
+          <div class="grid-legend-item"><span class="legend-swatch rest-swatch"></span> Rest</div>
+          <div class="grid-legend-item"><span class="legend-swatch work-swatch"></span> Work</div>
+          <span class="grid-hint">Click any cell to toggle. Each cell = 30 min.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATES (detail section, collapsed) -->
+    <div class="section collapsed reveal" id="sec-templates">
+      <div class="sec-hdr" onclick="toggleSec('sec-templates')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        <span class="sec-title">Templates</span>
+        <span class="sec-count">4</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="template-list" id="templateList">
+          <!-- Built by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- PRE-SUBMISSION COMPLIANCE CHECK (collapsed by default) -->
+    <div class="section collapsed reveal" id="sec-presubmit">
+      <div class="sec-hdr" onclick="toggleSec('sec-presubmit')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="sec-title">Pre-Submission Check</span>
+        <span class="sec-count" id="presubmitCount"></span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <!-- MLC 2006 -->
+        <div class="presubmit-divider">
+          <span class="c-tag mlc">MLC 2006</span> Maritime Labour Convention
+        </div>
+        <div class="presubmit-grid" id="mlcChecks">
+          <!-- Built by JS -->
+        </div>
+
+        <!-- STCW — conditional on role -->
+        <div id="stcwSection">
+          <div class="stcw-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span><strong>STCW applies</strong> to L. Torres (Bosun/Deck). Watchkeeping-certified roles require additional compliance checks.</span>
+          </div>
+          <div class="presubmit-divider">
+            <span class="c-tag stcw">STCW</span> Standards of Training, Certification and Watchkeeping
+          </div>
+          <div class="presubmit-grid" id="stcwChecks">
+            <!-- Built by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APPROVAL + CTA -->
+    <div class="section reveal" id="sec-approval">
+      <div class="sec-hdr" onclick="toggleSec('sec-approval')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span class="sec-title">Approval</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="approval-block" style="margin-bottom: 10px;">
+          <div class="approval-avatar">LT</div>
+          <div class="approval-info">
+            <div class="approval-name">L. Torres</div>
+            <div class="approval-role">Submitted by crew member</div>
+          </div>
+          <span class="approval-ts">16 Mar 2026 22:30</span>
+        </div>
+        <div class="approval-block" style="opacity: 0.6;">
+          <div class="approval-avatar">JM</div>
+          <div class="approval-info">
+            <div class="approval-name">J. Morrison</div>
+            <div class="approval-role">1st Officer (HOD) review</div>
+          </div>
+          <span class="approval-pending">Pending</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="section collapsed reveal" id="sec-notes">
+      <div class="sec-hdr" onclick="toggleSec('sec-notes')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="sec-title">Notes</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add</button>
+        <span class="sec-count">2</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">L. Torres</span>
+            <span class="note-time">16 Mar 2026 22:15</span>
+          </div>
+          <p class="note-body">Anchor watch 0200-0600. Deck wash started 0700. Afternoon off for crew rest, resumed 1700 for evening guest service.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">L. Torres</span>
+            <span class="note-time">13 Mar 2026 21:00</span>
+          </div>
+          <p class="note-body">Service day for owner visit. Extended hours 0700-1200 + 1400-1900 with lunch break.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /lens-body -->
+
+</div><!-- /panel -->
+
+<script src="lens-base.js"></script>
+<script>
+/* =======================================================
+   DATA MODEL — 7 days x 48 half-hour slots
+   ======================================================= */
+var DAYS = [
+  { label: 'Tue', date: '10 Mar', key: '2026-03-10', status: 'submitted' },
+  { label: 'Wed', date: '11 Mar', key: '2026-03-11', status: 'submitted' },
+  { label: 'Thu', date: '12 Mar', key: '2026-03-12', status: 'submitted' },
+  { label: 'Fri', date: '13 Mar', key: '2026-03-13', status: 'submitted' },
+  { label: 'Sat', date: '14 Mar', key: '2026-03-14', status: 'submitted' },
+  { label: 'Sun', date: '15 Mar', key: '2026-03-15', status: 'missing'   },
+  { label: 'Mon', date: '16 Mar', key: '2026-03-16', status: 'today'     }
+];
+
+var TODAY_IDX = 6;
+
+var dayGrids = [
+  makePattern([{s:14,e:24},{s:28,e:36}]),
+  makePattern([{s:14,e:24},{s:28,e:36}]),
+  makePattern([{s:14,e:24},{s:28,e:38}]),
+  makePattern([{s:14,e:24},{s:28,e:38}]),
+  makePattern([{s:14,e:24},{s:28,e:36}]),
+  makeEmpty(),
+  makePattern([{s:4,e:12},{s:14,e:24},{s:34,e:44}])
+];
+
+function makePattern(ranges) {
+  var g = new Array(48);
+  for (var i = 0; i < 48; i++) g[i] = 0;
+  for (var r = 0; r < ranges.length; r++) {
+    for (var j = ranges[r].s; j < ranges[r].e; j++) g[j] = 1;
+  }
+  return g;
+}
+function makeEmpty() {
+  var g = new Array(48);
+  for (var i = 0; i < 48; i++) g[i] = 0;
+  return g;
+}
+
+var TEMPLATES = [
+  { name: 'Standard Watch', desc: '07:00\u201312:00, 14:00\u201319:00', ranges: [{s:14,e:24},{s:28,e:38}] },
+  { name: 'Night Watch', desc: '19:00\u201307:00', ranges: [{s:38,e:48},{s:0,e:14}] },
+  { name: 'Standard Deck Day', desc: '07:00\u201312:00, 14:00\u201318:00', ranges: [{s:14,e:24},{s:28,e:36}] },
+  { name: 'Anchor Watch + Deck', desc: '02:00\u201306:00, 07:00\u201312:00, 17:00\u201322:00', ranges: [{s:4,e:12},{s:14,e:24},{s:34,e:44}] }
+];
+
+var selectedDay = TODAY_IDX;
+
+/* =======================================================
+   TIME LABEL HELPERS
+   ======================================================= */
+function slotToTime(slot) {
+  var h = Math.floor(slot / 2);
+  var m = (slot % 2) * 30;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+/* =======================================================
+   BUILD TEMPLATE TOOLBAR (pills above grid)
+   ======================================================= */
+function buildTemplateToolbar() {
+  var toolbar = document.getElementById('templateToolbar');
+  while (toolbar.children.length > 1) toolbar.removeChild(toolbar.lastChild);
+
+  for (var t = 0; t < TEMPLATES.length; t++) {
+    var tmpl = TEMPLATES[t];
+    var pill = document.createElement('button');
+    pill.className = 'tmpl-pill';
+    pill.setAttribute('data-tmpl', String(t));
+    pill.setAttribute('title', tmpl.desc);
+
+    var pattern = makePattern(tmpl.ranges);
+    var mini = document.createElement('span');
+    mini.className = 'tmpl-pill-mini';
+    for (var c = 0; c < 48; c += 2) {
+      var seg = document.createElement('span');
+      seg.className = 'tpm-cell' + ((pattern[c] || pattern[c + 1]) ? ' tpm-work' : '');
+      mini.appendChild(seg);
+    }
+    pill.appendChild(mini);
+    pill.appendChild(document.createTextNode(' ' + tmpl.name));
+
+    pill.addEventListener('click', (function(idx) {
+      return function(e) {
+        e.stopPropagation();
+        applyTemplate(idx);
+      };
+    })(t));
+    toolbar.appendChild(pill);
+  }
+
+  var saveBtn = document.createElement('button');
+  saveBtn.className = 'tmpl-save';
+  saveBtn.textContent = '+ Save';
+  saveBtn.title = 'Save current day as template';
+  toolbar.appendChild(saveBtn);
+}
+
+/* =======================================================
+   BUILD 7-DAY COLUMNAR GRID (7 cols x 48 rows)
+   ======================================================= */
+function buildColGrid() {
+  var grid = document.getElementById('colGrid');
+  grid.textContent = '';
+
+  var corner = document.createElement('div');
+  corner.className = 'cg-corner';
+  grid.appendChild(corner);
+
+  for (var d = 0; d < DAYS.length; d++) {
+    var hdr = document.createElement('div');
+    hdr.className = 'cg-day-hdr';
+    if (DAYS[d].status === 'today') hdr.className += ' today-col';
+    if (DAYS[d].status === 'missing') hdr.className += ' missing-col';
+    hdr.setAttribute('data-col', String(d));
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'cg-day-name';
+    nameSpan.textContent = DAYS[d].label;
+    var dateSpan = document.createElement('span');
+    dateSpan.className = 'cg-day-date';
+    dateSpan.textContent = DAYS[d].date;
+    hdr.appendChild(nameSpan);
+    hdr.appendChild(dateSpan);
+    hdr.addEventListener('click', (function(idx) {
+      return function() { selectDay(idx); };
+    })(d));
+    grid.appendChild(hdr);
+  }
+
+  var sumHdr = document.createElement('div');
+  sumHdr.className = 'cg-sum-hdr';
+  grid.appendChild(sumHdr);
+
+  for (var slot = 0; slot < 48; slot++) {
+    var isHourMark = (slot % 2 === 0);
+    var isSixHour = (slot % 12 === 0) && slot > 0;
+
+    var timeCell = document.createElement('div');
+    timeCell.className = 'cg-time';
+    if (isHourMark) {
+      timeCell.className += ' hour-mark';
+      timeCell.textContent = slotToTime(slot);
+    }
+    grid.appendChild(timeCell);
+
+    for (var d2 = 0; d2 < DAYS.length; d2++) {
+      var cell = document.createElement('div');
+      cell.className = 'cg-cell';
+      if (dayGrids[d2][slot]) cell.className += ' work';
+      if (isHourMark && slot > 0) cell.className += ' hour-border';
+      if (isSixHour) cell.className += ' six-hour-border';
+      if (DAYS[d2].status === 'missing') cell.className += ' missing-col';
+      cell.setAttribute('data-day', String(d2));
+      cell.setAttribute('data-slot', String(slot));
+
+      var h = Math.floor(slot / 2);
+      var m = (slot % 2) * 30;
+      var endH = m === 30 ? h + 1 : h;
+      var endM = m === 30 ? 0 : 30;
+      cell.title = DAYS[d2].label + ' ' + DAYS[d2].date + ' ' +
+        String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ' \u2013 ' +
+        String(endH).padStart(2, '0') + ':' + String(endM).padStart(2, '0');
+
+      grid.appendChild(cell);
+    }
+
+    var sumCell = document.createElement('div');
+    sumCell.className = 'cg-sum-cell';
+    grid.appendChild(sumCell);
+  }
+
+  var footCorner = document.createElement('div');
+  footCorner.className = 'cg-footer-corner';
+  grid.appendChild(footCorner);
+
+  for (var d3 = 0; d3 < DAYS.length; d3++) {
+    var foot = document.createElement('div');
+    foot.className = 'cg-footer-day';
+    foot.setAttribute('data-footer-day', String(d3));
+    var stats = calcDayStats(dayGrids[d3]);
+    if (DAYS[d3].status === 'missing') {
+      var missingSpan = document.createElement('span');
+      missingSpan.className = 'cg-rest-val';
+      missingSpan.style.color = 'var(--amber)';
+      missingSpan.textContent = '--';
+      foot.appendChild(missingSpan);
+    } else {
+      var restSpan = document.createElement('span');
+      restSpan.className = 'cg-rest-val';
+      restSpan.textContent = formatHalf(stats.rest);
+      var workSpan = document.createElement('span');
+      workSpan.className = 'cg-work-val';
+      workSpan.textContent = formatHalf(stats.work) + 'w';
+      foot.appendChild(restSpan);
+      foot.appendChild(workSpan);
+    }
+    grid.appendChild(foot);
+  }
+
+  var footSum = document.createElement('div');
+  footSum.className = 'cg-footer-sum';
+  grid.appendChild(footSum);
+}
+
+/* =======================================================
+   SELECT DAY (for template application)
+   ======================================================= */
+function selectDay(idx) {
+  selectedDay = idx;
+  var hdrs = document.querySelectorAll('.cg-day-hdr');
+  for (var i = 0; i < hdrs.length; i++) {
+    hdrs[i].style.outline = '';
+  }
+  if (hdrs[idx]) {
+    hdrs[idx].style.outline = '2px solid var(--mark)';
+    setTimeout(function() { if (hdrs[idx]) hdrs[idx].style.outline = ''; }, 1500);
+  }
+}
+
+/* =======================================================
+   CELL CLICK — toggle work/rest
+   ======================================================= */
+document.addEventListener('click', function(e) {
+  var cell = e.target.closest('.cg-cell');
+  if (!cell) return;
+  if (cell.classList.contains('missing-col')) return;
+  var dayIdx = parseInt(cell.getAttribute('data-day'), 10);
+  var slot = parseInt(cell.getAttribute('data-slot'), 10);
+  if (isNaN(dayIdx) || isNaN(slot)) return;
+
+  dayGrids[dayIdx][slot] = dayGrids[dayIdx][slot] ? 0 : 1;
+  cell.classList.toggle('work');
+  recalcDay(dayIdx);
+  recalcWeek();
+  updateComplianceSlide();
+  updatePresubmit();
+});
+
+/* =======================================================
+   CALCULATIONS
+   ======================================================= */
+function calcDayStats(grid) {
+  var work = 0;
+  for (var i = 0; i < 48; i++) if (grid[i]) work++;
+  return { work: work, rest: 48 - work };
+}
+
+function formatHalf(halfHours) {
+  var h = Math.floor(halfHours / 2);
+  var m = (halfHours % 2) * 30;
+  return h + (m ? '.5' : '') + 'h';
+}
+
+function recalcDay(dayIdx) {
+  var footEl = document.querySelector('[data-footer-day="' + dayIdx + '"]');
+  if (footEl && DAYS[dayIdx].status !== 'missing') {
+    var stats = calcDayStats(dayGrids[dayIdx]);
+    footEl.textContent = '';
+    var restSpan = document.createElement('span');
+    restSpan.className = 'cg-rest-val';
+    restSpan.textContent = formatHalf(stats.rest);
+    var workSpan = document.createElement('span');
+    workSpan.className = 'cg-work-val';
+    workSpan.textContent = formatHalf(stats.work) + 'w';
+    footEl.appendChild(restSpan);
+    footEl.appendChild(workSpan);
+  }
+}
+
+function recalcWeek() {
+  var totalWork = 0;
+  var totalRest = 0;
+  for (var d = 0; d < DAYS.length; d++) {
+    if (DAYS[d].status === 'missing') continue;
+    var s = calcDayStats(dayGrids[d]);
+    totalWork += s.work;
+    totalRest += s.rest;
+  }
+  document.getElementById('weekRestDisplay').textContent = formatHalf(totalRest);
+  document.getElementById('weekWorkDisplay').textContent = formatHalf(totalWork);
+}
+
+/* =======================================================
+   COMPLIANCE SLIDE — simple green/red bar above grid
+   ======================================================= */
+function updateComplianceSlide() {
+  var slide = document.getElementById('complianceSlide');
+  var text = document.getElementById('complianceSlideText');
+
+  var todayStats = calcDayStats(dayGrids[TODAY_IDX]);
+  var todayRestH = todayStats.rest / 2;
+  var todayWorkH = todayStats.work / 2;
+
+  var periods = getRestPeriods(dayGrids[TODAY_IDX]);
+  var longestRest = 0;
+  for (var i = 0; i < periods.length; i++) {
+    if (periods[i].dur > longestRest) longestRest = periods[i].dur;
+  }
+  var longestRestH = longestRest / 2;
+
+  var weekRest = 0;
+  for (var d = 0; d < DAYS.length; d++) {
+    if (DAYS[d].status === 'missing') continue;
+    weekRest += calcDayStats(dayGrids[d]).rest;
+  }
+  var weekRestH = weekRest / 2;
+
+  var maxWork = 0; var cur = 0;
+  for (var j = 0; j < 48; j++) {
+    if (dayGrids[TODAY_IDX][j]) { cur++; if (cur > maxWork) maxWork = cur; }
+    else { cur = 0; }
+  }
+  var maxWorkH = maxWork / 2;
+
+  var violations = [];
+  if (todayRestH < 10) violations.push('daily rest < 10h');
+  if (periods.length > 2) violations.push('rest split > 2 periods');
+  if (longestRestH < 6) violations.push('no 6h continuous rest');
+  if (weekRestH < 77) violations.push('weekly rest < 77h');
+  if (todayWorkH > 14) violations.push('daily work > 14h');
+  if (maxWorkH > 14) violations.push('continuous work > 14h');
+
+  var svgEl = slide.querySelector('svg');
+  if (violations.length === 0) {
+    slide.className = 'compliance-slide compliant';
+    svgEl.textContent = '';
+    var path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path1.setAttribute('d', 'M22 11.08V12a10 10 0 11-5.93-9.14');
+    var poly1 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    poly1.setAttribute('points', '22 4 12 14.01 9 11.01');
+    svgEl.appendChild(path1);
+    svgEl.appendChild(poly1);
+    text.textContent = 'All checks passing';
+  } else {
+    slide.className = 'compliance-slide violation';
+    svgEl.textContent = '';
+    var path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path2.setAttribute('d', 'M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z');
+    var line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line1.setAttribute('x1', '12'); line1.setAttribute('y1', '9');
+    line1.setAttribute('x2', '12'); line1.setAttribute('y2', '13');
+    var line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line2.setAttribute('x1', '12'); line2.setAttribute('y1', '17');
+    line2.setAttribute('x2', '12.01'); line2.setAttribute('y2', '17');
+    svgEl.appendChild(path2);
+    svgEl.appendChild(line1);
+    svgEl.appendChild(line2);
+    text.textContent = violations.length + ' violation' + (violations.length > 1 ? 's' : '') + ': ' + violations[0];
+  }
+}
+
+/* =======================================================
+   TEMPLATES (detail section)
+   ======================================================= */
+function buildTemplates() {
+  var list = document.getElementById('templateList');
+  list.textContent = '';
+  for (var t = 0; t < TEMPLATES.length; t++) {
+    var tmpl = TEMPLATES[t];
+    var pattern = makePattern(tmpl.ranges);
+
+    var item = document.createElement('div');
+    item.className = 'template-item';
+
+    var info = document.createElement('div');
+    info.className = 'template-info';
+    var nameEl = document.createElement('div');
+    nameEl.className = 'template-name';
+    nameEl.textContent = tmpl.name;
+    var descEl = document.createElement('div');
+    descEl.className = 'template-desc';
+    descEl.textContent = tmpl.desc;
+    info.appendChild(nameEl);
+    info.appendChild(descEl);
+
+    var bar = document.createElement('div');
+    bar.className = 'template-bar';
+    for (var c = 0; c < 48; c++) {
+      var barcell = document.createElement('div');
+      barcell.className = 'tb-cell' + (pattern[c] ? ' tb-work' : '');
+      bar.appendChild(barcell);
+    }
+    info.appendChild(bar);
+    item.appendChild(info);
+
+    var btn = document.createElement('button');
+    btn.className = 'template-apply';
+    btn.textContent = 'Apply';
+    btn.setAttribute('data-tmpl', String(t));
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      applyTemplate(parseInt(this.getAttribute('data-tmpl'), 10));
+    });
+    item.appendChild(btn);
+
+    var actBtn = document.createElement('button');
+    actBtn.className = 'template-actions-btn';
+    actBtn.textContent = '\u22EF';
+    actBtn.title = 'Template options';
+    actBtn.setAttribute('data-tmpl', String(t));
+    actBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      // placeholder — wire up rename / delete / duplicate menu
+    });
+    item.appendChild(actBtn);
+
+    list.appendChild(item);
+  }
+
+  var newBtn = document.createElement('button');
+  newBtn.className = 'template-new';
+  newBtn.textContent = '+ New Template';
+  newBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    // placeholder — wire up new template creation
+  });
+  list.appendChild(newBtn);
+}
+
+function applyTemplate(tmplIdx) {
+  var target = selectedDay >= 0 ? selectedDay : TODAY_IDX;
+  if (DAYS[target].status === 'missing') target = TODAY_IDX;
+  var tmpl = TEMPLATES[tmplIdx];
+  dayGrids[target] = makePattern(tmpl.ranges);
+
+  var cells = document.querySelectorAll('.cg-cell[data-day="' + target + '"]');
+  var grid = dayGrids[target];
+  for (var i = 0; i < cells.length; i++) {
+    var slot = parseInt(cells[i].getAttribute('data-slot'), 10);
+    if (grid[slot]) {
+      cells[i].classList.add('work');
+    } else {
+      cells[i].classList.remove('work');
+    }
+  }
+
+  recalcDay(target);
+  recalcWeek();
+  updateComplianceSlide();
+  updatePresubmit();
+}
+
+/* =======================================================
+   PRE-SUBMISSION COMPLIANCE CHECKS
+   ======================================================= */
+function updatePresubmit() {
+  var todayStats = calcDayStats(dayGrids[TODAY_IDX]);
+  var todayRestH = todayStats.rest / 2;
+  var todayWorkH = todayStats.work / 2;
+
+  var periods = getRestPeriods(dayGrids[TODAY_IDX]);
+  var longestRest = 0;
+  for (var i = 0; i < periods.length; i++) {
+    if (periods[i].dur > longestRest) longestRest = periods[i].dur;
+  }
+  var longestRestH = longestRest / 2;
+
+  var maxWork = 0; var cur = 0;
+  for (var j = 0; j < 48; j++) {
+    if (dayGrids[TODAY_IDX][j]) { cur++; if (cur > maxWork) maxWork = cur; }
+    else { cur = 0; }
+  }
+  var maxWorkH = maxWork / 2;
+
+  var weekRest = 0;
+  for (var d = 0; d < DAYS.length; d++) {
+    if (DAYS[d].status === 'missing') continue;
+    weekRest += calcDayStats(dayGrids[d]).rest;
+  }
+  var weekRestH = weekRest / 2;
+
+  var mlcEl = document.getElementById('mlcChecks');
+  mlcEl.textContent = '';
+  appendCheckRow(mlcEl, 'Min rest in 24h period', 'min 10h', formatHalf(todayStats.rest), todayRestH >= 10 ? 'pass' : 'fail', todayRestH >= 10 ? 'PASS' : 'FAIL');
+  appendCheckRow(mlcEl, 'Rest split into max 2 periods', 'max 2', String(periods.length), periods.length <= 2 ? 'pass' : periods.length <= 3 ? 'warn' : 'fail', periods.length <= 2 ? 'PASS' : periods.length <= 3 ? 'WARN' : 'FAIL');
+  appendCheckRow(mlcEl, 'One rest period at least 6h consecutive', 'min 6h', formatHalf(longestRest), longestRestH >= 6 ? 'pass' : 'fail', longestRestH >= 6 ? 'PASS' : 'FAIL');
+  appendCheckRow(mlcEl, 'Min rest in 7-day period', 'min 77h', formatHalf(weekRest), weekRestH >= 77 ? 'pass' : 'fail', weekRestH >= 77 ? 'PASS' : 'FAIL');
+
+  var stcwEl = document.getElementById('stcwChecks');
+  stcwEl.textContent = '';
+  appendCheckRow(stcwEl, 'Min rest in 24h period', 'min 10h', formatHalf(todayStats.rest), todayRestH >= 10 ? 'pass' : 'fail', todayRestH >= 10 ? 'PASS' : 'FAIL');
+  appendCheckRow(stcwEl, 'Max work in 24h period', 'max 14h', formatHalf(todayStats.work), todayWorkH <= 14 ? 'pass' : 'fail', todayWorkH <= 14 ? 'PASS' : 'FAIL');
+  appendCheckRow(stcwEl, 'Min rest in 7-day period', 'min 77h', formatHalf(weekRest), weekRestH >= 77 ? 'pass' : 'fail', weekRestH >= 77 ? 'PASS' : 'FAIL');
+  appendCheckRow(stcwEl, 'Max continuous work', 'max 14h', maxWorkH + 'h', maxWorkH <= 14 ? 'pass' : 'fail', maxWorkH <= 14 ? 'PASS' : 'FAIL');
+
+  var failCount = 0;
+  if (todayRestH < 10) failCount++;
+  if (periods.length > 2) failCount++;
+  if (longestRestH < 6) failCount++;
+  if (weekRestH < 77) failCount++;
+  if (todayWorkH > 14) failCount++;
+  if (maxWorkH > 14) failCount++;
+
+  var countEl = document.getElementById('presubmitCount');
+  if (failCount > 0) {
+    countEl.textContent = failCount + ' fail';
+    countEl.style.color = 'var(--red)';
+  } else {
+    countEl.textContent = 'all pass';
+    countEl.style.color = 'var(--green)';
+  }
+}
+
+function appendCheckRow(parent, label, req, value, statusCls, statusText) {
+  var row = document.createElement('div');
+  row.className = 'presubmit-row';
+
+  var labelEl = document.createElement('span');
+  labelEl.className = 'presubmit-label';
+  labelEl.textContent = label + ' ';
+  var reqSpan = document.createElement('span');
+  reqSpan.style.cssText = 'color:var(--txt-ghost);font-size:11px;';
+  reqSpan.textContent = '(' + req + ')';
+  labelEl.appendChild(reqSpan);
+
+  var valueEl = document.createElement('span');
+  valueEl.className = 'presubmit-value';
+  valueEl.textContent = value;
+
+  var statusEl = document.createElement('span');
+  statusEl.className = 'presubmit-status ' + statusCls;
+  statusEl.textContent = statusText;
+
+  row.appendChild(labelEl);
+  row.appendChild(valueEl);
+  row.appendChild(statusEl);
+  parent.appendChild(row);
+}
+
+function getRestPeriods(grid) {
+  var periods = [];
+  var inRest = false; var start = 0;
+  for (var i = 0; i < 48; i++) {
+    if (!grid[i] && !inRest) { inRest = true; start = i; }
+    else if (grid[i] && inRest) { inRest = false; periods.push({ s: start, e: i, dur: i - start }); }
+  }
+  if (inRest) periods.push({ s: start, e: 48, dur: 48 - start });
+  return periods;
+}
+
+/* =======================================================
+   SCROLL TO TODAY — center today's column in view
+   ======================================================= */
+function scrollToToday() {
+  var wrap = document.getElementById('colGridWrap');
+  var todayHdr = document.querySelector('.cg-day-hdr.today-col');
+  if (todayHdr && wrap) {
+    var hdrRect = todayHdr.getBoundingClientRect();
+    var wrapRect = wrap.getBoundingClientRect();
+    var scrollLeft = hdrRect.left - wrapRect.left + wrap.scrollLeft - (wrapRect.width / 2) + (hdrRect.width / 2);
+    wrap.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+
+    todayHdr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    todayHdr.style.outline = '2px solid var(--mark)';
+    setTimeout(function() { todayHdr.style.outline = ''; }, 1500);
+  }
+}
+
+/* =======================================================
+   INIT
+   ======================================================= */
+buildTemplateToolbar();
+buildColGrid();
+buildTemplates();
+recalcWeek();
+updateComplianceSlide();
+updatePresubmit();
+</script>
+
+</body>
+</html>

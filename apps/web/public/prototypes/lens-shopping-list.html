@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lens · Shopping List · v1</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+/* ═══════════════════════════════════════════════════════
+   LIFECYCLE STEP INDICATOR
+   ═══════════════════════════════════════════════════════ */
+.lifecycle {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 24px; padding: 16px 0;
+}
+.lc-step {
+  display: flex; flex-direction: column; align-items: center;
+  position: relative; flex: 1; min-width: 0;
+}
+.lc-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--border-sub); border: 2px solid var(--border-sub);
+  position: relative; z-index: 2;
+  transition: all 200ms ease;
+}
+.lc-step.completed .lc-dot {
+  background: var(--green); border-color: var(--green);
+}
+.lc-step.active .lc-dot {
+  width: 12px; height: 12px;
+  background: var(--green); border-color: var(--green);
+  box-shadow: 0 0 0 4px var(--green-bg);
+}
+.lc-step.future .lc-dot {
+  background: none; border-color: var(--txt-ghost);
+}
+.lc-label {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.03em;
+  color: var(--txt-ghost); margin-top: 8px;
+  text-transform: uppercase; white-space: nowrap;
+}
+.lc-step.completed .lc-label { color: var(--txt3); }
+.lc-step.active .lc-label { color: var(--green); font-weight: 600; }
+.lc-connector {
+  flex: 1; height: 2px; background: var(--border-sub);
+  margin: 0; align-self: flex-start; margin-top: 5px;
+  position: relative; min-width: 8px;
+}
+.lc-step.active ~ .lc-connector { background: var(--border-sub); }
+.lc-connector.done { background: var(--green); }
+.lc-check {
+  position: absolute; top: -1px; left: -1px;
+  width: 12px; height: 12px;
+  display: none; z-index: 3;
+}
+.lc-step.completed .lc-check { display: block; }
+.lc-step.completed .lc-dot { width: 12px; height: 12px; }
+
+/* Override detail-label min-width for shopping list layout */
+.detail-label { min-width: 100px; }
+
+/* Override progress-bar fill to green (base uses --mark) */
+.progress-bar .fill { background: var(--green); }
+
+/* ═══════════════════════════════════════════════════════
+   ITEMS LIST — shopping list line items
+   ═══════════════════════════════════════════════════════ */
+.item-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0; min-height: 44px;
+  border-bottom: 1px solid var(--border-faint);
+  position: relative;
+}
+.item-row:last-child { border-bottom: none; }
+
+.item-status-icon {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  margin-top: 2px; display: flex; align-items: center; justify-content: center;
+}
+.item-status-icon.approved { background: var(--green); }
+.item-status-icon.approved svg { width: 11px; height: 11px; color: var(--on-status); }
+.item-status-icon.rejected { background: var(--red); }
+.item-status-icon.rejected svg { width: 11px; height: 11px; color: var(--on-status); }
+.item-status-icon.pending {
+  background: none; border: 1.5px solid var(--txt3);
+}
+
+.item-content { flex: 1; min-width: 0; }
+
+.item-top-line {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+}
+.item-name {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+}
+.item-qty {
+  font-family: var(--font-mono); font-size: 12px;
+  font-weight: 500; color: var(--txt2);
+}
+.item-price {
+  font-family: var(--font-mono); font-size: 12px;
+  font-weight: 500; color: var(--txt3); margin-left: auto;
+}
+
+.mini-pill {
+  display: inline-flex; align-items: center;
+  padding: 1px 8px; border-radius: 4px;
+  font-size: 11px; font-weight: 500;
+}
+.mini-pill-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.mini-pill-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.mini-pill-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+
+.item-sub {
+  font-size: 12px; color: var(--txt3); margin-top: 3px;
+  line-height: 1.45;
+}
+.item-sub .part-link {
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px; font-family: var(--font-mono); font-size: 11px;
+}
+.item-sub .part-link:hover { text-decoration-color: var(--mark); }
+.item-sub .rejection-author { font-weight: 500; color: var(--txt2); }
+
+.item-actions {
+  display: none; align-items: center; gap: 12px;
+  flex-shrink: 0; padding-top: 2px;
+}
+.item-row:hover .item-actions { display: flex; }
+.item-action-btn {
+  font-size: 12px; font-weight: 500;
+  cursor: pointer; background: none; border: none;
+  font-family: var(--font-sans); padding: 0;
+  transition: opacity 60ms;
+}
+.item-action-btn:hover { opacity: 0.8; }
+.item-action-btn.approve { color: var(--green); }
+.item-action-btn.reject { color: var(--red); }
+.item-action-btn.promote { color: var(--mark); }
+
+/* ═══════════════════════════════════════════════════════
+   LINKED ENTITIES (colored icon variants)
+   ═══════════════════════════════════════════════════════ */
+.entity-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 14px; border-radius: 6px;
+  cursor: pointer; transition: background 60ms; min-height: 44px;
+}
+.entity-row:hover { background: var(--surface-hover); }
+.entity-icon { margin-top: 1px; }
+.entity-icon svg { width: 14px; height: 14px; }
+.entity-icon.icon-wo { background: var(--teal-bg); }
+.entity-icon.icon-wo svg { color: var(--mark); }
+.entity-icon.icon-fault { background: var(--red-bg); }
+.entity-icon.icon-fault svg { color: var(--red); }
+.entity-icon.icon-equip { background: var(--teal-bg); }
+.entity-icon.icon-equip svg { color: var(--mark); }
+.entity-icon.icon-cert { background: var(--green-bg); }
+.entity-icon.icon-cert svg { color: var(--green); }
+.entity-icon.icon-maint { background: var(--neutral-bg); }
+.entity-icon.icon-maint svg { color: var(--txt2); }
+.entity-info { flex: 1; min-width: 0; }
+.entity-name {
+  font-size: 13px; font-weight: 500; color: var(--mark);
+  display: flex; align-items: center; gap: 6px;
+}
+.entity-name .entity-code {
+  font-family: var(--font-mono); font-size: 12px;
+}
+.entity-title {
+  font-size: 13px; font-weight: 400; color: var(--txt);
+}
+.entity-reason {
+  font-size: 11px; color: var(--txt3); margin-top: 2px;
+  line-height: 1.4;
+}
+.entity-chevron { color: var(--txt-ghost); flex-shrink: 0; margin-top: 6px; }
+
+/* ═══════════════════════════════════════════════════════
+   SUPPLIER INFO
+   ═══════════════════════════════════════════════════════ */
+.supplier-card {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 14px; border-radius: 8px;
+  background: var(--neutral-bg);
+  border: 1px solid var(--border-faint);
+}
+.supplier-avatar {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--teal-bg);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.supplier-avatar svg { width: 16px; height: 16px; color: var(--mark); }
+.supplier-info { flex: 1; min-width: 0; }
+.supplier-name { font-size: 14px; font-weight: 500; color: var(--txt); margin-bottom: 2px; }
+.supplier-meta { font-size: 12px; color: var(--txt3); line-height: 1.5; }
+.supplier-meta span { display: block; }
+.supplier-meta .mono-sm { font-family: var(--font-mono); font-size: 11px; }
+
+/* ═══════════════════════════════════════════════════════
+   HISTORY / TIMELINE
+   ═══════════════════════════════════════════════════════ */
+.timeline-entry {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0; min-height: 44px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.timeline-entry:last-child { border-bottom: none; }
+.timeline-ts {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--txt3); min-width: 110px; flex-shrink: 0;
+  padding-top: 1px;
+}
+.timeline-desc {
+  font-size: 13px; font-weight: 400; color: var(--txt2);
+  line-height: 1.45;
+}
+.timeline-desc strong { font-weight: 500; color: var(--txt); }
+
+/* ═══════════════════════════════════════════════════════
+   LINKED PO ROWS
+   ═══════════════════════════════════════════════════════ */
+.po-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 6px;
+  cursor: pointer; transition: background 60ms; min-height: 44px;
+}
+.po-row:hover { background: var(--surface-hover); }
+.po-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--teal-bg);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.po-icon svg { width: 14px; height: 14px; color: var(--mark); }
+.po-info { flex: 1; min-width: 0; }
+.po-name { font-size: 13px; font-weight: 500; color: var(--mark); }
+.po-name .po-code { font-family: var(--font-mono); font-size: 12px; }
+.po-meta { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+.po-meta .po-date { font-family: var(--font-mono); font-size: 10px; }
+.po-amount {
+  font-family: var(--font-mono); font-size: 13px;
+  font-weight: 500; color: var(--txt); flex-shrink: 0;
+}
+.po-chevron { color: var(--txt-ghost); }
+
+/* Override doc-icon to neutral (shopping list uses grey doc icons) */
+.doc-icon { background: var(--neutral-bg); }
+.doc-icon svg { color: var(--txt3); }
+
+/* ═══════════════════════════════════════════════════════
+   TOTALS SUMMARY
+   ═══════════════════════════════════════════════════════ */
+.totals {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 14px; border-radius: 8px;
+  background: var(--neutral-bg);
+  border: 1px solid var(--border-faint);
+}
+.total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: var(--txt2);
+}
+.total-row.total-main {
+  font-size: 14px; font-weight: 600; color: var(--txt);
+  border-top: 1px solid var(--border-sub); padding-top: 8px; margin-top: 4px;
+}
+.total-val { font-family: var(--font-mono); font-size: 13px; }
+.total-main .total-val { font-size: 15px; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- ═══ LENS HEADER ═══ -->
+  <div class="lens-hdr">
+    <button class="hdr-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="hdr-type">Shopping List</span>
+    <div class="hdr-actions">
+      <button class="hdr-btn" onclick="toggleTheme()">
+        <svg class="icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="hdr-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Related
+      </button>
+      <button class="hdr-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ SCROLLABLE BODY ═══ -->
+  <div class="lens-body">
+
+    <!-- ─── IDENTITY STRIP ─── -->
+    <div class="identity">
+      <!-- Top row: overline left, split button right -->
+      <div class="identity-top-row">
+        <div class="identity-overline">SL-447</div>
+        <div class="split-wrap">
+          <div class="split-btn">
+            <button class="split-main">Convert to PO</button>
+            <button class="split-toggle" onclick="toggleDd(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="dropdown" id="dd">
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Item
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+              Export PDF
+            </button>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Duplicate List
+            </button>
+            <div class="dd-sep"></div>
+            <button class="dd-item" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Submit for Re-Approval
+            </button>
+            <div class="dd-sep"></div>
+            <button class="dd-item danger" onclick="closeDd()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Archive List
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1 class="identity-title">Engineering Spares Request</h1>
+
+      <!-- Context line -->
+      <p class="identity-context">Engineering Department &middot; SV Andromeda (60m) &middot; Requested by <span class="crew-link">Chief Engineer</span></p>
+
+      <!-- Status pills -->
+      <div class="pills">
+        <span class="pill pill-green"><span class="dot"></span> Approved</span>
+        <span class="pill pill-neutral"><span class="dot"></span> 6 Items</span>
+      </div>
+
+      <!-- ─── LIFECYCLE STEP INDICATOR ─── -->
+      <div class="lifecycle">
+        <div class="lc-step completed">
+          <div class="lc-dot">
+            <svg class="lc-check" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><polyline points="2.5 6 5 8.5 9.5 3.5"/></svg>
+          </div>
+          <span class="lc-label">Draft</span>
+        </div>
+        <div class="lc-connector done"></div>
+        <div class="lc-step completed">
+          <div class="lc-dot">
+            <svg class="lc-check" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><polyline points="2.5 6 5 8.5 9.5 3.5"/></svg>
+          </div>
+          <span class="lc-label">Submitted</span>
+        </div>
+        <div class="lc-connector done"></div>
+        <div class="lc-step active">
+          <div class="lc-dot"></div>
+          <span class="lc-label">Approved</span>
+        </div>
+        <div class="lc-connector"></div>
+        <div class="lc-step future">
+          <div class="lc-dot"></div>
+          <span class="lc-label">Ordered</span>
+        </div>
+        <div class="lc-connector"></div>
+        <div class="lc-step future">
+          <div class="lc-dot"></div>
+          <span class="lc-label">Received</span>
+        </div>
+        <div class="lc-connector"></div>
+        <div class="lc-step future">
+          <div class="lc-dot"></div>
+          <span class="lc-label">Archived</span>
+        </div>
+      </div>
+
+      <!-- Key-value detail lines -->
+      <div class="detail-lines">
+        <div class="detail-line">
+          <span class="detail-label">Requester</span>
+          <span><span class="crew-link">Chief Engineer</span></span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Approver</span>
+          <span><span class="crew-link">1st Officer</span></span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Created</span>
+          <span class="mono-val">10 Mar 2026</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Approved</span>
+          <span class="mono-val">12 Mar 2026</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Priority</span>
+          <span>High &mdash; scheduled maintenance window 22 Mar</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Department</span>
+          <span>Engineering</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Items</span>
+          <span class="mono-val">6</span>
+        </div>
+        <div class="detail-line">
+          <span class="detail-label">Est. Total</span>
+          <span class="mono-val">$3,847.50</span>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="desc-block">
+        <div class="desc-label">Description</div>
+        <p class="desc-text">Engineering spares for main engine valve replacement and seawater cooling system maintenance. Parts required before scheduled dry dock window. Includes critical safety items for certificate compliance.</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 1: ITEMS (expanded — primary section)
+         ═══════════════════════════════════════════════ -->
+    <div class="section reveal" id="sec-items">
+      <div class="sec-hdr" onclick="toggleSec('sec-items')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span class="sec-title">Items</span>
+        <span class="sec-count">6</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <!-- Progress bar: 6/6 approved = 100% -->
+        <div class="progress-bar"><div class="fill" style="width:100%"></div></div>
+
+        <!-- Item 1: Approved, promoted to part -->
+        <div class="item-row">
+          <div class="item-status-icon approved">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="item-content">
+            <div class="item-top-line">
+              <span class="item-name">Butterfly valve (DN80, bronze)</span>
+              <span class="item-qty">&times;2</span>
+              <span class="mini-pill mini-pill-green">Approved</span>
+              <span class="item-price">$1,240.00</span>
+            </div>
+            <div class="item-sub">Promoted to Part: <span class="part-link">BV-DN80-BZ</span> &middot; For WO-1042 valve replacement</div>
+          </div>
+        </div>
+
+        <!-- Item 2: Approved -->
+        <div class="item-row">
+          <div class="item-status-icon approved">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="item-content">
+            <div class="item-top-line">
+              <span class="item-name">Mechanical seal kit (Cummins QSM11)</span>
+              <span class="item-qty">&times;1</span>
+              <span class="mini-pill mini-pill-green">Approved</span>
+              <span class="item-price">$890.00</span>
+            </div>
+            <div class="item-sub">OEM part &middot; Required for coolant pump rebuild</div>
+          </div>
+        </div>
+
+        <!-- Item 3: Approved -->
+        <div class="item-row">
+          <div class="item-status-icon approved">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="item-content">
+            <div class="item-top-line">
+              <span class="item-name">Zinc anodes (hull, 5kg)</span>
+              <span class="item-qty">&times;8</span>
+              <span class="mini-pill mini-pill-green">Approved</span>
+              <span class="item-price">$480.00</span>
+            </div>
+            <div class="item-sub">Scheduled replacement &middot; Certificate compliance (STCW-2024-7892)</div>
+          </div>
+        </div>
+
+        <!-- Item 4: Approved -->
+        <div class="item-row">
+          <div class="item-status-icon approved">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="item-content">
+            <div class="item-top-line">
+              <span class="item-name">Seawater strainer basket (Perko 0493)</span>
+              <span class="item-qty">&times;3</span>
+              <span class="mini-pill mini-pill-green">Approved</span>
+              <span class="item-price">$345.00</span>
+            </div>
+            <div class="item-sub">Replacement for corroded baskets found during F-2847 inspection</div>
+          </div>
+        </div>
+
+        <!-- Item 5: Approved -->
+        <div class="item-row">
+          <div class="item-status-icon approved">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="item-content">
+            <div class="item-top-line">
+              <span class="item-name">Impeller (Jabsco 17937-0001)</span>
+              <span class="item-qty">&times;4</span>
+              <span class="mini-pill mini-pill-green">Approved</span>
+              <span class="item-price">$292.50</span>
+            </div>
+            <div class="item-sub">Spares for raw water pump &middot; 2 installed + 2 stock</div>
+          </div>
+        </div>
+
+        <!-- Item 6: Approved -->
+        <div class="item-row">
+          <div class="item-status-icon approved">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="item-content">
+            <div class="item-top-line">
+              <span class="item-name">Fuel filter element (Racor 2040TM-OR)</span>
+              <span class="item-qty">&times;6</span>
+              <span class="mini-pill mini-pill-green">Approved</span>
+              <span class="item-price">$600.00</span>
+            </div>
+            <div class="item-sub">Quarterly replacement &middot; Scheduled maintenance MS-210</div>
+          </div>
+        </div>
+
+        <!-- Totals summary -->
+        <div class="totals" style="margin-top: 16px;">
+          <div class="total-row">
+            <span>Subtotal (6 items)</span>
+            <span class="total-val">$3,847.50</span>
+          </div>
+          <div class="total-row">
+            <span>Shipping (est.)</span>
+            <span class="total-val">$185.00</span>
+          </div>
+          <div class="total-row total-main">
+            <span>Estimated Total</span>
+            <span class="total-val">$4,032.50</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 2: LINKED ENTITIES (expanded)
+         ═══════════════════════════════════════════════ -->
+    <div class="section reveal" id="sec-linked-entities">
+      <div class="sec-hdr" onclick="toggleSec('sec-linked-entities')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        <span class="sec-title">Linked Entities</span>
+        <span class="sec-count">7</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+
+        <!-- Work Order: WO-1042 -->
+        <div class="entity-row">
+          <div class="entity-icon icon-wo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-code">WO-1042</span></div>
+            <div class="entity-title">Main engine butterfly valve replacement</div>
+            <div class="entity-reason">Parts for valve replacement &mdash; butterfly valves, seal kit</div>
+          </div>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+
+        <!-- Work Order: WO-1038 -->
+        <div class="entity-row">
+          <div class="entity-icon icon-wo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-code">WO-1038</span></div>
+            <div class="entity-title">Seawater cooling system overhaul</div>
+            <div class="entity-reason">Strainer baskets, impellers, zinc anodes for cooling system</div>
+          </div>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+
+        <!-- Fault: F-2847 -->
+        <div class="entity-row">
+          <div class="entity-icon icon-fault">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-code">F-2847</span></div>
+            <div class="entity-title">Corroded seawater strainer baskets</div>
+            <div class="entity-reason">Fault found during routine inspection &mdash; strainer replacement required</div>
+          </div>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+
+        <!-- Equipment: E-007 -->
+        <div class="entity-row">
+          <div class="entity-icon icon-equip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-code">E-007</span></div>
+            <div class="entity-title">Main Engine &mdash; Cummins QSM11 (Port)</div>
+            <div class="entity-reason">Primary equipment &mdash; valve, seal kit, filters are engine parts</div>
+          </div>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+
+        <!-- Equipment: E-012 -->
+        <div class="entity-row">
+          <div class="entity-icon icon-equip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-code">E-012</span></div>
+            <div class="entity-title">Seawater Cooling System</div>
+            <div class="entity-reason">Strainer baskets, impellers, anodes for cooling circuit</div>
+          </div>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+
+        <!-- Certificate: STCW-2024-7892 -->
+        <div class="entity-row">
+          <div class="entity-icon icon-cert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-code">STCW-2024-7892</span></div>
+            <div class="entity-title">Machinery Safety Certificate</div>
+            <div class="entity-reason">Zinc anode replacement required for certificate compliance</div>
+          </div>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+
+        <!-- Maintenance Schedule: MS-210 -->
+        <div class="entity-row">
+          <div class="entity-icon icon-maint">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div class="entity-info">
+            <div class="entity-name"><span class="entity-code">MS-210</span></div>
+            <div class="entity-title">Quarterly Engine Maintenance &mdash; Q1 2026</div>
+            <div class="entity-reason">Fuel filter replacement per scheduled maintenance plan</div>
+          </div>
+          <span class="entity-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 3: SUPPLIER INFO (expanded)
+         ═══════════════════════════════════════════════ -->
+    <div class="section reveal" id="sec-supplier">
+      <div class="sec-hdr" onclick="toggleSec('sec-supplier')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="sec-title">Preferred Supplier</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="supplier-card">
+          <div class="supplier-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+          </div>
+          <div class="supplier-info">
+            <div class="supplier-name">Mediterranean Marine Supply Co.</div>
+            <div class="supplier-meta">
+              <span>Nice, France &middot; Preferred vendor since 2023</span>
+              <span class="mono-sm">Account: MMS-ANDR-2023</span>
+              <span class="mono-sm">Lead time: 5&ndash;7 business days</span>
+              <span>Contact: Marc Dubois &middot; <span class="mono-sm">+33 4 93 XX XX XX</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 4: APPROVAL HISTORY (collapsed)
+         ═══════════════════════════════════════════════ -->
+    <div class="section collapsed reveal" id="sec-approval-history">
+      <div class="sec-hdr" onclick="toggleSec('sec-approval-history')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sec-title">Approval History</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="timeline-entry">
+          <span class="timeline-ts">12 Mar 2026 08:15</span>
+          <span class="timeline-desc"><strong>All 6 items approved</strong> by 1st Officer &mdash; "Good to order, priority for dry dock"</span>
+        </div>
+        <div class="timeline-entry">
+          <span class="timeline-ts">11 Mar 2026 14:20</span>
+          <span class="timeline-desc"><strong>List submitted for approval</strong> by Chief Engineer &mdash; 6 items, est. $3,847.50</span>
+        </div>
+        <div class="timeline-entry">
+          <span class="timeline-ts">10 Mar 2026 16:45</span>
+          <span class="timeline-desc"><strong>Item added:</strong> Fuel filter element (&times;6) by Chief Engineer</span>
+        </div>
+        <div class="timeline-entry">
+          <span class="timeline-ts">10 Mar 2026 16:30</span>
+          <span class="timeline-desc"><strong>List created</strong> by Chief Engineer &mdash; 5 items from WO-1042 and WO-1038</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 5: LINKED PURCHASE ORDERS (collapsed)
+         ═══════════════════════════════════════════════ -->
+    <div class="section collapsed reveal" id="sec-purchase-orders">
+      <div class="sec-hdr" onclick="toggleSec('sec-purchase-orders')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span class="sec-title">Linked Purchase Orders</span>
+        <span class="sec-count">0</span>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div style="padding: 20px 14px; text-align: center;">
+          <p style="font-size: 13px; color: var(--txt3); margin-bottom: 12px;">No purchase orders yet. Convert this approved list to a PO.</p>
+          <button class="sec-action" style="font-size: 13px;">Convert to PO</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 6: DOCUMENTS (collapsed)
+         ═══════════════════════════════════════════════ -->
+    <div class="section collapsed reveal" id="sec-documents">
+      <div class="sec-hdr" onclick="toggleSec('sec-documents')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        <span class="sec-title">Documents</span>
+        <span class="sec-count">2</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Attach</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name">Cummins_QSM11_Parts_Catalogue.pdf</div>
+            <div class="doc-meta">Uploaded by Chief Engineer &middot; <span class="doc-size">2.4 MB</span> &middot; <span class="doc-size">10 Mar 2026</span></div>
+          </div>
+        </div>
+        <div class="doc-row">
+          <div class="doc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name">MedMarine_Quote_SL447.pdf</div>
+            <div class="doc-meta">Uploaded by Chief Engineer &middot; <span class="doc-size">340 KB</span> &middot; <span class="doc-size">11 Mar 2026</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SECTION 7: NOTES (collapsed, with + Add)
+         ═══════════════════════════════════════════════ -->
+    <div class="section collapsed reveal" id="sec-notes">
+      <div class="sec-hdr" onclick="toggleSec('sec-notes')">
+        <svg class="sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="sec-title">Notes</span>
+        <span class="sec-count">2</span>
+        <button class="sec-action" onclick="event.stopPropagation()">+ Add</button>
+        <svg class="sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="sec-body">
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">Chief Engineer</span>
+            <span class="note-time">10 Mar 2026</span>
+          </div>
+          <p class="note-body">Consolidating parts from WO-1042 and WO-1038 into a single order to save on shipping. Med Marine confirmed they can source all items. Quote attached.</p>
+        </div>
+        <div class="note">
+          <div class="note-meta">
+            <span class="note-author">1st Officer</span>
+            <span class="note-time">12 Mar 2026</span>
+          </div>
+          <p class="note-body">Approved. Please expedite &mdash; we need parts on board before the 22nd for the scheduled maintenance window. Budget authorised under engineering Q1 allocation.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /lens-body -->
+
+</div><!-- /panel -->
+
+<script src="lens-base.js"></script>
+
+</body>
+</html>

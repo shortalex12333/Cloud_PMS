@@ -237,6 +237,9 @@ class EmailWatcherWorker:
             'yacht_id': yacht_id,
             'delta_link_inbox': watcher.get('delta_link_inbox'),
             'delta_link_sent': watcher.get('delta_link_sent'),
+            'delta_link': watcher.get('delta_link'),
+            'sync_version': watcher.get('sync_version', 'folder'),
+            'mailbox_address_hash': watcher.get('mailbox_address_hash', ''),
         }
 
         result = await sync_service.sync_watcher(full_watcher)

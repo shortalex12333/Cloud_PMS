@@ -45,7 +45,7 @@ export function LensGlassHeader({
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M6.5 9.5l3-3M5.75 11.75L4 13.5a1.77 1.77 0 01-2.5-2.5l1.75-1.75M12.25 6.25L14 4.5A1.77 1.77 0 0011.5 2L9.75 3.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
-            <span>Related</span>
+            <span>Show Related</span>
           </button>
         )}
 

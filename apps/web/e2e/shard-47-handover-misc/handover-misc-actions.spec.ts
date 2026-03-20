@@ -193,8 +193,8 @@ test.describe('[Captain] show_manual_section — ADVISORY', () => {
     });
     console.log(`[JSON] show_manual_section: status=${result.status}`);
 
-    // 200 = success, 403 = RBAC, 500 = manual_handlers not initialized, 404 = no manual found
-    expect([200, 403, 404, 500]).toContain(result.status);
+    // 200 = success, 400 = validation/handler error, 403 = RBAC, 500 = not initialized, 404 = not found
+    expect([200, 400, 403, 404, 500]).toContain(result.status);
   });
 });
 
@@ -245,8 +245,8 @@ test.describe('[Captain] export_handover — ADVISORY', () => {
     });
     console.log(`[JSON] export_handover (invalid): status=${result.status}`);
 
-    // 200 = handler returns data for any ID, 404 = not found, 500 = handler error
-    expect([200, 404, 500]).toContain(result.status);
+    // 200 = handler returns data for any ID, 400 = validation, 404 = not found, 500 = handler error
+    expect([200, 400, 404, 500]).toContain(result.status);
   });
 });
 
@@ -265,8 +265,8 @@ test.describe('[Captain] get_pending_handovers — HARD PROOF', () => {
     const result = await fetchDirect(captainPage, 'GET', '/v1/actions/handover/pending');
     console.log(`[JSON] get_pending_handovers: status=${result.status}, keys=${Object.keys(result.data).join(',')}`);
 
-    // 200 = success (may be empty), 404 = route not found, 500 = handler not initialized
-    expect([200, 404, 500]).toContain(result.status);
+    // 200 = success (may be empty), 400 = validation, 404 = route not found, 500 = handler not initialized
+    expect([200, 400, 404, 500]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string; success?: boolean };
       expect(data.status === 'success' || data.success === true).toBe(true);

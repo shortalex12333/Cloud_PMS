@@ -22,7 +22,7 @@ export interface AuditTrailSectionProps {
   title?: string;
 }
 
-export function AuditTrailSection({ events, defaultCollapsed = true, title = 'History' }: AuditTrailSectionProps) {
+export function AuditTrailSection({ events, defaultCollapsed = true, title = 'Audit Trail' }: AuditTrailSectionProps) {
   return (
     <CollapsibleSection
       id={`sec-${title.toLowerCase().replace(/\s+/g, '-')}`}

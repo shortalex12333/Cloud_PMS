@@ -442,15 +442,24 @@ async def suggest_parts(
 
     parts = []
     if equipment_id:
-        parts_result = (
-            db_client.table("pms_parts")
-            .select("id, part_number, name, quantity_on_hand, location")
-            .eq("yacht_id", yacht_id)
+        # Parts linked to equipment via BOM table
+        bom_result = (
+            db_client.table("pms_equipment_parts_bom")
+            .select("part_id")
             .eq("equipment_id", equipment_id)
             .limit(10)
             .execute()
         )
-        parts = parts_result.data or []
+        part_ids = [r["part_id"] for r in (bom_result.data or []) if r.get("part_id")]
+        if part_ids:
+            parts_result = (
+                db_client.table("pms_parts")
+                .select("id, part_number, name, quantity_on_hand, location")
+                .eq("yacht_id", yacht_id)
+                .in_("id", part_ids)
+                .execute()
+            )
+            parts = parts_result.data or []
 
     return {
         "status": "success",

@@ -36,6 +36,7 @@ from actions.action_response_schema import (
     ResponseBuilder,
     AvailableAction,
 )
+from routes.handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 
@@ -731,6 +732,25 @@ class HoursOfRestHandlers:
                     "new_values": {"status": update_data.get("status"), "signature_level": signature_level},
                     "signature": signature_data,  # Actual signature data for signed action
                 })
+
+                # Write ledger event for HOD/Captain visibility
+                level_labels = {"crew": "hor_crew_signed", "hod": "hor_hod_signed", "master": "hor_master_signed"}
+                ledger_action = level_labels.get(signature_level, f"hor_{signature_level}_signed")
+                signer_name = signature_data.get("name", "Unknown") if isinstance(signature_data, dict) else "Unknown"
+                try:
+                    self.db.table("ledger_events").insert(build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="approval",
+                        entity_type="pms_hor_monthly_signoffs",
+                        entity_id=signoff_id,
+                        action=ledger_action,
+                        department=signoff.get("department"),
+                        change_summary=f"{signer_name} signed {signoff.get('month', '')} HoR as {signature_level}",
+                        metadata={"signature_level": signature_level, "month": signoff.get("month"), "new_status": update_data.get("status")},
+                    )).execute()
+                except Exception as le:
+                    logger.warning(f"Failed to write ledger event for HoR sign: {le}")
 
             builder.set_data({
                 "signoff": updated_signoff,

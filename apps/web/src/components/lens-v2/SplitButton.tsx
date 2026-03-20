@@ -13,6 +13,8 @@ export interface DropdownItem {
   icon?: React.ReactNode;
   onClick: () => void;
   danger?: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 export interface SplitButtonProps {
@@ -110,7 +112,10 @@ export function SplitButton({
               {hasSeparator && i === dangerIndex && <div className={styles.ddSep} />}
               <button
                 className={`${styles.ddItem} ${item.danger ? styles.danger : ''}`}
-                onClick={() => handleItemClick(item)}
+                onClick={item.disabled ? undefined : () => handleItemClick(item)}
+                disabled={item.disabled}
+                title={item.disabledReason ?? undefined}
+                style={item.disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
               >
                 {item.icon}
                 {item.label}

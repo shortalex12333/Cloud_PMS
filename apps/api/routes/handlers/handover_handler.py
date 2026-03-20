@@ -170,22 +170,18 @@ async def add_to_handover(
 # _find_handover — shared helper for handover lookup across both table names
 # ============================================================================
 def _find_handover(db_client: Client, handover_id: str, yacht_id: str, columns: str = "id"):
-    """Try 'handovers' then 'handover' table. Returns (data, table_name) or raises 404."""
-    handover = db_client.table("handovers").select(columns).eq(
-        "id", handover_id
-    ).eq("yacht_id", yacht_id).maybe_single().execute()
-    table_name = "handovers"
+    """Try handover tables in order. Returns (data, table_name) or raises 404."""
+    for table_name in ("handover_exports", "handovers", "handover"):
+        try:
+            handover = db_client.table(table_name).select(columns).eq(
+                "id", handover_id
+            ).eq("yacht_id", yacht_id).maybe_single().execute()
+            if handover.data:
+                return handover, table_name
+        except Exception:
+            continue
 
-    if not handover.data:
-        handover = db_client.table("handover").select(columns).eq(
-            "id", handover_id
-        ).eq("yacht_id", yacht_id).maybe_single().execute()
-        table_name = "handover"
-
-    if not handover.data:
-        raise HTTPException(status_code=404, detail="Handover not found")
-
-    return handover, table_name
+    raise HTTPException(status_code=404, detail="Handover not found")
 
 
 # ============================================================================
@@ -415,7 +411,8 @@ HANDLERS: dict = {
     "add_to_handover": add_to_handover,
     "add_document_to_handover": add_document_to_handover,
     "add_predictive_insight_to_handover": add_predictive_insight_to_handover,
-    "edit_handover_section": edit_handover_section,
+    # edit_handover_section removed — handover_exports has no metadata/sections column.
+    # Stubbed via internal_dispatcher fallback until schema supports section editing.
     "export_handover": export_handover,
     "regenerate_handover_summary": regenerate_handover_summary,
 }

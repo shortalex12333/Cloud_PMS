@@ -492,6 +492,31 @@ handover_exports:
     signed_at: user_signed_at
     approved_at: hod_signed_at
 
+hours_of_rest_signoffs:
+  source_table: pms_hor_monthly_signoffs
+  object_type: hours_of_rest_signoff
+  # NOTE: Role-gated in search API — non-HOD users only see their own records
+  search_text:
+    - field: month
+      cast: text
+    - field: status
+      cast: text
+    - field: department
+      cast: text
+    - literal: "hours of rest sign-off monthly signoff compliance MLC STCW"
+  filters:
+    status: status
+    department: department
+    user_id: user_id
+  payload:
+    month: month
+    status: status
+    total_rest_hours: total_rest_hours
+    total_work_hours: total_work_hours
+    violation_count: violation_count
+    department: department
+    user_id: user_id
+
 # =============================================================================
 # Promoted Facets (indexes created in search_index.filters JSONB)
 # =============================================================================
@@ -500,7 +525,7 @@ handover_exports:
 
 promoted_facets:
   - key: status
-    domains: [work_orders, faults, equipment, receiving, certificates]
+    domains: [work_orders, faults, equipment, receiving, certificates, hours_of_rest_signoffs]
     index_type: btree
   - key: priority
     domains: [work_orders]
@@ -554,4 +579,10 @@ promoted_facets:
     index_type: btree
   - key: review_status
     domains: [handover_exports]
+    index_type: btree
+  - key: department
+    domains: [hours_of_rest_signoffs]
+    index_type: btree
+  - key: user_id
+    domains: [hours_of_rest_signoffs]
     index_type: btree

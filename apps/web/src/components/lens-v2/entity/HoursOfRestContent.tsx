@@ -105,7 +105,7 @@ export function HoursOfRestContent() {
   // -- Action gates --
   const submitAction = getAction('submit_hours');
   const templateAction = getAction('apply_template');
-  const flagAction = getAction('flag_violation');
+  // flag_violation removed — holds no value per user directive
 
   const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
@@ -178,7 +178,7 @@ export function HoursOfRestContent() {
   }, [executeAction]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
-  const DANGER_ACTIONS = new Set(['flag_violation']);
+  const DANGER_ACTIONS = new Set<string>();
   const primaryActionId = 'submit_hours';
 
   const dropdownItems: DropdownItem[] = availableActions

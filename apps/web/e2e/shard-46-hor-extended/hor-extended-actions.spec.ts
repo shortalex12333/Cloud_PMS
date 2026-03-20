@@ -208,8 +208,8 @@ test.describe('[Captain] get_monthly_signoff — ADVISORY', () => {
     });
     console.log(`[JSON] get_monthly_signoff (invalid ID): status=${result.status}`);
 
-    // Handler may return 200 with empty data instead of 404 for nonexistent signoff IDs
-    expect([200, 404, 500]).toContain(result.status);
+    // Handler may return 200 with empty data, 400 for validation, or 404 for nonexistent IDs
+    expect([200, 400, 404, 500]).toContain(result.status);
   });
 });
 

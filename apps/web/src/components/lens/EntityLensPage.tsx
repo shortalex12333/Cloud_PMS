@@ -20,9 +20,6 @@ import type { ActionPopupField } from '@/components/lens-v2/ActionPopup';
 import { useEntityLedger } from '@/hooks/useEntityLedger';
 import { HistorySection } from './sections/HistorySection';
 
-// Clusters rendered in the shell action bar (not inline in content)
-const SHELL_CLUSTERS = new Set(['lifecycle', 'entity', 'compliance']);
-
 // Fields handled automatically — never require user input in the form
 const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
 
@@ -169,12 +166,6 @@ export function EntityLensPage({
     [lens]
   );
 
-  // Shell action bar: lifecycle, entity, and compliance clusters
-  const shellActions = lens.availableActions.filter((a) => {
-    const { cluster } = getActionDisplay(a.action_id);
-    return SHELL_CLUSTERS.has(cluster) && !hasUnresolvedFields(a);
-  });
-
   const contextValue = React.useMemo(
     () => ({
       entityType,
@@ -215,32 +206,6 @@ export function EntityLensPage({
       <EntityLensProvider value={contextValue}>
         <Content />
         <LedgerHistory entityType={entityType} entityId={entityId} />
-        {/* Shell action bar — lifecycle, entity, and compliance actions */}
-        {shellActions.length > 0 && (
-          <div
-            style={{ display: 'flex', gap: '12px', paddingTop: '16px', flexWrap: 'wrap', borderTop: '1px solid var(--border-sub)' }}
-            data-testid="shell-action-bar"
-          >
-            {shellActions.map((action) => (
-              <button
-                key={action.action_id}
-                disabled={action.disabled}
-                title={action.disabled_reason ?? undefined}
-                onClick={() => safeExecute(action.action_id)}
-                data-testid={`action-${action.action_id}`}
-                className={lensStyles.splitMain}
-                style={action.disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
-              >
-                {action.label}
-                {action.variant === 'SIGNED' && (
-                  <span style={{ fontSize: '12px', color: 'var(--amber)' }} title="Requires signature">
-                    ✎
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
       </EntityLensProvider>
     );
   }
@@ -284,11 +249,20 @@ export function EntityLensPage({
               aria-label={relatedOpen ? 'Close related panel' : 'Show related'}
               aria-expanded={relatedOpen}
               data-testid="show-related-button"
+              style={relatedOpen ? { background: 'var(--surface-hover)', color: 'var(--mark)' } : undefined}
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M6.5 9.5l3-3M5.75 11.75L4 13.5a1.77 1.77 0 01-2.5-2.5l1.75-1.75M12.25 6.25L14 4.5A1.77 1.77 0 0011.5 2L9.75 3.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              <span>Related{totalRelated > 0 ? ` (${totalRelated})` : ''}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" /></svg>
+              <span>Related</span>
+              {totalRelated > 0 && (
+                <span style={{
+                  padding: '1px 6px', borderRadius: '4px',
+                  background: 'var(--teal-bg)', color: 'var(--mark)',
+                  fontSize: '10px', fontWeight: 600,
+                  fontFamily: 'var(--font-mono)',
+                }}>
+                  {totalRelated}
+                </span>
+              )}
             </button>
 
             <button
@@ -313,56 +287,98 @@ export function EntityLensPage({
         </div>
       </div>
 
-      {/* Related Drawer - rendered outside panel */}
-      {relatedOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '24px',
-            right: '24px',
-            bottom: '24px',
-            width: '600px',
-            maxWidth: '100vw',
-            zIndex: 100,
-            background: 'var(--surface)',
-            borderTop: '1px solid rgba(255,255,255,0.11)',
-            borderRight: '1px solid rgba(255,255,255,0.06)',
-            borderBottom: '1px solid rgba(255,255,255,0.03)',
-            borderLeft: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '4px',
-            boxShadow: '0 20px 80px rgba(0,0,0,0.60), 0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.05)',
-            overflow: 'hidden',
-            transition: 'opacity 200ms ease, transform 280ms ease',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-sub)', gap: '8px', flexShrink: 0 }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--txt2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Related · {totalRelated}
-            </span>
-            <button
-              className={lensStyles.hdrClose}
-              onClick={() => setRelatedOpen(false)}
-              aria-label="Close related"
-              style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-          <RelatedDrawer
-            groups={relatedData?.groups ?? []}
-            isLoading={relatedLoading}
-            error={relatedError ?? null}
-            onNavigate={handleNavigate}
-            onAddRelated={canAddRelated ? () => setShowAddModal(true) : undefined}
-            signalItems={signalData?.items}
-            signalLoading={signalLoading}
-          />
+      {/* Related Drawer — prototype: show-related.html */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          bottom: '24px',
+          width: '600px',
+          maxWidth: '100vw',
+          zIndex: 100,
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border-top)',
+          borderRight: '1px solid var(--border-side)',
+          borderBottom: '1px solid var(--border-bottom)',
+          borderLeft: '1px solid var(--border-side)',
+          borderRadius: '4px',
+          boxShadow: '0 20px 80px rgba(0,0,0,0.60), 0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.05)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          transform: relatedOpen ? 'translateX(0)' : 'translateX(32px)',
+          opacity: relatedOpen ? 1 : 0,
+          pointerEvents: relatedOpen ? 'auto' : 'none',
+          transition: 'opacity 200ms ease, transform 280ms ease',
+        }}
+      >
+        {/* Drawer header */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border-sub)', gap: '8px', flexShrink: 0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--txt3)', flexShrink: 0 }}><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" /></svg>
+          <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--txt2)', flex: 1 }}>
+            Show Related
+          </span>
+          <button
+            onClick={() => setRelatedOpen(false)}
+            aria-label="Close related"
+            style={{ width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--txt-ghost)', background: 'none', border: 'none', transition: 'background 60ms' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.color = 'var(--txt2)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--txt-ghost)'; }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
         </div>
-      )}
+
+        {/* Source entity context */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <div style={{ width: '24px', height: '24px', borderRadius: '5px', background: 'var(--teal-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--mark)" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--txt3)' }}>
+              {(lens.entity?.wo_number ?? lens.entity?.reference_number ?? entityType.replace(/_/g, ' ')).toString().toUpperCase()}
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--txt)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {entityTitle}
+            </div>
+          </div>
+        </div>
+
+        {/* Drawer body + results */}
+        <RelatedDrawer
+          groups={relatedData?.groups ?? []}
+          isLoading={relatedLoading}
+          error={relatedError ?? null}
+          onNavigate={handleNavigate}
+          onAddRelated={canAddRelated ? () => setShowAddModal(true) : undefined}
+          signalItems={signalData?.items}
+          signalLoading={signalLoading}
+        />
+
+        {/* Footer — count + keyboard hints */}
+        {!relatedLoading && totalRelated > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderTop: '1px solid var(--border-sub)', flexShrink: 0 }}>
+            <span style={{ fontSize: '10px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)' }}>{totalRelated} related entities</span>
+            <div style={{ flex: 1 }} />
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--txt-ghost)' }}>
+              <kbd style={{ background: 'var(--surface-el)', borderRadius: '3px', padding: '1px 4px', fontSize: '10px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)', minWidth: '18px', textAlign: 'center' }}>↑</kbd>
+              <kbd style={{ background: 'var(--surface-el)', borderRadius: '3px', padding: '1px 4px', fontSize: '10px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)', minWidth: '18px', textAlign: 'center' }}>↓</kbd>
+              Navigate
+            </span>
+            <div style={{ width: '1px', height: '10px', background: 'var(--border-sub)', margin: '0 8px' }} />
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--txt-ghost)' }}>
+              <kbd style={{ background: 'var(--surface-el)', borderRadius: '3px', padding: '1px 4px', fontSize: '10px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)', minWidth: '18px', textAlign: 'center' }}>↵</kbd>
+              Open
+            </span>
+            <div style={{ width: '1px', height: '10px', background: 'var(--border-sub)', margin: '0 8px' }} />
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--txt-ghost)' }}>
+              <kbd style={{ background: 'var(--surface-el)', borderRadius: '3px', padding: '1px 4px', fontSize: '10px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)', minWidth: '18px', textAlign: 'center' }}>Esc</kbd>
+              Close
+            </span>
+          </div>
+        )}
+      </div>
 
       {showAddModal && (
         <AddRelatedItemModal
