@@ -9,7 +9,7 @@
  * Get the route for an entity type
  */
 export function getEntityRoute(
-  entityType: 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving' | 'document' | 'certificate' | 'warranty' | 'purchase_order' | 'hours_of_rest' | 'hours_of_rest_signoff' | 'manual',
+  entityType: 'work_order' | 'fault' | 'equipment' | 'part' | 'email' | 'shopping_list' | 'receiving' | 'document' | 'certificate' | 'warranty' | 'purchase_order' | 'hours_of_rest' | 'hours_of_rest_signoff' | 'manual' | 'shopping_item' | 'inventory' | 'handover_item' | 'handover_export',
   entityId?: string
 ): string {
   const routeMap: Record<string, string> = {
@@ -27,9 +27,14 @@ export function getEntityRoute(
     hours_of_rest: '/hours-of-rest',
     hours_of_rest_signoff: '/hours-of-rest/signoffs',
     manual: '/documents',
+    shopping_item: '/shopping-list',
+    inventory: '/inventory',
+    handover_item: '/work-orders',
+    handover_export: '/work-orders',
   };
 
-  const base = routeMap[entityType] || '/';
+  const base = routeMap[entityType];
+  if (!base) return '/';
   return entityId ? `${base}/${entityId}` : base;
 }
 
