@@ -1,68 +1,104 @@
 'use client';
 
 import * as React from 'react';
-import { GROUP_DISPLAY_ORDER, GROUP_LABELS } from '@/hooks/useRelated';
-import type { RelatedGroup as RelatedGroupType, RelatedItem as RelatedItemType } from '@/hooks/useRelated';
 import type { SignalRelatedItem } from '@/hooks/useSignalRelated';
 
+// ─── Per-type icons (14×14, stroke only) — from show-related.html prototype ─
+const ICON_STYLE: React.CSSProperties = { width: 14, height: 14, flexShrink: 0, color: 'var(--txt3)' };
+
+function EntityIcon({ type }: { type: string }) {
+  switch (type) {
+    case 'work_order':
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="4" y="2" width="8" height="2" rx="1" /><rect x="3" y="3.5" width="10" height="10.5" rx="1.5" /><path d="M5.5 8.5l2 2 3.5-3.5" /></svg>;
+    case 'equipment':
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="8" cy="8" r="2.5" /><path d="M13 9.5a1.1 1.1 0 00.22 1.22l.04.04a1.33 1.33 0 11-1.89 1.89l-.04-.04A1.1 1.1 0 0010 13v.17a1.33 1.33 0 01-2.67 0V13A1.1 1.1 0 006 11.63a1.1 1.1 0 00-1.22.22l-.04.04a1.33 1.33 0 11-1.89-1.89l.04-.04A1.1 1.1 0 003 8.73 1.1 1.1 0 001.83 8 1.33 1.33 0 011.83 5.33H2A1.1 1.1 0 003.37 6a1.1 1.1 0 00-.22-1.22l-.04-.04a1.33 1.33 0 111.89-1.89l.04.04A1.1 1.1 0 006 3.17 1.1 1.1 0 007.33 2a1.33 1.33 0 012.67 0v.06A1.1 1.1 0 0011.22 3a1.1 1.1 0 001.22-.22l.04-.04a1.33 1.33 0 111.89 1.89l-.04.04A1.1 1.1 0 0013 6a1.1 1.1 0 001 1.01h.17a1.33 1.33 0 010 2.67H14a1.1 1.1 0 00-1 .82z" /></svg>;
+    case 'fault':
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M8 3L14 13H2L8 3Z" /><path d="M8 7v2.5M8 11.5v.5" /></svg>;
+    case 'part':
+    case 'inventory':
+    case 'shopping_item':
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="2" y="6" width="12" height="8" rx="1" /><path d="M5 6V4.5a3 3 0 016 0V6" /></svg>;
+    case 'document':
+    case 'manual':
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="2" width="10" height="12" rx="1.5" /><path d="M6 6h4M6 9h2.5" /></svg>;
+    case 'certificate':
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M8 2L13.5 4.5v4c0 3-2.5 4.8-5.5 5.5C3 13.3 2.5 11.5 2.5 8.5V4.5L8 2z" /></svg>;
+    case 'email':
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="2" y="3.5" width="12" height="9" rx="1.5" /><path d="M2 5l6 4 6-4" /></svg>;
+    case 'handover_item':
+    case 'handover_export':
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 2h8v12H4z" /><path d="M6 5h4M6 7.5h4M6 10h2" /></svg>;
+    case 'receiving':
+    case 'purchase_order':
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="2" y="4" width="12" height="10" rx="1.5" /><path d="M5 4V2.5a1 1 0 011-1h4a1 1 0 011 1V4" /><path d="M8 7v4M6 9h4" /></svg>;
+    default:
+      return <svg style={ICON_STYLE} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="8" cy="8" r="6" /><path d="M8 5v3l2 2" /></svg>;
+  }
+}
+
+// ─── Row button style ────────────────────────────────────────────────────────
+const ROW_STYLE_BASE: React.CSSProperties = {
+  width: '100%',
+  textAlign: 'left',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  padding: '8px 12px',
+  cursor: 'pointer',
+  minHeight: '44px',
+  transition: 'background 60ms',
+  background: 'none',
+};
+
+// ─── Staged progress labels ─────────────────────────────────────────────────
+const STAGES = [
+  { label: 'Extracting entity\u2026', at: 0 },
+  { label: 'Generating embedding\u2026', at: 800 },
+  { label: 'Searching entities\u2026', at: 3500 },
+  { label: 'Ranking results\u2026', at: 8000 },
+];
+
+function useStagedProgress(loading: boolean) {
+  const [stage, setStage] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!loading) {
+      setStage(0);
+      return;
+    }
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i < STAGES.length; i++) {
+      timers.push(setTimeout(() => setStage(i), STAGES[i].at));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [loading]);
+
+  return STAGES[stage].label;
+}
+
 interface RelatedDrawerProps {
-  groups: RelatedGroupType[];
-  isLoading: boolean;
-  error?: Error | null;
   onNavigate: (entityType: string, entityId: string) => void;
   /** Render add-related button (HOD/manager only — caller decides visibility) */
   onAddRelated?: () => void;
-  /** Signal-discovered items — rendered in "Also Related" section after FK groups */
+  /** Signal-discovered items */
   signalItems?: SignalRelatedItem[];
   /** True while the signal fetch is in-flight */
   signalLoading?: boolean;
 }
 
 export function RelatedDrawer({
-  groups,
-  isLoading,
-  error,
   onNavigate,
   onAddRelated,
   signalItems,
   signalLoading,
 }: RelatedDrawerProps) {
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '48px 16px', flex: 1 }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <span style={{ fontSize: '12px', color: 'var(--txt3)' }}>Discovering related...</span>
-      </div>
-    );
-  }
+  const items = signalItems ?? [];
+  const loading = signalLoading ?? false;
+  const stageLabel = useStagedProgress(loading);
 
-  if (error) {
-    return (
-      <div style={{ padding: '24px', textAlign: 'center' }}>
-        <p style={{ fontSize: '13px', color: 'var(--red)', marginBottom: '8px' }}>Failed to load related items</p>
-        <p style={{ fontSize: '11px', color: 'var(--txt3)' }}>{error.message}</p>
-      </div>
-    );
-  }
-
-  // Flatten to count total FK items
-  const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0);
-
-  // Collect FK entity_ids so signal items that already appear via FK can be
-  // filtered out — no duplicates between the two sections.
-  const fkEntityIds = new Set(
-    groups.flatMap((g) => g.items.map((item) => item.entity_id))
-  );
-
-  // Signal items not already surfaced via FK links
-  const novelSignalItems = (signalItems ?? []).filter(
-    (item) => !fkEntityIds.has(item.entity_id)
-  );
-
-  // Empty state: only when there are truly no items anywhere — no FK groups,
-  // no signal items, and signal is not currently loading.
-  // Must NOT early-return while signal is loading or has items to show.
-  if (totalItems === 0 && !signalLoading && novelSignalItems.length === 0) {
+  // Empty state: no items and not loading
+  if (!loading && items.length === 0) {
     return (
       <div style={{ padding: '24px', textAlign: 'center' }}>
         <p style={{ fontSize: '13px', color: 'var(--txt2)', marginBottom: '16px' }}>No related items found.</p>
@@ -78,87 +114,62 @@ export function RelatedDrawer({
     );
   }
 
-  // Sort groups by fixed display order; groups not in the order list go last
-  const orderedGroups = [...groups].sort((a, b) => {
-    const ai = GROUP_DISPLAY_ORDER.indexOf(a.group_key as typeof GROUP_DISPLAY_ORDER[number]);
-    const bi = GROUP_DISPLAY_ORDER.indexOf(b.group_key as typeof GROUP_DISPLAY_ORDER[number]);
-    if (ai === -1 && bi === -1) return 0;
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
-  });
-
   return (
     <div style={{ padding: '12px 12px 16px', flex: 1, overflowY: 'auto', background: 'var(--surface-base)' }}>
-      {orderedGroups.map((group) => (
-        <RelatedGroupSection key={group.group_key} group={group} onNavigate={onNavigate} />
-      ))}
-
-      {/* Also Related — signal-discovered items not already in FK groups */}
-      {(signalLoading || novelSignalItems.length > 0) && (
-        <section
-          data-testid="signal-also-related"
-          style={{
-            background: 'var(--surface)',
-            borderTop: '1px solid rgba(255,255,255,0.09)',
-            borderRight: '1px solid rgba(255,255,255,0.05)',
-            borderBottom: '1px solid rgba(255,255,255,0.03)',
-            borderLeft: '1px solid rgba(255,255,255,0.05)',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            marginBottom: '6px',
-          }}
-        >
-          <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--txt)', padding: '8px 12px 4px' }}>
-            Also Related
-            {!signalLoading && (
-              <span style={{ fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace", fontWeight: 400, marginLeft: '4px' }}>{novelSignalItems.length}</span>
-            )}
-          </div>
-          {signalLoading ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px' }}>
-              <div style={{ width: '12px', height: '12px', border: '1.5px solid var(--border-sub)', borderTopColor: 'var(--txt3)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-              <span style={{ fontSize: '11px', color: 'var(--txt3)' }}>Discovering related…</span>
-            </div>
-          ) : (
-            <div>
-              {novelSignalItems.map((item, idx) => (
-                <button
-                  key={item.entity_id}
-                  type="button"
-                  onClick={() => onNavigate(item.entity_type, item.entity_id)}
-                  data-testid={`signal-item-${item.entity_type}-${item.entity_id}`}
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    minHeight: '44px',
-                    transition: 'background 60ms',
-                    borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                    background: 'none',
-                    border: idx > 0 ? undefined : 'none',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 }}>
-                      {item.title}
-                    </div>
-                    <div style={{ fontSize: '10.5px', color: 'var(--txt2)', fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace", letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>
-                      <span>{item.entity_type.replace(/_/g, ' ')}</span>{item.subtitle ? <><span> · </span><span>{item.subtitle}</span></> : null}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+      <section
+        data-testid="signal-also-related"
+        style={{
+          background: 'var(--surface)',
+          borderTop: '1px solid rgba(255,255,255,0.09)',
+          borderRight: '1px solid rgba(255,255,255,0.05)',
+          borderBottom: '1px solid rgba(255,255,255,0.03)',
+          borderLeft: '1px solid rgba(255,255,255,0.05)',
+          borderRadius: '4px',
+          overflow: 'hidden',
+          marginBottom: '6px',
+        }}
+      >
+        <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--txt)', padding: '8px 12px 4px' }}>
+          Related
+          {!loading && (
+            <span style={{ fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace", fontWeight: 400, marginLeft: '4px' }}>{items.length}</span>
           )}
-        </section>
-      )}
+        </div>
+        {loading ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px' }}>
+            <div style={{ width: '12px', height: '12px', border: '1.5px solid var(--border-sub)', borderTopColor: 'var(--txt3)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <span data-testid="signal-stage-label" style={{ fontSize: '11px', color: 'var(--txt3)', fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace" }}>{stageLabel}</span>
+          </div>
+        ) : (
+          <div>
+            {items.map((item, idx) => (
+              <button
+                key={item.entity_id}
+                type="button"
+                onClick={() => onNavigate(item.entity_type, item.entity_id)}
+                data-testid={`signal-item-${item.entity_type}-${item.entity_id}`}
+                style={{
+                  ...ROW_STYLE_BASE,
+                  borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  border: idx > 0 ? undefined : 'none',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+              >
+                <EntityIcon type={item.entity_type} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 }}>
+                    {item.title}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: 'var(--txt2)', fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace", letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px', textTransform: 'uppercase' }}>
+                    <span>{item.entity_type.replace(/_/g, ' ')}</span>{item.subtitle ? <><span> · </span><span>{item.subtitle}</span></> : null}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
       {onAddRelated && (
         <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border-sub)' }}>
@@ -171,87 +182,5 @@ export function RelatedDrawer({
         </div>
       )}
     </div>
-  );
-}
-
-// ─── Group section ────────────────────────────────────────────────────────────
-
-function RelatedGroupSection({
-  group,
-  onNavigate,
-}: {
-  group: RelatedGroupType;
-  onNavigate: (entityType: string, entityId: string) => void;
-}) {
-  const label = GROUP_LABELS[group.group_key] ?? group.group_key.replace(/_/g, ' ');
-
-  return (
-    <section style={{
-      background: 'var(--surface)',
-      borderTop: '1px solid rgba(255,255,255,0.09)',
-      borderRight: '1px solid rgba(255,255,255,0.05)',
-      borderBottom: '1px solid rgba(255,255,255,0.03)',
-      borderLeft: '1px solid rgba(255,255,255,0.05)',
-      borderRadius: '4px',
-      overflow: 'hidden',
-      marginBottom: '6px',
-    }}>
-      <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--txt)', padding: '8px 12px 4px' }}>
-        {label}
-        <span style={{ fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace", fontWeight: 400, marginLeft: '4px' }}>{group.items.length}</span>
-      </div>
-      <div>
-        {group.items.map((item, idx) => (
-          <RelatedItemRow key={item.entity_id} item={item} onNavigate={onNavigate} isFirst={idx === 0} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ─── Individual item row ──────────────────────────────────────────────────────
-
-function RelatedItemRow({
-  item,
-  onNavigate,
-  isFirst,
-}: {
-  item: RelatedItemType;
-  onNavigate: (entityType: string, entityId: string) => void;
-  isFirst: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onNavigate(item.entity_type, item.entity_id)}
-      data-testid={`related-item-${item.entity_type}-${item.entity_id}`}
-      style={{
-        width: '100%',
-        textAlign: 'left',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '8px 12px',
-        cursor: 'pointer',
-        minHeight: '44px',
-        transition: 'background 60ms',
-        borderTop: isFirst ? 'none' : '1px solid rgba(255,255,255,0.04)',
-        background: 'none',
-        border: isFirst ? 'none' : undefined,
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 }}>
-          {item.title}
-        </div>
-        {item.subtitle && (
-          <div style={{ fontSize: '10.5px', color: 'var(--txt2)', fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace", letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>
-            {item.subtitle}
-          </div>
-        )}
-      </div>
-    </button>
   );
 }

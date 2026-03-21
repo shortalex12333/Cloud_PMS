@@ -55,7 +55,8 @@ const SIGNAL_SUPPORTED_TYPES = [
   'fault',
   'part',
   'manual',
-  'handover',
+  'handover_item',
+  'handover_export',
 ] as const;
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
@@ -105,7 +106,8 @@ export function useSignalRelated(
       SIGNAL_SUPPORTED_TYPES.includes(
         entityType as (typeof SIGNAL_SUPPORTED_TYPES)[number]
       ),
-    staleTime: 120_000, // 2 min — embeddings are expensive, don't refetch constantly
+    staleTime: 300_000, // 5 min — backend uses cached embeddings, no need to refetch often
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 }

@@ -3,9 +3,11 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   async headers() {
-    // Local development CSP: allow localhost Supabase and API
+    // CSP: allow localhost Supabase and API in dev/local production
     const isDev = process.env.NODE_ENV === 'development';
-    const localDevUrls = isDev
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const isLocalApi = apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1');
+    const localDevUrls = (isDev || isLocalApi)
       ? 'http://127.0.0.1:54321 http://localhost:54321 http://127.0.0.1:8000 http://localhost:8000 '
       : '';
 

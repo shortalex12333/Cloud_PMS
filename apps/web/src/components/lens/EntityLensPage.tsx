@@ -6,12 +6,13 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import lensStyles from '@/components/lens-v2/lens.module.css';
 import { useEntityLens } from '@/hooks/useEntityLens';
 import { EntityLensProvider } from '@/contexts/EntityLensContext';
-import { useRelatedDrawer } from '@/hooks/useRelatedDrawer';
 import { useReadBeacon } from '@/hooks/useReadBeacon';
 import { useSignalRelated } from '@/hooks/useSignalRelated';
 // ShowRelatedButton removed — inlined into glass header
 import { RelatedDrawer } from './RelatedDrawer';
 import { AddRelatedItemModal } from './AddRelatedItemModal';
+import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
 import { getEntityRoute } from '@/lib/featureFlags';
 import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
 import { getActionDisplay } from '@/types/actions';
@@ -104,6 +105,7 @@ export function EntityLensPage({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const lens = useEntityLens(entityType, entityId);
 
   const [pendingSignature, setPendingSignature] = React.useState<{
@@ -112,22 +114,15 @@ export function EntityLensPage({
   } | null>(null);
   const [signatureError, setSignatureError] = React.useState<string | null>(null);
 
-  const {
-    open: relatedOpen,
-    setOpen: setRelatedOpen,
-    showAddModal,
-    setShowAddModal,
-    canAdd: canAddRelated,
-    data: relatedData,
-    isLoading: relatedLoading,
-    error: relatedError,
-    totalRelated,
-  } = useRelatedDrawer(entityType, entityId);
+  const [relatedOpen, setRelatedOpen] = React.useState(false);
+  const [showAddModal, setShowAddModal] = React.useState(false);
 
   const {
     data: signalData,
     isLoading: signalLoading,
   } = useSignalRelated(entityType, entityId);
+
+  const signalCount = signalData?.items?.length ?? 0;
 
   useReadBeacon(entityType, entityId);
 
@@ -253,14 +248,14 @@ export function EntityLensPage({
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" /></svg>
               <span>Related</span>
-              {totalRelated > 0 && (
+              {signalCount > 0 && (
                 <span style={{
                   padding: '1px 6px', borderRadius: '4px',
                   background: 'var(--teal-bg)', color: 'var(--mark)',
                   fontSize: '10px', fontWeight: 600,
                   fontFamily: 'var(--font-mono)',
                 }}>
-                  {totalRelated}
+                  {signalCount}
                 </span>
               )}
             </button>
@@ -309,6 +304,7 @@ export function EntityLensPage({
           flexDirection: 'column',
           transform: relatedOpen ? 'translateX(0)' : 'translateX(32px)',
           opacity: relatedOpen ? 1 : 0,
+          visibility: relatedOpen ? 'visible' : 'hidden',
           pointerEvents: relatedOpen ? 'auto' : 'none',
           transition: 'opacity 200ms ease, transform 280ms ease',
         }}
@@ -347,19 +343,16 @@ export function EntityLensPage({
 
         {/* Drawer body + results */}
         <RelatedDrawer
-          groups={relatedData?.groups ?? []}
-          isLoading={relatedLoading}
-          error={relatedError ?? null}
           onNavigate={handleNavigate}
-          onAddRelated={canAddRelated ? () => setShowAddModal(true) : undefined}
+          onAddRelated={isHOD(user) ? () => setShowAddModal(true) : undefined}
           signalItems={signalData?.items}
           signalLoading={signalLoading}
         />
 
         {/* Footer — count + keyboard hints */}
-        {!relatedLoading && totalRelated > 0 && (
+        {!signalLoading && signalCount > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderTop: '1px solid var(--border-sub)', flexShrink: 0 }}>
-            <span style={{ fontSize: '10px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)' }}>{totalRelated} related entities</span>
+            <span style={{ fontSize: '10px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)' }}>{signalCount} related entities</span>
             <div style={{ flex: 1 }} />
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--txt-ghost)' }}>
               <kbd style={{ background: 'var(--surface-el)', borderRadius: '3px', padding: '1px 4px', fontSize: '10px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)', minWidth: '18px', textAlign: 'center' }}>↑</kbd>
