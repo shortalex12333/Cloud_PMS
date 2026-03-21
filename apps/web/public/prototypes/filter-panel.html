@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Filter Panel · CelesteOS Prototype</title>
+<style>
+@import url('prototype-tokens.css');
+
+/* ═══════════════════════════════════════════════════════
+   RESET
+   ═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  font-family: var(--font-sans);
+  background: var(--surface-base);
+  color: var(--txt);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+button, input, select { font-family: inherit; border: none; outline: none; background: none; color: inherit; }
+button { cursor: pointer; }
+ul { list-style: none; }
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════════════════ */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-sub);
+  z-index: 200;
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--txt2);
+  font-weight: 500;
+  min-width: 0;
+}
+.topbar-left .brand { color: var(--mark); font-weight: 600; }
+.topbar-left .sep { color: var(--txt-ghost); }
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.theme-btn {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 18px;
+  transition: background 60ms;
+}
+.theme-btn:hover { background: var(--split-bg-hover); }
+.filter-toggle-btn {
+  display: none;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 18px;
+  transition: background 60ms;
+}
+.filter-toggle-btn:hover { background: var(--split-bg-hover); }
+
+/* ─── MAIN ─── */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FILTER PANEL (LEFT SIDEBAR)
+   ═══════════════════════════════════════════════════════ */
+.filter-panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border-sub);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.filter-panel::-webkit-scrollbar { width: 4px; }
+.filter-panel::-webkit-scrollbar-track { background: transparent; }
+.filter-panel::-webkit-scrollbar-thumb { background: var(--border-chrome); border-radius: 2px; }
+
+.fp-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+/* ─── Section Header (overline) ─── */
+.section-overline {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--txt3);
+  margin-bottom: 10px;
+}
+
+/* ─── LENS SELECTOR ─── */
+.lens-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.lens-row::-webkit-scrollbar { display: none; }
+
+.lens-pill {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  background: var(--neutral-bg);
+  color: var(--txt3);
+  transition: background 60ms, color 60ms;
+}
+.lens-pill:hover { background: var(--split-bg-hover); }
+.lens-pill.active {
+  background: var(--teal-bg);
+  color: var(--mark);
+}
+
+/* ─── QUICK PRESETS ─── */
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.preset-pill {
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  background: var(--neutral-bg);
+  color: var(--txt3);
+  border: 1px solid var(--border-faint);
+  transition: background 60ms, color 60ms, border-color 60ms;
+}
+.preset-pill:hover {
+  background: var(--teal-bg);
+  color: var(--mark);
+  border-color: transparent;
+}
+
+/* ─── ACTIVE FILTER PILLS ─── */
+.active-filters {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.active-filters.visible { display: flex; }
+
+.active-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--teal-bg);
+  color: var(--mark);
+}
+.active-pill .x-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--mark);
+  transition: background 60ms;
+}
+.active-pill .x-btn:hover { background: var(--mark-hover); }
+
+.clear-all-link {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--red);
+  padding: 0 6px;
+  transition: opacity 60ms;
+}
+.clear-all-link:hover { opacity: 0.75; }
+
+/* ─── COLLAPSIBLE CATEGORIES ─── */
+.filter-cat { border-bottom: 1px solid var(--border-faint); }
+.filter-cat:last-child { border-bottom: none; }
+
+.cat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  min-height: 44px;
+  width: 100%;
+  cursor: pointer;
+  transition: background 60ms;
+}
+.cat-header:hover { background: var(--split-bg); }
+.cat-label {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--txt3);
+  text-align: left;
+}
+.cat-count {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--teal-bg);
+  color: var(--mark);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.cat-count.visible { display: flex; }
+.cat-chevron {
+  font-size: 12px;
+  color: var(--txt-ghost);
+  transition: transform 200ms ease;
+  display: flex;
+  align-items: center;
+}
+.filter-cat.collapsed .cat-chevron { transform: rotate(-90deg); }
+
+.cat-body {
+  padding: 0 16px 14px;
+  display: block;
+}
+.filter-cat.collapsed .cat-body { display: none; }
+
+/* ─── CHIP GROUP (enum selectors) ─── */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.chip-group:last-child { margin-bottom: 0; }
+.chip-group-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--txt2);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.chip {
+  min-height: 44px;
+  padding: 0 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  background: var(--neutral-bg);
+  color: var(--txt3);
+  transition: background 60ms, color 60ms;
+}
+.chip:hover { background: var(--split-bg-hover); color: var(--txt); }
+.chip.selected {
+  background: var(--teal-bg);
+  color: var(--mark);
+}
+
+/* ─── DATE INPUTS ─── */
+.date-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.date-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.date-field label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--txt-ghost);
+}
+.date-field input[type="date"] {
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  background: var(--neutral-bg);
+  color: var(--txt);
+  border: 1px solid var(--border-sub);
+  transition: border-color 60ms;
+}
+.date-field input[type="date"]:focus { border-color: var(--mark); }
+/* Style the calendar icon for dark mode */
+.date-field input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
+
+.date-quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.date-quick-btn {
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--neutral-bg);
+  color: var(--txt3);
+  transition: background 60ms, color 60ms;
+}
+.date-quick-btn:hover { background: var(--split-bg-hover); color: var(--txt); }
+.date-quick-btn.selected { background: var(--teal-bg); color: var(--mark); }
+
+/* ─── TEXT INPUTS ─── */
+.text-input-group {
+  margin-bottom: 10px;
+}
+.text-input-group:last-child { margin-bottom: 0; }
+.text-input-group label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--txt-ghost);
+  display: block;
+  margin-bottom: 4px;
+}
+.text-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--neutral-bg);
+  color: var(--txt);
+  border: 1px solid var(--border-sub);
+  transition: border-color 60ms;
+}
+.text-input:focus { border-color: var(--mark); }
+.text-input::placeholder { color: var(--txt-ghost); }
+
+/* ─── TOGGLE SWITCH ─── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-bottom: 6px;
+}
+.toggle-row:last-child { margin-bottom: 0; }
+.toggle-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--txt2);
+}
+.toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--split-bg);
+  border: 1px solid var(--border-sub);
+  cursor: pointer;
+  transition: background 200ms, border-color 200ms;
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--txt-ghost);
+  transition: transform 200ms, background 200ms;
+}
+.toggle-switch.on {
+  background: var(--teal-bg);
+  border-color: var(--teal);
+}
+.toggle-switch.on::after {
+  transform: translateX(16px);
+  background: var(--mark);
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESULTS AREA (RIGHT)
+   ═══════════════════════════════════════════════════════ */
+.results-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-base);
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-faint);
+  flex-shrink: 0;
+}
+.results-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt2);
+}
+.results-count span {
+  font-family: var(--font-mono);
+  color: var(--txt);
+  font-weight: 700;
+}
+.sort-dropdown {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--neutral-bg);
+  color: var(--txt2);
+  border: 1px solid var(--border-sub);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='rgba(255,255,255,0.4)' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.sort-dropdown option { background: var(--surface-el); color: var(--txt); }
+
+.results-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+.results-list::-webkit-scrollbar { width: 4px; }
+.results-list::-webkit-scrollbar-track { background: transparent; }
+.results-list::-webkit-scrollbar-thumb { background: var(--border-chrome); border-radius: 2px; }
+
+/* ─── RESULT CARD ─── */
+.result-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  transition: background 60ms;
+  cursor: pointer;
+  min-height: 44px;
+}
+.result-card:hover { background: var(--surface-hover); }
+
+.result-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.result-dot.high { background: var(--red); }
+.result-dot.medium { background: var(--amber); }
+.result-dot.low { background: var(--green); }
+.result-dot.neutral { background: var(--txt-ghost); }
+
+.result-body {
+  flex: 1;
+  min-width: 0;
+}
+.result-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.result-sub {
+  font-size: 11px;
+  color: var(--txt2);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.result-sub .code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--txt3);
+}
+.result-sub .sep { color: var(--txt-ghost); }
+.result-sub .time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--txt-ghost);
+}
+
+.result-status {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.result-status.open { background: var(--amber-bg); color: var(--amber); }
+.result-status.investigating { background: var(--blue-bg); color: var(--blue); }
+.result-status.resolved { background: var(--green-bg); color: var(--green); }
+.result-status.closed { background: var(--neutral-bg); color: var(--txt-ghost); }
+.result-status.in_progress { background: var(--blue-bg); color: var(--blue); }
+.result-status.completed { background: var(--green-bg); color: var(--green); }
+.result-status.operational { background: var(--green-bg); color: var(--green); }
+.result-status.degraded { background: var(--amber-bg); color: var(--amber); }
+.result-status.failed { background: var(--red-bg); color: var(--red); }
+.result-status.decommissioned { background: var(--neutral-bg); color: var(--txt-ghost); }
+.result-status.valid { background: var(--green-bg); color: var(--green); }
+.result-status.expiring_soon { background: var(--amber-bg); color: var(--amber); }
+.result-status.expired { background: var(--red-bg); color: var(--red); }
+.result-status.renewed { background: var(--green-bg); color: var(--green); }
+.result-status.pending { background: var(--amber-bg); color: var(--amber); }
+.result-status.received { background: var(--green-bg); color: var(--green); }
+.result-status.partial { background: var(--blue-bg); color: var(--blue); }
+.result-status.discrepancy { background: var(--red-bg); color: var(--red); }
+.result-status.draft { background: var(--neutral-bg); color: var(--txt-ghost); }
+.result-status.pending_approval { background: var(--amber-bg); color: var(--amber); }
+.result-status.approved { background: var(--green-bg); color: var(--green); }
+.result-status.ordered { background: var(--blue-bg); color: var(--blue); }
+.result-status.pending_signoff { background: var(--amber-bg); color: var(--amber); }
+.result-status.signed_off { background: var(--green-bg); color: var(--green); }
+.result-status.rejected { background: var(--red-bg); color: var(--red); }
+
+/* ─── EMPTY STATE ─── */
+.results-empty {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 8px;
+  color: var(--txt-ghost);
+  font-size: 13px;
+}
+.results-empty .icon { font-size: 32px; opacity: 0.4; }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE OVERLAY (<900px)
+   ═══════════════════════════════════════════════════════ */
+.filter-overlay-bg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+}
+.filter-overlay-bg.visible { display: block; }
+
+@media (max-width: 899px) {
+  .filter-toggle-btn { display: flex; }
+  .filter-panel {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+    box-shadow: var(--shadow-panel);
+  }
+  .filter-panel.open { transform: translateX(0); }
+  .results-area { width: 100%; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   LIGHT MODE ADJUSTMENTS
+   ═══════════════════════════════════════════════════════ */
+[data-theme="light"] .sort-dropdown {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='rgba(0,0,0,0.4)' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+}
+[data-theme="light"] .date-field input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <!-- ═══ TOPBAR ═══ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand">CelesteOS</span>
+      <span class="sep">&middot;</span>
+      <span>SV Andromeda</span>
+      <span class="sep">&middot;</span>
+      <span>Captain Alex Short</span>
+    </div>
+    <div class="topbar-right">
+      <button class="filter-toggle-btn" onclick="toggleFilterPanel()" aria-label="Toggle filters">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 4h18M7 9h10M10 14h4"/></svg>
+      </button>
+      <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">
+        <svg class="icon-moon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- ═══ FILTER OVERLAY BACKDROP (mobile) ═══ -->
+    <div class="filter-overlay-bg" onclick="toggleFilterPanel()"></div>
+
+    <!-- ═══ FILTER PANEL ═══ -->
+    <aside class="filter-panel" id="filterPanel">
+
+      <!-- 1. LENS SELECTOR -->
+      <div class="fp-section">
+        <div class="section-overline">Lens</div>
+        <div class="lens-row" id="lensRow"></div>
+      </div>
+
+      <!-- 2. QUICK PRESETS -->
+      <div class="fp-section" id="presetSection">
+        <div class="section-overline">Quick Presets</div>
+        <div class="preset-row" id="presetRow"></div>
+      </div>
+
+      <!-- 3. ACTIVE FILTER PILLS -->
+      <div class="fp-section" style="border-bottom: none; padding-bottom: 0;">
+        <div class="active-filters" id="activePills"></div>
+      </div>
+
+      <!-- 4. FILTER CATEGORIES (rendered by JS) -->
+      <div id="filterCategories"></div>
+
+    </aside>
+
+    <!-- ═══ RESULTS AREA ═══ -->
+    <main class="results-area">
+      <div class="results-header">
+        <div class="results-count"><span id="resultCount">47</span> items</div>
+        <select class="sort-dropdown" aria-label="Sort results">
+          <option>Sort: Newest</option>
+          <option>Sort: Oldest</option>
+          <option>Sort: Priority</option>
+          <option>Sort: Alphabetical</option>
+        </select>
+      </div>
+      <div class="results-list" id="resultsList"></div>
+      <div class="results-empty" id="resultsEmpty">
+        <div class="icon">&#8709;</div>
+        <div>No items match current filters</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════ */
+const LENSES = [
+  { id: 'faults',         label: 'Faults' },
+  { id: 'work_orders',    label: 'Work Orders' },
+  { id: 'equipment',      label: 'Equipment' },
+  { id: 'inventory',      label: 'Inventory' },
+  { id: 'certificates',   label: 'Certificates' },
+  { id: 'receiving',      label: 'Receiving' },
+  { id: 'shopping_list',  label: 'Shopping List' },
+  { id: 'handover',       label: 'Handover' },
+  { id: 'hor_signoffs',   label: 'HoR Signoffs' },
+  { id: 'hor_warnings',   label: 'HoR Warnings' },
+];
+
+const PRESETS = {
+  faults:        ['Open', 'Critical', 'Investigating'],
+  work_orders:   ['Overdue', 'Due This Week', 'Emergency', 'My Items'],
+  equipment:     ['Needs Attention', 'Failed', 'Critical'],
+  inventory:     ['Low Stock', 'Out of Stock'],
+  certificates:  ['Expiring Soon', 'Expired'],
+  receiving:     ['Pending', 'Discrepancies'],
+  shopping_list: ['Pending Approval', 'Urgent'],
+  handover:      [],
+  hor_signoffs:  [],
+  hor_warnings:  [],
+};
+
+const PRESET_ACTIONS = {
+  'faults:Open':            { status: 'open' },
+  'faults:Critical':        { severity: 'high' },
+  'faults:Investigating':   { status: 'investigating' },
+  'work_orders:Overdue':    { status: 'open' },
+  'work_orders:Due This Week': { status: 'open' },
+  'work_orders:Emergency':  { priority: 'critical' },
+  'work_orders:My Items':   { assigned_to: 'me' },
+  'equipment:Needs Attention': { attention_flag: 'true' },
+  'equipment:Failed':       { status: 'failed' },
+  'equipment:Critical':     { criticality: 'critical' },
+  'inventory:Low Stock':    { stock_status: 'low' },
+  'inventory:Out of Stock': { stock_status: 'out_of_stock' },
+  'certificates:Expiring Soon': { status: 'expiring_soon' },
+  'certificates:Expired':   { status: 'expired' },
+  'receiving:Pending':      { status: 'pending' },
+  'receiving:Discrepancies':{ status: 'discrepancy' },
+  'shopping_list:Pending Approval': { status: 'pending_approval' },
+  'shopping_list:Urgent':   { urgency: 'urgent' },
+};
+
+const STATUS_VALUES = {
+  faults:        ['open', 'investigating', 'resolved', 'closed'],
+  work_orders:   ['open', 'in_progress', 'completed', 'closed'],
+  equipment:     ['operational', 'degraded', 'failed', 'decommissioned'],
+  certificates:  ['valid', 'expiring_soon', 'expired', 'renewed'],
+  receiving:     ['pending', 'received', 'partial', 'discrepancy'],
+  shopping_list: ['draft', 'pending_approval', 'approved', 'ordered'],
+  handover:      ['draft', 'in_progress', 'pending_signoff', 'signed_off'],
+  hor_signoffs:  ['pending', 'approved', 'rejected'],
+  inventory:     [],
+  hor_warnings:  [],
+};
+
+const PRIORITY_VALUES  = ['low', 'medium', 'high', 'critical'];
+const SEVERITY_VALUES  = ['low', 'medium', 'high'];
+const URGENCY_VALUES   = ['low', 'medium', 'high', 'urgent'];
+const CRITICALITY_VALUES = ['low', 'medium', 'high', 'critical'];
+const STOCK_STATUS_VALUES = ['in_stock', 'low', 'out_of_stock'];
+
+/* Filter matrix: which filter keys appear per lens */
+const FILTER_MATRIX = {
+  faults:       { status:1, severity:1, detected_at:1, created_at:1, resolved_at:1, reported_by:1, equipment_id:1, entity_number:1 },
+  work_orders:  { status:1, priority:1, due_date:1, created_at:1, assigned_to:1, equipment_id:1, entity_number:1 },
+  equipment:    { status:1, criticality:1, created_at:1, category:1, manufacturer:1, location:1, attention_flag:1 },
+  inventory:    { stock_status:1, created_at:1, category:1, manufacturer:1, location:1, is_critical:1, entity_number:1 },
+  certificates: { status:1, expiry_date:1, created_at:1, cert_type:1, issuing_auth:1, entity_number:1 },
+  receiving:    { status:1, received_date:1, created_at:1, vendor_name:1, entity_number:1 },
+  shopping_list:{ status:1, urgency:1, created_at:1, manufacturer:1, requested_by:1 },
+  handover:     { status:1, priority:1, created_at:1, category:1, is_critical:1, requires_action:1 },
+  hor_signoffs: { status:1, department:1 },
+  hor_warnings: { severity:1, created_at:1, is_dismissed:1 },
+};
+
+/* Sample data per lens */
+const SAMPLE_RESULTS = {
+  faults: [
+    { code:'F-0042', title:'Port Engine Oil Pressure Warning', severity:'high', status:'open', time:'3d ago' },
+    { code:'F-0041', title:'Hydraulic Steering Leak \u2014 Starboard', severity:'high', status:'investigating', time:'5d ago' },
+    { code:'F-0039', title:'Generator #2 Coolant Temperature', severity:'medium', status:'open', time:'1w ago' },
+    { code:'F-0038', title:'Bow Thruster Vibration', severity:'medium', status:'investigating', time:'1w ago' },
+    { code:'F-0037', title:'Navigation Light \u2014 Port Side', severity:'low', status:'open', time:'2w ago' },
+    { code:'F-0035', title:'Fire Suppression Panel Alarm', severity:'high', status:'resolved', time:'2w ago' },
+    { code:'F-0034', title:'Watermaker RO Membrane Pressure', severity:'medium', status:'closed', time:'3w ago' },
+    { code:'F-0033', title:'Anchor Windlass Chain Counter', severity:'low', status:'open', time:'3w ago' },
+  ],
+  work_orders: [
+    { code:'WO-1128', title:'Port Engine 500h Service', severity:'high', status:'open', time:'1d ago' },
+    { code:'WO-1127', title:'Replace Starboard Fuel Filter', severity:'medium', status:'in_progress', time:'2d ago' },
+    { code:'WO-1125', title:'Genset #1 Coolant Flush', severity:'medium', status:'open', time:'4d ago' },
+    { code:'WO-1124', title:'Watermaker Membrane Replacement', severity:'high', status:'in_progress', time:'5d ago' },
+    { code:'WO-1122', title:'Hull Anode Inspection', severity:'low', status:'completed', time:'1w ago' },
+    { code:'WO-1120', title:'Fire Extinguisher Annual Check', severity:'medium', status:'closed', time:'2w ago' },
+  ],
+  equipment: [
+    { code:'EQ-301', title:'CAT C32 ACERT — Port Engine', severity:'neutral', status:'operational', time:'Updated 2d ago' },
+    { code:'EQ-302', title:'CAT C32 ACERT — Stbd Engine', severity:'neutral', status:'operational', time:'Updated 2d ago' },
+    { code:'EQ-310', title:'Northern Lights M1066T — Gen #1', severity:'medium', status:'degraded', time:'Updated 1w ago' },
+    { code:'EQ-311', title:'Northern Lights M1066T — Gen #2', severity:'high', status:'failed', time:'Updated 3d ago' },
+    { code:'EQ-320', title:'Spectra Newport 400 Watermaker', severity:'neutral', status:'operational', time:'Updated 2w ago' },
+  ],
+  inventory: [
+    { code:'INV-0084', title:'CAT Fuel Filter Element (326-1644)', severity:'high', status:'open', time:'Low stock' },
+    { code:'INV-0091', title:'Racor 2040 Fuel/Water Sep', severity:'high', status:'open', time:'Out of stock' },
+    { code:'INV-0102', title:'Impeller — Jabsco 17370-0001', severity:'medium', status:'open', time:'2 remaining' },
+    { code:'INV-0115', title:'Zinc Anode — Shaft 2\u2033', severity:'low', status:'open', time:'8 remaining' },
+    { code:'INV-0120', title:'Oil Filter — CAT 1R-0739', severity:'medium', status:'open', time:'3 remaining' },
+  ],
+  certificates: [
+    { code:'CERT-012', title:'ISM Document of Compliance', severity:'high', status:'expiring_soon', time:'Exp. 45d' },
+    { code:'CERT-015', title:'Annual MCA Safety Inspection', severity:'high', status:'expired', time:'Exp. 12d ago' },
+    { code:'CERT-018', title:'Class Certificate — Lloyds', severity:'neutral', status:'valid', time:'Exp. 14mo' },
+    { code:'CERT-021', title:'Radio Licence', severity:'neutral', status:'valid', time:'Exp. 9mo' },
+    { code:'CERT-024', title:'EPIRB Registration', severity:'medium', status:'expiring_soon', time:'Exp. 60d' },
+  ],
+  receiving: [
+    { code:'RCV-0055', title:'CAT Filter Kit — Order #PO-287', severity:'medium', status:'pending', time:'Expected 2d' },
+    { code:'RCV-0054', title:'Jabsco Impeller Pack x4', severity:'low', status:'received', time:'1d ago' },
+    { code:'RCV-0053', title:'Spectra Membrane Set', severity:'high', status:'discrepancy', time:'3d ago' },
+    { code:'RCV-0052', title:'Anodes — Mixed Pack', severity:'low', status:'received', time:'5d ago' },
+  ],
+  shopping_list: [
+    { code:'SL-0031', title:'Replacement Helm Pump Seal Kit', severity:'high', status:'pending_approval', time:'2d ago' },
+    { code:'SL-0030', title:'Victron MultiPlus 3000 Inverter', severity:'medium', status:'approved', time:'3d ago' },
+    { code:'SL-0029', title:'Lewmar Windlass Gypsy', severity:'low', status:'draft', time:'5d ago' },
+    { code:'SL-0028', title:'Iridium GO! Satellite Unit', severity:'medium', status:'ordered', time:'1w ago' },
+  ],
+  handover: [
+    { code:'HND-007', title:'Captain Handover — Med Season 2026', severity:'high', status:'in_progress', time:'1d ago' },
+    { code:'HND-006', title:'Chief Engineer Handover', severity:'medium', status:'draft', time:'3d ago' },
+    { code:'HND-005', title:'Bosun Handover — Yard Period', severity:'low', status:'signed_off', time:'2w ago' },
+  ],
+  hor_signoffs: [
+    { code:'HOR-S-041', title:'Bridge Team — Week 12', severity:'neutral', status:'pending', time:'Today' },
+    { code:'HOR-S-040', title:'Engine Dept — Week 12', severity:'neutral', status:'pending', time:'Today' },
+    { code:'HOR-S-039', title:'Deck Dept — Week 11', severity:'neutral', status:'approved', time:'3d ago' },
+    { code:'HOR-S-038', title:'Bridge Team — Week 11', severity:'neutral', status:'approved', time:'3d ago' },
+  ],
+  hor_warnings: [
+    { code:'HOR-W-014', title:'J. Martinez — Exceeded 14h in 24h period', severity:'high', status:'open', time:'1d ago' },
+    { code:'HOR-W-013', title:'A. Chen — Insufficient rest (< 6h)', severity:'high', status:'open', time:'2d ago' },
+    { code:'HOR-W-012', title:'R. Smith — 70h/7d threshold breach', severity:'medium', status:'open', time:'5d ago' },
+  ],
+};
+
+const LENS_LABELS = {
+  faults: 'Fault', work_orders: 'Work Order', equipment: 'Equipment',
+  inventory: 'Inventory', certificates: 'Certificate', receiving: 'Receiving',
+  shopping_list: 'Shopping List', handover: 'Handover',
+  hor_signoffs: 'HoR Signoff', hor_warnings: 'HoR Warning',
+};
+
+/* ═══════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════ */
+let activeLens = 'faults';
+let activeFilters = {}; /* key -> Set of values */
+let baseCount = 47;
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════ */
+function init() {
+  renderLenses();
+  setLens('faults');
+}
+
+/* ═══════════════════════════════════════════════════════
+   LENS SELECTOR
+   ═══════════════════════════════════════════════════════ */
+function renderLenses() {
+  const row = document.getElementById('lensRow');
+  row.innerHTML = LENSES.map(l =>
+    '<button class="lens-pill' + (l.id === activeLens ? ' active' : '') + '" onclick="setLens(\'' + l.id + '\')">' + l.label + '</button>'
+  ).join('');
+}
+
+function setLens(lens) {
+  activeLens = lens;
+  activeFilters = {};
+  baseCount = 30 + Math.floor(Math.random() * 30);
+  renderLenses();
+  renderPresets();
+  renderActiveFilters();
+  renderFilterCategories();
+  renderResults();
+}
+
+/* ═══════════════════════════════════════════════════════
+   QUICK PRESETS
+   ═══════════════════════════════════════════════════════ */
+function renderPresets() {
+  const section = document.getElementById('presetSection');
+  const presets = PRESETS[activeLens] || [];
+  section.style.display = presets.length ? '' : 'none';
+  const row = document.getElementById('presetRow');
+  row.innerHTML = presets.map(p =>
+    '<button class="preset-pill" onclick="applyPreset(\'' + p + '\')">' + p + '</button>'
+  ).join('');
+}
+
+function applyPreset(presetId) {
+  var key = activeLens + ':' + presetId;
+  var mapping = PRESET_ACTIONS[key];
+  if (!mapping) return;
+  for (var k in mapping) {
+    if (!activeFilters[k]) activeFilters[k] = new Set();
+    activeFilters[k].add(mapping[k]);
+  }
+  renderActiveFilters();
+  renderFilterCategories();
+  renderResults();
+}
+
+/* ═══════════════════════════════════════════════════════
+   ACTIVE FILTER PILLS
+   ═══════════════════════════════════════════════════════ */
+function renderActiveFilters() {
+  var container = document.getElementById('activePills');
+  var pills = [];
+  for (var k in activeFilters) {
+    activeFilters[k].forEach(function(v) {
+      pills.push({ key: k, value: v });
+    });
+  }
+  if (pills.length === 0) {
+    container.classList.remove('visible');
+    container.innerHTML = '';
+    return;
+  }
+  container.classList.add('visible');
+  var html = pills.map(function(p) {
+    return '<span class="active-pill">' +
+      formatLabel(p.key) + ': ' + formatValue(p.value) +
+      '<button class="x-btn" onclick="clearFilter(\'' + p.key + '\',\'' + p.value + '\')">&times;</button>' +
+      '</span>';
+  }).join('');
+  html += '<button class="clear-all-link" onclick="clearAll()">Clear all</button>';
+  container.innerHTML = html;
+}
+
+function formatLabel(k) {
+  return k.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+function formatValue(v) {
+  return v.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+
+function clearFilter(key, value) {
+  if (activeFilters[key]) {
+    activeFilters[key].delete(value);
+    if (activeFilters[key].size === 0) delete activeFilters[key];
+  }
+  renderActiveFilters();
+  renderFilterCategories();
+  renderResults();
+}
+
+function clearAll() {
+  activeFilters = {};
+  renderActiveFilters();
+  renderFilterCategories();
+  renderResults();
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOGGLE FILTER
+   ═══════════════════════════════════════════════════════ */
+function toggleFilter(key, value) {
+  if (!activeFilters[key]) activeFilters[key] = new Set();
+  if (activeFilters[key].has(value)) {
+    activeFilters[key].delete(value);
+    if (activeFilters[key].size === 0) delete activeFilters[key];
+  } else {
+    activeFilters[key].add(value);
+  }
+  renderActiveFilters();
+  renderFilterCategories();
+  renderResults();
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOGGLE BOOLEAN
+   ═══════════════════════════════════════════════════════ */
+function toggleBool(key) {
+  if (activeFilters[key] && activeFilters[key].has('true')) {
+    delete activeFilters[key];
+  } else {
+    activeFilters[key] = new Set(['true']);
+  }
+  renderActiveFilters();
+  renderFilterCategories();
+  renderResults();
+}
+
+/* ═══════════════════════════════════════════════════════
+   FILTER CATEGORIES
+   ═══════════════════════════════════════════════════════ */
+function renderFilterCategories() {
+  var container = document.getElementById('filterCategories');
+  var matrix = FILTER_MATRIX[activeLens] || {};
+  var html = '';
+
+  /* Status & Priority */
+  var hasStatusPriority = matrix.status || matrix.priority || matrix.severity || matrix.urgency || matrix.criticality || matrix.stock_status;
+  if (hasStatusPriority) {
+    var spCount = countActive(['status','priority','severity','urgency','criticality','stock_status']);
+    html += catOpen('cat-sp', 'Status & Priority', spCount, false);
+
+    if (matrix.status && STATUS_VALUES[activeLens] && STATUS_VALUES[activeLens].length) {
+      html += '<span class="chip-group-label">Status</span>';
+      html += '<div class="chip-group">' + STATUS_VALUES[activeLens].map(function(v) {
+        return chipBtn('status', v);
+      }).join('') + '</div>';
+    }
+    if (matrix.priority) {
+      html += '<span class="chip-group-label">Priority</span>';
+      html += '<div class="chip-group">' + PRIORITY_VALUES.map(function(v) { return chipBtn('priority', v); }).join('') + '</div>';
+    }
+    if (matrix.severity) {
+      html += '<span class="chip-group-label">Severity</span>';
+      html += '<div class="chip-group">' + SEVERITY_VALUES.map(function(v) { return chipBtn('severity', v); }).join('') + '</div>';
+    }
+    if (matrix.urgency) {
+      html += '<span class="chip-group-label">Urgency</span>';
+      html += '<div class="chip-group">' + URGENCY_VALUES.map(function(v) { return chipBtn('urgency', v); }).join('') + '</div>';
+    }
+    if (matrix.criticality) {
+      html += '<span class="chip-group-label">Criticality</span>';
+      html += '<div class="chip-group">' + CRITICALITY_VALUES.map(function(v) { return chipBtn('criticality', v); }).join('') + '</div>';
+    }
+    if (matrix.stock_status) {
+      html += '<span class="chip-group-label">Stock Status</span>';
+      html += '<div class="chip-group">' + STOCK_STATUS_VALUES.map(function(v) { return chipBtn('stock_status', v); }).join('') + '</div>';
+    }
+
+    html += catClose();
+  }
+
+  /* Dates & Deadlines */
+  var dateKeys = ['detected_at','due_date','expiry_date','received_date','created_at','resolved_at'];
+  var hasDate = dateKeys.some(function(k) { return matrix[k]; });
+  if (hasDate) {
+    var dateCount = countActive(dateKeys);
+    html += catOpen('cat-date', 'Dates & Deadlines', dateCount, true);
+
+    dateKeys.forEach(function(k) {
+      if (!matrix[k]) return;
+      html += '<span class="chip-group-label">' + formatLabel(k) + '</span>';
+      html += '<div class="date-row">' +
+        '<div class="date-field"><label>From</label><input type="date"></div>' +
+        '<div class="date-field"><label>To</label><input type="date"></div>' +
+      '</div>';
+    });
+
+    html += '<span class="chip-group-label">Quick Range</span>';
+    html += '<div class="date-quick-row">' +
+      '<button class="date-quick-btn">Today</button>' +
+      '<button class="date-quick-btn">This Week</button>' +
+      '<button class="date-quick-btn">Last 30d</button>' +
+      '<button class="date-quick-btn">This Quarter</button>' +
+    '</div>';
+
+    html += catClose();
+  }
+
+  /* People */
+  var peopleKeys = ['assigned_to','reported_by','requested_by'];
+  var hasPeople = peopleKeys.some(function(k) { return matrix[k]; });
+  if (hasPeople) {
+    var pCount = countActive(peopleKeys);
+    html += catOpen('cat-people', 'People', pCount, true);
+    peopleKeys.forEach(function(k) {
+      if (!matrix[k]) return;
+      html += '<div class="text-input-group"><label>' + formatLabel(k) + '</label>' +
+        '<input class="text-input" type="text" placeholder="Search crew\u2026"></div>';
+    });
+    html += catClose();
+  }
+
+  /* Equipment & Systems */
+  var equipKeys = ['equipment_id','category','manufacturer','location','vendor_name','cert_type','issuing_auth','department'];
+  var hasEquip = equipKeys.some(function(k) { return matrix[k]; });
+  if (hasEquip) {
+    var eCount = countActive(equipKeys);
+    html += catOpen('cat-equip', 'Equipment & Systems', eCount, true);
+    equipKeys.forEach(function(k) {
+      if (!matrix[k]) return;
+      html += '<div class="text-input-group"><label>' + formatLabel(k) + '</label>' +
+        '<input class="text-input" type="text" placeholder="Search\u2026"></div>';
+    });
+    html += catClose();
+  }
+
+  /* Properties (booleans + entity_number) */
+  var propKeys = ['is_critical','attention_flag','requires_action','is_dismissed','entity_number'];
+  var hasProp = propKeys.some(function(k) { return matrix[k]; });
+  if (hasProp) {
+    var prCount = countActive(propKeys);
+    html += catOpen('cat-props', 'Properties', prCount, true);
+
+    /* Booleans */
+    var boolKeys = ['is_critical','attention_flag','requires_action','is_dismissed'];
+    boolKeys.forEach(function(k) {
+      if (!matrix[k]) return;
+      var isOn = activeFilters[k] && activeFilters[k].has('true');
+      html += '<div class="toggle-row">' +
+        '<span class="toggle-label">' + formatLabel(k) + '</span>' +
+        '<div class="toggle-switch' + (isOn ? ' on' : '') + '" onclick="toggleBool(\'' + k + '\')"></div>' +
+      '</div>';
+    });
+
+    /* Entity number */
+    if (matrix.entity_number) {
+      html += '<div class="text-input-group"><label>Entity Number</label>' +
+        '<input class="text-input" type="text" placeholder="e.g. F-0042" style="font-family:var(--font-mono);"></div>';
+    }
+
+    html += catClose();
+  }
+
+  container.innerHTML = html;
+}
+
+function catOpen(id, label, count, collapsed) {
+  return '<div class="filter-cat' + (collapsed ? ' collapsed' : '') + '" id="' + id + '">' +
+    '<button class="cat-header" onclick="toggleCategory(\'' + id + '\')">' +
+      '<span class="cat-label">' + label + '</span>' +
+      '<span class="cat-count' + (count > 0 ? ' visible' : '') + '">' + count + '</span>' +
+      '<span class="cat-chevron"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>' +
+    '</button>' +
+    '<div class="cat-body">';
+}
+function catClose() { return '</div></div>'; }
+
+function chipBtn(key, value) {
+  var selected = activeFilters[key] && activeFilters[key].has(value);
+  return '<button class="chip' + (selected ? ' selected' : '') + '" onclick="toggleFilter(\'' + key + '\',\'' + value + '\')">' + formatValue(value) + '</button>';
+}
+
+function countActive(keys) {
+  var c = 0;
+  keys.forEach(function(k) {
+    if (activeFilters[k]) c += activeFilters[k].size;
+  });
+  return c;
+}
+
+function toggleCategory(catId) {
+  var el = document.getElementById(catId);
+  if (el) el.classList.toggle('collapsed');
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESULTS
+   ═══════════════════════════════════════════════════════ */
+function renderResults() {
+  var filterCount = 0;
+  for (var k in activeFilters) filterCount += activeFilters[k].size;
+  var reduction = 0;
+  for (var i = 0; i < filterCount; i++) {
+    reduction += 3 + Math.floor(Math.random() * 6);
+  }
+  var count = Math.max(0, baseCount - reduction);
+  document.getElementById('resultCount').textContent = count;
+
+  var items = SAMPLE_RESULTS[activeLens] || [];
+  var list = document.getElementById('resultsList');
+  var empty = document.getElementById('resultsEmpty');
+
+  /* Simple client-side filtering for status/severity/priority to make it feel real */
+  var filtered = items.filter(function(item) {
+    if (activeFilters.status && activeFilters.status.size > 0) {
+      if (!activeFilters.status.has(item.status)) return false;
+    }
+    if (activeFilters.severity && activeFilters.severity.size > 0) {
+      if (!activeFilters.severity.has(item.severity)) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0 && filterCount > 0) {
+    list.style.display = 'none';
+    empty.style.display = 'flex';
+    document.getElementById('resultCount').textContent = '0';
+    return;
+  }
+  list.style.display = '';
+  empty.style.display = 'none';
+
+  var lensLabel = LENS_LABELS[activeLens] || 'Item';
+  list.innerHTML = filtered.map(function(r) {
+    var dotClass = r.severity || 'neutral';
+    return '<div class="result-card">' +
+      '<span class="result-dot ' + dotClass + '"></span>' +
+      '<div class="result-body">' +
+        '<div class="result-title">' + r.title + '</div>' +
+        '<div class="result-sub">' +
+          '<span>' + lensLabel + '</span>' +
+          '<span class="sep">&middot;</span>' +
+          '<span class="code">' + r.code + '</span>' +
+          '<span class="sep">&middot;</span>' +
+          '<span class="time">' + r.time + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<span class="result-status ' + r.status + '">' + formatValue(r.status) + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   THEME TOGGLE
+   ═══════════════════════════════════════════════════════ */
+function toggleTheme() {
+  var html = document.documentElement;
+  if (html.getAttribute('data-theme') === 'light') {
+    html.removeAttribute('data-theme');
+  } else {
+    html.setAttribute('data-theme', 'light');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE FILTER PANEL TOGGLE
+   ═══════════════════════════════════════════════════════ */
+function toggleFilterPanel() {
+  var panel = document.getElementById('filterPanel');
+  var bg = document.querySelector('.filter-overlay-bg');
+  panel.classList.toggle('open');
+  bg.classList.toggle('visible');
+}
+
+/* ═══════════════════════════════════════════════════════
+   BOOT
+   ═══════════════════════════════════════════════════════ */
+init();
+</script>
+</body>
+</html>
