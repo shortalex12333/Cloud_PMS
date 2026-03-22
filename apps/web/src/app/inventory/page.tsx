@@ -4,10 +4,11 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { EntityList } from '@/features/entity-list/components/EntityList';
+import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { fetchParts, fetchPart } from '@/features/inventory/api';
+import { fetchPart } from '@/features/inventory/api';
 import { partToListResult } from '@/features/inventory/adapter';
+import { INVENTORY_FILTERS } from '@/features/entity-list/types/filter-config';
 import type { Part } from '@/features/inventory/types';
 
 function PartDetail({ id }: { id: string }) {
@@ -82,39 +83,36 @@ function InventoryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get('id');
-  const activeFilter = searchParams.get('filter');
 
   const handleSelect = React.useCallback(
     (id: string) => {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams(searchParams.toString());
       params.set('id', id);
-      if (activeFilter) params.set('filter', activeFilter);
       router.push(`/inventory?${params.toString()}`, { scroll: false });
     },
-    [router, activeFilter]
+    [router, searchParams]
   );
 
   const handleCloseDetail = React.useCallback(() => {
-    const params = activeFilter ? `?filter=${activeFilter}` : '';
-    router.push(`/inventory${params}`, { scroll: false });
-  }, [router, activeFilter]);
-
-  const handleClearFilter = React.useCallback(() => {
-    router.push('/inventory', { scroll: false });
-  }, [router]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('id');
+    const qs = params.toString();
+    router.push(`/inventory${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [router, searchParams]);
 
   return (
     <div className="h-screen bg-surface-base">
-      <EntityList<Part>
+      <FilteredEntityList<Part>
+        domain="inventory"
         queryKey={['inventory']}
-        fetchFn={fetchParts}
+        table="pms_parts"
+        columns="id, name, part_number, description, category, manufacturer, quantity_on_hand, minimum_quantity, unit_of_measure, location, is_critical, price, currency, created_at, updated_at"
         adapter={partToListResult}
+        filterConfig={INVENTORY_FILTERS}
         selectedId={selectedId}
         onSelect={handleSelect}
         emptyMessage="No parts found"
-        filter={activeFilter}
-        filterDomain="inventory"
-        onClearFilter={handleClearFilter}
+        sortBy="name"
       />
 
       <EntityDetailOverlay isOpen={!!selectedId} onClose={handleCloseDetail}>

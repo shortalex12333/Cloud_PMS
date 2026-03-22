@@ -4,11 +4,12 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { EntityList } from '@/features/entity-list/components/EntityList';
+import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { fetchShoppingList, fetchShoppingListItem } from '@/features/shopping-list/api';
+import { fetchShoppingListItem } from '@/features/shopping-list/api';
 import { shoppingListToListResult } from '@/features/shopping-list/adapter';
 import { executeAction } from '@/lib/actionClient';
+import { SHOPPING_LIST_FILTERS } from '@/features/entity-list/types/filter-config';
 import type { ShoppingListItem } from '@/features/shopping-list/types';
 
 function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => void }) {
@@ -210,10 +211,13 @@ function ShoppingListPageContent() {
 
   return (
     <div className="h-screen bg-surface-base">
-      <EntityList<ShoppingListItem>
+      <FilteredEntityList<ShoppingListItem>
+        domain="shopping-list"
         queryKey={['shopping-list']}
-        fetchFn={fetchShoppingList}
+        table="pms_shopping_list_items"
+        columns="id, part_name, part_number, manufacturer, description, quantity_requested, unit_of_measure, status, priority, urgency, requested_by_name, approved_by_name, notes, created_at, updated_at"
         adapter={shoppingListToListResult}
+        filterConfig={SHOPPING_LIST_FILTERS}
         selectedId={selectedId}
         onSelect={handleSelect}
         emptyMessage="No shopping list items found"
