@@ -203,9 +203,10 @@ async def _serialize_handover(
     entity_id: str, conn: asyncpg.Connection, yacht_id: str
 ) -> Optional[str]:
     # handover_exports has NO deleted_at (hard delete only)
+    # No title/content columns — real columns are file_name, department, export_type, etc.
     row = await conn.fetchrow(
         """
-        SELECT title, content
+        SELECT file_name, department, export_type, status, email_subject, storage_path
         FROM handover_exports
         WHERE id = $1 AND yacht_id = $2
         """,
@@ -214,9 +215,19 @@ async def _serialize_handover(
     )
     if not row:
         return None
-    parts = [row["title"] or "Handover"]
-    if row["content"]:
-        parts.append(str(row["content"])[:300])
+    parts = []
+    if row["file_name"]:
+        parts.append(row["file_name"])
+    elif row["email_subject"]:
+        parts.append(row["email_subject"])
+    else:
+        parts.append("Handover export")
+    if row["department"]:
+        parts.append(f"department: {row['department']}")
+    if row["export_type"]:
+        parts.append(f"format: {row['export_type']}")
+    if row["status"]:
+        parts.append(f"status: {row['status']}")
     return "; ".join(parts)
 
 
@@ -263,17 +274,56 @@ async def _serialize_receiving(
     return "; ".join(parts)
 
 
+async def _serialize_purchase_order(
+    entity_id: str, conn: asyncpg.Connection, yacht_id: str
+) -> Optional[str]:
+    row = await conn.fetchrow(
+        "SELECT po.po_number, po.status, po.approval_notes, po.receiving_notes, "
+        "s.name AS supplier_name "
+        "FROM pms_purchase_orders po "
+        "LEFT JOIN pms_suppliers s ON s.id = po.supplier_id "
+        "WHERE po.id = $1 AND po.yacht_id = $2",
+        entity_id, yacht_id,
+    )
+    if not row:
+        return None
+    parts = [f"Purchase Order {row['po_number']}" if row.get("po_number") else "Purchase Order"]
+    if row["supplier_name"]:
+        parts.append(f"supplier: {row['supplier_name']}")
+    if row["status"]:
+        parts.append(f"status: {row['status']}")
+    if row["approval_notes"]:
+        parts.append(str(row["approval_notes"])[:200])
+    if row["receiving_notes"]:
+        parts.append(str(row["receiving_notes"])[:200])
+    return "; ".join(parts)
+
+
 async def _serialize_handover_item(
     entity_id: str, conn: asyncpg.Connection, yacht_id: str
 ) -> Optional[str]:
     row = await conn.fetchrow(
-        "SELECT summary, entity_type, section, category, action_summary "
+        "SELECT summary, entity_type, entity_id, section, category, "
+        "action_summary, is_critical "
         "FROM handover_items WHERE id = $1 AND yacht_id = $2",
         entity_id, yacht_id,
     )
     if not row:
         return None
-    parts = [row["summary"] or "Handover item"]
+    summary = row["summary"] or ""
+    # "Document attached" is a placeholder — resolve the actual document name
+    if summary in ("Document attached", "") and row["entity_id"]:
+        doc_row = await conn.fetchrow(
+            "SELECT filename FROM doc_metadata WHERE id = $1 AND yacht_id = $2",
+            row["entity_id"], yacht_id,
+        )
+        if doc_row and doc_row["filename"]:
+            summary = f"Document: {doc_row['filename']}"
+        elif not summary:
+            summary = "Handover item"
+    parts = [summary or "Handover item"]
+    if row["is_critical"]:
+        parts.append("CRITICAL")
     if row["entity_type"]:
         parts.append(f"type: {row['entity_type']}")
     if row["section"]:
@@ -282,6 +332,36 @@ async def _serialize_handover_item(
         parts.append(f"category: {row['category']}")
     if row["action_summary"]:
         parts.append(str(row["action_summary"])[:200])
+    return "; ".join(parts)
+
+
+async def _serialize_inventory(
+    entity_id: str, conn: asyncpg.Connection, yacht_id: str
+) -> Optional[str]:
+    # pms_inventory_stock has part_id FK → pms_parts for the name
+    row = await conn.fetchrow(
+        """
+        SELECT s.location, s.quantity, s.min_quantity,
+               p.name AS part_name, p.part_number, p.manufacturer
+        FROM pms_inventory_stock s
+        LEFT JOIN pms_parts p ON p.id = s.part_id AND p.yacht_id = s.yacht_id
+        WHERE s.id = $1 AND s.yacht_id = $2 AND s.deleted_at IS NULL
+        """,
+        entity_id, yacht_id,
+    )
+    if not row:
+        return None
+    parts = [row["part_name"] or "Inventory item"]
+    if row["part_number"]:
+        parts.append(f"part_number: {row['part_number']}")
+    if row["manufacturer"]:
+        parts.append(f"manufacturer: {row['manufacturer']}")
+    if row["location"]:
+        parts.append(f"location: {row['location']}")
+    if row["quantity"] is not None:
+        parts.append(f"qty: {row['quantity']}")
+        if row["min_quantity"] is not None and row["quantity"] <= row["min_quantity"]:
+            parts.append("LOW STOCK")
     return "; ".join(parts)
 
 
@@ -336,13 +416,14 @@ _SERIALIZERS: Dict[str, Callable] = {
     "fault": _serialize_fault,
     "equipment": _serialize_equipment,
     "part": _serialize_part,
-    "inventory": _serialize_part,          # alias — same table as part
+    "inventory": _serialize_inventory,
     "manual": _serialize_manual,
     "document": _serialize_manual,         # alias
     "handover": _serialize_handover,
     "handover_export": _serialize_handover, # explicit alias
     "certificate": _serialize_certificate,
     "receiving": _serialize_receiving,
+    "purchase_order": _serialize_purchase_order,
     "handover_item": _serialize_handover_item,
     "shopping_item": _serialize_shopping_item,
     "email": _serialize_email,
