@@ -5,11 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useActionHandler } from '@/hooks/useActionHandler';
-import { EntityList } from '@/features/entity-list/components/EntityList';
+import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { fetchReceivingItems, fetchReceivingItem } from '@/features/receiving/api';
+import { fetchReceivingItem } from '@/features/receiving/api';
 import { receivingToListResult } from '@/features/receiving/adapter';
 import { ReceivingPhotos } from '@/features/receiving/components/ReceivingPhotos';
+import { RECEIVING_FILTERS } from '@/features/entity-list/types/filter-config';
 import type { ReceivingItem } from '@/features/receiving/types';
 function ReceivingDetail({ id }: { id: string }) {
   const { session } = useAuth();
@@ -166,21 +167,29 @@ function ReceivingPageContent() {
 
   const handleSelect = React.useCallback(
     (id: string) => {
-      router.push(`/receiving?id=${id}`, { scroll: false });
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('id', id);
+      router.push(`/receiving?${params.toString()}`, { scroll: false });
     },
-    [router]
+    [router, searchParams]
   );
 
   const handleCloseDetail = React.useCallback(() => {
-    router.push('/receiving', { scroll: false });
-  }, [router]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('id');
+    const qs = params.toString();
+    router.push(`/receiving${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [router, searchParams]);
 
   return (
     <div className="h-screen bg-surface-base">
-      <EntityList<ReceivingItem>
+      <FilteredEntityList<ReceivingItem>
+        domain="receiving"
         queryKey={['receiving']}
-        fetchFn={fetchReceivingItems}
+        table="pms_receiving"
+        columns="id, vendor_name, vendor_reference, status, received_date, expected_date, notes, items_count, created_at, updated_at"
         adapter={receivingToListResult}
+        filterConfig={RECEIVING_FILTERS}
         selectedId={selectedId}
         onSelect={handleSelect}
         emptyMessage="No receiving items found"
