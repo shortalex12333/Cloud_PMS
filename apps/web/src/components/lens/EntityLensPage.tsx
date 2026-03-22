@@ -10,9 +10,6 @@ import { useReadBeacon } from '@/hooks/useReadBeacon';
 import { useSignalRelated } from '@/hooks/useSignalRelated';
 // ShowRelatedButton removed — inlined into glass header
 import { RelatedDrawer } from './RelatedDrawer';
-import { AddRelatedItemModal } from './AddRelatedItemModal';
-import { useAuth } from '@/hooks/useAuth';
-import { isHOD } from '@/contexts/AuthContext';
 import { getEntityRoute } from '@/lib/featureFlags';
 import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
 import { getActionDisplay } from '@/types/actions';
@@ -105,7 +102,6 @@ export function EntityLensPage({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
   const lens = useEntityLens(entityType, entityId);
 
   const [pendingSignature, setPendingSignature] = React.useState<{
@@ -115,7 +111,6 @@ export function EntityLensPage({
   const [signatureError, setSignatureError] = React.useState<string | null>(null);
 
   const [relatedOpen, setRelatedOpen] = React.useState(false);
-  const [showAddModal, setShowAddModal] = React.useState(false);
 
   const {
     data: signalData,
@@ -344,9 +339,9 @@ export function EntityLensPage({
         {/* Drawer body + results */}
         <RelatedDrawer
           onNavigate={handleNavigate}
-          onAddRelated={isHOD(user) ? () => setShowAddModal(true) : undefined}
           signalItems={signalData?.items}
           signalLoading={signalLoading}
+          entityText={signalData?.entity_text}
         />
 
         {/* Footer — count + keyboard hints */}
@@ -372,14 +367,6 @@ export function EntityLensPage({
           </div>
         )}
       </div>
-
-      {showAddModal && (
-        <AddRelatedItemModal
-          fromEntityType={entityType}
-          fromEntityId={entityId}
-          onClose={() => setShowAddModal(false)}
-        />
-      )}
 
       {pendingSignature && (() => {
         // Determine signature level from action metadata, default to L3 (PIN)

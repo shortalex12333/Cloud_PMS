@@ -77,39 +77,74 @@ function useStagedProgress(loading: boolean) {
   return STAGES[stage].label;
 }
 
+// ─── Term highlighting ──────────────────────────────────────────────────────
+// Extract significant words from the source entity's text, then wrap matches
+// in result titles with <mark> — brand teal + weight 600, no background.
+const STOP_WORDS = new Set([
+  'the','a','an','and','or','of','in','on','at','to','for','is','are','was',
+  'were','be','been','with','from','by','as','this','that','it','its','has',
+  'have','had','not','but','if','no','all','any','can','do','does','did',
+  'will','would','should','could','may','status','type','ref','supplier',
+  'true','false','null','draft','candidate',
+]);
+
+function extractTerms(entityText: string): string[] {
+  if (!entityText) return [];
+  return [...new Set(
+    entityText
+      .replace(/[;:,.()\[\]{}]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= 3 && !STOP_WORDS.has(w.toLowerCase()))
+      .map(w => w.toLowerCase())
+  )];
+}
+
+const MARK_STYLE: React.CSSProperties = {
+  background: 'none',
+  color: 'var(--mark)',
+  fontWeight: 600,
+};
+
+function highlightTerms(text: string, terms: string[]): React.ReactNode {
+  if (!terms.length || !text) return text;
+  // Build regex matching any term (word-boundary, case-insensitive)
+  const escaped = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`(${escaped.join('|')})`, 'gi');
+  const parts = text.split(re);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    re.test(part)
+      ? <mark key={i} style={MARK_STYLE}>{part}</mark>
+      : part
+  );
+}
+
 interface RelatedDrawerProps {
   onNavigate: (entityType: string, entityId: string) => void;
-  /** Render add-related button (HOD/manager only — caller decides visibility) */
-  onAddRelated?: () => void;
   /** Signal-discovered items */
   signalItems?: SignalRelatedItem[];
   /** True while the signal fetch is in-flight */
   signalLoading?: boolean;
+  /** Source entity's serialized text — used to highlight matching terms */
+  entityText?: string;
 }
 
 export function RelatedDrawer({
   onNavigate,
-  onAddRelated,
   signalItems,
   signalLoading,
+  entityText,
 }: RelatedDrawerProps) {
   const items = signalItems ?? [];
   const loading = signalLoading ?? false;
   const stageLabel = useStagedProgress(loading);
+  const terms = React.useMemo(() => extractTerms(entityText ?? ''), [entityText]);
 
   // Empty state: no items and not loading
   if (!loading && items.length === 0) {
     return (
       <div style={{ padding: '24px', textAlign: 'center' }}>
-        <p style={{ fontSize: '13px', color: 'var(--txt2)', marginBottom: '16px' }}>No related items found.</p>
-        {onAddRelated && (
-          <button
-            onClick={onAddRelated}
-            style={{ padding: '8px 16px', background: 'var(--surface-el)', borderRadius: '6px', fontSize: '13px', color: 'var(--txt)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
-          >
-            Add Related
-          </button>
-        )}
+        <p style={{ fontSize: '13px', color: 'var(--txt2)' }}>No related items found.</p>
       </div>
     );
   }
@@ -159,7 +194,7 @@ export function RelatedDrawer({
                 <EntityIcon type={item.entity_type} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 }}>
-                    {item.title}
+                    {highlightTerms(item.title, terms)}
                   </div>
                   <div style={{ fontSize: '10.5px', color: 'var(--txt2)', fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace", letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px', textTransform: 'uppercase' }}>
                     <span>{item.entity_type.replace(/_/g, ' ')}</span>{item.subtitle ? <><span> · </span><span>{item.subtitle}</span></> : null}
@@ -171,16 +206,6 @@ export function RelatedDrawer({
         )}
       </section>
 
-      {onAddRelated && (
-        <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border-sub)' }}>
-          <button
-            onClick={onAddRelated}
-            style={{ width: '100%', padding: '8px 12px', background: 'var(--surface-el)', borderRadius: '6px', fontSize: '13px', color: 'var(--txt)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
-          >
-            + Add Explicit Link
-          </button>
-        </div>
-      )}
     </div>
   );
 }

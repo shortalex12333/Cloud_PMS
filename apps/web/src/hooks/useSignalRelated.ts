@@ -46,18 +46,39 @@ export interface SignalRelatedResponse {
 }
 
 // ─── Supported entity types ───────────────────────────────────────────────────
-// Must stay in sync with VALID_ENTITY_TYPES in routes/show_related_signal_routes.py.
-// Attachment is intentionally excluded (no standalone lens page).
+// Must stay in sync with SUPPORTED_ENTITY_TYPES in services/entity_serializer.py.
+// Every type with a backend serializer is eligible for signal-related search.
 
 const SIGNAL_SUPPORTED_TYPES = [
   'work_order',
   'equipment',
   'fault',
   'part',
+  'inventory',
   'manual',
+  'document',
+  'certificate',
+  'receiving',
+  'shopping_item',
+  'shopping_list',
+  'email',
+  'handover',
   'handover_item',
   'handover_export',
+  'warranty',
+  'purchase_order',
+  'hours_of_rest',
+  'hours_of_rest_signoff',
 ] as const;
+
+// ─── Type aliases ─────────────────────────────────────────────────────────────
+// Frontend route names → backend serializer keys.
+// The backend uses "shopping_item" but the lens page passes "shopping_list".
+// Frontend route names → backend serializer keys.
+const TYPE_ALIASES: Record<string, string> = {
+  shopping_list: 'shopping_item',
+  warranty: 'certificate',       // warranties table = certificates table
+};
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
@@ -67,9 +88,10 @@ async function fetchSignalRelated(
   token: string,
   limit: number
 ): Promise<SignalRelatedResponse> {
+  const resolvedType = TYPE_ALIASES[entityType] ?? entityType;
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
   const url = new URL(`${baseUrl}/v1/show-related-signal/`);
-  url.searchParams.set('entity_type', entityType);
+  url.searchParams.set('entity_type', resolvedType);
   url.searchParams.set('entity_id', entityId);
   url.searchParams.set('limit', String(limit));
 
