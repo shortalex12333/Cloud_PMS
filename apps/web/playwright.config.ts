@@ -341,6 +341,12 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'shard-48-attention-filters',
+      testDir: './e2e/shard-48-attention-filters',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
 
   // Web server configuration (if running locally)
