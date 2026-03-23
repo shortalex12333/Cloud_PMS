@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Hyper Search Service — shared asyncpg wrapper for f1_search_cards RPC.
+Hyper Search Service — f1_search_cards RPC wrapper + signal connection pool.
 
-Extracted from routes/f1_search_streaming.py so that both the spotlight
-search endpoint and the Show Related signal layer (V2) share one authoritative
-RPC call without duplication.
+Two concerns:
+1. call_hyper_search(): Shared RPC wrapper used by both spotlight and signal.
+   Callers pass their own connection — this function is pool-agnostic.
+2. get_db_pool(): Signal-only pool (12s timeout, min_size=2).
+   Spotlight maintains its own pool in routes/f1_search_streaming.py (800ms).
 
 Consumers:
-- routes/f1_search_streaming.py  (spotlight search)
-- handlers/related_handlers.py   (Show Related signal links)
-
-See: apps/api/docs/F1_SEARCH/STREAMING_FUSION_LAYER.md
+- routes/f1_search_streaming.py     (spotlight — uses call_hyper_search only, own pool)
+- handlers/show_related_signal_handlers.py  (signal — uses both pool + call_hyper_search)
 """
 
 from __future__ import annotations
@@ -46,19 +46,23 @@ _pool: Optional[asyncpg.Pool] = None
 
 
 async def _init_connection(conn: asyncpg.Connection) -> None:
-    """Set statement_timeout after each connection acquisition (Supabase requirement).
+    """Best-effort statement_timeout for signal pool connections.
 
-    Signal search uses 3s — it runs on-demand (panel open) not on hot search path.
-    The spotlight endpoint (f1_search_streaming.py) keeps its own 800ms pool.
+    Supavisor transaction mode resets this after the first query.
+    The actual hard ceiling is command_timeout=15s on the pool.
+    Kept for direct-connection scenarios (local dev, non-Supavisor).
     """
-    await conn.execute("SET statement_timeout = '3000ms'")
+    await conn.execute("SET statement_timeout = '12000ms'")
 
 
 async def get_db_pool() -> asyncpg.Pool:
-    """Get or create shared asyncpg connection pool.
+    """Get or create the signal search connection pool.
 
-    command_timeout=5s: signal search is not latency-sensitive (runs on panel open,
-    not during typing). Longer timeout prevents spurious failures on cold DB paths.
+    This pool is used ONLY by the signal handler (show_related_signal_routes.py).
+    The spotlight endpoint (f1_search_streaming.py) has its own pool with 800ms timeout.
+
+    command_timeout=15s: must exceed statement_timeout (12s) + network latency.
+    Signal search is not latency-critical — runs on-demand when panel opens.
     """
     global _pool
     if _pool is None:
@@ -66,9 +70,9 @@ async def get_db_pool() -> asyncpg.Pool:
             raise ValueError("READ_DB_DSN or DATABASE_URL not configured")
         _pool = await asyncpg.create_pool(
             READ_DSN,
-            min_size=1,
+            min_size=2,
             max_size=5,
-            command_timeout=5.0,  # signal search tolerates slower response than spotlight
+            command_timeout=15.0,  # must exceed statement_timeout (12s) + network latency
             statement_cache_size=0,  # LAW 14: pgbouncer/Supavisor compatibility
             init=_init_connection,
         )

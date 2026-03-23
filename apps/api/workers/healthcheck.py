@@ -141,11 +141,35 @@ def check_email():
         raise RuntimeError(f"email worker heartbeat {minutes_stale} min stale (threshold: {EMAIL_HEARTBEAT_STALE_MINUTES} min)")
 
 
+def check_extraction():
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        raise EnvironmentError("DATABASE_URL not set")
+
+    check_db_connectivity(dsn)
+
+    import psycopg2
+    conn = psycopg2.connect(dsn, connect_timeout=DB_TIMEOUT)
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM search_index
+        WHERE embedding_status = 'extracting'
+          AND updated_at < NOW() - INTERVAL '%s minutes'
+    """ % STUCK_THRESHOLD_MINUTES)
+    stuck = cur.fetchone()[0]
+    conn.close()
+
+    if stuck > 0:
+        raise RuntimeError(f"{stuck} search_index rows stuck in 'extracting' >{STUCK_THRESHOLD_MINUTES} min — extraction worker likely hung")
+
+
 CHECKS = {
     "embedding": check_embedding,
     "projection": check_projection,
     "cache": check_cache,
     "email": check_email,
+    "extraction": check_extraction,
 }
 
 if __name__ == "__main__":

@@ -31,6 +31,7 @@ import type { SearchResult as APISearchResult } from '@/types/search';
 import SpotlightResultRow from './SpotlightResultRow';
 import SmartPointers from './SmartPointers';
 import LensPillStrip from './LensPillStrip';
+import { useNeedsAttention } from '@/hooks/useNeedsAttention';
 import QueryInterpretation from './QueryInterpretation';
 import SettingsModal from '@/components/SettingsModal';
 import { EntityLine, StatusLine } from '@/components/celeste';
@@ -234,6 +235,9 @@ export default function SpotlightSearch({
 
   // Get domain context for domain-scoped search (null when not in fragmented route)
   const { objectType, label: domainLabel } = useDomain();
+
+  // Needs Attention data — role-aware, time-aware scoring
+  const { pointers: attentionPointers, counts: attentionCounts, loading: attentionLoading, role: attentionRole } = useNeedsAttention();
 
   // Pass yacht_id from AuthContext to hooks - this is the ONLY correct source
   // Pass objectType for domain-scoped search when in fragmented routes
@@ -1073,8 +1077,8 @@ export default function SpotlightSearch({
         {/* ── Idle State: SmartPointers + LensPillStrip ── */}
         {!hasQuery && (
           <>
-            <SmartPointers />
-            <LensPillStrip />
+            <SmartPointers pointers={attentionPointers} counts={attentionCounts} loading={attentionLoading} role={attentionRole} />
+            <LensPillStrip counts={attentionCounts} role={attentionRole} />
           </>
         )}
 

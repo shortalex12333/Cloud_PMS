@@ -16,6 +16,7 @@ import { RouteLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabaseClient';
 
 // Certificate list item type
 interface CertificateListItem {
@@ -29,39 +30,45 @@ interface CertificateListItem {
   linked_equipment_id?: string;
 }
 
-// Fetch certificates from API
-async function fetchCertificates(yachtId: string, token: string): Promise<CertificateListItem[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
-  const response = await fetch(`${baseUrl}/v1/certificates?yacht_id=${yachtId}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+// Fetch certificates directly from Supabase
+async function fetchCertificates(_yachtId: string, _token: string): Promise<CertificateListItem[]> {
+  const { data, error } = await supabase
+    .from('pms_vessel_certificates')
+    .select(
+      'id, certificate_name, certificate_number, certificate_type, issuing_authority, issue_date, expiry_date, next_survey_due, status, created_at',
+    )
+    .order('expiry_date', { ascending: true });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch certificates: ${response.status}`);
+  if (error) {
+    throw new Error(`Failed to fetch certificates: ${error.message}`);
   }
 
-  const data = await response.json();
-  return data.certificates || data.items || data || [];
+  // Map DB columns to the component's CertificateListItem shape
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.certificate_name ?? '',
+    certificate_type: row.certificate_type ?? '',
+    issuing_authority: row.issuing_authority ?? '',
+    issue_date: row.issue_date ?? '',
+    expiry_date: row.expiry_date ?? '',
+    status: row.status as CertificateListItem['status'],
+  }));
 }
 
-// Fetch single certificate detail
-async function fetchCertificateDetail(id: string, token: string): Promise<Record<string, unknown>> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
-  const response = await fetch(`${baseUrl}/v1/entity/certificate/${id}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+// Fetch single certificate detail directly from Supabase
+async function fetchCertificateDetail(id: string, _token: string): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase
+    .from('pms_vessel_certificates')
+    .select('*')
+    .eq('id', id)
+    .single();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch certificate: ${response.status}`);
+  if (error || !data) {
+    throw new Error(`Certificate ${id} not found`);
   }
 
-  return response.json();
+  // Map certificate_name to name for compatibility with the detail component
+  return { ...data, name: (data as Record<string, unknown>).certificate_name };
 }
 
 // Status color mapping

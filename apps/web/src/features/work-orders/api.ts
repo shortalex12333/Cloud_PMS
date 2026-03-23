@@ -1,34 +1,38 @@
-import { callCelesteApi } from '@/lib/apiClient';
+import { supabase } from '@/lib/supabaseClient';
 import type { FetchParams, FetchResponse } from '@/features/entity-list/types';
 import type { WorkOrder } from './types';
-
-interface ApiResponse {
-  data: WorkOrder[];
-  total: number;
-}
 
 export async function fetchWorkOrders(params: FetchParams): Promise<FetchResponse<WorkOrder>> {
   const { offset, limit } = params;
 
-  const queryParams = new URLSearchParams({
-    offset: String(offset),
-    limit: String(limit),
-  });
+  const { data, count, error } = await supabase
+    .from('pms_work_orders')
+    .select(
+      'id, wo_number, title, description, status, priority, equipment_id, assigned_to, due_date, created_at, updated_at',
+      { count: 'exact' },
+    )
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
-  const result = await callCelesteApi<ApiResponse>(`/v1/work-orders?${queryParams}`);
+  if (error) {
+    throw new Error(`Failed to fetch work orders: ${error.message}`);
+  }
 
-  return { data: result.data, total: result.total };
+  return { data: (data ?? []) as WorkOrder[], total: count ?? 0 };
 }
 
 export async function fetchWorkOrder(id: string, _token: string): Promise<WorkOrder> {
-  // For single item fetch, we query the list with a specific ID
-  // The backend will filter appropriately via RLS
-  const result = await callCelesteApi<ApiResponse>(`/v1/work-orders?limit=1`);
+  const { data, error } = await supabase
+    .from('pms_work_orders')
+    .select(
+      'id, wo_number, title, description, status, priority, equipment_id, assigned_to, due_date, created_at, updated_at',
+    )
+    .eq('id', id)
+    .single();
 
-  const workOrder = result.data.find((wo) => wo.id === id);
-  if (!workOrder) {
+  if (error || !data) {
     throw new Error(`Work order ${id} not found`);
   }
 
-  return workOrder;
+  return data as WorkOrder;
 }

@@ -19,6 +19,7 @@ cryptography==44.0.0
 
 # HTTP Clients
 httpx==0.28.1
+requests>=2.31.0
 
 # JSON Schema Validation
 jsonschema==4.23.0
@@ -34,6 +35,7 @@ beautifulsoup4>=4.12.0
 
 # AI/NLP for extraction pipeline
 openai==1.59.5
+PyMuPDF>=1.24.0
 # spacy is optional - code gracefully degrades without it
 
 # Testing

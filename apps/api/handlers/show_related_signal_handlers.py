@@ -94,14 +94,46 @@ async def get_signal_related(
             detail=f"{entity_type} '{entity_id}' not found or not serializable",
         )
 
-    # 2. Generate embedding (same model as spotlight: text-embedding-3-small)
-    # 3000ms budget: signal search is not on the hot path — panel opens on demand.
-    # 800ms was too tight for cold-start OpenAI connections; 3000ms matches DB statement_timeout.
-    rewrite = Rewrite(text=entity_text, source="entity_signal", confidence=1.0)
-    rewrites = await generate_embeddings([rewrite], budget_ms=8000, org_id=ctx.org_id)
-    embedding_generated = any(r.embedding is not None for r in rewrites)
+    # 2. Try cached embedding from search_index first (avoids ~4s OpenAI call)
+    cached_embedding = None
+    try:
+        row = await conn.fetchrow(
+            "SELECT embedding_1536 FROM search_index "
+            "WHERE object_type = $1 AND object_id = $2 AND yacht_id = $3 "
+            "AND embedding_1536 IS NOT NULL LIMIT 1",
+            entity_type, entity_id, ctx.yacht_id,
+        )
+        if row and row["embedding_1536"] is not None:
+            raw = row["embedding_1536"]
+            # pgvector returns a string like "[0.1,0.2,...]" or a native list
+            if isinstance(raw, str):
+                cached_embedding = json.loads(raw)
+            elif isinstance(raw, (list, tuple)):
+                cached_embedding = list(raw)
+            else:
+                # numpy array or pgvector type — try converting
+                cached_embedding = [float(x) for x in raw]
+    except Exception as e:
+        logger.debug(f"[SignalRelated] cached embedding lookup failed: {e}")
+
+    if cached_embedding:
+        rewrite = Rewrite(
+            text=entity_text, source="entity_signal", confidence=1.0,
+            embedding=cached_embedding,
+        )
+        rewrites = [rewrite]
+        embedding_generated = True
+        logger.info(f"[SignalRelated] using cached embedding for {entity_type}/{entity_id[:8]}...")
+    else:
+        # Fall through to OpenAI embedding generation
+        # 8000ms budget: signal search is not on the hot path — panel opens on demand.
+        rewrite = Rewrite(text=entity_text, source="entity_signal", confidence=1.0)
+        rewrites = await generate_embeddings([rewrite], budget_ms=8000, org_id=ctx.org_id)
+        embedding_generated = any(r.embedding is not None for r in rewrites)
 
     # 3. Call f1_search_cards — identical RPC call to spotlight search
+    # Let TimeoutError / connection errors propagate to the route layer
+    # so it can fall back to Supabase HTTP. Only wrap non-transient errors.
     try:
         raw_results = await call_hyper_search(
             conn=conn,
@@ -111,6 +143,10 @@ async def get_signal_related(
             exclude_ids=[entity_id],  # never return the source entity itself
         )
     except HTTPException:
+        raise
+    except (TimeoutError, OSError, asyncpg.PostgresError) as e:
+        # Transient DB failures — let route layer handle fallback
+        logger.warning(f"[SignalRelated] call_hyper_search transient failure: {type(e).__name__}: {e}")
         raise
     except Exception as e:
         logger.error(f"[SignalRelated] call_hyper_search failed: {e}", exc_info=True)
@@ -183,10 +219,34 @@ async def get_signal_related_supabase(
             detail=f"{entity_type} '{entity_id}' not found or not serializable",
         )
 
-    # 2. Generate embedding
-    rewrite = Rewrite(text=entity_text, source="entity_signal", confidence=1.0)
-    rewrites = await generate_embeddings([rewrite], budget_ms=8000, org_id=ctx.org_id)
-    embedding_generated = any(r.embedding is not None for r in rewrites)
+    # 2. Try cached embedding from search_index first (avoids ~4s OpenAI call)
+    cached_embedding = None
+    try:
+        result_emb = await asyncio.to_thread(
+            _lookup_cached_embedding_supabase,
+            entity_type, entity_id, ctx.yacht_id or "", supabase,
+        )
+        if result_emb is not None:
+            cached_embedding = result_emb
+    except Exception as e:
+        logger.debug(f"[SignalRelated/Supabase] cached embedding lookup failed: {e}")
+
+    if cached_embedding:
+        rewrite = Rewrite(
+            text=entity_text, source="entity_signal", confidence=1.0,
+            embedding=cached_embedding,
+        )
+        rewrites = [rewrite]
+        embedding_generated = True
+        logger.info(
+            f"[SignalRelated/Supabase] using cached embedding for "
+            f"{entity_type}/{entity_id[:8]}..."
+        )
+    else:
+        # Fall through to OpenAI embedding generation
+        rewrite = Rewrite(text=entity_text, source="entity_signal", confidence=1.0)
+        rewrites = await generate_embeddings([rewrite], budget_ms=8000, org_id=ctx.org_id)
+        embedding_generated = any(r.embedding is not None for r in rewrites)
 
     # 3. Call f1_search_cards via Supabase RPC.
     # asyncio.to_thread() prevents the synchronous httpx call from blocking the event loop.
@@ -465,6 +525,33 @@ def _sb_email(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
     if row.get("preview_text"):
         parts.append(str(row["preview_text"])[:200])
     return "; ".join(parts) if parts else None
+
+
+def _lookup_cached_embedding_supabase(
+    entity_type: str,
+    entity_id: str,
+    yacht_id: str,
+    supabase,
+) -> Optional[List[float]]:
+    """
+    Look up a cached embedding_1536 from search_index via Supabase HTTP client.
+    Returns a list of floats if found, None otherwise.
+
+    IMPORTANT: Synchronous — run via asyncio.to_thread() from async context.
+    """
+    r = supabase.table("search_index").select("embedding_1536").eq(
+        "object_type", entity_type
+    ).eq("object_id", entity_id).eq("yacht_id", yacht_id).not_.is_(
+        "embedding_1536", "null"
+    ).limit(1).execute()
+    if not r.data or not r.data[0].get("embedding_1536"):
+        return None
+    raw = r.data[0]["embedding_1536"]
+    if isinstance(raw, str):
+        return json.loads(raw)
+    if isinstance(raw, (list, tuple)):
+        return list(raw)
+    return [float(x) for x in raw]
 
 
 # Registry — mirrors entity_serializer._SERIALIZERS.

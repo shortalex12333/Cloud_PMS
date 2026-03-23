@@ -203,6 +203,40 @@ services:
           memory: 256M
 
   # ==========================================================================
+  # Extraction Worker (Supabase Storage → text extraction → search_index)
+  # Downloads documents, extracts text (PDF/DOCX/XLSX), writes chunks,
+  # then sets embedding_status='pending' for embedding worker.
+  # ==========================================================================
+  extraction-worker:
+    profiles: ["workers", "full"]
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SUPABASE_URL=https://vzsohavtuotocgrfkfyd.supabase.co
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - EXTRACTION_BATCH_SIZE=5
+      - EXTRACTION_POLL_INTERVAL=10
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    command: ["python", "workers/extraction_worker.py"]
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "workers/healthcheck.py", "extraction"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 512M
+
+  # ==========================================================================
   # Email Watcher (Microsoft Exchange -> search_index)
   # Replaces Render service: celeste-email-watcher
   # Polls every 30s (code default; render.yaml incorrectly documented 60s)

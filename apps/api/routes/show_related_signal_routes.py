@@ -131,32 +131,36 @@ async def view_signal_related(
             )
         return result
 
+    except HTTPException:
+        raise
+
     except ValueError as e:
         # READ_DB_DSN not configured — fall back to Supabase HTTP client
         if "not configured" in str(e):
             logger.info("[SignalRelated] No READ_DB_DSN — using Supabase RPC fallback")
-            try:
-                supabase = get_tenant_client(auth.get("tenant_key_alias", ""))
-                result = await get_signal_related_supabase(
-                    entity_type=entity_type,
-                    entity_id=str(entity_id),
-                    supabase=supabase,
-                    ctx=ctx,
-                    limit=limit,
-                )
-                return result
-            except HTTPException:
-                raise
-            except Exception as e2:
-                logger.error(f"[SignalRelated/Supabase] Fallback error: {e2}", exc_info=True)
-                raise HTTPException(status_code=500, detail=str(e2))
-        raise HTTPException(status_code=500, detail=str(e))
+        else:
+            raise HTTPException(status_code=500, detail=str(e))
 
+    except Exception as e:
+        # Timeout, connection error, or other transient failure — try Supabase fallback
+        logger.warning(f"[SignalRelated] asyncpg failed ({type(e).__name__}: {e}), falling back to Supabase")
+
+    # Supabase text-only fallback (reached on missing DSN OR asyncpg failure)
+    try:
+        supabase = get_tenant_client(auth.get("tenant_key_alias", ""))
+        result = await get_signal_related_supabase(
+            entity_type=entity_type,
+            entity_id=str(entity_id),
+            supabase=supabase,
+            ctx=ctx,
+            limit=limit,
+        )
+        return result
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"[SignalRelated] Unexpected error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e2:
+        logger.error(f"[SignalRelated/Supabase] Fallback also failed: {e2}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e2))
 
 
 @router.get("/debug/status")

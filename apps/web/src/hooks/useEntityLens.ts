@@ -1,5 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { ATTENTION_QUERY_KEY } from '@/hooks/useNeedsAttention';
 import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
@@ -19,6 +21,7 @@ export function useEntityLens(
   entityId: string
 ): UseEntityLensResult {
   const { session } = useAuth();
+  const queryClient = useQueryClient();
   const token = session?.access_token ?? null;
 
   const [entity, setEntity] = useState<Record<string, unknown> | null>(null);
@@ -99,10 +102,11 @@ export function useEntityLens(
       const result: ActionResult = await res.json();
       if (res.ok) {
         await fetchEntity();
+        queryClient.invalidateQueries({ queryKey: [...ATTENTION_QUERY_KEY] });
       }
       return result;
     },
-    [token, entityId, availableActions, fetchEntity]
+    [token, entityId, availableActions, fetchEntity, queryClient]
   );
 
   const getAction = useCallback(

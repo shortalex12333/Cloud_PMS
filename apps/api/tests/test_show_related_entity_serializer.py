@@ -208,15 +208,20 @@ async def test_document_alias_same_as_manual():
 @pytest.mark.asyncio
 async def test_handover_serialization():
     row = {
-        "title": "Main Engine Handover — March 2026",
-        "content": "Fuel filters replaced. Injectors checked. Next service: 500h.",
+        "file_name": "engineering_handover_20260320.pdf",
+        "department": "engineering",
+        "export_type": "pdf",
+        "status": "completed",
+        "email_subject": None,
+        "storage_path": "handovers/abc/engineering_handover_20260320.pdf",
     }
     conn = make_conn(fetchrow_return=row)
 
     text = await serialize_entity("handover", ENTITY_ID, conn, YACHT_ID)
 
-    assert "Main Engine Handover" in text
-    assert "Fuel filters replaced" in text
+    assert "engineering_handover_20260320.pdf" in text
+    assert "department: engineering" in text
+    assert "format: pdf" in text
 
 
 @pytest.mark.asyncio
@@ -314,15 +319,18 @@ async def test_handover_item_full():
     row = {
         "summary": "Engine inspection overdue",
         "entity_type": "note",
+        "entity_id": None,
         "section": "Engineering",
         "category": "urgent",
         "action_summary": "Schedule within 48 hours",
+        "is_critical": True,
     }
     conn = make_conn(fetchrow_return=row)
 
     text = await serialize_entity("handover_item", ENTITY_ID, conn, YACHT_ID)
 
     assert "Engine inspection overdue" in text
+    assert "CRITICAL" in text
     assert "type: note" in text
     assert "section: Engineering" in text
     assert "category: urgent" in text
