@@ -42,7 +42,7 @@ function EquipmentPageContent() {
         domain="equipment"
         queryKey={['equipment']}
         table="pms_equipment"
-        columns="id, name, description, category, location, manufacturer, model, serial_number, status, criticality, attention_flag, attention_reason, created_at, updated_at"
+        columns="id, name, description, location, manufacturer, model, serial_number, status, criticality, attention_flag, attention_reason, created_at, updated_at"
         adapter={equipmentToListResult}
         filterConfig={EQUIPMENT_FILTERS}
         selectedId={selectedId}

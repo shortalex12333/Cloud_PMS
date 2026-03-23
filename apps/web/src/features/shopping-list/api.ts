@@ -1,68 +1,58 @@
+import { supabase } from '@/lib/supabaseClient';
 import type { FetchParams, FetchResponse } from '@/features/entity-list/types';
 import type { ShoppingListItem, ShoppingListStateHistory } from './types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
-
 export async function fetchShoppingList(params: FetchParams): Promise<FetchResponse<ShoppingListItem>> {
-  const { yachtId, token, offset, limit } = params;
+  const { offset, limit } = params;
 
-  const url = new URL(`${BASE_URL}/v1/shopping-list`);
-  url.searchParams.set('yacht_id', yachtId);
-  url.searchParams.set('offset', String(offset));
-  url.searchParams.set('limit', String(limit));
+  const { data, count, error } = await supabase
+    .from('pms_shopping_list_items')
+    .select(
+      'id, part_name, part_number, manufacturer, status, urgency, quantity_requested, quantity_approved, unit, part_id, source_type, source_work_order_id, source_receiving_id, source_notes, requested_by, required_by_date, created_at, updated_at',
+      { count: 'exact' },
+    )
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch shopping list: ${response.status}`);
+  if (error) {
+    throw new Error(`Failed to fetch shopping list: ${error.message}`);
   }
 
-  const json = await response.json();
-  const items = json.shopping_list || json.items || json.data || [];
-  const total = json.total ?? json.pagination?.total ?? items.length;
-
-  return { data: items, total };
+  return { data: (data ?? []) as ShoppingListItem[], total: count ?? 0 };
 }
 
-export async function fetchShoppingListItem(id: string, token: string): Promise<ShoppingListItem> {
-  const response = await fetch(`${BASE_URL}/v1/entity/shopping_list/${id}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+export async function fetchShoppingListItem(id: string, _token: string): Promise<ShoppingListItem> {
+  const { data, error } = await supabase
+    .from('pms_shopping_list_items')
+    .select(
+      'id, part_name, part_number, manufacturer, status, urgency, quantity_requested, quantity_approved, unit, part_id, source_type, source_work_order_id, source_receiving_id, source_notes, requested_by, required_by_date, created_at, updated_at',
+    )
+    .eq('id', id)
+    .single();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch shopping list item: ${response.status}`);
+  if (error || !data) {
+    throw new Error(`Shopping list item ${id} not found`);
   }
 
-  return response.json();
+  return data as ShoppingListItem;
 }
 
 export async function fetchShoppingListHistory(
   itemId: string,
-  token: string
+  _token: string,
 ): Promise<ShoppingListStateHistory[]> {
-  const response = await fetch(`${BASE_URL}/v1/entity/shopping_list/${itemId}/history`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+  const { data, error } = await supabase
+    .from('pms_shopping_list_state_history')
+    .select(
+      'id, shopping_list_item_id, previous_state, new_state, transition_reason, transition_notes, changed_by, changed_by_name, changed_at, related_order_id, related_receiving_event_id',
+    )
+    .eq('shopping_list_item_id', itemId)
+    .order('changed_at', { ascending: false });
 
-  if (!response.ok) {
-    // Return empty array if history endpoint not available yet
-    if (response.status === 404) {
-      return [];
-    }
-    throw new Error(`Failed to fetch shopping list history: ${response.status}`);
+  if (error) {
+    // Return empty array if history table not available
+    return [];
   }
 
-  const json = await response.json();
-  return json.history || json.data || json || [];
+  return (data ?? []) as ShoppingListStateHistory[];
 }

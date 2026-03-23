@@ -1,47 +1,49 @@
+import { supabase } from '@/lib/supabaseClient';
 import type { FetchParams, FetchResponse } from '@/features/entity-list/types';
 import type { ReceivingItem, ReceivingAttachment } from './types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
-
 export async function fetchReceivingItems(params: FetchParams): Promise<FetchResponse<ReceivingItem>> {
-  const { yachtId, token, offset, limit } = params;
+  const { offset, limit } = params;
 
-  const url = new URL(`${BASE_URL}/v1/receiving`);
-  url.searchParams.set('yacht_id', yachtId);
-  url.searchParams.set('offset', String(offset));
-  url.searchParams.set('limit', String(limit));
+  const { data, count, error } = await supabase
+    .from('pms_receiving')
+    .select(
+      'id, vendor_name, vendor_reference, status, received_date, notes, po_number, created_at',
+      { count: 'exact' },
+    )
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch receiving items: ${response.status}`);
+  if (error) {
+    throw new Error(`Failed to fetch receiving items: ${error.message}`);
   }
 
-  const json = await response.json();
-  const items = json.receiving || json.items || json.data || [];
-  const total = json.total ?? json.pagination?.total ?? items.length;
+  // Map DB column vendor_name to the TypeScript type's supplier_name
+  const mapped = (data ?? []).map((row) => ({
+    ...row,
+    supplier_name: (row as Record<string, unknown>).vendor_name as string | undefined,
+  }));
 
-  return { data: items, total };
+  return { data: mapped as ReceivingItem[], total: count ?? 0 };
 }
 
-export async function fetchReceivingItem(id: string, token: string): Promise<ReceivingItem> {
-  const response = await fetch(`${BASE_URL}/v1/entity/receiving/${id}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+export async function fetchReceivingItem(id: string, _token: string): Promise<ReceivingItem> {
+  const { data, error } = await supabase
+    .from('pms_receiving')
+    .select(
+      'id, vendor_name, vendor_reference, status, received_date, notes, po_number, created_at',
+    )
+    .eq('id', id)
+    .single();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch receiving item: ${response.status}`);
+  if (error || !data) {
+    throw new Error(`Receiving item ${id} not found`);
   }
 
-  return response.json();
+  return {
+    ...data,
+    supplier_name: (data as Record<string, unknown>).vendor_name as string | undefined,
+  } as ReceivingItem;
 }
 
 /**
@@ -52,20 +54,19 @@ export async function fetchReceivingItem(id: string, token: string): Promise<Rec
  * Allowed Roles: All Crew (read-only)
  * Tables Read: pms_receiving_documents (joined with pms_documents for file metadata)
  *
- * @param receivingId - The receiving event ID
- * @param token - JWT auth token
- * @returns Array of receiving attachments with document metadata and signed URLs
+ * NOTE: This still calls the Python backend because it needs signed URLs
+ * which require server-side storage token generation.
  */
 export async function fetchReceivingAttachments(
   receivingId: string,
-  token: string
+  token: string,
 ): Promise<ReceivingAttachment[]> {
-  // Use the view_receiving_history action which returns documents
-  // This is more efficient than a separate endpoint and reuses existing backend logic
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
   const response = await fetch(`${BASE_URL}/v1/actions/execute`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -81,13 +82,9 @@ export async function fetchReceivingAttachments(
   }
 
   const json = await response.json();
-
-  // Extract documents from the response
   const documents = json.documents || json.result?.documents || [];
 
-  // Map to ReceivingAttachment format with signed URLs
-  // The backend returns document metadata; we need to fetch signed URLs for display
-  return documents.map((doc: any) => ({
+  return documents.map((doc: Record<string, unknown>) => ({
     id: doc.id,
     receiving_id: doc.receiving_id,
     document_id: doc.document_id,

@@ -187,7 +187,7 @@ function ReceivingPageContent() {
         domain="receiving"
         queryKey={['receiving']}
         table="pms_receiving"
-        columns="id, vendor_name, vendor_reference, status, received_date, expected_date, notes, items_count, created_at, updated_at"
+        columns="id, vendor_name, vendor_reference, status, received_date, notes, po_number, created_at"
         adapter={receivingToListResult}
         filterConfig={RECEIVING_FILTERS}
         selectedId={selectedId}

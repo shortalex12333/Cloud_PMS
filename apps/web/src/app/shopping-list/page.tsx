@@ -215,7 +215,7 @@ function ShoppingListPageContent() {
         domain="shopping-list"
         queryKey={['shopping-list']}
         table="pms_shopping_list_items"
-        columns="id, part_name, part_number, manufacturer, description, quantity_requested, unit_of_measure, status, priority, urgency, requested_by_name, approved_by_name, notes, created_at, updated_at"
+        columns="id, part_name, part_number, manufacturer, quantity_requested, unit, status, urgency, requested_by, required_by_date, created_at, updated_at"
         adapter={shoppingListToListResult}
         filterConfig={SHOPPING_LIST_FILTERS}
         selectedId={selectedId}

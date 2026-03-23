@@ -445,6 +445,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+    // Redirect to login — clear any stale state
+    window.location.href = '/login';
   }, []);
 
   return (

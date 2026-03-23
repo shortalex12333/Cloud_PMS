@@ -106,7 +106,7 @@ function InventoryPageContent() {
         domain="inventory"
         queryKey={['inventory']}
         table="pms_parts"
-        columns="id, name, part_number, description, category, manufacturer, quantity_on_hand, minimum_quantity, unit_of_measure, location, is_critical, price, currency, created_at, updated_at"
+        columns="id, name, part_number, description, category, manufacturer, quantity_on_hand, minimum_quantity, unit, location, is_critical, unit_cost, created_at, updated_at"
         adapter={partToListResult}
         filterConfig={INVENTORY_FILTERS}
         selectedId={selectedId}
