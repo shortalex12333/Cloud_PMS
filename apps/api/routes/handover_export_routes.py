@@ -639,7 +639,11 @@ def _generate_final_html(sections: list, user_sig: dict, hod_sig: dict) -> str:
 
 
 def _notify_hod_for_countersign(supabase, export_id: str, yacht_id: str, auth: dict):
-    """Create ledger notification for HOD users."""
+    """Create audit log + ledger notification for HOD users."""
+    import uuid
+    from datetime import timezone
+    from routes.handlers.ledger_utils import build_ledger_event
+
     user_id = auth.get("user_id") or auth.get("id") or str(auth)
     user_email = auth.get("email") or user_id
 
@@ -648,21 +652,44 @@ def _notify_hod_for_countersign(supabase, export_id: str, yacht_id: str, auth: d
         "id, full_name"
     ).eq("yacht_id", yacht_id).in_("role", ["hod", "captain", "manager"]).execute()
 
-    # Create ledger entries for each HOD
     for hod in (hod_users.data or []):
-        supabase.table("pms_audit_log").insert({
-            "yacht_id": yacht_id,
-            "entity_type": "handover_export",
-            "entity_id": export_id,
-            "action": "requires_countersignature",
-            "event_type": "handover_pending_countersign",
-            "change_summary": f"Handover from {user_email} requires your countersignature",
-            "user_id": hod["id"],
-            "metadata": {
-                "submitted_by": user_id,
-                "submitted_at": datetime.utcnow().isoformat()
-            }
-        }).execute()
+        # 1. Audit log (compliance) — requires signature + new_values
+        try:
+            supabase.table("pms_audit_log").insert({
+                "id": str(uuid.uuid4()),
+                "yacht_id": yacht_id,
+                "entity_type": "handover_export",
+                "entity_id": export_id,
+                "action": "requires_countersignature",
+                "user_id": hod["id"],
+                "signature": {
+                    "user_id": user_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                },
+                "new_values": {
+                    "submitted_by": user_id,
+                    "submitted_at": datetime.now(timezone.utc).isoformat()
+                },
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        except Exception as e:
+            logger.warning(f"Audit log insert failed for HOD {hod['id']}: {e}")
+
+        # 2. Ledger event (user notification)
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=hod["id"],
+                event_type="handover",
+                entity_type="handover_export",
+                entity_id=export_id,
+                action="requires_countersignature",
+                change_summary=f"Handover from {user_email} requires your countersignature",
+                metadata={"submitted_by": user_id, "submitted_at": datetime.now(timezone.utc).isoformat()}
+            )
+            supabase.table("ledger_events").insert(ledger_event).execute()
+        except Exception as e:
+            logger.warning(f"Ledger event insert failed for HOD {hod['id']}: {e}")
 
 
 def _trigger_indexing(supabase, export_id: str, yacht_id: str, sections: list):

@@ -9,7 +9,7 @@ Schema: Consolidated (2026-02-05)
 - handover_exports: exported documents with signoff tracking
 
 Pipeline:
-1. Fetch items from v_handover_export_items (unified view) or handover_items directly
+1. Fetch items from handover_items table
 2. Group by section/category
 3. Enrich with entity details (equipment names, fault codes, etc.)
 4. Generate formatted HTML with hyperlinks
@@ -99,7 +99,7 @@ class HandoverExportService:
     """
     Service for generating handover exports.
 
-    Uses the unified view v_handover_export_items or queries handover_items directly.
+    Queries handover_items table directly.
     Schema: Consolidated (2026-02-05) - handover_items is standalone.
     """
 
@@ -149,9 +149,14 @@ class HandoverExportService:
         if not items:
             return self._empty_export(yacht_id, user_id)
 
-        # 2. Extract content_hash (post-consolidation: items are standalone, no draft hash)
-        # TODO: If draft-based workflow is restored, fetch content_hash from handover_drafts table
-        content_hash = None  # No longer stored in items after consolidation migration
+        # 2. Compute content_hash from normalised item list (deterministic)
+        import json as _json
+        sorted_items = sorted(items, key=lambda i: str(i.id))
+        hash_input = _json.dumps(
+            [{"id": str(i.id), "entity_type": i.entity_type, "entity_id": str(i.entity_id), "summary": i.summary_text or ""} for i in sorted_items],
+            sort_keys=True, separators=(',', ':')
+        )
+        content_hash = hashlib.sha256(hash_input.encode()).hexdigest()
 
         # 3. Enrich with entity details
         items = await self._enrich_items(items, yacht_id)
@@ -275,26 +280,26 @@ class HandoverExportService:
                 for row in result.data
             ]
 
-        # Otherwise, fetch from unified view
-        query = self.db.table("v_handover_export_items").select("*").eq("yacht_id", yacht_id)
+        # Otherwise, fetch all active items for this yacht from handover_items directly
+        query = self.db.table("handover_items").select("*").eq("yacht_id", yacht_id)
 
         if handover_id:
             query = query.eq("handover_id", handover_id)
 
         if date_from:
-            query = query.gte("shift_date", date_from.isoformat())
+            query = query.gte("created_at", date_from.isoformat())
 
         if date_to:
-            query = query.lte("shift_date", date_to.isoformat())
+            query = query.lte("created_at", date_to.isoformat())
 
         if not include_completed:
             query = query.neq("status", "completed")
 
-        # Filter by user if specified
         if added_by_user_id:
             query = query.eq("added_by", added_by_user_id)
 
-        query = query.order("priority", desc=True).order("added_at", desc=True)
+        query = query.is_("deleted_at", "null")
+        query = query.order("priority", desc=True).order("created_at", desc=True)
 
         result = query.execute()
 
@@ -305,10 +310,10 @@ class HandoverExportService:
             HandoverItem(
                 id=row["id"],
                 yacht_id=row["yacht_id"],
-                handover_id=row.get("handover_id"),  # Legacy, now nullable
+                handover_id=row.get("handover_id"),
                 entity_type=row.get("entity_type") or "",
                 entity_id=row.get("entity_id"),
-                summary_text=row.get("summary_text") or row.get("summary") or "",
+                summary_text=row.get("summary") or "",
                 section=row.get("section"),
                 category=row.get("category"),
                 priority=row.get("priority", 0),
@@ -319,11 +324,11 @@ class HandoverExportService:
                 risk_tags=row.get("risk_tags") or [],
                 entity_url=row.get("entity_url"),
                 added_by=row.get("added_by") or "",
-                added_at=row.get("added_at") or row.get("created_at") or "",
+                added_at=row.get("created_at") or "",
                 acknowledged_by=row.get("acknowledged_by"),
                 acknowledged_at=row.get("acknowledged_at"),
                 metadata=row.get("metadata", {}),
-                source_table=row.get("source_table") or "handover_items"
+                source_table="handover_items"
             )
             for row in result.data
         ]
@@ -353,7 +358,7 @@ class HandoverExportService:
         if user_ids:
             users_result = self.db.table("auth_users_profiles").select(
                 "id, name"
-            ).in_("id", list(user_ids)).execute()
+            ).in_("id", list(user_ids)).eq("yacht_id", yacht_id).execute()
             if users_result.data:
                 user_names = {u["id"]: u["name"] for u in users_result.data}
 
@@ -364,7 +369,7 @@ class HandoverExportService:
         if entity_lookups['fault']:
             faults = self.db.table("pms_faults").select(
                 "id, fault_code, title, equipment:equipment_id(name)"
-            ).in_("id", list(entity_lookups['fault'])).execute()
+            ).in_("id", list(entity_lookups['fault'])).eq("yacht_id", yacht_id).execute()
             if faults.data:
                 for f in faults.data:
                     equip = f.get("equipment", {}) or {}
@@ -377,7 +382,7 @@ class HandoverExportService:
         if entity_lookups['work_order']:
             wos = self.db.table("pms_work_orders").select(
                 "id, wo_number, title"
-            ).in_("id", list(entity_lookups['work_order'])).execute()
+            ).in_("id", list(entity_lookups['work_order'])).eq("yacht_id", yacht_id).execute()
             if wos.data:
                 for wo in wos.data:
                     entity_details[wo["id"]] = {
@@ -389,7 +394,7 @@ class HandoverExportService:
         if entity_lookups['equipment']:
             equip = self.db.table("pms_equipment").select(
                 "id, name, location"
-            ).in_("id", list(entity_lookups['equipment'])).execute()
+            ).in_("id", list(entity_lookups['equipment'])).eq("yacht_id", yacht_id).execute()
             if equip.data:
                 for e in equip.data:
                     entity_details[e["id"]] = {
@@ -401,7 +406,7 @@ class HandoverExportService:
         if entity_lookups['part']:
             parts = self.db.table("pms_parts").select(
                 "id, name, part_number"
-            ).in_("id", list(entity_lookups['part'])).execute()
+            ).in_("id", list(entity_lookups['part'])).eq("yacht_id", yacht_id).execute()
             if parts.data:
                 for p in parts.data:
                     entity_details[p["id"]] = {
@@ -827,25 +832,49 @@ def create_export_ready_ledger_event(
     item_count: int
 ) -> None:
     """
-    Create ledger event when handover export HTML is ready for review.
+    Record handover export readiness in both audit log and ledger.
 
-    Inserts into pms_audit_log so the user sees a clickable notification
-    in the LedgerPanel. LedgerEventCard routes this to HandoverExportLens
-    with ?mode=edit.
+    1. pms_audit_log — compliance trail (signature, new_values required)
+    2. ledger_events — user-facing notification in LedgerPanel
     """
-    supabase.table("pms_audit_log").insert({
-        "yacht_id": yacht_id,
-        "entity_type": "handover_export",
-        "entity_id": export_id,
-        "action": "export_ready_for_review",
-        "event_type": "handover_export_ready",
-        "change_summary": "Your handover export is ready for review",
-        "user_id": user_id,
-        "metadata": {
-            "item_count": item_count,
-            "status": "pending_review"
-        }
-    }).execute()
+    # 1. Audit log (compliance) — schema requires signature + new_values
+    try:
+        supabase.table("pms_audit_log").insert({
+            "id": str(uuid.uuid4()),
+            "yacht_id": yacht_id,
+            "entity_type": "handover_export",
+            "entity_id": export_id,
+            "action": "export_ready_for_review",
+            "user_id": user_id,
+            "signature": {
+                "user_id": user_id,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            },
+            "new_values": {
+                "item_count": item_count,
+                "status": "pending_review"
+            },
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }).execute()
+    except Exception as e:
+        logger.warning(f"Audit log insert failed for export {export_id}: {e}")
+
+    # 2. Ledger event (user notification) — uses build_ledger_event for proof_hash
+    try:
+        from routes.handlers.ledger_utils import build_ledger_event
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id,
+            user_id=user_id,
+            event_type="export",
+            entity_type="handover_export",
+            entity_id=export_id,
+            action="export_ready_for_review",
+            change_summary="Your handover export is ready for review",
+            metadata={"item_count": item_count, "status": "pending_review"}
+        )
+        supabase.table("ledger_events").insert(ledger_event).execute()
+    except Exception as e:
+        logger.warning(f"Ledger event insert failed for export {export_id}: {e}")
 
 
 __all__ = ["HandoverExportService", "HandoverExportResult", "create_export_ready_ledger_event"]

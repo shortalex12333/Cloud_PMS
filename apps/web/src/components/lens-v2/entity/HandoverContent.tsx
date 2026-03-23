@@ -13,7 +13,6 @@
  *
  * TODO notes for next engineer:
  * - Export PDF handler not wired (onClick is noop)
- * - Add Note handler not wired
  */
 
 import * as React from 'react';
@@ -188,7 +187,7 @@ export function HandoverContent() {
     {
       label: 'Export PDF',
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 4-8" /><rect x="2" y="2" width="20" height="20" rx="2" /></svg>,
-      onClick: () => {},
+      onClick: () => window.print(),
     },
     {
       label: 'Print',
@@ -318,7 +317,7 @@ export function HandoverContent() {
                   <path d="M6 9l6 6 4-8" /><rect x="2" y="2" width="20" height="20" rx="2" />
                 </svg>
               }
-              onClick={() => {}}
+              onClick={() => window.print()}
               items={dropdownItems}
             />
           ) : undefined
@@ -481,6 +480,15 @@ export function HandoverContent() {
         <NotesSection
           notes={noteItems}
           canAddNote
+          onAddNote={() => {
+            const addAction = getAction('add_to_handover');
+            if (addAction) {
+              openActionPopup({
+                ...addAction,
+                prefill: { ...addAction.prefill, entity_type: 'note' },
+              });
+            }
+          }}
         />
       </ScrollReveal>
 

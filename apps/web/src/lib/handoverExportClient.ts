@@ -3,11 +3,15 @@
  *
  * Resolves link tokens from handover export PDFs/HTMLs.
  * Single-surface architecture: /open?t=<token> -> resolve -> focus entity
+ *
+ * NOTE: handover-export is a SEPARATE microservice from Cloud_PMS pipeline-core.
+ * It is isolated into its own repo/Docker container for blast radius protection.
+ * It reads from the tenant DB (handover_items) and produces formal handover documents.
  */
 
 import { getValidJWT } from './authHelpers';
 
-// API base URL - handover export service on Render
+// API base URL - handover export service on Render (separate from pipeline-core)
 const HANDOVER_EXPORT_API_BASE = process.env.NEXT_PUBLIC_HANDOVER_EXPORT_API_BASE || 'https://handover-export.onrender.com';
 
 // Entity type constants for validation
@@ -192,7 +196,7 @@ export async function resolveOpenToken(token: string): Promise<ResolveResponse> 
 /**
  * Check if handover export service is available
  */
-async function checkServiceHealth(): Promise<boolean> {
+export async function checkServiceHealth(): Promise<boolean> {
   try {
     const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/health`, {
       method: 'GET',
@@ -222,7 +226,7 @@ export interface PipelineJobResponse {
 /**
  * Start an export pipeline job for a handover
  */
-async function startExportJob(handoverId: string, yachtId: string): Promise<PipelineRunResponse> {
+export async function startExportJob(handoverId: string, yachtId: string): Promise<PipelineRunResponse> {
   const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/pipeline/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -235,7 +239,7 @@ async function startExportJob(handoverId: string, yachtId: string): Promise<Pipe
 /**
  * Check the status of a pipeline export job
  */
-async function checkJobStatus(jobId: string): Promise<PipelineJobResponse> {
+export async function checkJobStatus(jobId: string): Promise<PipelineJobResponse> {
   const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/pipeline/job/${jobId}`);
   if (!response.ok) throw new Error('Failed to check job status');
   return response.json();
@@ -244,7 +248,7 @@ async function checkJobStatus(jobId: string): Promise<PipelineJobResponse> {
 /**
  * Retrieve the HTML report for a completed pipeline job
  */
-async function getReportHtml(jobId: string): Promise<string> {
+export async function getReportHtml(jobId: string): Promise<string> {
   const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/pipeline/report/${jobId}`);
   if (!response.ok) throw new Error('Failed to get report');
   return response.text();
