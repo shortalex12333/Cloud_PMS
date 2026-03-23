@@ -19,6 +19,7 @@ export type BootstrapStatus =
   | 'active'       // User has active yacht assignment
   | 'pending'      // User exists but account pending activation
   | 'inactive'     // Yacht is inactive
+  | 'subscription_required' // Yacht active but subscription not paid/expired/cancelled
   | 'error';       // Bootstrap failed (will retry)
 
 export type CelesteUser = {
@@ -30,6 +31,8 @@ export type CelesteUser = {
   tenantKeyAlias: string | null;  // For backend DB routing (e.g., "y85fe1119...")
   displayName: string | null;
   bootstrapStatus: BootstrapStatus;
+  subscriptionStatus?: string;
+  subscriptionPlan?: string;
   validatedAt: number;
 };
 
@@ -215,6 +218,24 @@ function processBootstrapData(baseUser: CelesteUser, data: any): CelesteUser {
       yachtId: data.yacht_id,
       yachtName: data.yacht_name,
       tenantKeyAlias: data.tenant_key_alias || null,
+    };
+  }
+
+  // Check subscription status before granting full access
+  // NULL/undefined = no subscription enforcement (legacy yachts)
+  const subStatus = data.subscription_status || 'active';
+  if (!['active', 'trial'].includes(subStatus)) {
+    console.log('[AuthContext] Subscription required:', subStatus);
+    return {
+      ...baseUser,
+      role: data.role || baseUser.role,
+      yachtId: data.yacht_id,
+      yachtName: data.yacht_name,
+      tenantKeyAlias: data.tenant_key_alias || null,
+      bootstrapStatus: 'subscription_required',
+      subscriptionStatus: subStatus,
+      subscriptionPlan: data.subscription_plan,
+      validatedAt: Date.now(),
     };
   }
 

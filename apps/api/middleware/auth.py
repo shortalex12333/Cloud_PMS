@@ -310,9 +310,9 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
             logger.warning(f"[Auth] User {user_id[:8]}... status is {user_account.get('status')}")
             return None
 
-        # Get yacht info from fleet_registry (including tenant_key_alias)
+        # Get yacht info from fleet_registry (including tenant_key_alias + subscription)
         fleet_result = client.table('fleet_registry').select(
-            'yacht_name, active, tenant_key_alias'
+            'yacht_name, active, tenant_key_alias, subscription_status, subscription_plan, subscription_expires_at'
         ).eq('yacht_id', user_account['yacht_id']).single().execute()
 
         if not fleet_result.data:
@@ -370,6 +370,9 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
             'department': tenant_dept,
             'status': user_account['status'],
             'yacht_name': fleet.get('yacht_name'),
+            'subscription_status': fleet.get('subscription_status') or 'active',
+            'subscription_plan': fleet.get('subscription_plan') or 'none',
+            'subscription_expires_at': str(fleet['subscription_expires_at']) if fleet.get('subscription_expires_at') else None,
         }
 
         # Cache for future requests
@@ -563,6 +566,9 @@ async def get_authenticated_user(
         'role': tenant['role'],
         'department': tenant.get('department', ''),
         'yacht_name': tenant.get('yacht_name'),
+        'subscription_status': tenant.get('subscription_status') or 'active',
+        'subscription_plan': tenant.get('subscription_plan') or 'none',
+        'subscription_expires_at': tenant.get('subscription_expires_at'),
     }
 
 

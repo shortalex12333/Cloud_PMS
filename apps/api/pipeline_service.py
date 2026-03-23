@@ -88,7 +88,7 @@ ALLOWED_ORIGINS_STR = os.getenv(
 
 # Normalize: strip whitespace, remove empties, deduplicate
 # Always include localhost for local dev regardless of env override
-_LOCAL_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3007", "http://localhost:3009", "http://localhost:8000"]
+_LOCAL_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3007", "http://localhost:3009", "http://localhost:3333", "http://localhost:8000"]
 ALLOWED_ORIGINS = list(dict.fromkeys([
     origin.strip()
     for origin in ALLOWED_ORIGINS_STR.split(",")
@@ -616,6 +616,9 @@ class BootstrapResponse(BaseModel):
     status: str = "PENDING"
     user_id: Optional[str] = None
     email: Optional[str] = None
+    subscription_status: Optional[str] = None
+    subscription_plan: Optional[str] = None
+    subscription_expires_at: Optional[str] = None
 
 
 @app.post("/v1/bootstrap", response_model=BootstrapResponse)
@@ -660,6 +663,9 @@ async def bootstrap(
         status='ACTIVE',  # get_authenticated_user only returns active users
         user_id=auth['user_id'],
         email=auth.get('email'),
+        subscription_status=auth.get('subscription_status') or 'active',
+        subscription_plan=auth.get('subscription_plan') or 'none',
+        subscription_expires_at=auth.get('subscription_expires_at'),
     )
 
 
