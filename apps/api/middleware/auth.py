@@ -370,7 +370,7 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
             'department': tenant_dept,
             'status': user_account['status'],
             'yacht_name': fleet.get('yacht_name'),
-            'subscription_status': fleet.get('subscription_status') or 'active',
+            'subscription_status': fleet.get('subscription_status') or 'paid',
             'subscription_plan': fleet.get('subscription_plan') or 'none',
             'subscription_expires_at': str(fleet['subscription_expires_at']) if fleet.get('subscription_expires_at') else None,
         }
@@ -566,7 +566,7 @@ async def get_authenticated_user(
         'role': tenant['role'],
         'department': tenant.get('department', ''),
         'yacht_name': tenant.get('yacht_name'),
-        'subscription_status': tenant.get('subscription_status') or 'active',
+        'subscription_status': tenant.get('subscription_status') or 'paid',
         'subscription_plan': tenant.get('subscription_plan') or 'none',
         'subscription_expires_at': tenant.get('subscription_expires_at'),
     }

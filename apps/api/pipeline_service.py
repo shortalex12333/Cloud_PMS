@@ -663,7 +663,7 @@ async def bootstrap(
         status='ACTIVE',  # get_authenticated_user only returns active users
         user_id=auth['user_id'],
         email=auth.get('email'),
-        subscription_status=auth.get('subscription_status') or 'active',
+        subscription_status=auth.get('subscription_status') or 'paid',
         subscription_plan=auth.get('subscription_plan') or 'none',
         subscription_expires_at=auth.get('subscription_expires_at'),
     )
