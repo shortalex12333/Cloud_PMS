@@ -223,8 +223,9 @@ function processBootstrapData(baseUser: CelesteUser, data: any): CelesteUser {
 
   // Check subscription status before granting full access
   // NULL/undefined = no subscription enforcement (legacy yachts)
-  const subStatus = data.subscription_status || 'active';
-  if (!['active', 'trial'].includes(subStatus)) {
+  // DB constraint allows: 'paid', 'unpaid', 'expired', 'cancelled', 'trial'
+  const subStatus = data.subscription_status || 'paid';
+  if (!['paid', 'active', 'trial'].includes(subStatus)) {
     console.log('[AuthContext] Subscription required:', subStatus);
     return {
       ...baseUser,
