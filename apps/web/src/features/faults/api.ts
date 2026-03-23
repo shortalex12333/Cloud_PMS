@@ -1,33 +1,38 @@
-import { callCelesteApi } from '@/lib/apiClient';
+import { supabase } from '@/lib/supabaseClient';
 import type { FetchParams, FetchResponse } from '@/features/entity-list/types';
 import type { Fault } from './types';
-
-interface ApiResponse {
-  data: Fault[];
-  total: number;
-}
 
 export async function fetchFaults(params: FetchParams): Promise<FetchResponse<Fault>> {
   const { offset, limit } = params;
 
-  const queryParams = new URLSearchParams({
-    offset: String(offset),
-    limit: String(limit),
-  });
+  const { data, count, error } = await supabase
+    .from('pms_faults')
+    .select(
+      'id, fault_code, title, description, status, severity, equipment_id, detected_at, resolved_at, created_at, updated_at',
+      { count: 'exact' },
+    )
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
-  const result = await callCelesteApi<ApiResponse>(`/v1/faults?${queryParams}`);
+  if (error) {
+    throw new Error(`Failed to fetch faults: ${error.message}`);
+  }
 
-  return { data: result.data, total: result.total };
+  return { data: (data ?? []) as Fault[], total: count ?? 0 };
 }
 
 export async function fetchFault(id: string, _token: string): Promise<Fault> {
-  // For single item fetch, we query the list with a specific ID
-  const result = await callCelesteApi<ApiResponse>(`/v1/faults?limit=1`);
+  const { data, error } = await supabase
+    .from('pms_faults')
+    .select(
+      'id, fault_code, title, description, status, severity, equipment_id, detected_at, resolved_at, created_at, updated_at',
+    )
+    .eq('id', id)
+    .single();
 
-  const fault = result.data.find((f) => f.id === id);
-  if (!fault) {
+  if (error || !data) {
     throw new Error(`Fault ${id} not found`);
   }
 
-  return fault;
+  return data as Fault;
 }

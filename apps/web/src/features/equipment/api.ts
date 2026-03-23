@@ -1,45 +1,38 @@
+import { supabase } from '@/lib/supabaseClient';
 import type { FetchParams, FetchResponse } from '@/features/entity-list/types';
 import type { Equipment } from './types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
-
 export async function fetchEquipment(params: FetchParams): Promise<FetchResponse<Equipment>> {
-  const { yachtId, token, offset, limit } = params;
+  const { offset, limit } = params;
 
-  const url = new URL(`${BASE_URL}/v1/equipment`);
-  url.searchParams.set('yacht_id', yachtId);
-  url.searchParams.set('offset', String(offset));
-  url.searchParams.set('limit', String(limit));
+  const { data, count, error } = await supabase
+    .from('pms_equipment')
+    .select(
+      'id, name, description, status, criticality, location, manufacturer, model, serial_number, attention_flag, attention_reason, created_at, updated_at',
+      { count: 'exact' },
+    )
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch equipment: ${response.status}`);
+  if (error) {
+    throw new Error(`Failed to fetch equipment: ${error.message}`);
   }
 
-  const json = await response.json();
-  const items = json.equipment || json.items || json.data || [];
-  const total = json.total ?? json.pagination?.total ?? items.length;
-
-  return { data: items, total };
+  return { data: (data ?? []) as Equipment[], total: count ?? 0 };
 }
 
-export async function fetchEquipmentItem(id: string, token: string): Promise<Equipment> {
-  const response = await fetch(`${BASE_URL}/v1/entity/equipment/${id}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+export async function fetchEquipmentItem(id: string, _token: string): Promise<Equipment> {
+  const { data, error } = await supabase
+    .from('pms_equipment')
+    .select(
+      'id, name, description, status, criticality, location, manufacturer, model, serial_number, attention_flag, attention_reason, created_at, updated_at',
+    )
+    .eq('id', id)
+    .single();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch equipment: ${response.status}`);
+  if (error || !data) {
+    throw new Error(`Equipment ${id} not found`);
   }
 
-  return response.json();
+  return data as Equipment;
 }

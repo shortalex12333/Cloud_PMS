@@ -23,7 +23,7 @@ import { supabase } from './supabaseClient';
 // Backend should validate signatures using the same salt
 const YACHT_SALT = process.env.NEXT_PUBLIC_YACHT_SALT || '';
 
-if (!YACHT_SALT && process.env.NODE_ENV === 'production') {
+if (!YACHT_SALT && process.env.NODE_ENV === 'production' && typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
   console.error('[authHelpers] CRITICAL: YACHT_SALT not configured in production');
 }
 

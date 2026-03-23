@@ -1,33 +1,38 @@
-import { callCelesteApi } from '@/lib/apiClient';
+import { supabase } from '@/lib/supabaseClient';
 import type { FetchParams, FetchResponse } from '@/features/entity-list/types';
 import type { Part } from './types';
-
-interface ApiResponse {
-  data: Part[];
-  total: number;
-}
 
 export async function fetchParts(params: FetchParams): Promise<FetchResponse<Part>> {
   const { offset, limit } = params;
 
-  const queryParams = new URLSearchParams({
-    offset: String(offset),
-    limit: String(limit),
-  });
+  const { data, count, error } = await supabase
+    .from('pms_parts')
+    .select(
+      'id, name, part_number, description, category, manufacturer, quantity_on_hand, minimum_quantity, unit, location, is_critical, created_at, updated_at',
+      { count: 'exact' },
+    )
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
-  const result = await callCelesteApi<ApiResponse>(`/v1/inventory?${queryParams}`);
+  if (error) {
+    throw new Error(`Failed to fetch parts: ${error.message}`);
+  }
 
-  return { data: result.data, total: result.total };
+  return { data: (data ?? []) as Part[], total: count ?? 0 };
 }
 
 export async function fetchPart(id: string, _token: string): Promise<Part> {
-  // For single item fetch, we query the list with a specific ID
-  const result = await callCelesteApi<ApiResponse>(`/v1/inventory?limit=1`);
+  const { data, error } = await supabase
+    .from('pms_parts')
+    .select(
+      'id, name, part_number, description, category, manufacturer, quantity_on_hand, minimum_quantity, unit, location, is_critical, created_at, updated_at',
+    )
+    .eq('id', id)
+    .single();
 
-  const part = result.data.find((p) => p.id === id);
-  if (!part) {
+  if (error || !data) {
     throw new Error(`Part ${id} not found`);
   }
 
-  return part;
+  return data as Part;
 }
