@@ -113,7 +113,7 @@ function highlightTerms(text: string, terms: string[]): React.ReactNode {
   const parts = text.split(re);
   if (parts.length === 1) return text;
   return parts.map((part, i) =>
-    re.test(part)
+    i % 2 === 1
       ? <mark key={i} style={MARK_STYLE}>{part}</mark>
       : part
   );
