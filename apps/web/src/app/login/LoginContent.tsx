@@ -187,7 +187,7 @@ function SunIcon() {
 export default function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, login, loading: authLoading, bootstrapping, error: authError } = useAuth();
+  const { user, login, logout, loading: authLoading, bootstrapping, error: authError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -260,6 +260,11 @@ export default function LoginContent() {
 
       if (user.bootstrapStatus === 'inactive') {
         console.log('[LoginPage] Yacht inactive');
+        return;
+      }
+
+      if (user.bootstrapStatus === 'subscription_required') {
+        console.log('[LoginPage] Subscription required');
         return;
       }
 
@@ -358,6 +363,50 @@ export default function LoginContent() {
           <p style={{ fontSize: '11px', color: 'var(--txt3)' }}>
             Contact support for assistance.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Subscription required
+  if (user && user.bootstrapStatus === 'subscription_required') {
+    const subStatus = user.subscriptionStatus || 'unpaid';
+    const message = subStatus === 'expired'
+      ? 'Your subscription has expired. Contact Celeste to renew.'
+      : subStatus === 'cancelled'
+        ? 'This subscription has been cancelled. Contact support to reactivate.'
+        : "Your vessel's subscription is awaiting payment. Contact your fleet administrator or reach out to contact@celeste7.ai.";
+
+    return (
+      <div style={{ ...CENTER_STATE, padding: '24px' }}>
+        <div style={{ width: '384px', maxWidth: '100%', textAlign: 'center' }}>
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '50%',
+            background: 'var(--surface-base)', border: '1px solid var(--border-sub)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px',
+          }}>
+            <span style={{ fontSize: '22px' }}>&#x1F512;</span>
+          </div>
+          <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--txt)', marginBottom: '8px' }}>Subscription Required</h1>
+          <p style={{ fontSize: '13px', color: 'var(--txt2)', marginBottom: '24px' }}>
+            {message}
+          </p>
+          <p style={{ fontSize: '11px', color: 'var(--txt3)', marginBottom: '16px' }}>
+            Signed in as {user.email}
+          </p>
+          <button
+            type="button"
+            onClick={logout}
+            style={{
+              padding: '8px 20px', borderRadius: '6px',
+              border: '1px solid var(--border-sub)', background: 'var(--surface-base)',
+              color: 'var(--txt2)', fontSize: '12px', cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
+            }}
+          >
+            Sign out
+          </button>
         </div>
       </div>
     );
