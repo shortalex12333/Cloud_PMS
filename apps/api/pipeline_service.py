@@ -616,6 +616,7 @@ class BootstrapResponse(BaseModel):
     status: str = "PENDING"
     user_id: Optional[str] = None
     email: Optional[str] = None
+    subscription_active: bool = True
     subscription_status: Optional[str] = None
     subscription_plan: Optional[str] = None
     subscription_expires_at: Optional[str] = None
@@ -663,8 +664,9 @@ async def bootstrap(
         status='ACTIVE',  # get_authenticated_user only returns active users
         user_id=auth['user_id'],
         email=auth.get('email'),
-        subscription_status=auth.get('subscription_status') or 'paid',
-        subscription_plan=auth.get('subscription_plan') or 'none',
+        subscription_active=auth.get('subscription_active', True),
+        subscription_status=auth.get('subscription_status'),
+        subscription_plan=auth.get('subscription_plan'),
         subscription_expires_at=auth.get('subscription_expires_at'),
     )
 

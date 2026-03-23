@@ -221,12 +221,10 @@ function processBootstrapData(baseUser: CelesteUser, data: any): CelesteUser {
     };
   }
 
-  // Check subscription status before granting full access
-  // NULL/undefined = no subscription enforcement (legacy yachts)
-  // DB constraint allows: 'paid', 'unpaid', 'expired', 'cancelled', 'trial'
-  const subStatus = data.subscription_status || 'paid';
-  if (!['paid', 'active', 'trial'].includes(subStatus)) {
-    console.log('[AuthContext] Subscription required:', subStatus);
+  // Check subscription gate — backend computes the boolean
+  // NULL/undefined subscription_active = no enforcement (legacy yachts)
+  if (data.subscription_active === false) {
+    console.log('[AuthContext] Subscription required:', data.subscription_status);
     return {
       ...baseUser,
       role: data.role || baseUser.role,
@@ -234,7 +232,7 @@ function processBootstrapData(baseUser: CelesteUser, data: any): CelesteUser {
       yachtName: data.yacht_name,
       tenantKeyAlias: data.tenant_key_alias || null,
       bootstrapStatus: 'subscription_required',
-      subscriptionStatus: subStatus,
+      subscriptionStatus: data.subscription_status,
       subscriptionPlan: data.subscription_plan,
       validatedAt: Date.now(),
     };

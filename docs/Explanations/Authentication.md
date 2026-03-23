@@ -62,32 +62,40 @@
     yachtName: "TEST_YACHT_001",
     tenantKeyAlias: "yTEST_YACHT_001",
     bootstrapStatus: "active",
-    subscriptionStatus: "active",
+    subscriptionActive: true,
+    subscriptionStatus: "paid",
     subscriptionPlan: "professional",
   }
 
   2b. Subscription gate (between bootstrap and dashboard)
 
   The bootstrap response includes subscription fields from fleet_registry:
-  - subscription_status: 'active' | 'trial' | 'unpaid' | 'expired' | 'cancelled'
+  - subscription_active: boolean (computed by backend: true if status is NULL, 'paid', or 'trial')
+  - subscription_status: 'paid' | 'unpaid' | 'expired' | 'cancelled' | 'trial' (raw DB value, used for gate messages)
   - subscription_plan: 'none' | 'starter' | 'professional' | 'enterprise'
   - subscription_expires_at: ISO timestamp or null
 
-  If subscription_status is NOT 'active' or 'trial', the frontend shows a
-  "Subscription Required" gate screen instead of the dashboard. The user stays
-  authenticated but cannot access the app. Messages vary by status:
+  The backend computes subscription_active as a single boolean:
+  - NULL status → true (legacy yachts, no enforcement)
+  - 'paid' or 'trial' → true
+  - 'unpaid', 'expired', 'cancelled' → false
+
+  If subscription_active is false, the frontend shows a "Subscription Required"
+  gate screen instead of the dashboard. The user stays authenticated but cannot
+  access the app. Messages vary by subscription_status:
 
   - unpaid:    "Your vessel's subscription is awaiting payment..."
   - expired:   "Your subscription has expired. Contact Celeste to renew."
   - cancelled: "This subscription has been cancelled..."
 
-  NULL subscription_status defaults to 'active' (no enforcement for legacy yachts).
   This is a frontend-only gate — the API does NOT block requests based on subscription.
 
   ┌──────────────────────┬────────────────────────────────────────────────────────────┐
   │ Field                │ Source                                                      │
   ├──────────────────────┼────────────────────────────────────────────────────────────┤
-  │ subscription_status  │ fleet_registry.subscription_status (Master DB)              │
+  │ subscription_active  │ Computed: status is NULL, 'paid', or 'trial'               │
+  ├──────────────────────┼────────────────────────────────────────────────────────────┤
+  │ subscription_status  │ fleet_registry.subscription_status (Master DB, raw)         │
   ├──────────────────────┼────────────────────────────────────────────────────────────┤
   │ subscription_plan    │ fleet_registry.subscription_plan (Master DB)                │
   ├──────────────────────┼────────────────────────────────────────────────────────────┤
