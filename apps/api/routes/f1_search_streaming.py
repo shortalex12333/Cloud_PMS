@@ -288,6 +288,8 @@ _pool: Optional[asyncpg.Pool] = None
 async def _init_connection(conn):
     """Initialize connection with statement_timeout (Supabase doesn't support as startup param)."""
     await conn.execute("SET statement_timeout = '800ms'")
+    # NOTE: hnsw.ef_search is set via SET LOCAL inside f1_search_cards (migration 40).
+    # Session-level SET here would be reset by Supavisor transaction mode.
 
 
 async def get_db_pool() -> asyncpg.Pool:

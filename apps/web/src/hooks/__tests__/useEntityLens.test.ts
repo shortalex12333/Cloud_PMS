@@ -7,6 +7,17 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ session: { access_token: 'test-token' }, user: { id: 'u1' } }),
 }));
 
+// Mock React Query
+const mockInvalidateQueries = vi.fn();
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+}));
+
+// Mock useNeedsAttention export
+vi.mock('@/hooks/useNeedsAttention', () => ({
+  ATTENTION_QUERY_KEY: ['attention'],
+}));
+
 const mockAction = {
   action_id: 'close_work_order',
   label: 'Close',
