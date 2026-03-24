@@ -92,76 +92,72 @@ async function addToHandover(
 }
 
 /**
- * Export handover to PDF
+ * Export handover via backend API
  *
- * After schema consolidation (2026-02-05), exports are created from handover_items.
- * Items are fetched directly from handover_items table for the yacht.
+ * Calls POST /v1/handover/export on the backend, which:
+ * 1. Fetches items from handover_items
+ * 2. Delegates to LLM microservice for professional summaries
+ * 3. Creates handover_exports record + ledger notification
+ * 4. Uploads HTML to Supabase Storage
  */
 async function exportHandover(
   context: ActionContext,
   params?: { format?: 'pdf' | 'docx'; department?: string }
 ): Promise<ActionResult> {
 
-  const format = params?.format || 'pdf';
-  const department = params?.department;
+  const format = params?.format || 'html';
 
   try {
-    // Get handover items for this yacht (filter by department if specified)
-    let query = supabase
-      .from('handover_items')
-      .select('*')
-      .eq('yacht_id', context.yacht_id)
-      .is('deleted_at', null);
-
-    if (department) {
-      query = query.eq('section', department);
-    }
-
-    const { data: items, error: itemsError } = await query.order('created_at', { ascending: false });
-
-    if (itemsError) {
+    // Get auth token for backend call
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
       return {
         success: false,
         action_name: 'export_handover',
         data: null,
-        error: { code: 'INTERNAL_ERROR', message: itemsError.message },
+        error: { code: 'FORBIDDEN', message: 'Authentication required' },
         confirmation_required: false,
       };
     }
 
-    // Create export record in handover_exports
-    const { data: exportRecord, error: exportError } = await supabase
-      .from('handover_exports')
-      .insert({
-        yacht_id: context.yacht_id,
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
+    const response = await fetch(`${apiUrl}/v1/handover/export`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         export_type: format,
-        department,
-        exported_by_user_id: context.user_id,
-        export_status: 'pending',
-      })
-      .select()
-      .single();
+        filter_by_user: false,
+      }),
+    });
 
-    if (exportError) {
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Export failed' }));
       return {
         success: false,
         action_name: 'export_handover',
         data: null,
-        error: { code: 'INTERNAL_ERROR', message: exportError.message },
+        error: { code: 'INTERNAL_ERROR', message: errorData.detail || `Export failed (${response.status})` },
         confirmation_required: false,
       };
     }
 
-    // Call export service (handover_export on Render)
+    const result = await response.json();
+
     return {
       success: true,
       action_name: 'export_handover',
       data: {
-        export_id: exportRecord.id,
+        export_id: result.export_id,
         format,
-        department,
-        export_url: `https://handover-export.onrender.com/api/v1/export/${exportRecord.id}?format=${format}`,
-        item_count: items?.length || 0,
+        total_items: result.total_items,
+        sections_count: result.sections_count,
+        document_hash: result.document_hash,
+        html_preview_url: result.html_preview_url,
       },
       error: null,
       confirmation_required: false,
