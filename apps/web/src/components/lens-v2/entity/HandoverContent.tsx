@@ -178,9 +178,16 @@ export function HandoverContent() {
   const DANGER_ACTIONS = new Set(['archive_handover', 'delete_handover']);
   const primaryActionId = 'sign_handover';
 
-  // Dynamic items from backend
+  // Actions that make sense on a handover export page
+  const ALLOWED_ACTIONS = new Set([
+    'sign_handover_incoming',
+    'regenerate_handover_summary',
+    'archive_handover',
+    'delete_handover',
+  ]);
+
   const dynamicItems: DropdownItem[] = availableActions
-    .filter((a) => a.action_id !== primaryActionId)
+    .filter((a) => a.action_id !== primaryActionId && ALLOWED_ACTIONS.has(a.action_id))
     .map((a) => ({
       label: a.label,
       onClick: SPECIAL_HANDLERS[a.action_id]
@@ -194,15 +201,10 @@ export function HandoverContent() {
       danger: DANGER_ACTIONS.has(a.action_id),
     }));
 
-  // Client-side items + dynamic items
+  // Client-side items + filtered backend actions
   const dropdownItems: DropdownItem[] = [
     {
       label: 'Export PDF',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 4-8" /><rect x="2" y="2" width="20" height="20" rx="2" /></svg>,
-      onClick: () => window.print(),
-    },
-    {
-      label: 'Print',
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>,
       onClick: () => window.print(),
     },
