@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log Receiving — Celeste Design Prototype</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+body { padding: 0; margin: 0; min-height: 100vh; background: var(--surface-base); }
+
+.app-topbar { height: 44px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--border-sub); background: var(--surface); gap: 12px; }
+.app-logo { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mark); }
+.app-vessel { font-size: 12px; color: var(--txt3); border-left: 1px solid var(--border-sub); padding-left: 12px; }
+.app-spacer { flex: 1; }
+.theme-btn { width: 32px; height: 32px; border-radius: 6px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--txt3); }
+
+/* ═══════════════════════════════════════════════════════
+   RECEIVING — full-page flow, NOT a modal behind the UI.
+   Clean stepped process with visible progress.
+   ═══════════════════════════════════════════════════════ */
+.recv-page {
+  max-width: 560px; margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+/* Back nav */
+.recv-back {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--txt3); cursor: pointer;
+  margin-bottom: 24px; background: none; border: none;
+  font-family: var(--font-sans);
+}
+.recv-back:hover { color: var(--mark); }
+.recv-back svg { width: 14px; height: 14px; }
+
+/* Page header */
+.recv-header { margin-bottom: 28px; }
+.recv-title { font-size: 22px; font-weight: 600; color: var(--txt); letter-spacing: -0.01em; }
+.recv-desc { font-size: 13px; color: var(--txt3); margin-top: 4px; line-height: 1.5; }
+
+/* Progress steps */
+.recv-steps {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 32px;
+}
+.recv-step {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--txt-ghost);
+}
+.recv-step.active { color: var(--mark); }
+.recv-step.done { color: var(--green); }
+.recv-step-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; font-family: var(--font-mono);
+  border: 1.5px solid var(--border-sub); color: var(--txt-ghost);
+}
+.recv-step.active .recv-step-num { border-color: var(--mark); color: var(--mark); background: var(--teal-bg); }
+.recv-step.done .recv-step-num { border-color: var(--green); color: #fff; background: var(--green); }
+.recv-step.done .recv-step-num svg { width: 12px; height: 12px; }
+.recv-step-line {
+  flex: 1; height: 1px; background: var(--border-sub);
+  margin: 0 12px;
+}
+.recv-step-line.done { background: var(--green); }
+
+/* Card sections */
+.recv-card {
+  background: var(--surface);
+  border-top: 1px solid rgba(255,255,255,0.09);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-left: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px; overflow: hidden;
+  margin-bottom: 16px;
+  padding: 20px;
+}
+.recv-card-title {
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--txt3); margin-bottom: 16px;
+}
+
+/* Document type selector */
+.recv-type-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+}
+.recv-type-btn {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; padding: 14px 8px; border-radius: 6px;
+  background: var(--surface-base); border: 1.5px solid var(--border-sub);
+  cursor: pointer; transition: all 80ms;
+  font-family: var(--font-sans);
+}
+.recv-type-btn:hover { border-color: var(--txt3); }
+.recv-type-btn.selected { border-color: var(--mark); background: var(--teal-bg); }
+.recv-type-btn svg { width: 20px; height: 20px; color: var(--txt3); }
+.recv-type-btn.selected svg { color: var(--mark); }
+.recv-type-btn span { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.04em; }
+.recv-type-btn.selected span { color: var(--mark); }
+
+/* Upload zone */
+.recv-upload-zone {
+  border: 1.5px dashed var(--border-sub);
+  border-radius: 8px; padding: 32px 16px;
+  text-align: center; cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+}
+.recv-upload-zone:hover { border-color: var(--mark); background: var(--teal-bg); }
+.recv-upload-zone svg { width: 28px; height: 28px; color: var(--txt3); margin-bottom: 8px; }
+.recv-upload-zone:hover svg { color: var(--mark); }
+.recv-upload-text { font-size: 13px; color: var(--txt3); }
+.recv-upload-text .teal { color: var(--mark); font-weight: 500; }
+.recv-upload-or { font-size: 11px; color: var(--txt-ghost); margin: 10px 0; }
+
+.recv-camera-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 6px;
+  background: var(--teal-bg); color: var(--mark);
+  border: 1px solid rgba(90,171,204,0.2);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: var(--font-sans);
+}
+.recv-camera-btn svg { width: 14px; height: 14px; }
+
+/* Preview (step 2 state) */
+.recv-preview {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px; border-radius: 6px;
+  background: var(--surface-base); border: 1px solid var(--border-sub);
+}
+.recv-preview-thumb {
+  width: 48px; height: 48px; border-radius: 4px;
+  background: var(--neutral-bg); display: flex;
+  align-items: center; justify-content: center;
+}
+.recv-preview-thumb svg { width: 20px; height: 20px; color: var(--txt3); }
+.recv-preview-info { flex: 1; }
+.recv-preview-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+.recv-preview-size { font-size: 11px; color: var(--txt3); font-family: var(--font-mono); }
+.recv-preview-remove {
+  padding: 4px 10px; border-radius: 4px;
+  background: none; color: var(--txt3); border: 1px solid var(--border-sub);
+  font-size: 11px; cursor: pointer; font-family: var(--font-sans);
+}
+.recv-preview-remove:hover { color: var(--red); border-color: var(--red-border); }
+
+/* Extracted data (step 3 state) */
+.recv-data-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 8px 0; border-top: 1px solid var(--border-faint);
+  min-height: 36px;
+}
+.recv-data-row:first-child { border-top: none; }
+.recv-data-label {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  min-width: 110px; padding-top: 2px;
+}
+.recv-data-value { font-size: 13px; color: var(--txt); flex: 1; }
+.recv-data-value.mono { font-family: var(--font-mono); font-size: 12px; }
+.recv-data-value.green { color: var(--green); }
+.recv-confidence {
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 2px 6px; border-radius: 3px;
+}
+.recv-confidence.high { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.recv-confidence.medium { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+
+/* Action buttons */
+.recv-actions {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 24px;
+}
+.recv-btn-primary {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 20px; border-radius: 8px;
+  background: var(--teal-bg); color: var(--mark);
+  border: 1px solid rgba(90,171,204,0.2);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: var(--font-sans);
+}
+.recv-btn-primary:hover { background: rgba(90,171,204,0.18); }
+.recv-btn-primary svg { width: 14px; height: 14px; }
+.recv-btn-secondary {
+  padding: 10px 16px; border-radius: 8px;
+  background: none; color: var(--txt2);
+  border: 1px solid var(--border-sub);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+/* Light */
+[data-theme="light"] .recv-card { border-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .recv-upload-zone { border-color: rgba(0,0,0,0.12); }
+</style>
+</head>
+<body>
+
+<div class="app-topbar">
+  <span class="app-logo">Celeste</span>
+  <span class="app-vessel">SY M/Y Test Vessel</span>
+  <div class="app-spacer"></div>
+  <button class="theme-btn" onclick="toggleTheme()">
+    <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  </button>
+</div>
+
+<div class="recv-page">
+
+  <button class="recv-back">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    Back to search
+  </button>
+
+  <div class="recv-header">
+    <div class="recv-title">Log Receiving</div>
+    <div class="recv-desc">Upload or photograph a delivery document. We'll extract vendor, items, and quantities automatically.</div>
+  </div>
+
+  <!-- Progress Steps -->
+  <div class="recv-steps">
+    <div class="recv-step done">
+      <div class="recv-step-num">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      Select Type
+    </div>
+    <div class="recv-step-line done"></div>
+    <div class="recv-step active">
+      <div class="recv-step-num">2</div>
+      Upload
+    </div>
+    <div class="recv-step-line"></div>
+    <div class="recv-step">
+      <div class="recv-step-num">3</div>
+      Review
+    </div>
+    <div class="recv-step-line"></div>
+    <div class="recv-step">
+      <div class="recv-step-num">4</div>
+      Save
+    </div>
+  </div>
+
+  <!-- Step 1: Document Type (completed state shown) -->
+  <div class="recv-card">
+    <div class="recv-card-title">Document Type</div>
+    <div class="recv-type-grid">
+      <div class="recv-type-btn selected" onclick="selectType(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><path d="M6 16h4"/><path d="M14 16h4"/></svg>
+        <span>Invoice</span>
+      </div>
+      <div class="recv-type-btn" onclick="selectType(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        <span>Packing Slip</span>
+      </div>
+      <div class="recv-type-btn" onclick="selectType(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span>Photo</span>
+      </div>
+      <div class="recv-type-btn" onclick="selectType(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>Other</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Upload -->
+  <div class="recv-card">
+    <div class="recv-card-title">Upload Document</div>
+
+    <div class="recv-upload-zone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div class="recv-upload-text">Drop file here or <span class="teal">browse</span></div>
+      <div class="recv-upload-or">or</div>
+      <button class="recv-camera-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Take Photo
+      </button>
+    </div>
+
+    <!-- Preview (shown after upload) -->
+    <div class="recv-preview" style="margin-top:12px; display:none;">
+      <div class="recv-preview-thumb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div class="recv-preview-info">
+        <div class="recv-preview-name">marine-spares-invoice-2026-0087.pdf</div>
+        <div class="recv-preview-size">245 KB</div>
+      </div>
+      <button class="recv-preview-remove">Remove</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Extracted Data (shown after processing) -->
+  <div class="recv-card" style="display:none;" id="review-card">
+    <div class="recv-card-title">Extracted Data <span class="recv-confidence high" style="margin-left:8px;">High Confidence</span></div>
+
+    <div class="recv-data-row">
+      <div class="recv-data-label">Vendor</div>
+      <div class="recv-data-value">Marine Spares International</div>
+    </div>
+    <div class="recv-data-row">
+      <div class="recv-data-label">Invoice No.</div>
+      <div class="recv-data-value mono">INV-2026-0087</div>
+    </div>
+    <div class="recv-data-row">
+      <div class="recv-data-label">Date</div>
+      <div class="recv-data-value mono">22 Mar 2026</div>
+    </div>
+    <div class="recv-data-row">
+      <div class="recv-data-label">PO Reference</div>
+      <div class="recv-data-value"><span style="color:var(--mark); cursor:pointer; text-decoration:underline; text-decoration-color:rgba(90,171,204,0.3);">PO-2026-0087</span></div>
+    </div>
+    <div class="recv-data-row">
+      <div class="recv-data-label">Total</div>
+      <div class="recv-data-value mono" style="font-weight:600;">€ 1,247.50</div>
+    </div>
+    <div class="recv-data-row">
+      <div class="recv-data-label">Line Items</div>
+      <div class="recv-data-value">
+        <div style="font-size:12px; margin-bottom:4px;">Watermaker membrane × 1 — <span class="mono">€ 890.00</span></div>
+        <div style="font-size:12px; margin-bottom:4px;">Fuel filter element × 4 — <span class="mono">€ 124.00</span></div>
+        <div style="font-size:12px;">O-ring set × 3 — <span class="mono">€ 233.50</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="recv-actions">
+    <button class="recv-btn-primary" onclick="document.getElementById('review-card').style.display='block'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload &amp; Process
+    </button>
+    <button class="recv-btn-secondary">Cancel</button>
+  </div>
+
+</div>
+
+<script src="lens-base.js"></script>
+<script>
+function selectType(el) {
+  el.parentElement.querySelectorAll('.recv-type-btn').forEach(function(b) { b.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+</script>
+</body>
+</html>

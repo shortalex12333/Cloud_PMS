@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger Drawer — Celeste Design Prototype</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+body { padding: 0; margin: 0; min-height: 100vh; background: var(--surface-base); }
+
+/* Topbar stub */
+.app-topbar { height: 44px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--border-sub); background: var(--surface); gap: 12px; }
+.app-logo { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mark); }
+.app-vessel { font-size: 12px; color: var(--txt3); border-left: 1px solid var(--border-sub); padding-left: 12px; }
+.app-spacer { flex: 1; }
+.open-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-sub); background: none; color: var(--mark); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans); }
+.open-btn:hover { background: var(--surface-hover); }
+.theme-btn { width: 32px; height: 32px; border-radius: 6px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--txt3); }
+.theme-btn:hover { background: var(--surface-hover); }
+
+/* Backdrop */
+.backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 90; opacity: 0; pointer-events: none; transition: opacity 200ms; }
+.backdrop.visible { opacity: 1; pointer-events: auto; }
+
+/* ═══════════════════════════════════════════════════════
+   LEDGER DRAWER — right-side, same pattern as handover
+   ═══════════════════════════════════════════════════════ */
+.ledger-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 480px; background: var(--surface);
+  border-left: 1px solid var(--border-side);
+  box-shadow: -20px 0 80px rgba(0,0,0,0.50), -4px 0 20px rgba(0,0,0,0.30),
+              inset 0 1px 0 rgba(255,255,255,0.05);
+  display: flex; flex-direction: column; z-index: 100;
+  transform: translateX(100%); opacity: 0; pointer-events: none;
+  transition: opacity 180ms ease, transform 250ms cubic-bezier(0.16,1,0.3,1);
+}
+.ledger-drawer.open { transform: translateX(0); opacity: 1; pointer-events: auto; }
+
+/* Header */
+.ld-hdr {
+  display: flex; align-items: center; padding: 14px 16px;
+  border-bottom: 1px solid var(--border-sub); gap: 10px; flex-shrink: 0;
+}
+.ld-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--amber-bg); display: flex;
+  align-items: center; justify-content: center;
+}
+.ld-icon svg { width: 14px; height: 14px; color: var(--amber); }
+.ld-hdr-text { flex: 1; }
+.ld-title { font-size: 14px; font-weight: 600; color: var(--txt); }
+.ld-subtitle { font-size: 11px; color: var(--txt3); font-family: var(--font-mono); margin-top: 1px; }
+.ld-close {
+  width: 32px; height: 32px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--txt-ghost); background: none; border: none;
+}
+.ld-close:hover { background: var(--surface-hover); color: var(--txt2); }
+
+/* Toggle bar — Me / Department */
+.ld-toggle-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border-faint); flex-shrink: 0;
+}
+.ld-pill-group {
+  display: flex; align-items: center; padding: 2px;
+  background: var(--surface-base); border-radius: 6px;
+  border: 1px solid var(--border-sub);
+}
+.ld-pill {
+  padding: 5px 14px; border-radius: 4px;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  color: var(--txt3); background: none; border: none;
+  font-family: var(--font-sans); transition: all 80ms;
+}
+.ld-pill.active { background: var(--teal-bg); color: var(--mark); }
+.ld-pill:hover:not(.active) { color: var(--txt2); }
+.ld-toggle-spacer { flex: 1; }
+.ld-reads-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 4px;
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  background: none; border: 1px solid var(--border-sub);
+  color: var(--txt3); font-family: var(--font-sans);
+}
+.ld-reads-btn:hover { background: var(--surface-hover); }
+.ld-reads-btn.active { background: var(--teal-bg); color: var(--mark); border-color: rgba(90,171,204,0.2); }
+.ld-reads-btn svg { width: 12px; height: 12px; }
+
+/* Body */
+.ld-body { flex: 1; overflow-y: auto; padding: 8px 12px 16px; background: var(--surface-base); }
+
+/* Day groups — same card pattern as handover/show-related */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ld-day-group { opacity: 0; animation: fadeSlideIn 250ms ease forwards; margin-bottom: 6px; }
+.ld-day-group:nth-child(1) { animation-delay: 0ms; }
+.ld-day-group:nth-child(2) { animation-delay: 80ms; }
+.ld-day-group:nth-child(3) { animation-delay: 160ms; }
+
+.ld-day-card {
+  background: var(--surface);
+  border-top: 1px solid rgba(255,255,255,0.09);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-left: 1px solid rgba(255,255,255,0.05);
+  border-radius: 4px; overflow: hidden;
+}
+.ld-day-hdr {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px; cursor: pointer; user-select: none;
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--txt);
+}
+.ld-day-hdr:hover { background: rgba(255,255,255,0.03); }
+.ld-day-label { flex: 1; }
+.ld-day-counts { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 400; }
+.ld-day-mut { color: var(--green); display: flex; align-items: center; gap: 3px; }
+.ld-day-read { color: var(--amber); display: flex; align-items: center; gap: 3px; }
+.ld-day-mut svg, .ld-day-read svg { width: 10px; height: 10px; }
+.ld-day-chevron { width: 12px; height: 12px; color: var(--txt-ghost); transition: transform 150ms; }
+.ld-day-hdr.collapsed .ld-day-chevron { transform: rotate(-90deg); }
+.ld-day-items { overflow: hidden; }
+.ld-day-items.collapsed { display: none; }
+
+/* Event rows — Spotlight result-row pattern */
+.ld-event {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; min-height: 44px; cursor: pointer;
+  transition: background 60ms;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.ld-event:first-of-type { border-top: none; }
+.ld-event:hover { background: rgba(255,255,255,0.04); }
+.ld-event-icon { width: 14px; height: 14px; flex-shrink: 0; }
+.ld-event-icon.mutation { color: var(--green); }
+.ld-event-icon.read { color: var(--amber); }
+.ld-event-text { flex: 1; min-width: 0; }
+.ld-event-action {
+  font-size: 13px; font-weight: 500; color: var(--txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ld-event-action .entity-name { color: var(--mark); }
+.ld-event-sub {
+  font-size: 10.5px; color: var(--txt2); font-family: var(--font-mono);
+  letter-spacing: 0.03em; margin-top: 1px;
+}
+.ld-event-ts {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--txt-ghost); flex-shrink: 0;
+}
+
+/* Footer */
+.ld-footer {
+  display: flex; align-items: center; gap: 4px; padding: 8px 12px; margin-top: 4px;
+}
+.ld-footer-count { font-size: 10px; color: var(--txt3); font-family: var(--font-mono); }
+
+/* Light mode */
+[data-theme="light"] .ledger-drawer { border-left-color: rgba(0,0,0,0.08); box-shadow: -20px 0 80px rgba(0,0,0,0.12); }
+[data-theme="light"] .ld-day-card { border-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .ld-body { background: #F0F0F0; }
+[data-theme="light"] .ld-event:hover { background: rgba(0,0,0,0.03); }
+</style>
+</head>
+<body>
+
+<div class="app-topbar">
+  <span class="app-logo">Celeste</span>
+  <span class="app-vessel">SY M/Y Test Vessel</span>
+  <div class="app-spacer"></div>
+  <button class="open-btn" onclick="toggle()">Open Ledger</button>
+  <button class="theme-btn" onclick="toggleTheme()">
+    <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  </button>
+</div>
+
+<div class="backdrop" id="backdrop" onclick="toggle()"></div>
+
+<div class="ledger-drawer" id="drawer">
+
+  <div class="ld-hdr">
+    <div class="ld-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+    </div>
+    <div class="ld-hdr-text">
+      <div class="ld-title">Ledger</div>
+      <div class="ld-subtitle">Activity timeline</div>
+    </div>
+    <button class="ld-close" onclick="toggle()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <div class="ld-toggle-bar">
+    <div class="ld-pill-group">
+      <button class="ld-pill active" onclick="selectPill(this)">Me</button>
+      <button class="ld-pill" onclick="selectPill(this)">Department</button>
+    </div>
+    <div class="ld-toggle-spacer"></div>
+    <button class="ld-reads-btn" onclick="this.classList.toggle('active')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      Reads
+    </button>
+  </div>
+
+  <div class="ld-body">
+
+    <!-- ═══ Today ═══ -->
+    <div class="ld-day-group">
+      <div class="ld-day-card">
+        <div class="ld-day-hdr" onclick="toggleDay(this)">
+          <span class="ld-day-label">Today</span>
+          <div class="ld-day-counts">
+            <span class="ld-day-mut">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              8
+            </span>
+            <span class="ld-day-read">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              3
+            </span>
+          </div>
+          <svg class="ld-day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="ld-day-items">
+
+          <div class="ld-event">
+            <svg class="ld-event-icon mutation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <div class="ld-event-text">
+              <div class="ld-event-action"><span class="entity-name">WO-1058</span> — status changed to In Progress</div>
+              <div class="ld-event-sub">WORK ORDER · R. CHEN · ENGINEERING</div>
+            </div>
+            <span class="ld-event-ts">14:32</span>
+          </div>
+
+          <div class="ld-event">
+            <svg class="ld-event-icon mutation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <div class="ld-event-text">
+              <div class="ld-event-action"><span class="entity-name">F-0233</span> — note added</div>
+              <div class="ld-event-sub">FAULT · R. CHEN · ENGINE ROOM</div>
+            </div>
+            <span class="ld-event-ts">13:15</span>
+          </div>
+
+          <div class="ld-event">
+            <svg class="ld-event-icon mutation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <div class="ld-event-text">
+              <div class="ld-event-action"><span class="entity-name">PO-2026-0087</span> — created</div>
+              <div class="ld-event-sub">PURCHASE ORDER · R. CHEN</div>
+            </div>
+            <span class="ld-event-ts">11:40</span>
+          </div>
+
+          <div class="ld-event">
+            <svg class="ld-event-icon mutation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            <div class="ld-event-text">
+              <div class="ld-event-action"><span class="entity-name">WO-1042</span> — checklist item completed</div>
+              <div class="ld-event-sub">WORK ORDER · R. CHEN · STEP 3 OF 5</div>
+            </div>
+            <span class="ld-event-ts">10:15</span>
+          </div>
+
+          <div class="ld-event">
+            <svg class="ld-event-icon mutation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div class="ld-event-text">
+              <div class="ld-event-action">Handover note added — <span class="entity-name">starboard engine coolant</span></div>
+              <div class="ld-event-sub">HANDOVER · R. CHEN</div>
+            </div>
+            <span class="ld-event-ts">09:40</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Yesterday ═══ -->
+    <div class="ld-day-group">
+      <div class="ld-day-card">
+        <div class="ld-day-hdr" onclick="toggleDay(this)">
+          <span class="ld-day-label">Yesterday</span>
+          <div class="ld-day-counts">
+            <span class="ld-day-mut">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              5
+            </span>
+          </div>
+          <svg class="ld-day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="ld-day-items">
+
+          <div class="ld-event">
+            <svg class="ld-event-icon mutation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <div class="ld-event-text">
+              <div class="ld-event-action"><span class="entity-name">E-012</span> — running hours updated</div>
+              <div class="ld-event-sub">EQUIPMENT · R. CHEN · 4,523 HRS</div>
+            </div>
+            <span class="ld-event-ts">16:05</span>
+          </div>
+
+          <div class="ld-event">
+            <svg class="ld-event-icon mutation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            <div class="ld-event-text">
+              <div class="ld-event-action"><span class="entity-name">WO-1035</span> — archived</div>
+              <div class="ld-event-sub">WORK ORDER · R. CHEN</div>
+            </div>
+            <span class="ld-event-ts">14:20</span>
+          </div>
+
+          <div class="ld-event">
+            <svg class="ld-event-icon mutation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div class="ld-event-text">
+              <div class="ld-event-action"><span class="entity-name">CERT-2026-004</span> — renewed</div>
+              <div class="ld-event-sub">CERTIFICATE · LLOYD'S · EXP 15 SEP 2027</div>
+            </div>
+            <span class="ld-event-ts">10:30</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Sat 22 Mar (collapsed) ═══ -->
+    <div class="ld-day-group">
+      <div class="ld-day-card">
+        <div class="ld-day-hdr collapsed" onclick="toggleDay(this)">
+          <span class="ld-day-label">Sat 22 Mar</span>
+          <div class="ld-day-counts">
+            <span class="ld-day-mut">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              12
+            </span>
+            <span class="ld-day-read">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              7
+            </span>
+          </div>
+          <svg class="ld-day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="ld-day-items collapsed"></div>
+      </div>
+    </div>
+
+    <div class="ld-footer">
+      <span class="ld-footer-count">25 events · 3 days</span>
+    </div>
+  </div>
+
+</div>
+
+<script src="lens-base.js"></script>
+<script>
+function toggle() {
+  document.getElementById('drawer').classList.toggle('open');
+  document.getElementById('backdrop').classList.toggle('visible');
+}
+function toggleDay(hdr) {
+  hdr.classList.toggle('collapsed');
+  hdr.nextElementSibling.classList.toggle('collapsed');
+}
+function selectPill(el) {
+  el.parentElement.querySelectorAll('.ld-pill').forEach(function(p) { p.classList.remove('active'); });
+  el.classList.add('active');
+}
+setTimeout(function() { toggle(); }, 300);
+</script>
+</body>
+</html>
