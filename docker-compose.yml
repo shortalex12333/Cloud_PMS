@@ -70,6 +70,8 @@ services:
       - AZURE_READ_CLIENT_SECRET=${AZURE_READ_CLIENT_SECRET}
       - AZURE_WRITE_APP_ID=f0b8944b-8127-4f0f-8ed5-5487462df50c
       - AZURE_WRITE_CLIENT_SECRET=${AZURE_WRITE_CLIENT_SECRET}
+      - HANDOVER_EXPORT_SERVICE_URL=http://host.docker.internal:10000
+      - HANDOVER_USE_MICROSERVICE=true
     command: ["sh", "-c", "uvicorn pipeline_service:app --host 0.0.0.0 --port 8000"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]

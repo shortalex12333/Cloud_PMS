@@ -396,97 +396,61 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     fetchItems();
   }, [user?.id, fetchItems]);
 
-  // Handle export - creates local export record with editable content
+  // Handle export - calls backend API which delegates to LLM microservice
   const handleExport = useCallback(async () => {
     if (!user?.id || !user?.yachtId || items.length === 0) return;
 
     setExporting(true);
     try {
-      // Build editable content JSON from items
-      const editableContent = {
-        title: `Handover Report - ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`,
-        generated_at: new Date().toISOString(),
-        yacht_id: user.yachtId,
-        prepared_by: user.displayName || user.email || 'Unknown',
-        sections: items.map((item, idx) => ({
-          id: `section-${item.id.slice(0, 8)}`,
-          title: item.entity_type ? item.entity_type.charAt(0).toUpperCase() + item.entity_type.slice(1).replace('_', ' ') : 'Note',
-          content: item.summary || '',
-          items: [{
-            id: `item-${item.id.slice(0, 8)}`,
-            content: item.summary || '',
-            entity_type: item.entity_type,
-            entity_id: item.entity_id,
-            priority: item.is_critical ? 'critical' : item.requires_action ? 'action' : 'fyi',
-          }],
-          is_critical: item.is_critical,
-          order: idx,
-        })),
-        signature_section: {
-          outgoing: { role: 'outgoing', signer_name: null, signed_at: null, signature_image: null },
-          incoming: { role: 'incoming', signer_name: null, signed_at: null, signature_image: null },
-          hod: null,
-        },
-        metadata: {
-          source: 'handover_draft_panel',
-          parsed_at: new Date().toISOString(),
-          section_count: items.length,
-          has_critical: items.some(i => i.is_critical),
-        },
-      };
-
-      // Create handover_exports record
-      const { data: exportRecord, error: exportError } = await supabase
-        .from('handover_exports')
-        .insert({
-          yacht_id: user.yachtId,
-          created_by: user.id,
-          title: editableContent.title,
-          item_count: items.length,
-          edited_content: editableContent,
-          status: 'ready',
-          review_status: 'pending_review',
-          export_status: 'pending',
-        })
-        .select('id')
-        .single();
-
-      if (exportError) {
-        console.error('[HandoverDraftPanel] Export record error:', exportError);
-        throw new Error('Failed to create export record');
+      // Get auth token for backend API call
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        throw new Error('Authentication required — please log in again');
       }
 
-      // Mark items as exported
+      // Call backend export endpoint — it handles:
+      // 1. Fetching items from handover_items
+      // 2. Calling LLM microservice for professional summaries
+      // 3. Creating handover_exports record
+      // 4. Uploading HTML to Supabase Storage
+      // 5. Creating ledger notification
+      const response = await fetch(`${RENDER_API_URL}/v1/handover/export`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          export_type: 'html',
+          filter_by_user: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Export failed' }));
+        throw new Error(errorData.detail || `Export failed (${response.status})`);
+      }
+
+      const result = await response.json();
+      const exportId = result.export_id;
+
+      // Mark items as exported in handover_items
       const itemIds = items.map(i => i.id);
       await supabase
         .from('handover_items')
         .update({ export_status: 'exported', status: 'exported' })
         .in('id', itemIds);
 
-      // Log to ledger for user notification
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (token) {
-        fetch(`${RENDER_API_URL}/v1/ledger/record`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
+      toast.success(
+        `Handover exported — ${result.total_items} items, ${result.sections_count} sections`,
+        {
+          action: {
+            label: 'View',
+            onClick: () => router.push(`/handover-export/${exportId}`),
           },
-          body: JSON.stringify({
-            event_name: 'handover_export_ready',
-            payload: {
-              yacht_id: user.yachtId,
-              user_id: user.id,
-              export_id: exportRecord.id,
-              item_count: items.length,
-              has_critical: items.some(i => i.is_critical),
-            },
-          }),
-        }).catch(() => {});
-      }
-
-      toast.success('Your handover will be visible in ledger when complete (~5 minutes)');
+        }
+      );
       fetchItems(); // Refresh to hide exported items
     } catch (err) {
       console.error('[HandoverDraftPanel] Export error:', err);
@@ -494,7 +458,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     } finally {
       setExporting(false);
     }
-  }, [user?.id, user?.yachtId, user?.displayName, user?.email, items, fetchItems, supabase]);
+  }, [user?.id, user?.yachtId, items, fetchItems, supabase, router]);
 
   // Toggle day expansion
   const toggleDay = useCallback((date: string) => {

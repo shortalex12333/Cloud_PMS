@@ -17,17 +17,22 @@ Editable Workflow Routes (two-bucket storage):
 """
 
 import logging
+import os
 from datetime import date, datetime
 from typing import Optional, List
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from services.handover_export_service import HandoverExportService
+from services.handover_export_service import HandoverExportService, create_export_ready_ledger_event
 from services.handover_html_parser import parse_handover_html
+from services.handover_microservice_client import HandoverMicroserviceClient
 from middleware.auth import get_authenticated_user
 
 logger = logging.getLogger(__name__)
+
+HANDOVER_USE_MICROSERVICE = os.environ.get("HANDOVER_USE_MICROSERVICE", "false").lower() == "true"
 
 router = APIRouter(prefix="/v1/handover", tags=["handover"])
 
@@ -76,6 +81,239 @@ async def generate_export(
         # Get db client from app state (injected via dependency)
         from integrations.supabase import get_supabase_client
         db = get_supabase_client()
+
+        # ── Microservice delegation (feature-flagged) ────────────────────
+        if HANDOVER_USE_MICROSERVICE:
+            try:
+                from datetime import timezone
+
+                logger.info("Handover export: using microservice delegation (yacht=%s)", yacht_id)
+
+                # 1. Fetch items from handover_items for this yacht
+                query = db.table("handover_items").select("*").eq("yacht_id", yacht_id).is_("deleted_at", "null")
+                if request.item_ids:
+                    query = query.in_("id", request.item_ids)
+                if request.date_from:
+                    query = query.gte("created_at", request.date_from.isoformat())
+                if request.date_to:
+                    query = query.lte("created_at", request.date_to.isoformat())
+                if not request.include_completed:
+                    query = query.neq("status", "completed")
+                if request.filter_by_user:
+                    query = query.eq("added_by", user_id)
+                items_result = query.order("created_at", desc=True).limit(200).execute()
+
+                raw_items = items_result.data or []
+                if not raw_items:
+                    logger.info("Microservice path: no items found, falling through to local export")
+                    raise ValueError("no_items")
+
+                # 2. Get user display name for the template
+                user_name = "Unknown User"
+                try:
+                    profile_result = db.table("auth_users_profiles").select(
+                        "name"
+                    ).eq("id", user_id).limit(1).execute()
+                    if profile_result.data and profile_result.data[0].get("name"):
+                        user_name = profile_result.data[0]["name"]
+                except Exception as profile_err:
+                    logger.warning("Could not fetch user profile for %s: %s", user_id, profile_err)
+
+                # 3. Serialize items and call microservice
+                serialized_items = []
+                for item in raw_items:
+                    serialized_items.append({
+                        "id": item["id"],
+                        "yacht_id": item.get("yacht_id", yacht_id),
+                        "entity_type": item.get("entity_type"),
+                        "entity_id": item.get("entity_id"),
+                        "summary": item.get("summary", ""),
+                        "category": item.get("category"),
+                        "priority": item.get("priority", 0),
+                        "is_critical": item.get("is_critical", False),
+                        "requires_action": item.get("requires_action", False),
+                        "action_summary": item.get("action_summary"),
+                        "added_by": item.get("added_by"),
+                        "section": item.get("section"),
+                    })
+
+                ms_client = HandoverMicroserviceClient()
+                period_start = request.date_from.isoformat() if request.date_from else None
+                period_end = request.date_to.isoformat() if request.date_to else None
+
+                ms_result = await ms_client.transform_handover(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    user_name=user_name,
+                    items=serialized_items,
+                    period_start=period_start,
+                    period_end=period_end,
+                )
+
+                # 4. Unpack microservice response
+                html_content = ms_result["html"]
+                document_hash = ms_result.get("document_hash", "")
+                sections = ms_result.get("sections", [])
+                metadata = ms_result.get("metadata", {})
+                now_iso = datetime.now(timezone.utc).isoformat()
+
+                # 5. Write handover_entries — one per section item (truth seeds)
+                # Valid presentation_bucket values per DB check constraint
+                VALID_BUCKETS = {"Command", "Engineering", "ETO_AVIT", "Deck", "Interior", "Galley", "Security", "Admin_Compliance"}
+                for section in sections:
+                    bucket = section["bucket"]
+                    if bucket not in VALID_BUCKETS:
+                        bucket = "Command"  # Default for unknown categories
+                    for s_item in section.get("items", []):
+                        try:
+                            db.table("handover_entries").insert({
+                                "yacht_id": yacht_id,
+                                "created_by_user_id": user_id,
+                                "primary_domain": s_item.get("domain_code") or "GEN-01",
+                                "presentation_bucket": bucket,
+                                "narrative_text": s_item.get("summary_text", ""),
+                                "summary_text": s_item.get("summary_text", ""),
+                                "source_entity_type": s_item.get("source_entity_type"),
+                                "is_critical": s_item.get("is_critical", False),
+                                "status": "included",
+                            }).execute()
+                        except Exception as entry_err:
+                            logger.warning("Failed to insert handover_entry: %s", entry_err)
+
+                # 6. Write handover_drafts
+                draft_id = str(uuid4())
+                try:
+                    db.table("handover_drafts").insert({
+                        "id": draft_id,
+                        "yacht_id": yacht_id,
+                        "period_start": period_start or now_iso,
+                        "period_end": period_end or now_iso,
+                        "generated_by_user_id": user_id,
+                        "state": "DRAFT",
+                        "generation_method": "ai_assisted",
+                        "total_entries": metadata.get("total_items_output", 0),
+                        "critical_entries": metadata.get("critical_count", 0),
+                    }).execute()
+                except Exception as draft_err:
+                    logger.warning("Failed to insert handover_draft %s: %s", draft_id, draft_err)
+
+                # 7. Write handover_draft_sections and handover_draft_items
+                # Deduplicate sections by bucket (UNIQUE constraint on draft_id + bucket_name)
+                merged_sections: dict = {}
+                for section in sections:
+                    bucket = section["bucket"]
+                    if bucket not in VALID_BUCKETS:
+                        bucket = "Command"
+                    if bucket not in merged_sections:
+                        merged_sections[bucket] = {
+                            "display_title": section.get("display_title", bucket),
+                            "items": [],
+                        }
+                    merged_sections[bucket]["items"].extend(section.get("items", []))
+
+                section_id_map: dict = {}
+                for section_idx, (bucket, sec_data) in enumerate(merged_sections.items()):
+                    section_id = str(uuid4())
+                    section_id_map[bucket] = section_id
+                    try:
+                        db.table("handover_draft_sections").insert({
+                            "id": section_id,
+                            "draft_id": draft_id,
+                            "bucket_name": bucket,
+                            "display_title": sec_data["display_title"],
+                            "section_order": section_idx + 1,
+                            "item_count": len(sec_data["items"]),
+                        }).execute()
+                    except Exception as sec_err:
+                        logger.warning("Failed to insert handover_draft_section: %s", sec_err)
+                        continue
+
+                    for item_idx, s_item in enumerate(sec_data["items"]):
+                        try:
+                            db.table("handover_draft_items").insert({
+                                "id": str(uuid4()),
+                                "section_id": section_id,
+                                "draft_id": draft_id,
+                                "section_bucket": bucket,
+                                "domain_code": s_item.get("domain_code") or "GEN-01",
+                                "summary_text": s_item.get("summary_text", ""),
+                                "is_critical": s_item.get("is_critical", False),
+                                "requires_action": s_item.get("requires_action", False),
+                                "action_summary": s_item.get("action_summary"),
+                                "item_order": item_idx + 1,
+                            }).execute()
+                        except Exception as item_err:
+                            logger.warning("Failed to insert handover_draft_item: %s", item_err)
+
+                # 8. Upload HTML to Supabase Storage
+                storage_path = f"{yacht_id}/original/{draft_id}.html"
+                storage_url = None
+                try:
+                    html_bytes = html_content.encode("utf-8")
+                    db.storage.from_("handover-exports").upload(
+                        path=storage_path,
+                        file=html_bytes,
+                        file_options={"content-type": "text/html"},
+                    )
+                    storage_url = f"handover-exports/{storage_path}"
+                except Exception as upload_err:
+                    logger.warning("Failed to upload HTML to storage: %s", upload_err)
+
+                # 9. Write handover_exports record
+                export_id = str(uuid4())
+                sections_count = metadata.get("sections_count", len(sections))
+                items_count = metadata.get("total_items_output", len(raw_items))
+
+                db.table("handover_exports").insert({
+                    "id": export_id,
+                    "draft_id": draft_id,
+                    "yacht_id": yacht_id,
+                    "export_type": request.export_type,
+                    "exported_by_user_id": user_id,
+                    "document_hash": document_hash,
+                    "export_status": "completed",
+                    "exported_at": now_iso,
+                    "edited_content": {"item_ids": [i["id"] for i in raw_items]},
+                    "original_storage_url": storage_url,
+                    "review_status": "pending_review",
+                }).execute()
+
+                # 10. Create ledger notification
+                try:
+                    create_export_ready_ledger_event(
+                        supabase=db,
+                        export_id=export_id,
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        item_count=items_count,
+                    )
+                except Exception as ledger_err:
+                    logger.warning("Ledger event failed after microservice export %s: %s", export_id, ledger_err)
+
+                # 11. Return ExportResponse
+                logger.info(
+                    "Microservice export complete: export_id=%s draft_id=%s sections=%d items=%d",
+                    export_id, draft_id, sections_count, items_count,
+                )
+
+                return ExportResponse(
+                    status="success",
+                    export_id=export_id,
+                    total_items=items_count,
+                    sections_count=sections_count,
+                    document_hash=document_hash,
+                    generated_at=now_iso,
+                    html_preview_url=f"/v1/handover/export/{export_id}/html",
+                )
+
+            except ValueError:
+                # no_items — fall through to local export
+                pass
+            except Exception as ms_err:
+                logger.warning(
+                    "Microservice delegation failed, falling back to local export: %s", ms_err
+                )
+        # ── End microservice delegation ──────────────────────────────────
 
         service = HandoverExportService(db)
 
