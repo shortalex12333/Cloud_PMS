@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { X, FileText, BookOpen, Package, Mail } from 'lucide-react';
+import { X, FileText, BookOpen, Package } from 'lucide-react';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -14,12 +14,11 @@ interface CommandPaletteProps {
   onHandoverDraft: () => void;
   onLedger: () => void;
   onLogReceiving: () => void;
-  onEmail: () => void;
   handoverCount?: number;
 }
 
 export function CommandPalette({
-  isOpen, onClose, onHandoverDraft, onLedger, onLogReceiving, onEmail, handoverCount,
+  isOpen, onClose, onHandoverDraft, onLedger, onLogReceiving, handoverCount,
 }: CommandPaletteProps) {
   if (!isOpen) return null;
 
@@ -167,18 +166,6 @@ export function CommandPalette({
             <div style={{ flex: 1 }}>
               <div style={S.name}>Ledger</div>
               <div style={S.desc}>Activity timeline — yours and your department</div>
-            </div>
-            <ChevronRight />
-          </button>
-
-          <button style={S.item} onClick={() => fire(onEmail)}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
-          >
-            <div style={S.icon('rgba(255,255,255,0.06)', 'var(--txt3)')}><Mail size={14} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={S.name}>Email</div>
-              <div style={S.desc}>Linked vessel correspondence</div>
             </div>
             <ChevronRight />
           </button>
