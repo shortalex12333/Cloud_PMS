@@ -17,13 +17,8 @@
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Settings, BookOpen, Mail, Menu as MenuIcon, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, type LucideIcon } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { X, Settings, BookOpen, Mail, Menu as MenuIcon, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Paperclip, type LucideIcon } from 'lucide-react';
+import { CommandPalette } from './CommandPalette';
 import { cn } from '@/lib/utils';
 import { useCelesteSearch } from '@/hooks/useCelesteSearch';
 import { useDomain } from '@/lib/domain/hooks';
@@ -41,8 +36,7 @@ import SuggestedActions from '@/components/SuggestedActions';
 import FilterChips from './FilterChips';
 import { LedgerPanel } from '@/components/ledger';
 import { HandoverDraftPanel } from '@/components/handover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ReceivingDocumentUpload } from '@/components/receiving/ReceivingDocumentUpload';
+// ReceivingDocumentUpload moved to /receiving/new route
 import { toast } from 'sonner';
 
 import { supabase } from '@/lib/supabaseClient';
@@ -285,7 +279,7 @@ export default function SpotlightSearch({
   const [showSettings, setShowSettings] = useState(false);
   const [showLedger, setShowLedger] = useState(false);
   const [showHandoverDraft, setShowHandoverDraft] = useState(false);
-  const [showReceivingUpload, setShowReceivingUpload] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [showEmailList, setShowEmailList] = useState(false);
   const [emailScopeActive, setEmailScopeActive] = useState(false);
 
@@ -591,22 +585,7 @@ export default function SpotlightSearch({
   /**
    * Handle receiving upload complete - navigate to new receiving
    */
-  const handleReceivingUploadComplete = useCallback((receivingId: string, documentId: string, extractedData: any) => {
-    setShowReceivingUpload(false);
-
-    // Navigate to the new receiving entity route
-    recordLedgerEvent('receiving_created', {
-      receiving_id: receivingId,
-      document_id: documentId,
-      has_extracted_data: !!extractedData,
-    });
-
-    toast.success('Receiving logged', {
-      description: extractedData?.supplier_name || 'Document uploaded successfully',
-    });
-
-    router.push(getEntityRoute('receiving', receivingId));
-  }, [router]);
+  // handleReceivingUploadComplete moved to /receiving/new page
 
   const hasResults = results.length > 0 || groupedResults.totalResults > 0;
   const hasQuery = query.trim().length > 0;
@@ -1023,38 +1002,21 @@ export default function SpotlightSearch({
               <Mail style={{ width: 16, height: 16 }} strokeWidth={1.6} />
             </button>
 
-            {/* Menu dropdown (Ledger / Handover / Add Files) */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  aria-label="Menu"
-                  style={{
-                    width: 32, height: 32, borderRadius: 4,
-                    background: 'transparent',
-                    border: 'none', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'var(--txt-ghost)',
-                    transition: 'background 100ms, color 100ms',
-                  }}
-                >
-                  <MenuIcon style={{ width: 16, height: 16 }} strokeWidth={1.6} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" sideOffset={4}>
-                <DropdownMenuItem onClick={() => setShowLedger(true)}>
-                  <BookOpen style={{ width: 14, height: 14, marginRight: 8 }} />
-                  Ledger
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowHandoverDraft(true)}>
-                  <FileText style={{ width: 14, height: 14, marginRight: 8 }} />
-                  Handover Draft
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowReceivingUpload(true)}>
-                  <Plus style={{ width: 14, height: 14, marginRight: 8 }} />
-                  Log Receiving
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Menu — opens command palette */}
+            <button
+              onClick={() => setShowMenu(true)}
+              aria-label="Menu"
+              style={{
+                width: 32, height: 32, borderRadius: 4,
+                background: 'transparent',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--txt-ghost)',
+                transition: 'background 100ms, color 100ms',
+              }}
+            >
+              <MenuIcon style={{ width: 16, height: 16 }} strokeWidth={1.6} />
+            </button>
 
             {/* Settings */}
             <button
@@ -1106,24 +1068,15 @@ export default function SpotlightSearch({
         onClose={() => setShowHandoverDraft(false)}
       />
 
-      {/* Receiving Upload Modal - Global entry point for logging receivings */}
-      <Dialog open={showReceivingUpload} onOpenChange={setShowReceivingUpload}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-primary border-surface-border">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-txt-primary">
-              <Camera className="h-5 w-5 text-brand-interactive" />
-              Log Receiving
-            </DialogTitle>
-          </DialogHeader>
-          <p className="typo-meta text-txt-secondary mb-4">
-            Capture or upload an invoice, packing slip, or photo of received goods.
-            We'll extract the details automatically.
-          </p>
-          <ReceivingDocumentUpload
-            onComplete={handleReceivingUploadComplete}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Command Palette (replaces DropdownMenu) */}
+      <CommandPalette
+        isOpen={showMenu}
+        onClose={() => setShowMenu(false)}
+        onHandoverDraft={() => setShowHandoverDraft(true)}
+        onLedger={() => setShowLedger(true)}
+        onLogReceiving={() => router.push('/receiving/new')}
+        onEmail={() => router.push('/email')}
+      />
 
     </div>
   );

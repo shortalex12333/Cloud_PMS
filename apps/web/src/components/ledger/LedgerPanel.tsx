@@ -1,23 +1,14 @@
 'use client';
 
 /**
- * LedgerPanel - Infinite scroll audit trail display
- *
- * Displays ledger events in chronological order grouped by day.
- * Mimics the UX of the search results panel.
- *
- * Design requirements:
- * - Grouped by day with anchor counts (mutations/reads)
- * - Event grammar: Object — Verb
- * - Reads collapsed by default, mutations prominent
- * - Uses tokenized design values (no hardcoded colors)
- * - Proper z-index layering
+ * LedgerPanel — Right-side drawer showing activity timeline.
+ * Replaces legacy centered modal with drawer matching handover/show-related pattern.
+ * Day groups in cards, Me/Department pill toggle, Reads toggle.
  */
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, BookOpen, Edit3, Eye, ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { X, BookOpen, Edit3, Eye, ChevronDown, ChevronRight, Plus, Trash2, CheckSquare } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { getEntityRoute } from '@/lib/featureFlags';
@@ -32,10 +23,10 @@ interface LedgerEvent {
   id: string;
   yacht_id: string;
   user_id: string;
-  event_type: string;  // create, update, delete, status_change, assignment, etc.
-  entity_type: string; // work_order, checklist_item, fault, etc.
+  event_type: string;
+  entity_type: string;
   entity_id: string;
-  action: string;      // add_note, add_checklist_item, artefact_opened, etc.
+  action: string;
   change_summary?: string;
   user_role?: string;
   metadata: {
@@ -71,52 +62,123 @@ interface LedgerPanelProps {
 // HELPERS
 // ============================================================================
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: '2-digit',
-  };
-  return date.toLocaleDateString('en-GB', options);
-}
-
-// Read events are navigation/view events; mutations are changes
 const READ_ACTIONS = ['artefact_opened', 'situation_ended', 'view', 'open'];
 
-function groupEventsByDay(events: LedgerEvent[]): DayGroup[] {
-  const groups: Map<string, DayGroup> = new Map();
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
 
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function groupEventsByDay(events: LedgerEvent[]): DayGroup[] {
+  const groups = new Map<string, DayGroup>();
   for (const event of events) {
     const date = new Date(event.created_at).toISOString().split('T')[0];
-
     if (!groups.has(date)) {
-      groups.set(date, {
-        date,
-        displayDate: formatDate(event.created_at),
-        mutationCount: 0,
-        readCount: 0,
-        events: [],
-      });
+      groups.set(date, { date, displayDate: formatDate(event.created_at), mutationCount: 0, readCount: 0, events: [] });
     }
-
-    const group = groups.get(date)!;
-    group.events.push(event);
-
-    // Classify based on action field
-    if (READ_ACTIONS.includes(event.action)) {
-      group.readCount++;
-    } else {
-      group.mutationCount++;
-    }
+    const g = groups.get(date)!;
+    g.events.push(event);
+    READ_ACTIONS.includes(event.action) ? g.readCount++ : g.mutationCount++;
   }
-
-  // Sort by date descending
-  return Array.from(groups.values()).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  return Array.from(groups.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
+
+function formatActionVerb(action: string): string {
+  const map: Record<string, string> = {
+    add_note: 'note added', add_checklist_item: 'checklist item added',
+    add_checklist_note: 'checklist note added', add_checklist_photo: 'checklist photo added',
+    add_work_order_photo: 'photo added', add_parts_to_work_order: 'parts added',
+    mark_checklist_item_complete: 'item completed', mark_work_order_complete: 'completed',
+    reassign_work_order: 'reassigned', archive_work_order: 'archived',
+    create: 'created', update: 'updated', delete: 'deleted',
+    artefact_opened: 'opened', situation_ended: 'ended', view: 'viewed', open: 'opened',
+    relation_added: 'relation added',
+  };
+  return map[action] || action.replace(/_/g, ' ');
+}
+
+const entityTypeMap: Record<string, string> = {
+  pms_work_orders: 'work_order', pms_work_order_notes: 'work_order',
+  pms_work_order_checklist_items: 'work_order', pms_faults: 'fault',
+  pms_equipment: 'equipment', pms_parts: 'part', pms_receiving: 'receiving',
+  pms_documents: 'document', pms_certificates: 'certificate',
+  pms_handovers: 'handover', handover_export: 'handover_export',
+  pms_hours_of_rest: 'hours_of_rest', pms_hor_monthly_signoffs: 'hours_of_rest_signoff',
+  pms_warranties: 'warranty', pms_shopping_lists: 'shopping_list',
+};
+
+function getEntityLabel(t: string): string {
+  const map: Record<string, string> = {
+    work_order: 'WORK ORDER', fault: 'FAULT', equipment: 'EQUIPMENT',
+    part: 'PARTS', receiving: 'RECEIVING', document: 'DOCUMENT',
+    certificate: 'CERTIFICATE', handover: 'HANDOVER',
+  };
+  const key = entityTypeMap[t] || t;
+  return map[key] || t.replace(/^pms_/, '').replace(/_/g, ' ').toUpperCase();
+}
+
+// ============================================================================
+// STYLES
+// ============================================================================
+
+const S = {
+  backdrop: { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 90, transition: 'opacity 200ms ease' },
+  drawer: {
+    position: 'fixed' as const, top: 0, right: 0, bottom: 0,
+    width: 480, background: 'var(--surface)',
+    borderLeft: '1px solid var(--border-side)',
+    boxShadow: '-20px 0 80px rgba(0,0,0,0.50), -4px 0 20px rgba(0,0,0,0.30)',
+    display: 'flex', flexDirection: 'column' as const, zIndex: 100, overflow: 'hidden',
+  },
+  hdr: { display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border-sub)', gap: 10, flexShrink: 0 },
+  icon: { width: 28, height: 28, borderRadius: 6, background: 'var(--amber-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  close: { width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--txt-ghost)', background: 'none', border: 'none' },
+  toggleBar: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--border-faint)', flexShrink: 0 },
+  pillGroup: { display: 'flex', alignItems: 'center', padding: 2, background: 'var(--surface-base)', borderRadius: 6, border: '1px solid var(--border-sub)' },
+  pill: (active: boolean) => ({
+    padding: '5px 14px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+    cursor: 'pointer', border: 'none', fontFamily: 'var(--font-sans)',
+    background: active ? 'var(--teal-bg)' : 'none',
+    color: active ? 'var(--mark)' : 'var(--txt3)',
+    transition: 'all 80ms',
+  }),
+  readsBtn: (active: boolean) => ({
+    display: 'flex', alignItems: 'center', gap: 4,
+    padding: '5px 10px', borderRadius: 4, fontSize: 11, fontWeight: 500,
+    cursor: 'pointer', fontFamily: 'var(--font-sans)',
+    background: active ? 'var(--teal-bg)' : 'none',
+    color: active ? 'var(--mark)' : 'var(--txt3)',
+    border: `1px solid ${active ? 'rgba(90,171,204,0.2)' : 'var(--border-sub)'}`,
+  }),
+  body: { flex: 1, overflowY: 'auto' as const, padding: '8px 12px 16px', background: 'var(--surface-base)' },
+  dayCard: {
+    background: 'var(--surface)',
+    borderTop: '1px solid rgba(255,255,255,0.09)',
+    borderRight: '1px solid rgba(255,255,255,0.05)',
+    borderBottom: '1px solid rgba(255,255,255,0.03)',
+    borderLeft: '1px solid rgba(255,255,255,0.05)',
+    borderRadius: 4, overflow: 'hidden', marginBottom: 6,
+  },
+  dayHdr: {
+    display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
+    cursor: 'pointer', userSelect: 'none' as const,
+    fontSize: 9, fontWeight: 600, textTransform: 'uppercase' as const,
+    letterSpacing: '0.12em', color: 'var(--txt)',
+  },
+  event: {
+    display: 'flex', alignItems: 'center', gap: 10,
+    padding: '8px 12px', minHeight: 44, cursor: 'pointer',
+    transition: 'background 60ms', borderTop: '1px solid rgba(255,255,255,0.04)',
+  },
+};
 
 // ============================================================================
 // COMPONENT
@@ -131,441 +193,194 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [showReads, setShowReads] = useState(false);
   const [viewMode, setViewMode] = useState<'me' | 'department'>('me');
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const LIMIT = 50;
 
-  // Handle ledger item click - navigate to entity route
   const handleItemClick = useCallback((event: LedgerEvent) => {
-    if (!event.entity_type || !event.entity_id) {
-      console.warn('[LedgerPanel] Cannot navigate: missing entity_type or entity_id', event);
-      return;
-    }
-
-    // Map entity_type from ledger (pms_work_orders) to lens type (work_order)
-    const entityTypeMap: Record<string, string> = {
-      'pms_work_orders': 'work_order',
-      'pms_work_order_notes': 'work_order',
-      'pms_work_order_checklist_items': 'work_order',
-      'pms_faults': 'fault',
-      'pms_equipment': 'equipment',
-      'pms_parts': 'part',
-      'pms_receiving': 'receiving',
-      'pms_documents': 'document',
-      'pms_certificates': 'certificate',
-      'pms_handovers': 'handover',
-      'handover_export': 'handover_export',
-      'pms_hours_of_rest': 'hours_of_rest',
-      'pms_hor_monthly_signoffs': 'hours_of_rest_signoff',
-      'pms_warranties': 'warranty',
-      'pms_shopping_lists': 'shopping_list',
-    };
-
-    // Use mapped type or fall back to raw entity_type
+    if (!event.entity_type || !event.entity_id) return;
     const lensType = entityTypeMap[event.entity_type] || event.entity_type;
-
-    // For child entities (notes, checklist items), use parent ID if available
-    const entityId = event.metadata?.work_order_id || event.entity_id;
-
-    console.log('[LedgerPanel] Navigating to:', lensType, entityId);
-
+    const entityId = (event.metadata?.work_order_id as string) || event.entity_id;
     router.push(getEntityRoute(lensType as Parameters<typeof getEntityRoute>[0], entityId));
-
-    // Close ledger panel after navigation
     onClose();
   }, [router, onClose]);
 
-  const LIMIT = 50;
-
-  // Fetch ledger events from Render API (tenant DB)
   const fetchEvents = useCallback(async (reset = false) => {
     if (!user || loading) return;
-
     setLoading(true);
     try {
       const offset = reset ? 0 : events.length;
-
-      // Get auth token for Render API
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
+      if (!token) return;
 
-      if (!token) {
-        console.error('No auth token available for ledger fetch');
-        return;
-      }
-
-      // 'me' mode: explicit self-filter via /events (your actions regardless of role)
-      // 'department' mode: role-scoped via /timeline (captain=all, HoD=dept, crew=self)
       const endpoint = viewMode === 'me' ? '/v1/ledger/events' : '/v1/ledger/timeline';
-      const params = new URLSearchParams({
-        limit: String(LIMIT),
-        offset: String(offset),
+      const params = new URLSearchParams({ limit: String(LIMIT), offset: String(offset) });
+      if (viewMode === 'me' && user?.id) params.set('user_id', user.id);
+
+      const response = await fetch(`${RENDER_API_URL}${endpoint}?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
-      if (viewMode === 'me' && user?.id) {
-        params.set('user_id', user.id);
-      }
-
-      // Call Render API (which has access to tenant DB)
-      const response = await fetch(
-        `${RENDER_API_URL}${endpoint}?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to fetch ledger events:', errorData);
-        return;
-      }
+      if (!response.ok) return;
 
       const result = await response.json();
-      const fetchedEvents = result.events || [];
+      const fetched = result.events || [];
+      reset ? setEvents(fetched) : setEvents(prev => [...prev, ...fetched]);
+      setHasMore(result.has_more ?? fetched.length === LIMIT);
 
-      if (reset) {
-        setEvents(fetchedEvents);
-      } else {
-        setEvents((prev) => [...prev, ...fetchedEvents]);
+      if (reset && fetched.length > 0) {
+        setExpandedDays(new Set([new Date(fetched[0].created_at).toISOString().split('T')[0]]));
       }
-
-      setHasMore(result.has_more ?? fetchedEvents.length === LIMIT);
     } catch (err) {
-      console.error('Ledger fetch error:', err);
+      console.error('[LedgerPanel] Fetch error:', err);
     } finally {
       setLoading(false);
     }
   }, [user, loading, events.length, viewMode]);
 
-  // Initial load when panel opens
-  useEffect(() => {
-    if (isOpen && events.length === 0) {
-      fetchEvents(true);
-    }
-  }, [isOpen, events.length, fetchEvents]);
+  useEffect(() => { if (isOpen && events.length === 0) fetchEvents(true); }, [isOpen]);
+  useEffect(() => { if (isOpen) { setEvents([]); setHasMore(true); fetchEvents(true); } }, [viewMode]);
 
-  // Reset and refetch when viewMode changes
-  useEffect(() => {
-    if (isOpen) {
-      setEvents([]);
-      setHasMore(true);
-      fetchEvents(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode]);
-
-  // Infinite scroll observer
   useEffect(() => {
     if (!isOpen || !hasMore || loading) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          fetchEvents();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    const sentinel = loadMoreRef.current;
-    if (sentinel) {
-      observer.observe(sentinel);
-    }
-
-    return () => {
-      if (sentinel) {
-        observer.unobserve(sentinel);
-      }
-    };
+    const obs = new IntersectionObserver(([e]) => { if (e?.isIntersecting) fetchEvents(); }, { threshold: 0.1 });
+    const el = sentinelRef.current;
+    if (el) obs.observe(el);
+    return () => { if (el) obs.unobserve(el); };
   }, [isOpen, hasMore, loading, fetchEvents]);
 
-  // Group events by day
-  const dayGroups = groupEventsByDay(events);
-
-  // Toggle day expansion
   const toggleDay = (date: string) => {
-    setExpandedDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(date)) {
-        next.delete(date);
-      } else {
-        next.add(date);
-      }
-      return next;
-    });
+    setExpandedDays(prev => { const n = new Set(prev); n.has(date) ? n.delete(date) : n.add(date); return n; });
   };
 
   if (!isOpen) return null;
+  const dayGroups = groupEventsByDay(events);
 
   return (
-    <div
-      className={cn(
-        'fixed inset-0 z-50 flex items-start justify-center',
-        'pt-ds-16 pb-8'
-      )}
-      onClick={onClose}
-    >
-      {/* Backdrop */}
-      <div className="absolute inset-0 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.4)' }} />
+    <>
+      <div style={{ ...S.backdrop, opacity: 1, pointerEvents: 'auto' }} onClick={onClose} />
 
-      {/* Panel */}
-      <div
-        className={cn(
-          'relative w-full max-w-[var(--celeste-max-width-search)]',
-          'bg-surface-primary rounded-lg',
-          'border border-surface-border overflow-hidden',
-          'flex flex-col max-h-[70vh]'
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div style={S.drawer}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--border-sub)' }}>
-          <div className="flex items-center gap-3">
-            <BookOpen className="w-5 h-5" style={{ color: 'var(--mark)' }} strokeWidth={1.5} />
-            <h2 className="font-medium" style={{ color: 'var(--txt)' }}>Ledger</h2>
+        <div style={S.hdr}>
+          <div style={S.icon}><BookOpen size={14} color="var(--amber)" /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--txt)' }}>Ledger</div>
+            <div style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', marginTop: 1 }}>Activity timeline</div>
           </div>
-
-          {/* Me / Department Pill Toggle - Centered */}
-          <div className="flex items-center rounded-full p-1" style={{ background: 'var(--surface-hover)' }} data-testid="view-mode-toggle">
-            <button
-              onClick={() => setViewMode('me')}
-              className={cn(
-                'px-4 py-1.5 rounded-full typo-body font-medium transition-colors',
-                viewMode !== 'me' && ''
-              )}
-              style={viewMode === 'me'
-                ? { background: 'var(--teal)', color: 'var(--txt)' }
-                : { color: 'var(--txt3)' }
-              }
-              data-testid="view-mode-me"
-            >
-              Me
-            </button>
-            <button
-              onClick={() => setViewMode('department')}
-              className={cn(
-                'px-4 py-1.5 rounded-full typo-body font-medium transition-colors',
-                viewMode !== 'department' && ''
-              )}
-              style={viewMode === 'department'
-                ? { background: 'var(--teal)', color: 'var(--txt)' }
-                : { color: 'var(--txt3)' }
-              }
-              data-testid="view-mode-department"
-            >
-              Department
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Show/Hide Reads Toggle */}
-            <button
-              onClick={() => setShowReads(!showReads)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full typo-body transition-colors"
-              style={showReads
-                ? { background: 'var(--teal)', color: 'var(--txt)' }
-                : { color: 'var(--txt3)' }
-              }
-            >
-              <Eye className="w-4 h-4" strokeWidth={1.5} />
-              <span>Reads</span>
-            </button>
-            {/* Close Button */}
-            <button
-              onClick={onClose}
-              className="btn-icon h-8 w-8"
-              aria-label="Close ledger"
-            >
-              <X className="w-[18px] h-[18px]" strokeWidth={1.5} />
-            </button>
-          </div>
+          <button style={S.close} onClick={onClose}><X size={14} /></button>
         </div>
 
-        {/* Events List */}
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto px-4 py-3"
-        >
+        {/* Toggle bar */}
+        <div style={S.toggleBar}>
+          <div style={S.pillGroup}>
+            <button style={S.pill(viewMode === 'me')} onClick={() => setViewMode('me')}>Me</button>
+            <button style={S.pill(viewMode === 'department')} onClick={() => setViewMode('department')}>Department</button>
+          </div>
+          <div style={{ flex: 1 }} />
+          <button style={S.readsBtn(showReads)} onClick={() => setShowReads(!showReads)}>
+            <Eye size={12} /> Reads
+          </button>
+        </div>
+
+        {/* Body */}
+        <div ref={scrollRef} style={S.body}>
           {dayGroups.length === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center py-12" style={{ color: 'var(--txt3)' }}>
-              <BookOpen className="w-12 h-12 mb-3 opacity-50" strokeWidth={1} />
-              <p>No events recorded yet</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 24px', textAlign: 'center' }}>
+              <BookOpen size={48} style={{ color: 'var(--txt-ghost)', marginBottom: 12 }} />
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--txt2)' }}>No events recorded yet</div>
             </div>
           ) : (
-            dayGroups.map((group) => (
-              <div key={group.date} className="mb-4">
-                {/* Day Anchor */}
-                <button
-                  onClick={() => toggleDay(group.date)}
-                  className={cn(
-                    'w-full flex items-center justify-between px-3 py-2',
-                    'rounded-md',
-                    'transition-colors',
-                    'sticky top-0 z-10'
-                  )}
-                  style={{ background: 'var(--surface-hover)', color: 'var(--txt)' }}
-                >
-                  <div className="flex items-center gap-2">
-                    {expandedDays.has(group.date) ? (
-                      <ChevronDown className="w-4 h-4" style={{ color: 'var(--txt3)' }} />
-                    ) : (
-                      <ChevronRight className="w-4 h-4" style={{ color: 'var(--txt3)' }} />
-                    )}
-                    <span className="font-medium">{group.displayDate}</span>
-                  </div>
-                  <div className="flex items-center gap-3 typo-body">
-                    <span className="flex items-center gap-1 text-green-500">
-                      <Edit3 className="w-3.5 h-3.5" />
-                      {group.mutationCount}
+            dayGroups.map(group => (
+              <div key={group.date} style={{ marginBottom: 6 }}>
+                <div style={S.dayCard}>
+                  <div style={S.dayHdr} onClick={() => toggleDay(group.date)}>
+                    <span style={{ flex: 1 }}>
+                      {group.displayDate}
                     </span>
-                    {showReads && group.readCount > 0 && (
-                      <span className="flex items-center gap-1 text-orange-500">
-                        <Eye className="w-3.5 h-3.5" />
-                        {group.readCount}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 400 }}>
+                      <span style={{ color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <Edit3 size={10} /> {group.mutationCount}
                       </span>
-                    )}
+                      {showReads && group.readCount > 0 && (
+                        <span style={{ color: 'var(--amber)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <Eye size={10} /> {group.readCount}
+                        </span>
+                      )}
+                    </span>
+                    {expandedDays.has(group.date)
+                      ? <ChevronDown size={12} style={{ color: 'var(--txt-ghost)' }} />
+                      : <ChevronRight size={12} style={{ color: 'var(--txt-ghost)' }} />}
                   </div>
-                </button>
 
-                {/* Events for this day */}
-                {expandedDays.has(group.date) && (
-                  <div className="mt-2 space-y-1 pl-6">
-                    {group.events
-                      .filter((e) => showReads || !READ_ACTIONS.includes(e.action))
-                      .map((event) => (
-                        <LedgerEventRow key={event.id} event={event} onItemClick={handleItemClick} />
-                      ))}
-                  </div>
-                )}
+                  {expandedDays.has(group.date) && group.events
+                    .filter(e => showReads || !READ_ACTIONS.includes(e.action))
+                    .map((event, idx) => {
+                      const isMut = !READ_ACTIONS.includes(event.action);
+                      const displayName = event.change_summary || event.metadata?.display_name || event.metadata?.checklist_title || event.metadata?.domain || event.entity_type || 'Action';
+                      const userName = (event.metadata?.user_name as string) || event.user_role || '';
+                      return (
+                        <div
+                          key={event.id}
+                          style={{ ...S.event, ...(idx === 0 ? {} : {}) }}
+                          onClick={() => handleItemClick(event)}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; }}
+                        >
+                          {isMut
+                            ? <Edit3 size={14} style={{ flexShrink: 0, color: 'var(--green)' }} />
+                            : <Eye size={14} style={{ flexShrink: 0, color: 'var(--amber)' }} />
+                          }
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: 13, fontWeight: 500, color: 'var(--txt)',
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            }}>
+                              <span style={{ color: 'var(--mark)' }}>{displayName}</span>
+                              <span style={{ color: 'var(--txt3)' }}> — </span>
+                              {formatActionVerb(event.action)}
+                            </div>
+                            <div style={{
+                              fontSize: 10.5, color: 'var(--txt2)', fontFamily: 'var(--font-mono)',
+                              letterSpacing: '0.03em', marginTop: 1,
+                            }}>
+                              {getEntityLabel(event.entity_type)}{userName ? ` · ${userName.toUpperCase()}` : ''}
+                            </div>
+                          </div>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', flexShrink: 0 }}>
+                            {formatTime(event.created_at)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
               </div>
             ))
           )}
 
-          {/* Load More Sentinel */}
           {hasMore && (
-            <div ref={loadMoreRef} className="h-8 flex items-center justify-center">
+            <div ref={sentinelRef} style={{ height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {loading && (
-                <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--teal)', borderTopColor: 'transparent' }} />
+                <div style={{
+                  width: 20, height: 20, border: '2px solid var(--border-sub)',
+                  borderTopColor: 'var(--mark)', borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                }} />
               )}
+            </div>
+          )}
+
+          {events.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', marginTop: 4 }}>
+              <span style={{ fontSize: 10, color: 'var(--txt3)', fontFamily: 'var(--font-mono)' }}>
+                {events.length} event{events.length !== 1 ? 's' : ''} · {dayGroups.length} day{dayGroups.length !== 1 ? 's' : ''}
+              </span>
             </div>
           )}
         </div>
       </div>
-    </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </>
   );
 }
-
-// ============================================================================
-// EVENT ROW COMPONENT
-// ============================================================================
-
-interface LedgerEventRowProps {
-  event: LedgerEvent;
-  onItemClick: (event: LedgerEvent) => void;
-}
-
-function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
-  // Build display name from metadata or change_summary
-  const displayName = event.change_summary
-    || event.metadata?.display_name
-    || event.metadata?.checklist_title
-    || event.metadata?.artefact_type
-    || event.metadata?.domain
-    || event.entity_type
-    || 'Action';
-
-  const userName = event.metadata?.user_name || event.user_role || 'User';
-  const actionVerb = formatActionVerb(event.action);
-  const time = new Date(event.created_at).toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const isMutation = !READ_ACTIONS.includes(event.action);
-
-  return (
-    <div
-      className={cn(
-        'flex items-start gap-3 px-3 py-2',
-        'rounded-md',
-        'hover:bg-[var(--surface-hover)] transition-colors cursor-pointer'
-      )}
-      onClick={() => onItemClick(event)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onItemClick(event);
-        }
-      }}
-    >
-      {/* Icon */}
-      <div
-        className={cn(
-          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-          isMutation
-            ? 'bg-green-500/10 text-green-500'
-            : 'bg-orange-500/10 text-orange-500'
-        )}
-      >
-        {isMutation ? (
-          <Edit3 className="w-4 h-4" strokeWidth={1.5} />
-        ) : (
-          <Eye className="w-4 h-4" strokeWidth={1.5} />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {/* Object — Verb format */}
-        <p className="truncate" style={{ color: 'var(--txt)' }}>
-          <span className="font-medium">{displayName}</span>
-          <span style={{ color: 'var(--txt3)' }}> — </span>
-          <span>{actionVerb}</span>
-        </p>
-        {/* Attribution */}
-        <p className="typo-body truncate" style={{ color: 'var(--txt3)' }}>
-          {userName} · {time}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-function formatActionVerb(eventName: string): string {
-  const verbMap: Record<string, string> = {
-    // Mutation events
-    add_note: 'Added Note',
-    add_checklist_item: 'Added Checklist Item',
-    add_checklist_note: 'Added Checklist Note',
-    add_checklist_photo: 'Added Checklist Photo',
-    add_work_order_photo: 'Added Photo',
-    add_parts_to_work_order: 'Added Parts',
-    mark_checklist_item_complete: 'Completed Item',
-    mark_work_order_complete: 'Completed Work Order',
-    reassign_work_order: 'Reassigned',
-    archive_work_order: 'Archived',
-    create: 'Created',
-    update: 'Updated',
-    delete: 'Deleted',
-    // Read events
-    artefact_opened: 'Opened',
-    situation_ended: 'Ended Situation',
-    view: 'Viewed',
-    open: 'Opened',
-    close: 'Closed',
-    complete: 'Completed',
-    // Navigation events
-    relation_added: 'Added Relation',
-  };
-
-  return verbMap[eventName] || eventName.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
