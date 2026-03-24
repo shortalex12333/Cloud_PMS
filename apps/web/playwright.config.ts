@@ -347,6 +347,16 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'] },
     },
+    // =========================================================================
+    // SHARD 49: Handover Export E2E (Phases A/B — microservice delegation)
+    // =========================================================================
+    {
+      name: 'shard-49-handover-export-e2e',
+      testDir: './e2e/shard-49-handover-export-e2e',
+      testMatch: '**/*.spec.ts',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
 
   // Web server configuration (if running locally)

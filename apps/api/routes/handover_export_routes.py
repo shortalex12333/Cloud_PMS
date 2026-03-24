@@ -119,6 +119,51 @@ async def generate_export(
                 except Exception as profile_err:
                     logger.warning("Could not fetch user profile for %s: %s", user_id, profile_err)
 
+                # A1. Yacht name lookup
+                yacht_name = "Vessel"
+                try:
+                    yacht_result = db.table("yacht_registry").select("name").eq("id", yacht_id).limit(1).execute()
+                    if yacht_result.data:
+                        yacht_name = yacht_result.data[0]["name"]
+                except Exception:
+                    pass
+
+                # A2. Sequential document number
+                doc_number = 1
+                try:
+                    count_result = db.table("handover_exports").select("id", count="exact").eq("yacht_id", yacht_id).execute()
+                    doc_number = (count_result.count or 0) + 1
+                except Exception:
+                    pass
+
+                # B1. Role/department lookup
+                user_role = ""
+                user_department = ""
+                try:
+                    role_result = db.table("auth_users_roles").select("role, department").eq("user_id", user_id).eq("yacht_id", yacht_id).eq("is_active", True).limit(1).execute()
+                    if role_result.data:
+                        user_role = role_result.data[0].get("role", "")
+                        user_department = role_result.data[0].get("department", "")
+                except Exception:
+                    pass
+
+                # B2. Pre-filter items by department based on role
+                ROLE_DEPARTMENT_MAP = {
+                    "captain": None,  # sees all
+                    "chief_engineer": ["Engineering", "ETO_AVIT"],
+                    "eto": ["Engineering", "ETO_AVIT"],
+                    "deck": ["Deck"],
+                    "interior": ["Interior", "Galley"],
+                    "crew": None,  # filtered by their department below
+                }
+
+                dept_filter = ROLE_DEPARTMENT_MAP.get(user_role)
+                if dept_filter is None and user_role == "crew" and user_department:
+                    dept_filter = [user_department.title()]
+
+                if dept_filter is not None:
+                    raw_items = [i for i in raw_items if i.get("section") in dept_filter]
+
                 # 3. Serialize items and call microservice
                 serialized_items = []
                 for item in raw_items:
@@ -135,6 +180,7 @@ async def generate_export(
                         "action_summary": item.get("action_summary"),
                         "added_by": item.get("added_by"),
                         "section": item.get("section"),
+                        "entity_url": item.get("entity_url"),
                     })
 
                 ms_client = HandoverMicroserviceClient()
@@ -145,6 +191,10 @@ async def generate_export(
                     yacht_id=yacht_id,
                     user_id=user_id,
                     user_name=user_name,
+                    yacht_name=yacht_name,
+                    doc_number=doc_number,
+                    user_role=user_role,
+                    user_department=user_department,
                     items=serialized_items,
                     period_start=period_start,
                     period_end=period_end,
@@ -264,6 +314,28 @@ async def generate_export(
                 sections_count = metadata.get("sections_count", len(sections))
                 items_count = metadata.get("total_items_output", len(raw_items))
 
+                # Build structured edited_content with full section/item data
+                edited_sections = []
+                for idx, (bucket, sec_data) in enumerate(merged_sections.items()):
+                    edited_sections.append({
+                        "id": f"section-{idx}",
+                        "title": sec_data["display_title"],
+                        "content": "",
+                        "items": [
+                            {
+                                "id": f"item-{i}",
+                                "content": s_item.get("summary_text", ""),
+                                "entity_type": s_item.get("source_entity_type"),
+                                "entity_id": s_item.get("source_entity_id"),
+                                "entity_url": s_item.get("entity_url"),
+                                "priority": "critical" if s_item.get("is_critical") else "normal",
+                            }
+                            for i, s_item in enumerate(sec_data["items"])
+                        ],
+                        "is_critical": any(i.get("is_critical") for i in sec_data["items"]),
+                        "order": idx,
+                    })
+
                 db.table("handover_exports").insert({
                     "id": export_id,
                     "draft_id": draft_id,
@@ -273,7 +345,7 @@ async def generate_export(
                     "document_hash": document_hash,
                     "export_status": "completed",
                     "exported_at": now_iso,
-                    "edited_content": {"item_ids": [i["id"] for i in raw_items]},
+                    "edited_content": {"sections": edited_sections, "generated_at": now_iso},
                     "original_storage_url": storage_url,
                     "review_status": "pending_review",
                 }).execute()

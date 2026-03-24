@@ -32,6 +32,10 @@ class HandoverMicroserviceClient:
         items: List[Dict[str, Any]],
         period_start: Optional[str] = None,
         period_end: Optional[str] = None,
+        yacht_name: str = "Vessel",
+        doc_number: int = 1,
+        user_role: str = "",
+        user_department: str = "",
     ) -> Dict[str, Any]:
         """
         Call POST /api/v1/handover/transform on the microservice.
@@ -47,6 +51,10 @@ class HandoverMicroserviceClient:
             items: List of handover item dicts from handover_items table
             period_start: ISO timestamp (optional)
             period_end: ISO timestamp (optional)
+            yacht_name: Vessel display name (used in template header)
+            doc_number: Sequential document number for this yacht
+            user_role: Role of the requesting user (e.g. "captain", "chief_engineer")
+            user_department: Department of the requesting user
 
         Returns:
             Dict with:
@@ -62,6 +70,10 @@ class HandoverMicroserviceClient:
             "yacht_id": yacht_id,
             "user_id": user_id,
             "user_name": user_name,
+            "yacht_name": yacht_name,
+            "doc_number": doc_number,
+            "user_role": user_role,
+            "user_department": user_department,
             "items": items,
         }
         if period_start:
