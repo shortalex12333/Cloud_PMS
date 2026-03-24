@@ -29,8 +29,8 @@ export function getEntityRoute(
     manual: '/documents',
     shopping_item: '/shopping-list',
     inventory: '/inventory',
-    handover_item: '/work-orders',
-    handover_export: '/work-orders',
+    handover_item: '/handover-export',
+    handover_export: '/handover-export',
   };
 
   const base = routeMap[entityType];
