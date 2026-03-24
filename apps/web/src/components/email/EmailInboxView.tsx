@@ -30,7 +30,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
 
   // Navigate to email route with thread context
   const handleOpenThread = (thread: EmailThread) => {
-    router.push(`/email?thread=${thread.id}`);
+    router.push(`/email/${thread.id}`);
   };
 
   const threads = data?.threads || [];
