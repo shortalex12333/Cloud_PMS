@@ -11,7 +11,8 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { RouteLayout } from '@/components/layout';
+import { ChevronLeft } from 'lucide-react';
+import { LinkEmailModal } from '@/components/email/LinkEmailModal';
 import {
   useThread,
   useMessageContent,
@@ -262,6 +263,7 @@ function ThreadContent({ threadId }: { threadId: string }) {
   const markRead = useMarkThreadRead();
 
   const [expandedMessages, setExpandedMessages] = React.useState<Set<string>>(new Set());
+  const [showLinkModal, setShowLinkModal] = React.useState(false);
 
   // Mark thread as read on mount
   React.useEffect(() => {
@@ -335,13 +337,23 @@ function ThreadContent({ threadId }: { threadId: string }) {
 
       {/* Actions */}
       <div className="p-6 border-t border-surface-border flex gap-3">
-        <button className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors">
+        <button
+          onClick={() => setShowLinkModal(true)}
+          className="px-4 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg text-sm text-txt-primary transition-colors"
+        >
           Link to Object
         </button>
-        <button className="px-4 py-2 bg-brand-interactive hover:bg-brand-interactive/90 rounded-lg text-sm text-txt-inverse transition-colors">
-          Create Work Order
-        </button>
       </div>
+
+      {/* Link Modal */}
+      {showLinkModal && (
+        <LinkEmailModal
+          open={showLinkModal}
+          onOpenChange={(open) => { setShowLinkModal(open); if (!open) refetch(); }}
+          threadId={threadId}
+          threadSubject={thread.latest_subject || undefined}
+        />
+      )}
     </div>
   );
 }
@@ -351,26 +363,44 @@ function EmailThreadDetailPageContent() {
   const params = useParams();
   const threadId = params.threadId as string;
 
-  const handleBack = React.useCallback(() => router.back(), [router]);
-
   return (
-    <RouteLayout
-      pageTitle="Email Thread"
-      showTopNav={true}
-      topNavContent={
-        <div className="flex items-center gap-4">
-          <button onClick={handleBack} className="p-2 hover:bg-surface-hover rounded-lg transition-colors" aria-label="Back" data-testid="back-button">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-txt-secondary"><path d="M15 18l-6-6 6-6" /></svg>
-          </button>
-          <div>
-            <p className="text-xs text-txt-tertiary uppercase tracking-wider">Email Thread</p>
-            <h1 className="text-lg font-semibold text-txt-primary truncate max-w-md">Thread Details</h1>
-          </div>
+    <div style={{ minHeight: '100vh', background: 'var(--surface-base)' }}>
+      {/* Topbar */}
+      <div style={{
+        height: 44, display: 'flex', alignItems: 'center', padding: '0 16px',
+        borderBottom: '1px solid var(--border-sub)', background: 'var(--surface)', gap: 12,
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--mark)' }}>Celeste</span>
+        <div style={{ flex: 1 }} />
+      </div>
+
+      {/* Content */}
+      <div style={{ maxWidth: 700, margin: '0 auto', padding: '24px 20px 64px' }}>
+        <button
+          onClick={() => router.push('/email')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontSize: 12, color: 'var(--txt3)', cursor: 'pointer',
+            marginBottom: 20, background: 'none', border: 'none',
+            fontFamily: 'var(--font-sans)',
+          }}
+        >
+          <ChevronLeft size={14} /> Back to inbox
+        </button>
+
+        <div style={{
+          background: 'var(--surface)',
+          borderTop: '1px solid rgba(255,255,255,0.09)',
+          borderRight: '1px solid rgba(255,255,255,0.05)',
+          borderBottom: '1px solid rgba(255,255,255,0.03)',
+          borderLeft: '1px solid rgba(255,255,255,0.05)',
+          borderRadius: 8, overflow: 'hidden',
+          boxShadow: '0 0 0 1px rgba(0,0,0,0.60), 0 28px 80px rgba(0,0,0,0.80)',
+        }}>
+          <ThreadContent threadId={threadId} />
         </div>
-      }
-    >
-      <ThreadContent threadId={threadId} />
-    </RouteLayout>
+      </div>
+    </div>
   );
 }
 
