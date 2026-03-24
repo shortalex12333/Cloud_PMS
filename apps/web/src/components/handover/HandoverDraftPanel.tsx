@@ -1,27 +1,28 @@
 'use client';
 
 /**
- * HandoverDraftPanel - View and manage personal handover draft items
+ * HandoverDraftPanel — Drawer + Popup CRUD for handover draft items.
  *
- * Per requirements:
- * - Shows ONLY current user's handover items (added_by = user_id)
- * - Excludes already exported items
- * - Allows edit, delete of own items
- * - Export button triggers handover-export service
- * - Export action logged to ledger
- * - UX matches search bar results (chronological, timestamps, no UUIDs)
+ * Replaces legacy ContextPanel with:
+ * - Right-side drawer (460px, slide-in, backdrop)
+ * - Chronological day groups with collapsible sections
+ * - Click item → popup for Edit/Delete
+ * - Add Note button → Create popup
+ * - Export button → backend LLM pipeline
+ *
+ * Data: handover_items table (tenant DB), filtered by user + not exported.
  */
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { X, FileText, Edit3, Trash2, Send, AlertTriangle, Clock, Loader2, CheckCircle2, Package, Wrench, File, ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  X, FileText, AlertTriangle, Package, Wrench, File,
+  ChevronDown, ChevronRight, Upload, Plus, Loader2, Trash2, Save,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { getEntityRoute } from '@/lib/featureFlags';
 import { toast } from 'sonner';
-// External service functions no longer used - export creates local record
-// import { startExportJob, checkJobStatus } from '@/lib/handoverExportClient';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -34,6 +35,7 @@ interface HandoverItem {
   yacht_id: string;
   entity_id: string;
   entity_type: string;
+  entity_url: string | null;
   section: string | null;
   summary: string | null;
   category: string | null;
@@ -60,6 +62,12 @@ interface HandoverDraftPanelProps {
   onClose: () => void;
 }
 
+type PopupMode = null | { type: 'edit'; item: HandoverItem } | { type: 'add' } | { type: 'delete'; item: HandoverItem };
+
+const CATEGORIES = ['critical', 'standard', 'low'] as const;
+const STATUSES = ['on_going', 'not_started', 'requires_parts'] as const;
+const SECTIONS = ['Engineering', 'Deck', 'Interior', 'Command'] as const;
+
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -69,199 +77,408 @@ function formatDate(dateStr: string): string {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-
-  if (date.toDateString() === today.toDateString()) {
-    return 'Today';
-  }
-  if (date.toDateString() === yesterday.toDateString()) {
-    return 'Yesterday';
-  }
-
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  };
-  return date.toLocaleDateString('en-GB', options);
+  if (date.toDateString() === today.toDateString()) return 'Today';
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return formatDate(dateStr);
+  return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
 function groupItemsByDay(items: HandoverItem[]): DayGroup[] {
-  const groups: Map<string, DayGroup> = new Map();
-
+  const groups = new Map<string, DayGroup>();
   for (const item of items) {
     const date = new Date(item.created_at).toISOString().split('T')[0];
-
     if (!groups.has(date)) {
-      groups.set(date, {
-        date,
-        displayDate: formatDate(item.created_at),
-        items: [],
-      });
+      groups.set(date, { date, displayDate: formatDate(item.created_at), items: [] });
     }
-
     groups.get(date)!.items.push(item);
   }
-
-  // Sort by date descending
-  return Array.from(groups.values()).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  return Array.from(groups.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 function getEntityIcon(entityType: string) {
   switch (entityType) {
-    case 'fault':
-      return AlertTriangle;
-    case 'work_order':
-      return Wrench;
-    case 'equipment':
-      return Package;
-    case 'document':
-      return File;
-    default:
-      return FileText;
+    case 'fault': return AlertTriangle;
+    case 'work_order': return Wrench;
+    case 'equipment': return Package;
+    case 'document': return File;
+    default: return FileText;
   }
 }
 
 function getEntityLabel(entityType: string): string {
   switch (entityType) {
-    case 'fault':
-      return 'Fault';
-    case 'work_order':
-      return 'Work Order';
-    case 'equipment':
-      return 'Equipment';
-    case 'part':
-      return 'Part';
-    case 'document':
-      return 'Document';
-    case 'note':
-      return 'Note';
-    default:
-      return entityType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    case 'fault': return 'Fault';
+    case 'work_order': return 'W/O';
+    case 'equipment': return 'Equipment';
+    case 'part': return 'Parts';
+    case 'document': return 'Document';
+    case 'note': return 'Note';
+    default: return entityType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+}
+
+function categoryLabel(cat: string | null): string {
+  switch (cat) {
+    case 'critical': return 'Critical';
+    case 'standard': return 'Standard';
+    case 'low': return 'Low';
+    default: return cat || 'Standard';
+  }
+}
+
+function statusLabel(s: string): string {
+  switch (s) {
+    case 'on_going': return 'On Going';
+    case 'not_started': return 'Not Started';
+    case 'requires_parts': return 'Requires Parts';
+    default: return s;
   }
 }
 
 // ============================================================================
-// EDIT MODAL
+// STYLES (inline objects matching prototype tokens)
 // ============================================================================
 
-interface EditModalProps {
-  item: HandoverItem;
-  onSave: (id: string, summary: string, category: string, isCritical: boolean, requiresAction: boolean) => Promise<void>;
-  onClose: () => void;
-}
+const S = {
+  backdrop: {
+    position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.45)',
+    zIndex: 90, transition: 'opacity 200ms ease',
+  },
+  drawer: {
+    position: 'fixed' as const, top: 0, right: 0, bottom: 0,
+    width: 460, background: 'var(--surface)',
+    borderLeft: '1px solid var(--border-side)',
+    boxShadow: '-20px 0 80px rgba(0,0,0,0.50), -4px 0 20px rgba(0,0,0,0.30)',
+    display: 'flex', flexDirection: 'column' as const, zIndex: 100,
+    transition: 'transform 250ms cubic-bezier(0.16,1,0.3,1), opacity 180ms ease',
+    overflow: 'hidden',
+  },
+  drawerHdr: {
+    display: 'flex', alignItems: 'center', padding: '14px 16px',
+    borderBottom: '1px solid var(--border-sub)', gap: 10, flexShrink: 0,
+  },
+  drawerIcon: {
+    width: 28, height: 28, borderRadius: 6,
+    background: 'var(--teal-bg)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  statsBar: {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '10px 16px', borderBottom: '1px solid var(--border-faint)', flexShrink: 0,
+    fontSize: 11, fontWeight: 500, color: 'var(--txt3)',
+  },
+  actionBar: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '10px 16px', borderBottom: '1px solid var(--border-sub)', flexShrink: 0,
+  },
+  body: {
+    flex: 1, overflowY: 'auto' as const, padding: '8px 12px 16px',
+    background: 'var(--surface-base)',
+  },
+  dayCard: {
+    background: 'var(--surface)',
+    borderTop: '1px solid rgba(255,255,255,0.09)',
+    borderRight: '1px solid rgba(255,255,255,0.05)',
+    borderBottom: '1px solid rgba(255,255,255,0.03)',
+    borderLeft: '1px solid rgba(255,255,255,0.05)',
+    borderRadius: 4, overflow: 'hidden', marginBottom: 6,
+  },
+  dayHdr: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '8px 12px', cursor: 'pointer', userSelect: 'none' as const,
+    fontSize: 9, fontWeight: 600, textTransform: 'uppercase' as const,
+    letterSpacing: '0.12em', color: 'var(--txt)',
+  },
+  item: {
+    display: 'flex', alignItems: 'flex-start', gap: 10,
+    padding: '10px 12px', cursor: 'pointer', minHeight: 44,
+    transition: 'background 60ms', position: 'relative' as const,
+  },
+  itemBorder: { borderTop: '1px solid rgba(255,255,255,0.04)' },
+  popupOverlay: {
+    position: 'fixed' as const, inset: 0, zIndex: 200,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'opacity 180ms ease',
+  },
+  popupBg: { position: 'absolute' as const, inset: 0, background: 'rgba(0,0,0,0.45)' },
+  popupBgDelete: { position: 'absolute' as const, inset: 0, background: 'rgba(0,0,0,0.60)' },
+  popup: {
+    position: 'relative' as const, width: '100%', maxWidth: 520,
+    background: 'var(--surface-el)', borderRadius: 12,
+    borderTop: '1px solid var(--border-top)',
+    borderRight: '1px solid var(--border-side)',
+    borderBottom: '1px solid var(--border-bottom)',
+    borderLeft: '1px solid var(--border-side)',
+    boxShadow: '0 0 0 1px rgba(0,0,0,0.50), 0 32px 100px rgba(0,0,0,0.70)',
+    overflow: 'hidden',
+  },
+  field: {
+    display: 'flex', alignItems: 'flex-start', gap: 12,
+    minHeight: 44, padding: '8px 0',
+    borderTop: '1px solid var(--border-faint)',
+  },
+  fieldLabel: {
+    fontSize: 11, fontWeight: 500, color: 'var(--txt3)',
+    textTransform: 'uppercase' as const, letterSpacing: '0.04em',
+    minWidth: 100, paddingTop: 11, flexShrink: 0,
+  },
+  select: {
+    flex: 1, height: 40, background: 'var(--surface-base)',
+    border: '1px solid var(--border-chrome)', borderRadius: 6,
+    padding: '0 32px 0 12px', fontSize: 13, color: 'var(--txt)',
+    fontFamily: 'var(--font-sans)', cursor: 'pointer', outline: 'none',
+    appearance: 'none' as const,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
+  },
+  textarea: {
+    width: '100%', boxSizing: 'border-box' as const,
+    background: 'var(--surface-base)', border: '1px solid var(--border-chrome)',
+    borderRadius: 6, color: 'var(--txt)', fontFamily: 'var(--font-sans)',
+    fontSize: 13, padding: '10px 12px', resize: 'vertical' as const,
+    minHeight: 80, lineHeight: 1.5, outline: 'none',
+  },
+  radioRow: { flex: 1, display: 'flex', alignItems: 'center', gap: 4, paddingTop: 8, flexWrap: 'wrap' as const },
+  radioItem: (selected: boolean) => ({
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '6px 12px', borderRadius: 6, cursor: 'pointer', userSelect: 'none' as const,
+    border: `1px solid ${selected ? 'rgba(90,171,204,0.3)' : 'var(--border-sub)'}`,
+    background: selected ? 'var(--teal-bg)' : 'none',
+    fontSize: 13, color: selected ? 'var(--mark)' : 'var(--txt2)',
+    fontWeight: selected ? 500 : 400, transition: 'all 60ms',
+  }),
+  btnPrimary: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+    cursor: 'pointer', border: '1px solid rgba(90,171,204,0.2)',
+    background: 'var(--teal-bg)', color: 'var(--mark)',
+    fontFamily: 'var(--font-sans)', minHeight: 40,
+  },
+  btnSecondary: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+    cursor: 'pointer', border: '1px solid var(--border-sub)',
+    background: 'none', color: 'var(--txt2)',
+    fontFamily: 'var(--font-sans)', minHeight: 40,
+  },
+  btnDanger: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+    cursor: 'pointer', border: 'none', marginLeft: 'auto',
+    background: 'none', color: 'var(--txt3)',
+    fontFamily: 'var(--font-sans)',
+  },
+  btnDeleteConfirm: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+    cursor: 'pointer', border: 'none',
+    background: 'var(--red)', color: '#fff', fontFamily: 'var(--font-sans)',
+  },
+  catBadge: (cat: string | null) => {
+    const map: Record<string, { bg: string; color: string; border: string }> = {
+      critical: { bg: 'var(--red-bg)', color: 'var(--red)', border: 'var(--red-border)' },
+      standard: { bg: 'var(--neutral-bg)', color: 'var(--txt3)', border: 'var(--border-sub)' },
+      low: { bg: 'var(--green-bg)', color: 'var(--green)', border: 'var(--green-border)' },
+    };
+    const t = map[cat || 'standard'] || map.standard;
+    return {
+      display: 'inline-flex', alignItems: 'center', gap: 3,
+      padding: '1px 6px', borderRadius: 3, fontSize: 9, fontWeight: 600,
+      letterSpacing: '0.04em', textTransform: 'uppercase' as const,
+      background: t.bg, color: t.color, border: `1px solid ${t.border}`,
+    };
+  },
+};
 
-function EditModal({ item, onSave, onClose }: EditModalProps) {
-  const [summary, setSummary] = useState(item.summary || '');
-  const [category, setCategory] = useState(item.category || 'fyi');
-  const [isCritical, setIsCritical] = useState(item.is_critical);
-  const [requiresAction, setRequiresAction] = useState(item.requires_action);
+// ============================================================================
+// ITEM POPUP (Edit / Add / Delete)
+// ============================================================================
+
+function ItemPopup({
+  mode, onClose, onSave, onDelete, onSwitchToDelete,
+}: {
+  mode: NonNullable<PopupMode>;
+  onClose: () => void;
+  onSave: (data: { id?: string; summary: string; category: string; status: string; section: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onSwitchToDelete?: (item: HandoverItem) => void;
+}) {
+  const isEdit = mode.type === 'edit';
+  const isAdd = mode.type === 'add';
+  const isDelete = mode.type === 'delete';
+  const item = (mode.type === 'edit' || mode.type === 'delete') ? mode.item : null;
+
+  const [summary, setSummary] = useState(item?.summary || '');
+  const [category, setCategory] = useState(item?.category || '');
+  const [status, setStatus] = useState((item?.metadata as any)?.ui_status || '');
+  const [section, setSection] = useState(item?.section || 'Engineering');
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async () => {
+    if (!summary.trim()) { toast.error('Summary is required'); return; }
     setSaving(true);
     try {
-      await onSave(item.id, summary, category, isCritical, requiresAction);
+      await onSave({ id: item?.id, summary: summary.trim(), category, status, section });
       onClose();
-    } catch (err) {
-      toast.error('Failed to save changes');
+    } catch {
+      toast.error('Failed to save');
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center">
-      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose} />
-      <div className="relative bg-surface-elevated border border-surface-border rounded-lg shadow-modal w-full max-w-md mx-4 p-6">
-        <h3 className="typo-title font-semibold text-txt-primary mb-4">Edit Handover Note</h3>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label className="block typo-body font-medium text-txt-secondary mb-1">Summary</label>
-              <textarea
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-md text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
-                placeholder="Describe the handover note..."
-              />
+  const handleDelete = async () => {
+    if (!item) return;
+    setSaving(true);
+    try {
+      await onDelete(item.id);
+      onClose();
+    } catch {
+      toast.error('Failed to delete');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isDelete && item) {
+    return (
+      <div style={{ ...S.popupOverlay, opacity: 1, pointerEvents: 'auto' }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div style={S.popupBgDelete} onClick={onClose} />
+        <div style={S.popup}>
+          <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 12,
+              background: 'var(--red-bg)', color: 'var(--red)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+            }}>
+              <Trash2 size={24} />
             </div>
-            <div>
-              <label className="block typo-body font-medium text-txt-secondary mb-1">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-md text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
-              >
-                <option value="fyi">FYI</option>
-                <option value="urgent">Urgent</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="watch">Watch</option>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--txt)', marginBottom: 4 }}>Delete this handover note?</div>
+            <div style={{ fontSize: 13, color: 'var(--txt2)', maxWidth: 320, margin: '0 auto 20px', lineHeight: 1.5 }}>
+              This will permanently remove this note from your handover draft.
+              {item.entity_type !== 'note' && <> The source <strong>{getEntityLabel(item.entity_type)}</strong> will not be affected.</>}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+              <button style={S.btnDeleteConfirm} onClick={handleDelete} disabled={saving}>
+                <Trash2 size={14} /> {saving ? 'Deleting...' : 'Delete Note'}
+              </button>
+              <button style={S.btnSecondary} onClick={onClose}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const Icon = item ? getEntityIcon(item.entity_type) : Plus;
+
+  return (
+    <div style={{ ...S.popupOverlay, opacity: 1, pointerEvents: 'auto' }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={S.popupBg} onClick={onClose} />
+      <div style={S.popup}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', padding: '20px 24px 16px', gap: 12 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, display: 'flex',
+            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            background: isAdd ? 'var(--neutral-bg)' : (item?.entity_type === 'fault' ? 'var(--red-bg)' : 'var(--teal-bg)'),
+            color: isAdd ? 'var(--txt3)' : (item?.entity_type === 'fault' ? 'var(--red)' : 'var(--mark)'),
+          }}>
+            <Icon size={16} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--txt)' }}>
+              {isAdd ? 'Add Handover Note' : 'Edit Handover Note'}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--txt2)', marginTop: 3 }}>
+              {isAdd
+                ? 'This note will be included in your next handover export'
+                : <>{getEntityLabel(item!.entity_type)} · <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{item!.entity_id?.slice(0, 8)}</span> · Added <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{formatTime(item!.created_at)}</span></>
+              }
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            width: 36, height: 36, borderRadius: 8, display: 'flex',
+            alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            color: 'var(--txt-ghost)', background: 'none', border: 'none',
+          }}>
+            <X size={14} />
+          </button>
+        </div>
+
+        <div style={{ height: 1, background: 'var(--border-sub)', margin: '0 24px' }} />
+
+        {/* Body */}
+        <div style={{ padding: '0 24px 20px' }}>
+          {/* Summary */}
+          <div style={{ padding: '12px 0' }}>
+            <div style={{ ...S.fieldLabel, paddingTop: 0, marginBottom: 8 }}>Summary</div>
+            <textarea
+              style={S.textarea}
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder={isAdd ? 'Describe what the incoming crew needs to know...' : ''}
+            />
+          </div>
+
+          {/* Category */}
+          <div style={S.field}>
+            <div style={S.fieldLabel}>Category</div>
+            <select style={S.select} value={category} onChange={(e) => setCategory(e.target.value)}>
+              {!category && <option value="" disabled>Select category…</option>}
+              {CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(c)}</option>)}
+            </select>
+          </div>
+
+          {/* Status (radio) */}
+          <div style={S.field}>
+            <div style={S.fieldLabel}>Status</div>
+            <div style={S.radioRow}>
+              {STATUSES.map(s => (
+                <div key={s} style={S.radioItem(status === s)} onClick={() => setStatus(s)}>
+                  <div style={{
+                    width: 14, height: 14, borderRadius: '50%',
+                    border: `1.5px solid ${status === s ? 'var(--mark)' : 'var(--border-chrome)'}`,
+                    background: 'var(--surface-base)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {status === s && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--mark)' }} />}
+                  </div>
+                  {statusLabel(s)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Section (Add only) */}
+          {isAdd && (
+            <div style={S.field}>
+              <div style={S.fieldLabel}>Section</div>
+              <select style={S.select} value={section} onChange={(e) => setSection(e.target.value)}>
+                {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isCritical}
-                  onChange={(e) => setIsCritical(e.target.checked)}
-                  className="w-4 h-4 rounded border-surface-border text-status-critical focus:ring-status-critical"
-                />
-                <span className="typo-body text-txt-secondary">Critical</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={requiresAction}
-                  onChange={(e) => setRequiresAction(e.target.checked)}
-                  className="w-4 h-4 rounded border-surface-border text-status-warning focus:ring-status-warning"
-                />
-                <span className="typo-body text-txt-secondary">Requires Action</span>
-              </label>
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 typo-body font-medium text-txt-secondary hover:text-txt-primary transition-colors duration-fast"
-            >
-              Cancel
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          borderTop: '1px solid var(--border-sub)', padding: '16px 24px',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <button style={{ ...S.btnPrimary, opacity: saving ? 0.5 : 1 }} onClick={handleSave} disabled={saving}>
+            {isAdd ? <><Plus size={14} /> {saving ? 'Adding...' : 'Add to Handover'}</> : <><Save size={14} /> {saving ? 'Saving...' : 'Save Changes'}</>}
+          </button>
+          <button style={S.btnSecondary} onClick={onClose}>Cancel</button>
+          {isEdit && item && (
+            <button style={S.btnDanger} onClick={() => onSwitchToDelete?.(item)} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--red)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--txt3)'; }}>
+              <Trash2 size={14} /> Delete
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 typo-body font-medium bg-brand-interactive rounded-md hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
-              style={{ color: 'var(--txt)' }}
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -278,29 +495,24 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
-  const [editingItem, setEditingItem] = useState<HandoverItem | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [popup, setPopup] = useState<PopupMode>(null);
 
-  // Fetch user's handover items
+  // ── Fetch ──
   const fetchItems = useCallback(async () => {
     if (!user?.id || !user?.yachtId) return;
-
     setLoading(true);
     try {
-      // Get exported item IDs to exclude
       const { data: exports } = await supabase
         .from('handover_exports')
         .select('edited_content')
         .eq('yacht_id', user.yachtId)
         .not('export_status', 'eq', 'failed');
 
-      const exportedItemIds = new Set<string>();
+      const exportedIds = new Set<string>();
       exports?.forEach(exp => {
-        const itemIds = (exp.edited_content as any)?.item_ids || [];
-        itemIds.forEach((id: string) => exportedItemIds.add(id));
+        ((exp.edited_content as any)?.item_ids || []).forEach((id: string) => exportedIds.add(id));
       });
 
-      // Fetch user's draft items (not deleted, not exported)
       const { data, error } = await supabase
         .from('handover_items')
         .select('*')
@@ -310,381 +522,305 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
         .neq('export_status', 'exported')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('[HandoverDraftPanel] Fetch error:', error);
-        toast.error('Failed to load handover items');
-        return;
-      }
-
-      // Filter out exported items
-      const draftItems = (data || []).filter(item => !exportedItemIds.has(item.id));
-      setItems(draftItems);
-
-      // Auto-expand today's items
-      const today = new Date().toISOString().split('T')[0];
-      setExpandedDays(new Set([today]));
-    } catch (err) {
-      console.error('[HandoverDraftPanel] Error:', err);
+      if (error) { toast.error('Failed to load handover items'); return; }
+      setItems((data || []).filter(i => !exportedIds.has(i.id)));
+      setExpandedDays(new Set([new Date().toISOString().split('T')[0]]));
+    } catch {
       toast.error('Failed to load handover items');
     } finally {
       setLoading(false);
     }
   }, [user?.id, user?.yachtId]);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchItems();
+  useEffect(() => { if (isOpen) fetchItems(); }, [isOpen, fetchItems]);
+
+  // ── Save (Create + Update) ──
+  const handleSave = useCallback(async (data: { id?: string; summary: string; category: string; status: string; section: string }) => {
+    if (!user?.id || !user?.yachtId) return;
+
+    if (data.id) {
+      // Update — ui_status stored in metadata (DB status has check constraint: pending/acknowledged/completed/deferred)
+      const { error } = await supabase
+        .from('handover_items')
+        .update({
+          summary: data.summary,
+          category: data.category,
+          section: data.section,
+          is_critical: data.category === 'critical',
+          requires_action: data.status === 'requires_parts',
+          metadata: { ui_status: data.status },
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+        })
+        .eq('id', data.id)
+        .eq('added_by', user.id);
+      if (error) throw error;
+      toast.success('Handover note updated');
+    } else {
+      // Create
+      const { error } = await supabase
+        .from('handover_items')
+        .insert({
+          yacht_id: user.yachtId,
+          added_by: user.id,
+          entity_type: 'note',
+          entity_id: crypto.randomUUID(),
+          summary: data.summary,
+          category: data.category,
+          status: 'pending',
+          section: data.section,
+          priority: data.category === 'critical' ? 2 : data.category === 'low' ? 0 : 1,
+          is_critical: data.category === 'critical',
+          requires_action: data.status === 'requires_parts',
+          metadata: { ui_status: data.status },
+          export_status: 'pending',
+        });
+      if (error) throw error;
+      toast.success('Handover note added');
     }
-  }, [isOpen, fetchItems]);
-
-  // Handle item click - navigate to entity
-  const handleItemClick = useCallback((item: HandoverItem) => {
-    if (!item.entity_type || !item.entity_id) return;
-    const route = getEntityRoute(item.entity_type as Parameters<typeof getEntityRoute>[0], item.entity_id);
-    router.push(route);
-    onClose();
-  }, [router, onClose]);
-
-  // Handle edit
-  const handleEdit = useCallback(async (id: string, summary: string, category: string, isCritical: boolean, requiresAction: boolean) => {
-    if (!user?.id) return;
-
-    const { error } = await supabase
-      .from('handover_items')
-      .update({
-        summary,
-        category,
-        is_critical: isCritical,
-        requires_action: requiresAction,
-        updated_at: new Date().toISOString(),
-        updated_by: user.id,
-      })
-      .eq('id', id)
-      .eq('added_by', user.id); // Ensure user can only edit their own
-
-    if (error) {
-      console.error('[HandoverDraftPanel] Edit error:', error);
-      throw error;
-    }
-
-    toast.success('Handover note updated');
     fetchItems();
-  }, [user?.id, fetchItems]);
+  }, [user?.id, user?.yachtId, fetchItems]);
 
-  // Handle delete
-  const handleDelete = useCallback(async (item: HandoverItem) => {
+  // ── Delete (soft) ──
+  const handleDelete = useCallback(async (id: string) => {
     if (!user?.id) return;
-    if (!confirm('Delete this handover note?')) return;
-
     const { error } = await supabase
       .from('handover_items')
-      .update({
-        deleted_at: new Date().toISOString(),
-        deleted_by: user.id,
-        deletion_reason: 'User deleted from draft panel',
-      })
-      .eq('id', item.id)
-      .eq('added_by', user.id); // Ensure user can only delete their own
-
-    if (error) {
-      console.error('[HandoverDraftPanel] Delete error:', error);
-      toast.error('Failed to delete item');
-      return;
-    }
-
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user.id, deletion_reason: 'User deleted from draft panel' })
+      .eq('id', id)
+      .eq('added_by', user.id);
+    if (error) throw error;
     toast.success('Handover note deleted');
     fetchItems();
   }, [user?.id, fetchItems]);
 
-  // Handle export - calls backend API which delegates to LLM microservice
+  // ── Export ──
   const handleExport = useCallback(async () => {
     if (!user?.id || !user?.yachtId || items.length === 0) return;
-
     setExporting(true);
     try {
-      // Get auth token for backend API call
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
-      if (!token) {
-        throw new Error('Authentication required — please log in again');
-      }
+      if (!token) throw new Error('Authentication required — please log in again');
 
-      // Call backend export endpoint — it handles:
-      // 1. Fetching items from handover_items
-      // 2. Calling LLM microservice for professional summaries
-      // 3. Creating handover_exports record
-      // 4. Uploading HTML to Supabase Storage
-      // 5. Creating ledger notification
       const response = await fetch(`${RENDER_API_URL}/v1/handover/export`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          export_type: 'html',
-          filter_by_user: true,
-        }),
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ export_type: 'html', filter_by_user: true }),
       });
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Export failed' }));
-        throw new Error(errorData.detail || `Export failed (${response.status})`);
+        const err = await response.json().catch(() => ({ detail: 'Export failed' }));
+        throw new Error(err.detail || `Export failed (${response.status})`);
       }
 
       const result = await response.json();
-      const exportId = result.export_id;
+      await supabase.from('handover_items').update({ export_status: 'exported', status: 'completed' }).in('id', items.map(i => i.id));
 
-      // Mark items as exported in handover_items
-      const itemIds = items.map(i => i.id);
-      await supabase
-        .from('handover_items')
-        .update({ export_status: 'exported', status: 'exported' })
-        .in('id', itemIds);
-
-      toast.success(
-        `Handover exported — ${result.total_items} items, ${result.sections_count} sections`,
-        {
-          action: {
-            label: 'View',
-            onClick: () => router.push(`/handover-export/${exportId}`),
-          },
-        }
-      );
-      fetchItems(); // Refresh to hide exported items
+      toast.success(`Handover exported — ${result.total_items} items`, {
+        action: { label: 'View', onClick: () => router.push(`/handover-export/${result.export_id}`) },
+      });
+      fetchItems();
     } catch (err) {
-      console.error('[HandoverDraftPanel] Export error:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to export handover');
     } finally {
       setExporting(false);
     }
-  }, [user?.id, user?.yachtId, items, fetchItems, supabase, router]);
+  }, [user?.id, user?.yachtId, items, fetchItems, router]);
 
-  // Toggle day expansion
+  // ── Toggle day ──
   const toggleDay = useCallback((date: string) => {
     setExpandedDays(prev => {
       const next = new Set(prev);
-      if (next.has(date)) {
-        next.delete(date);
-      } else {
-        next.add(date);
-      }
+      next.has(date) ? next.delete(date) : next.add(date);
       return next;
     });
   }, []);
 
   if (!isOpen) return null;
 
-  const groupedItems = groupItemsByDay(items);
-  const criticalCount = items.filter(i => i.is_critical).length;
-  const actionCount = items.filter(i => i.requires_action).length;
+  const grouped = groupItemsByDay(items);
+  const criticalCount = items.filter(i => i.category === 'critical' || i.is_critical).length;
+  const actionCount = items.filter(i => i.requires_action || i.status === 'requires_parts').length;
 
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-sidebar"
-        style={{ background: 'rgba(0,0,0,0.4)' }}
-        onClick={onClose}
-      />
+      <div style={{ ...S.backdrop, opacity: 1, pointerEvents: 'auto' }} onClick={onClose} />
 
-      {/* Panel */}
-      <div
-        className={cn(
-          'fixed right-0 top-0 bottom-0 z-modal',
-          'w-full max-w-md',
-          'bg-surface-base border-l border-surface-border',
-          'flex flex-col',
-          ''
-        )}
-      >
+      {/* Drawer */}
+      <div style={{ ...S.drawer, transform: 'translateX(0)', opacity: 1 }}>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border">
-          <div className="flex items-center gap-3">
-            <FileText className="w-5 h-5 text-txt-secondary" />
-            <div>
-              <h2 className="typo-title font-semibold text-txt-primary">My Handover Draft</h2>
-              <p className="typo-meta text-txt-tertiary">
-                {items.length} item{items.length !== 1 ? 's' : ''} pending
-                {criticalCount > 0 && <span className="text-status-critical ml-2">{criticalCount} critical</span>}
-                {actionCount > 0 && <span className="text-status-warning ml-2">{actionCount} action</span>}
-              </p>
+        <div style={S.drawerHdr}>
+          <div style={S.drawerIcon}>
+            <FileText size={14} color="var(--mark)" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--txt)' }}>My Handover Draft</div>
+            <div style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
+              {items.length} item{items.length !== 1 ? 's' : ''} · {user?.role || 'Engineering'}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="btn-icon h-8 w-8"
-            aria-label="Close"
-          >
-            <X className="w-[18px] h-[18px]" />
+          <button onClick={onClose} style={{
+            width: 32, height: 32, borderRadius: 6, display: 'flex',
+            alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            color: 'var(--txt-ghost)', background: 'none', border: 'none',
+          }}>
+            <X size={14} />
           </button>
         </div>
 
-        {/* Export Button */}
+        {/* Stats */}
         {items.length > 0 && (
-          <div className="px-6 py-3 border-b border-surface-border">
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className={cn(
-                'w-full flex items-center justify-center gap-2',
-                'px-4 py-2.5 rounded-lg',
-                'bg-brand-interactive font-medium',
-                'hover:bg-brand-interactive/90 transition-colors',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-              style={{ color: 'var(--txt)' }}
-            >
-              {exporting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Export Handover
-                </>
-              )}
-            </button>
+          <div style={S.statsBar}>
+            <span><span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--txt)' }}>{items.length}</span> items</span>
+            {criticalCount > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--red)' }} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--red)' }}>{criticalCount}</span> critical
+              </span>
+            )}
+            {actionCount > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--amber)' }} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--amber)' }}>{actionCount}</span> action
+              </span>
+            )}
           </div>
         )}
 
-        {/* Content */}
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto"
-        >
+        {/* Actions */}
+        <div style={S.actionBar}>
+          <button
+            onClick={handleExport}
+            disabled={exporting || items.length === 0}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '7px 14px', borderRadius: 6,
+              background: 'var(--teal-bg)', color: 'var(--mark)',
+              fontSize: 12, fontWeight: 600, border: '1px solid rgba(90,171,204,0.2)',
+              cursor: items.length === 0 ? 'not-allowed' : 'pointer',
+              fontFamily: 'var(--font-sans)', opacity: (exporting || items.length === 0) ? 0.5 : 1,
+            }}
+          >
+            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+            {exporting ? 'Exporting...' : 'Export Handover'}
+          </button>
+          <button
+            onClick={() => setPopup({ type: 'add' })}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '7px 12px', borderRadius: 6,
+              background: 'none', color: 'var(--mark)',
+              fontSize: 12, fontWeight: 500, border: '1px solid var(--border-sub)',
+              cursor: 'pointer', fontFamily: 'var(--font-sans)',
+            }}
+          >
+            <Plus size={12} /> Add Note
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={S.body}>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-txt-tertiary" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0' }}>
+              <Loader2 size={24} className="animate-spin" style={{ color: 'var(--txt3)' }} />
             </div>
           ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-              <FileText className="w-12 h-12 text-txt-tertiary mb-4" />
-              <p className="text-txt-secondary font-medium">No handover items</p>
-              <p className="text-txt-tertiary typo-body mt-1">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 24px', textAlign: 'center' }}>
+              <FileText size={48} style={{ color: 'var(--txt-ghost)', marginBottom: 12 }} />
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--txt2)', marginBottom: 4 }}>No handover items</div>
+              <div style={{ fontSize: 12, color: 'var(--txt3)', maxWidth: 260, lineHeight: 1.6 }}>
                 Add notes from faults, work orders, or equipment to include in your handover.
-              </p>
+              </div>
             </div>
           ) : (
-            <div className="py-2">
-              {groupedItems.map((group) => (
-                <div key={group.date}>
-                  {/* Day Header */}
-                  <button
-                    onClick={() => toggleDay(group.date)}
-                    className="w-full flex items-center gap-2 px-6 py-2 text-left hover:bg-surface-hover transition-colors duration-fast"
-                  >
-                    {expandedDays.has(group.date) ? (
-                      <ChevronDown className="w-4 h-4 text-txt-tertiary" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-txt-tertiary" />
-                    )}
-                    <span className="typo-body font-medium text-txt-secondary">{group.displayDate}</span>
-                    <span className="typo-meta text-txt-tertiary">({group.items.length})</span>
-                  </button>
+            grouped.map((group) => (
+              <div key={group.date} style={{ marginBottom: 6 }}>
+                <div style={S.dayCard}>
+                  <div style={S.dayHdr} onClick={() => toggleDay(group.date)}>
+                    <span style={{ flex: 1 }}>
+                      {group.displayDate} <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 400, color: 'var(--txt3)' }}>· {group.items.length}</span>
+                    </span>
+                    {expandedDays.has(group.date)
+                      ? <ChevronDown size={12} style={{ color: 'var(--txt-ghost)' }} />
+                      : <ChevronRight size={12} style={{ color: 'var(--txt-ghost)' }} />
+                    }
+                  </div>
 
-                  {/* Day Items */}
-                  {expandedDays.has(group.date) && (
-                    <div className="space-y-1 px-4 pb-2">
-                      {group.items.map((item) => {
-                        const Icon = getEntityIcon(item.entity_type);
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-surface-primary hover:bg-surface-hover transition-colors group"
-                          >
-                            {/* Entity Icon */}
-                            <div className={cn(
-                              'flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center',
-                              item.is_critical ? 'bg-status-critical/10 text-status-critical' :
-                              item.requires_action ? 'bg-status-warning/10 text-status-warning' :
-                              'bg-surface-hover text-txt-secondary'
-                            )}>
-                              <Icon className="w-4 h-4" />
-                            </div>
+                  {expandedDays.has(group.date) && group.items.map((item, idx) => {
+                    const Icon = getEntityIcon(item.entity_type);
+                    const isCrit = item.category === 'critical' || item.is_critical;
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setPopup({ type: 'edit', item })}
+                        style={{
+                          ...S.item,
+                          ...(idx > 0 ? S.itemBorder : {}),
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = ''; }}
+                      >
+                        {/* Critical left edge */}
+                        {isCrit && <div style={{ position: 'absolute', left: 0, top: 4, bottom: 4, width: 2, borderRadius: 1, background: 'var(--red)' }} />}
 
-                            {/* Content */}
-                            <div
-                              className="flex-1 min-w-0 cursor-pointer"
-                              onClick={() => handleItemClick(item)}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="typo-meta font-medium text-txt-tertiary uppercase">
-                                  {getEntityLabel(item.entity_type)}
-                                </span>
-                                {item.is_critical && (
-                                  <span className="px-1.5 py-0.5 text-[10px] font-medium bg-status-critical/10 text-status-critical rounded">
-                                    CRITICAL
-                                  </span>
-                                )}
-                                {item.requires_action && (
-                                  <span className="px-1.5 py-0.5 text-[10px] font-medium bg-status-warning/10 text-status-warning rounded">
-                                    ACTION
-                                  </span>
-                                )}
-                              </div>
-                              <p className="typo-body text-txt-primary line-clamp-2 mt-0.5">
-                                {item.summary || 'No summary'}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Clock className="w-3 h-3 text-txt-tertiary" />
-                                <span className="typo-meta text-txt-tertiary">
-                                  {formatTime(item.created_at)}
-                                </span>
-                                {item.category && (
-                                  <span className="typo-meta text-txt-tertiary px-1.5 py-0.5 bg-surface-hover rounded">
-                                    {item.category}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                        <Icon size={14} style={{ flexShrink: 0, color: isCrit ? 'var(--red)' : 'var(--txt3)', marginTop: 2 }} />
 
-                            {/* Actions */}
-                            <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingItem(item);
-                                }}
-                                className="p-1.5 rounded text-txt-tertiary hover:text-txt-primary hover:bg-surface-hover transition-colors duration-fast"
-                                title="Edit"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(item);
-                                }}
-                                className="p-1.5 rounded text-txt-tertiary hover:text-status-critical hover:bg-status-critical/10 transition-colors duration-fast"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 13, fontWeight: 500, color: 'var(--txt)', lineHeight: 1.4,
+                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                          }}>
+                            {item.summary || 'No summary'}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          <div style={{
+                            fontSize: 10.5, color: 'var(--txt2)', fontFamily: 'var(--font-mono)',
+                            letterSpacing: '0.03em', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6,
+                          }}>
+                            <span>{getEntityLabel(item.entity_type).toUpperCase()}</span>
+                            <span style={S.catBadge(item.category)}>{categoryLabel(item.category)}</span>
+                            {(item.metadata as any)?.ui_status && (
+                              <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--amber)', letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: 'var(--font-sans)' }}>
+                                {statusLabel((item.metadata as any).ui_status)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', flexShrink: 0, whiteSpace: 'nowrap', marginTop: 2 }}>
+                          {formatTime(item.created_at)}
+                        </span>
+                        <ChevronRight size={12} style={{ color: 'var(--txt-ghost)', flexShrink: 0, marginTop: 4, opacity: 0.5 }} />
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+            ))
+          )}
+
+          {/* Footer */}
+          {items.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 12px', marginTop: 4 }}>
+              <span style={{ fontSize: 10, color: 'var(--txt3)', fontFamily: 'var(--font-mono)' }}>
+                {items.length} handover item{items.length !== 1 ? 's' : ''}
+              </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {editingItem && (
-        <EditModal
-          item={editingItem}
-          onSave={handleEdit}
-          onClose={() => setEditingItem(null)}
+      {/* Popup */}
+      {popup && (
+        <ItemPopup
+          mode={popup}
+          onClose={() => setPopup(null)}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          onSwitchToDelete={(item) => setPopup({ type: 'delete', item })}
         />
       )}
     </>
   );
 }
-

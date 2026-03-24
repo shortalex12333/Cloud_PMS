@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handover Draft Drawer — Celeste Design Prototype</title>
+<link rel="stylesheet" href="lens-base.css">
+<style>
+/* ═══════════════════════════════════════════════════════
+   LAYOUT — full viewport, hamburger triggers drawer.
+   ═══════════════════════════════════════════════════════ */
+body { padding: 0; margin: 0; min-height: 100vh; background: var(--surface-base); }
+
+/* App chrome — thin topbar */
+.app-topbar {
+  height: 44px; display: flex; align-items: center;
+  padding: 0 16px; border-bottom: 1px solid var(--border-sub);
+  background: var(--surface); gap: 12px;
+}
+.app-logo { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mark); }
+.app-vessel { font-size: 12px; color: var(--txt3); border-left: 1px solid var(--border-sub); padding-left: 12px; }
+.app-topbar-spacer { flex: 1; }
+.app-role {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--txt3); padding: 4px 10px;
+  background: var(--surface-el); border-radius: 4px;
+}
+.hamburger-btn {
+  width: 36px; height: 36px; border-radius: 6px; border: none;
+  background: none; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; color: var(--txt2); transition: background 60ms;
+}
+.hamburger-btn:hover { background: var(--surface-hover); }
+.theme-btn {
+  width: 32px; height: 32px; border-radius: 6px; border: none;
+  background: none; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; color: var(--txt3); transition: background 60ms;
+}
+.theme-btn:hover { background: var(--surface-hover); color: var(--txt2); }
+
+/* ═══════════════════════════════════════════════════════
+   BACKDROP — darkens when drawer is open
+   ═══════════════════════════════════════════════════════ */
+.drawer-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 90; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
+}
+.drawer-backdrop.visible { opacity: 1; pointer-events: auto; }
+
+/* ═══════════════════════════════════════════════════════
+   HANDOVER DRAFT DRAWER — fixed right, full height.
+   ═══════════════════════════════════════════════════════ */
+.ho-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 460px; background: var(--surface);
+  border-left: 1px solid var(--border-side);
+  box-shadow: -20px 0 80px rgba(0,0,0,0.50), -4px 0 20px rgba(0,0,0,0.30),
+              inset 0 1px 0 rgba(255,255,255,0.05);
+  overflow: hidden; display: flex; flex-direction: column; z-index: 100;
+  transform: translateX(100%); opacity: 0; pointer-events: none;
+  transition: opacity 180ms ease, transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ho-drawer.open { transform: translateX(0); opacity: 1; pointer-events: auto; }
+
+/* ─── Drawer header ─── */
+.ho-drawer-hdr {
+  display: flex; align-items: center; padding: 14px 16px;
+  border-bottom: 1px solid var(--border-sub); gap: 10px; flex-shrink: 0;
+}
+.ho-drawer-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--teal-bg); display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.ho-drawer-icon svg { width: 14px; height: 14px; color: var(--mark); }
+.ho-drawer-hdr-text { flex: 1; }
+.ho-drawer-title { font-size: 14px; font-weight: 600; color: var(--txt); }
+.ho-drawer-subtitle { font-size: 11px; color: var(--txt3); margin-top: 1px; font-family: var(--font-mono); }
+.ho-drawer-close {
+  width: 32px; height: 32px; border-radius: 6px; display: flex;
+  align-items: center; justify-content: center; cursor: pointer;
+  color: var(--txt-ghost); background: none; border: none; transition: background 60ms;
+}
+.ho-drawer-close:hover { background: var(--surface-hover); color: var(--txt2); }
+
+/* ─── Stats bar ─── */
+.ho-stats-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border-faint); flex-shrink: 0;
+}
+.ho-stat { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: var(--txt3); }
+.ho-stat-num { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+.ho-stat-num.critical { color: var(--red); }
+.ho-stat-num.action { color: var(--amber); }
+.ho-stat-num.total { color: var(--txt); }
+.ho-stat-dot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+.ho-stat-dot.red { background: var(--red); }
+.ho-stat-dot.amber { background: var(--amber); }
+.ho-stats-spacer { flex: 1; }
+
+/* ─── Action bar ─── */
+.ho-action-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border-sub); flex-shrink: 0;
+}
+.ho-btn-export {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 6px;
+  background: var(--teal-bg); color: var(--mark);
+  font-size: 12px; font-weight: 600;
+  border: 1px solid rgba(90,171,204,0.2);
+  cursor: pointer; font-family: var(--font-sans);
+  transition: background 60ms, border-color 60ms;
+}
+.ho-btn-export:hover { background: rgba(90,171,204,0.18); border-color: rgba(90,171,204,0.3); }
+.ho-btn-export svg { width: 13px; height: 13px; }
+.ho-btn-add {
+  display: flex; align-items: center; gap: 5px;
+  padding: 7px 12px; border-radius: 6px;
+  background: none; color: var(--mark);
+  font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border-sub);
+  cursor: pointer; font-family: var(--font-sans);
+  transition: background 60ms, border-color 60ms;
+}
+.ho-btn-add:hover { background: var(--surface-hover); border-color: var(--border-top); }
+.ho-btn-add svg { width: 12px; height: 12px; }
+
+/* ─── Drawer scrollable body ─── */
+.ho-drawer-body {
+  flex: 1; overflow-y: auto; padding: 8px 12px 16px; background: var(--surface-base);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DAY GROUPS — chronological, collapsible
+   ═══════════════════════════════════════════════════════ */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.day-group { opacity: 0; animation: fadeSlideIn 250ms ease forwards; margin-bottom: 6px; }
+.day-group:nth-child(1) { animation-delay: 0ms; }
+.day-group:nth-child(2) { animation-delay: 80ms; }
+.day-group:nth-child(3) { animation-delay: 160ms; }
+.day-group:nth-child(4) { animation-delay: 240ms; }
+
+.day-card {
+  background: var(--surface);
+  border-top: 1px solid rgba(255,255,255,0.09);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-left: 1px solid rgba(255,255,255,0.05);
+  border-radius: 4px; overflow: hidden;
+}
+.day-hdr {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px; cursor: pointer; user-select: none; transition: background 60ms;
+}
+.day-hdr:hover { background: rgba(255,255,255,0.03); }
+.day-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--txt); flex: 1; }
+.day-count { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--txt3); }
+.day-chevron { width: 12px; height: 12px; color: var(--txt-ghost); transition: transform 150ms ease; flex-shrink: 0; }
+.day-hdr.collapsed .day-chevron { transform: rotate(-90deg); }
+.day-items { overflow: hidden; transition: max-height 200ms ease, opacity 150ms ease; }
+.day-items.collapsed { max-height: 0 !important; opacity: 0; }
+
+/* ═══════════════════════════════════════════════════════
+   ITEM ROWS — click opens popup. No inline edit/delete.
+   ═══════════════════════════════════════════════════════ */
+.ho-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; cursor: pointer; min-height: 44px;
+  transition: background 60ms; border-top: 1px solid rgba(255,255,255,0.04);
+  position: relative;
+}
+.ho-item:first-of-type { border-top: none; }
+.ho-item:hover { background: rgba(255,255,255,0.04); }
+.ho-item-icon { width: 14px; height: 14px; flex-shrink: 0; color: var(--txt3); margin-top: 2px; }
+.ho-item.critical .ho-item-icon { color: var(--red); }
+.ho-item.critical::before {
+  content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+  width: 2px; border-radius: 1px; background: var(--red);
+}
+.ho-item-text { flex: 1; min-width: 0; }
+.ho-item-title {
+  font-size: 13px; font-weight: 500; color: var(--txt); line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ho-item-meta {
+  font-size: 10.5px; color: var(--txt2); font-family: var(--font-mono);
+  letter-spacing: 0.03em; margin-top: 2px; display: flex; align-items: center; gap: 6px;
+}
+.ho-cat-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 1px 6px; border-radius: 3px;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; font-family: var(--font-sans);
+}
+.ho-cat-badge.critical { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.ho-cat-badge.standard { background: var(--neutral-bg); color: var(--txt3); border: 1px solid var(--border-sub); }
+.ho-cat-badge.low { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.ho-action-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 600; color: var(--amber);
+  letter-spacing: 0.04em; text-transform: uppercase; font-family: var(--font-sans);
+}
+.ho-action-tag svg { width: 9px; height: 9px; }
+.ho-item-ts {
+  font-family: var(--font-mono); font-size: 10px; color: var(--txt-ghost);
+  flex-shrink: 0; white-space: nowrap; margin-top: 2px;
+}
+/* Subtle open-arrow on hover */
+.ho-item-arrow {
+  width: 12px; height: 12px; color: var(--txt-ghost); flex-shrink: 0;
+  margin-top: 4px; opacity: 0; transition: opacity 80ms;
+}
+.ho-item:hover .ho-item-arrow { opacity: 1; }
+
+/* ─── Footer ─── */
+.ho-footer {
+  display: flex; align-items: center; gap: 4px; padding: 8px 12px; margin-top: 4px;
+}
+.ho-footer-count { font-size: 10px; color: var(--txt3); font-family: var(--font-mono); }
+.ho-footer-spacer { flex: 1; }
+.ho-footer-hint { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--txt-ghost); }
+.ho-footer-hint kbd {
+  background: var(--surface-el); border-radius: 3px; padding: 1px 4px;
+  font-size: 10px; color: var(--txt3); font-family: var(--font-mono);
+  min-width: 18px; text-align: center;
+}
+.ho-footer-sep { width: 1px; height: 10px; background: var(--border-sub); margin: 0 8px; }
+
+/* ═══════════════════════════════════════════════════════
+   POPUP SYSTEM — matches popup-journeys.html pattern.
+   Centered overlay, backdrop scales with action weight.
+   ═══════════════════════════════════════════════════════ */
+.popup-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 180ms ease;
+}
+.popup-overlay.open { opacity: 1; pointer-events: auto; }
+.popup-bg {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.45);
+  transition: background 200ms ease;
+}
+/* Higher weight actions = darker backdrop */
+.popup-overlay.weight-delete .popup-bg { background: rgba(0,0,0,0.60); }
+
+.popup {
+  position: relative;
+  width: 100%; max-width: 520px;
+  background: var(--surface-el);
+  border-radius: 12px;
+  border-top: 1px solid var(--border-top);
+  border-right: 1px solid var(--border-side);
+  border-bottom: 1px solid var(--border-bottom);
+  border-left: 1px solid var(--border-side);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.50), 0 32px 100px rgba(0,0,0,0.70);
+  overflow: hidden;
+  transform: scale(0.97) translateY(8px);
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.popup-overlay.open .popup { transform: scale(1) translateY(0); }
+
+/* ─── Popup header ─── */
+.popup-hdr {
+  display: flex; align-items: flex-start; padding: 20px 24px 16px; gap: 12px;
+}
+.popup-hdr-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.popup-hdr-icon.fault { background: var(--red-bg); color: var(--red); }
+.popup-hdr-icon.work_order { background: var(--teal-bg); color: var(--mark); }
+.popup-hdr-icon.equipment { background: var(--neutral-bg); color: var(--txt3); }
+.popup-hdr-icon.parts { background: var(--amber-bg); color: var(--amber); }
+.popup-hdr-icon.note { background: var(--neutral-bg); color: var(--txt3); }
+.popup-hdr-icon svg { width: 16px; height: 16px; }
+.popup-hdr-text { flex: 1; }
+.popup-title { font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--txt); }
+.popup-subtitle { font-size: 13px; color: var(--txt2); margin-top: 3px; }
+.popup-subtitle .mono-ref { font-family: var(--font-mono); font-size: 12px; }
+.popup-close {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--txt-ghost); background: none; border: none;
+  transition: background 60ms; flex-shrink: 0; margin: -4px -8px 0 0;
+}
+.popup-close:hover { background: var(--surface-hover); color: var(--txt2); }
+
+/* ─── Popup divider ─── */
+.popup-divider { height: 1px; background: var(--border-sub); margin: 0 24px; }
+
+/* ─── Popup body — field area ─── */
+.popup-body { padding: 0 24px 20px; }
+
+/* Fields — label-left + value/input-right, 44px min-height */
+.field {
+  display: flex; align-items: flex-start; gap: 12px;
+  min-height: 44px; padding: 8px 0;
+}
+.field + .field { border-top: 1px solid var(--border-faint); }
+.field-label {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  min-width: 100px; padding-top: 11px; flex-shrink: 0;
+}
+.field-value {
+  flex: 1; font-size: 13px; color: var(--txt);
+  padding-top: 11px; line-height: 1.45;
+}
+.field-value .entity-ref {
+  color: var(--mark); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.field-value .entity-ref:hover { text-decoration-color: var(--mark); }
+.field-value .mono-ref { font-family: var(--font-mono); font-size: 12px; }
+
+/* Editable fields */
+.field-input { flex: 1; }
+.field-input textarea {
+  width: 100%; box-sizing: border-box;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px; color: var(--txt);
+  font-family: var(--font-sans); font-size: 13px;
+  padding: 10px 12px; resize: vertical;
+  min-height: 80px; line-height: 1.5;
+}
+.field-input textarea::placeholder { color: var(--txt-ghost); }
+.field-input textarea:focus { outline: none; border-color: var(--mark); box-shadow: 0 0 0 2px var(--teal-bg); }
+
+/* Select display */
+.select-display {
+  flex: 1; height: 40px; background: var(--surface-base);
+  border: 1px solid var(--border-chrome); border-radius: 6px;
+  padding: 0 12px; display: flex; align-items: center;
+  cursor: pointer; transition: border-color 60ms;
+}
+.select-display:hover { border-color: var(--txt3); }
+.select-display span { flex: 1; font-size: 13px; color: var(--txt); }
+.select-display svg { width: 12px; height: 12px; color: var(--txt3); flex-shrink: 0; }
+
+/* Checkbox toggles */
+.toggle-row {
+  flex: 1; display: flex; align-items: center; gap: 16px; padding-top: 8px;
+}
+.toggle-item {
+  display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+}
+.toggle-box {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 1.5px solid var(--border-chrome); background: var(--surface-base);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 80ms, border-color 80ms;
+}
+.toggle-box.checked { background: var(--mark); border-color: var(--mark); }
+.toggle-box svg { width: 11px; height: 11px; color: #fff; display: none; }
+.toggle-box.checked svg { display: block; }
+.toggle-label { font-size: 13px; color: var(--txt); }
+
+/* Radio-style toggles — mutually exclusive */
+.radio-row {
+  flex: 1; display: flex; align-items: center; gap: 4px; padding-top: 8px;
+  flex-wrap: wrap;
+}
+.radio-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; user-select: none;
+  border: 1px solid var(--border-sub); background: none;
+  transition: background 60ms, border-color 60ms;
+  font-size: 13px; color: var(--txt2);
+  font-family: var(--font-sans);
+}
+.radio-item:hover { background: var(--surface-hover); border-color: var(--border-top); }
+.radio-item.selected {
+  background: var(--teal-bg); border-color: rgba(90,171,204,0.3);
+  color: var(--mark); font-weight: 500;
+}
+.radio-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid var(--border-chrome); background: var(--surface-base);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: border-color 80ms;
+}
+.radio-item.selected .radio-dot {
+  border-color: var(--mark);
+}
+.radio-dot-inner {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--mark); display: none;
+}
+.radio-item.selected .radio-dot-inner { display: block; }
+
+/* Native select styled */
+.field-select {
+  flex: 1; height: 40px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-chrome);
+  border-radius: 6px; padding: 0 12px;
+  font-size: 13px; color: var(--txt);
+  font-family: var(--font-sans);
+  cursor: pointer; outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  transition: border-color 60ms;
+}
+.field-select:hover { border-color: var(--txt3); }
+.field-select:focus { border-color: var(--mark); box-shadow: 0 0 0 2px var(--teal-bg); }
+
+/* ─── Collapsible detail sections inside popup ─── */
+.popup-section {
+  border-top: 1px solid var(--border-sub); margin: 0 24px;
+}
+.popup-section-hdr {
+  display: flex; align-items: center; gap: 6px;
+  padding: 12px 0; cursor: pointer; user-select: none;
+}
+.popup-section-hdr:hover { color: var(--txt); }
+.popup-sec-title {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--txt3); flex: 1;
+}
+.popup-sec-chevron {
+  width: 12px; height: 12px; color: var(--txt-ghost);
+  transition: transform 150ms ease;
+}
+.popup-section-hdr.collapsed .popup-sec-chevron { transform: rotate(-90deg); }
+.popup-sec-body { padding-bottom: 12px; }
+.popup-sec-body.collapsed { display: none; }
+
+/* Entity link row inside popup */
+.popup-entity-link {
+  display: flex; align-items: center; gap: 8px; padding: 6px 0;
+  cursor: pointer;
+}
+.popup-entity-link:hover .popup-entity-name { text-decoration-color: var(--mark); }
+.popup-entity-icon { width: 14px; height: 14px; color: var(--txt3); flex-shrink: 0; }
+.popup-entity-name {
+  font-size: 13px; color: var(--mark); font-weight: 500;
+  text-decoration: underline; text-decoration-color: var(--mark-underline);
+  text-underline-offset: 2px;
+}
+.popup-entity-meta {
+  font-size: 10px; color: var(--txt3); font-family: var(--font-mono);
+  margin-left: auto;
+}
+
+/* ─── Popup footer — action buttons ─── */
+.popup-footer {
+  border-top: 1px solid var(--border-sub); margin: 0;
+  padding: 16px 24px; display: flex; align-items: center; gap: 8px;
+}
+.popup-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: var(--font-sans); border: none;
+  transition: background 60ms, filter 60ms;
+  min-height: 40px;
+}
+.popup-btn-primary {
+  background: var(--teal-bg); color: var(--mark);
+  border: 1px solid rgba(90,171,204,0.2);
+}
+.popup-btn-primary:hover { background: rgba(90,171,204,0.18); }
+.popup-btn-secondary {
+  background: none; color: var(--txt2);
+  border: 1px solid var(--border-sub);
+}
+.popup-btn-secondary:hover { background: var(--surface-hover); color: var(--txt); }
+.popup-btn-danger {
+  background: none; color: var(--txt3);
+  border: none; margin-left: auto;
+}
+.popup-btn-danger:hover { color: var(--red); }
+.popup-btn svg { width: 14px; height: 14px; }
+
+/* ─── Delete confirmation state (replaces main content) ─── */
+.popup-delete-confirm {
+  padding: 32px 24px; text-align: center; display: none;
+}
+.popup-delete-confirm.open { display: block; }
+.popup-delete-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  background: var(--red-bg); color: var(--red);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 12px;
+}
+.popup-delete-icon svg { width: 24px; height: 24px; }
+.popup-delete-title {
+  font-size: 16px; font-weight: 600; color: var(--txt); margin-bottom: 4px;
+}
+.popup-delete-text {
+  font-size: 13px; color: var(--txt2); max-width: 320px;
+  margin: 0 auto 20px; line-height: 1.5;
+}
+.popup-delete-actions { display: flex; justify-content: center; gap: 8px; }
+.popup-btn-delete-confirm {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 20px; border-radius: 8px;
+  background: var(--red); color: #fff;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: var(--font-sans); border: none;
+  transition: filter 80ms;
+}
+.popup-btn-delete-confirm:hover { filter: brightness(1.1); }
+.popup-btn-delete-cancel {
+  padding: 9px 16px; border-radius: 8px;
+  background: none; color: var(--txt2);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  font-family: var(--font-sans);
+  border: 1px solid var(--border-sub);
+}
+.popup-btn-delete-cancel:hover { background: var(--surface-hover); }
+
+/* Hide main content when delete confirm is showing */
+.popup-main-content { display: block; }
+.popup-main-content.hidden { display: none; }
+
+/* ═══════════════════════════════════════════════════════
+   LIGHT MODE
+   ═══════════════════════════════════════════════════════ */
+[data-theme="light"] .ho-drawer {
+  border-left-color: rgba(0,0,0,0.08);
+  box-shadow: -20px 0 80px rgba(0,0,0,0.12), -4px 0 20px rgba(0,0,0,0.06);
+}
+[data-theme="light"] .day-card { border-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .ho-drawer-body { background: #F0F0F0; }
+[data-theme="light"] .ho-item:hover { background: rgba(0,0,0,0.03); }
+[data-theme="light"] .day-hdr:hover { background: rgba(0,0,0,0.03); }
+[data-theme="light"] .popup {
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08), 0 24px 64px rgba(0,0,0,0.12);
+  border-color: rgba(0,0,0,0.10);
+}
+[data-theme="light"] .popup-bg { background: rgba(0,0,0,0.25); }
+[data-theme="light"] .popup-overlay.weight-delete .popup-bg { background: rgba(0,0,0,0.40); }
+</style>
+</head>
+<body>
+
+<!-- ═══ APP TOPBAR ═══ -->
+<div class="app-topbar">
+  <span class="app-logo">Celeste</span>
+  <span class="app-vessel">SY M/Y Test Vessel</span>
+  <div class="app-topbar-spacer"></div>
+  <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">
+    <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  </button>
+  <button class="hamburger-btn" onclick="toggleDrawer()" title="Menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <span class="app-role">Captain</span>
+</div>
+
+<!-- BACKDROP -->
+<div class="drawer-backdrop" id="backdrop" onclick="toggleDrawer()"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     HANDOVER DRAFT DRAWER
+     ═══════════════════════════════════════════════════════ -->
+<div class="ho-drawer" id="drawer">
+
+  <div class="ho-drawer-hdr">
+    <div class="ho-drawer-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    </div>
+    <div class="ho-drawer-hdr-text">
+      <div class="ho-drawer-title">My Handover Draft</div>
+      <div class="ho-drawer-subtitle">7 items · Engineering</div>
+    </div>
+    <button class="ho-drawer-close" onclick="toggleDrawer()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <div class="ho-stats-bar">
+    <div class="ho-stat"><span class="ho-stat-num total">7</span> items</div>
+    <div class="ho-stat"><span class="ho-stat-dot red"></span><span class="ho-stat-num critical">2</span> critical</div>
+    <div class="ho-stat"><span class="ho-stat-dot amber"></span><span class="ho-stat-num action">3</span> action</div>
+    <div class="ho-stats-spacer"></div>
+  </div>
+
+  <div class="ho-action-bar">
+    <button class="ho-btn-export">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      Export Handover
+    </button>
+    <button class="ho-btn-add" onclick="openPopup('add')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Note
+    </button>
+  </div>
+
+  <div class="ho-drawer-body">
+
+    <!-- ═══ TODAY ═══ -->
+    <div class="day-group">
+      <div class="day-card">
+        <div class="day-hdr" onclick="toggleDay(this)">
+          <span class="day-label">Today <span class="day-count">· 3</span></span>
+          <svg class="day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="day-items">
+
+          <div class="ho-item critical" onclick="openPopup('view-fault')">
+            <svg class="ho-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3L14 13H2L8 3Z"/><path d="M8 7v2.5M8 11.5v.5"/></svg>
+            <div class="ho-item-text">
+              <div class="ho-item-title">Starboard engine coolant temperature warning — shore technician visit scheduled 10 Feb</div>
+              <div class="ho-item-meta">
+                <span>FAULT · F-0233</span>
+                <span class="ho-cat-badge critical">Critical</span>
+                <span class="ho-action-tag"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5"/></svg> On Going</span>
+              </div>
+            </div>
+            <span class="ho-item-ts">14:32</span>
+            <svg class="ho-item-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+
+          <div class="ho-item" onclick="openPopup('view-wo')">
+            <svg class="ho-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="2" width="8" height="2" rx="1"/><rect x="3" y="3.5" width="10" height="10.5" rx="1.5"/><path d="M5.5 8.5l2 2 3.5-3.5"/></svg>
+            <div class="ho-item-text">
+              <div class="ho-item-title">Generator #1 oil change due — WO-1058 raised, medium priority</div>
+              <div class="ho-item-meta">
+                <span>W/O · WO-1058</span>
+                <span class="ho-cat-badge standard">Standard</span>
+                <span class="ho-action-tag"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5"/></svg> Not Started</span>
+              </div>
+            </div>
+            <span class="ho-item-ts">11:15</span>
+            <svg class="ho-item-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+
+          <div class="ho-item" onclick="openPopup('view-equip')">
+            <svg class="ho-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2.5"/><path d="M13 9.5a1.1 1.1 0 00.22 1.22l.04.04a1.33 1.33 0 11-1.89 1.89l-.04-.04A1.1 1.1 0 0010 13v.17a1.33 1.33 0 01-2.67 0V13A1.1 1.1 0 006 11.63a1.1 1.1 0 00-1.22.22l-.04.04a1.33 1.33 0 11-1.89-1.89l.04-.04A1.1 1.1 0 003 8.73 1.1 1.1 0 001.83 8 1.33 1.33 0 011.83 5.33H2A1.1 1.1 0 003.37 6a1.1 1.1 0 00-.22-1.22l-.04-.04a1.33 1.33 0 111.89-1.89l.04.04A1.1 1.1 0 006 3.17 1.1 1.1 0 007.33 2a1.33 1.33 0 012.67 0v.06A1.1 1.1 0 0011.22 3a1.1 1.1 0 001.22-.22l.04-.04a1.33 1.33 0 111.89 1.89l-.04.04A1.1 1.1 0 0013 6a1.1 1.1 0 001 1.01h.17a1.33 1.33 0 010 2.67H14a1.1 1.1 0 00-1 .82z"/></svg>
+            <div class="ho-item-text">
+              <div class="ho-item-title">Watermaker operating at ~70% output — membrane degradation suspected</div>
+              <div class="ho-item-meta">
+                <span>EQUIPMENT · E-012</span>
+                <span class="ho-cat-badge standard">Standard</span>
+                <span class="ho-action-tag"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5"/></svg> Requires Parts</span>
+              </div>
+            </div>
+            <span class="ho-item-ts">09:40</span>
+            <svg class="ho-item-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ YESTERDAY ═══ -->
+    <div class="day-group">
+      <div class="day-card">
+        <div class="day-hdr" onclick="toggleDay(this)">
+          <span class="day-label">Yesterday <span class="day-count">· 2</span></span>
+          <svg class="day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="day-items">
+
+          <div class="ho-item critical" onclick="openPopup('view-fault')">
+            <svg class="ho-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="12" height="8" rx="1"/><path d="M5 6V4.5a3 3 0 016 0V6"/></svg>
+            <div class="ho-item-text">
+              <div class="ho-item-title">Engine oil 15W-40 critically low — 2 of 5 minimum. Fuel filter elements at 1 of 4.</div>
+              <div class="ho-item-meta">
+                <span>PARTS · EO-15W40-5L</span>
+                <span class="ho-cat-badge critical">Critical</span>
+                <span class="ho-action-tag"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5"/></svg> Requires Parts</span>
+              </div>
+            </div>
+            <span class="ho-item-ts">16:05</span>
+            <svg class="ho-item-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+
+          <div class="ho-item" onclick="openPopup('view-equip')">
+            <svg class="ho-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M6 6h4M6 9h2.5"/></svg>
+            <div class="ho-item-text">
+              <div class="ho-item-title">HVAC guest cabin zone 3 filters due for replacement — low priority</div>
+              <div class="ho-item-meta">
+                <span>NOTE</span>
+                <span class="ho-cat-badge low">Low</span>
+              </div>
+            </div>
+            <span class="ho-item-ts">10:22</span>
+            <svg class="ho-item-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SAT 22 MAR (collapsed) ═══ -->
+    <div class="day-group">
+      <div class="day-card">
+        <div class="day-hdr collapsed" onclick="toggleDay(this)">
+          <span class="day-label">Sat 22 Mar <span class="day-count">· 2</span></span>
+          <svg class="day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="day-items collapsed">
+          <div class="ho-item" onclick="openPopup('view-equip')">
+            <svg class="ho-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M6 6h4M6 9h2.5"/></svg>
+            <div class="ho-item-text">
+              <div class="ho-item-title">Engine room bilge levels normal. All safety systems tested and operational.</div>
+              <div class="ho-item-meta"><span>NOTE</span> <span class="ho-cat-badge low">Low</span></div>
+            </div>
+            <span class="ho-item-ts">15:30</span>
+            <svg class="ho-item-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+          <div class="ho-item" onclick="openPopup('view-equip')">
+            <svg class="ho-item-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2.5"/><path d="M13 9.5a1.1 1.1 0 00.22 1.22l.04.04a1.33 1.33 0 11-1.89 1.89l-.04-.04A1.1 1.1 0 0010 13v.17a1.33 1.33 0 01-2.67 0V13A1.1 1.1 0 006 11.63a1.1 1.1 0 00-1.22.22l-.04.04a1.33 1.33 0 11-1.89-1.89l.04-.04A1.1 1.1 0 003 8.73 1.1 1.1 0 001.83 8 1.33 1.33 0 011.83 5.33H2A1.1 1.1 0 003.37 6a1.1 1.1 0 00-.22-1.22l-.04-.04a1.33 1.33 0 111.89-1.89l.04.04A1.1 1.1 0 006 3.17 1.1 1.1 0 007.33 2a1.33 1.33 0 012.67 0v.06A1.1 1.1 0 0011.22 3a1.1 1.1 0 001.22-.22l.04-.04a1.33 1.33 0 111.89 1.89l-.04.04A1.1 1.1 0 0013 6a1.1 1.1 0 001 1.01h.17a1.33 1.33 0 010 2.67H14a1.1 1.1 0 00-1 .82z"/></svg>
+            <div class="ho-item-text">
+              <div class="ho-item-title">Main Engine #1 (Port) running well after 500-hour service — 4,523 hrs</div>
+              <div class="ho-item-meta"><span>EQUIPMENT · E-007</span> <span class="ho-cat-badge standard">Standard</span></div>
+            </div>
+            <span class="ho-item-ts">09:10</span>
+            <svg class="ho-item-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ho-footer">
+      <span class="ho-footer-count">7 handover items</span>
+      <div class="ho-footer-spacer"></div>
+      <div class="ho-footer-hint"><kbd>↵</kbd> Open</div>
+      <div class="ho-footer-sep"></div>
+      <div class="ho-footer-hint"><kbd>Esc</kbd> Close</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     POPUP: VIEW / EDIT ITEM (fault example)
+     Click item → opens this popup with full detail.
+     Edit/Delete are secondary actions, progressively disclosed.
+     ═══════════════════════════════════════════════════════ -->
+<div class="popup-overlay" id="popup-view-fault" onclick="if(event.target===this||event.target.classList.contains('popup-bg'))closePopup('view-fault')">
+  <div class="popup-bg"></div>
+  <div class="popup">
+
+    <!-- Main content (hidden when delete confirm shows) -->
+    <div class="popup-main-content" id="popup-main-view-fault">
+
+      <div class="popup-hdr">
+        <div class="popup-hdr-icon fault">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4L22 20H2L12 4Z"/><path d="M12 10v4M12 18v.01"/></svg>
+        </div>
+        <div class="popup-hdr-text">
+          <div class="popup-title">Edit Handover Note</div>
+          <div class="popup-subtitle">Fault · <span class="mono-ref">F-0233</span> · Added <span class="mono-ref">14:32 today</span></div>
+        </div>
+        <button class="popup-close" onclick="closePopup('view-fault')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="popup-divider"></div>
+
+      <div class="popup-body">
+        <!-- Summary — editable textarea -->
+        <div class="field" style="display:block; padding: 12px 0;">
+          <div class="field-label" style="padding-top:0; margin-bottom:8px;">Summary</div>
+          <div class="field-input">
+            <textarea>Starboard engine coolant temperature warning — shore technician visit scheduled 10 Feb. Do NOT increase load on starboard engine until resolved.</textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Category</div>
+          <select class="field-select">
+            <option value="critical" selected>Critical</option>
+            <option value="standard">Standard</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Status</div>
+          <div class="radio-row" onclick="selectRadio(event)">
+            <div class="radio-item selected" data-value="on_going">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              On Going
+            </div>
+            <div class="radio-item" data-value="not_started">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              Not Started
+            </div>
+            <div class="radio-item" data-value="requires_parts">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              Requires Parts
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collapsible: Source Entity -->
+      <div class="popup-section">
+        <div class="popup-section-hdr" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed')">
+          <span class="popup-sec-title">Source Entity</span>
+          <svg class="popup-sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="popup-sec-body">
+          <div class="popup-entity-link">
+            <svg class="popup-entity-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3L14 13H2L8 3Z"/><path d="M8 7v2.5M8 11.5v.5"/></svg>
+            <span class="popup-entity-name">Starboard Engine — Coolant Temperature Warning</span>
+            <span class="popup-entity-meta">F-0233</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collapsible: Action Summary -->
+      <div class="popup-section">
+        <div class="popup-section-hdr" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed')">
+          <span class="popup-sec-title">Action Required</span>
+          <svg class="popup-sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="popup-sec-body">
+          <div style="font-size:13px; color:var(--txt); line-height:1.6;">
+            Shore technician visit confirmed for 10 Feb. Do not exceed 60% load on starboard engine. Monitor coolant level twice daily.
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer: Save + Delete -->
+      <div class="popup-footer">
+        <button class="popup-btn popup-btn-primary" onclick="closePopup('view-fault')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Changes
+        </button>
+        <button class="popup-btn popup-btn-secondary" onclick="closePopup('view-fault')">Cancel</button>
+        <button class="popup-btn popup-btn-danger" onclick="showDeleteConfirm('view-fault')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          Delete
+        </button>
+      </div>
+
+    </div><!-- /popup-main-content -->
+
+    <!-- Delete confirmation (replaces main content) -->
+    <div class="popup-delete-confirm" id="popup-del-view-fault">
+      <div class="popup-delete-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      </div>
+      <div class="popup-delete-title">Delete this handover note?</div>
+      <div class="popup-delete-text">This will permanently remove this note from your handover draft. The source fault <strong>F-0233</strong> will not be affected.</div>
+      <div class="popup-delete-actions">
+        <button class="popup-btn-delete-confirm" onclick="closePopup('view-fault')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          Delete Note
+        </button>
+        <button class="popup-btn-delete-cancel" onclick="hideDeleteConfirm('view-fault')">Cancel</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     POPUP: VIEW / EDIT (work order example — different layout)
+     ═══════════════════════════════════════════════════════ -->
+<div class="popup-overlay" id="popup-view-wo" onclick="if(event.target===this||event.target.classList.contains('popup-bg'))closePopup('view-wo')">
+  <div class="popup-bg"></div>
+  <div class="popup">
+    <div class="popup-main-content" id="popup-main-view-wo">
+      <div class="popup-hdr">
+        <div class="popup-hdr-icon work_order">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="2" width="16" height="4" rx="2"/><rect x="3" y="5" width="18" height="17" rx="2.5"/><path d="M8 12l3 3 5-5"/></svg>
+        </div>
+        <div class="popup-hdr-text">
+          <div class="popup-title">Edit Handover Note</div>
+          <div class="popup-subtitle">Work Order · <span class="mono-ref">WO-1058</span> · Added <span class="mono-ref">11:15 today</span></div>
+        </div>
+        <button class="popup-close" onclick="closePopup('view-wo')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="popup-divider"></div>
+      <div class="popup-body">
+        <div class="field" style="display:block; padding: 12px 0;">
+          <div class="field-label" style="padding-top:0; margin-bottom:8px;">Summary</div>
+          <div class="field-input">
+            <textarea>Generator #1 oil change due — WO-1058 raised, medium priority</textarea>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">Category</div>
+          <select class="field-select">
+            <option value="critical">Critical</option>
+            <option value="standard" selected>Standard</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Status</div>
+          <div class="radio-row" onclick="selectRadio(event)">
+            <div class="radio-item" data-value="on_going">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              On Going
+            </div>
+            <div class="radio-item selected" data-value="not_started">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              Not Started
+            </div>
+            <div class="radio-item" data-value="requires_parts">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              Requires Parts
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="popup-section">
+        <div class="popup-section-hdr" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed')">
+          <span class="popup-sec-title">Source Entity</span>
+          <svg class="popup-sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="popup-sec-body">
+          <div class="popup-entity-link">
+            <svg class="popup-entity-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="2" width="8" height="2" rx="1"/><rect x="3" y="3.5" width="10" height="10.5" rx="1.5"/><path d="M5.5 8.5l2 2 3.5-3.5"/></svg>
+            <span class="popup-entity-name">Generator Oil Change</span>
+            <span class="popup-entity-meta">WO-1058</span>
+          </div>
+        </div>
+      </div>
+      <div class="popup-footer">
+        <button class="popup-btn popup-btn-primary" onclick="closePopup('view-wo')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Changes
+        </button>
+        <button class="popup-btn popup-btn-secondary" onclick="closePopup('view-wo')">Cancel</button>
+        <button class="popup-btn popup-btn-danger" onclick="showDeleteConfirm('view-wo')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          Delete
+        </button>
+      </div>
+    </div>
+    <div class="popup-delete-confirm" id="popup-del-view-wo">
+      <div class="popup-delete-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+      <div class="popup-delete-title">Delete this handover note?</div>
+      <div class="popup-delete-text">This will permanently remove this note from your handover draft. The source work order <strong>WO-1058</strong> will not be affected.</div>
+      <div class="popup-delete-actions">
+        <button class="popup-btn-delete-confirm" onclick="closePopup('view-wo')">Delete Note</button>
+        <button class="popup-btn-delete-cancel" onclick="hideDeleteConfirm('view-wo')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     POPUP: ADD NEW NOTE (Create)
+     ═══════════════════════════════════════════════════════ -->
+<div class="popup-overlay" id="popup-add" onclick="if(event.target===this||event.target.classList.contains('popup-bg'))closePopup('add')">
+  <div class="popup-bg"></div>
+  <div class="popup">
+    <div class="popup-hdr">
+      <div class="popup-hdr-icon note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <div class="popup-hdr-text">
+        <div class="popup-title">Add Handover Note</div>
+        <div class="popup-subtitle">This note will be included in your next handover export</div>
+      </div>
+      <button class="popup-close" onclick="closePopup('add')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="popup-divider"></div>
+    <div class="popup-body">
+      <div class="field" style="display:block; padding: 12px 0;">
+        <div class="field-label" style="padding-top:0; margin-bottom:8px;">Summary</div>
+        <div class="field-input">
+          <textarea placeholder="Describe what the incoming crew needs to know..."></textarea>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Category</div>
+        <select class="field-select">
+          <option value="" disabled selected>Select category…</option>
+          <option value="critical">Critical</option>
+          <option value="standard">Standard</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Section</div>
+        <select class="field-select">
+          <option value="engineering" selected>Engineering</option>
+          <option value="deck">Deck</option>
+          <option value="interior">Interior</option>
+          <option value="command">Command</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Status</div>
+        <div class="radio-row" onclick="selectRadio(event)">
+          <div class="radio-item" data-value="on_going">
+            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+            On Going
+          </div>
+          <div class="radio-item" data-value="not_started">
+            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+            Not Started
+          </div>
+          <div class="radio-item" data-value="requires_parts">
+            <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+            Requires Parts
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collapsible: Link to entity (optional) -->
+    <div class="popup-section">
+      <div class="popup-section-hdr collapsed" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed')">
+        <span class="popup-sec-title">Link to Entity (Optional)</span>
+        <svg class="popup-sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="popup-sec-body collapsed">
+        <div style="padding:4px 0 8px;">
+          <div style="position:relative;">
+            <svg style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--txt3); pointer-events:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search faults, work orders, equipment…" style="width:100%; box-sizing:border-box; height:40px; background:var(--surface-base); border:1px solid var(--border-chrome); border-radius:6px; color:var(--txt); font-family:var(--font-sans); font-size:13px; padding:0 12px 0 36px; outline:none;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="popup-footer">
+      <button class="popup-btn popup-btn-primary" onclick="closePopup('add')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add to Handover
+      </button>
+      <button class="popup-btn popup-btn-secondary" onclick="closePopup('add')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     POPUP: VIEW EQUIPMENT (read-only note, no entity link)
+     ═══════════════════════════════════════════════════════ -->
+<div class="popup-overlay" id="popup-view-equip" onclick="if(event.target===this||event.target.classList.contains('popup-bg'))closePopup('view-equip')">
+  <div class="popup-bg"></div>
+  <div class="popup">
+    <div class="popup-main-content" id="popup-main-view-equip">
+      <div class="popup-hdr">
+        <div class="popup-hdr-icon equipment">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </div>
+        <div class="popup-hdr-text">
+          <div class="popup-title">Edit Handover Note</div>
+          <div class="popup-subtitle">Equipment · <span class="mono-ref">E-012</span> · Added <span class="mono-ref">09:40 today</span></div>
+        </div>
+        <button class="popup-close" onclick="closePopup('view-equip')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="popup-divider"></div>
+      <div class="popup-body">
+        <div class="field" style="display:block; padding: 12px 0;">
+          <div class="field-label" style="padding-top:0; margin-bottom:8px;">Summary</div>
+          <div class="field-input">
+            <textarea>Watermaker operating at ~70% output — membrane degradation suspected, replacement on order via PO-2026-0087</textarea>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">Category</div>
+          <select class="field-select">
+            <option value="critical">Critical</option>
+            <option value="standard" selected>Standard</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Status</div>
+          <div class="radio-row" onclick="selectRadio(event)">
+            <div class="radio-item" data-value="on_going">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              On Going
+            </div>
+            <div class="radio-item" data-value="not_started">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              Not Started
+            </div>
+            <div class="radio-item selected" data-value="requires_parts">
+              <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+              Requires Parts
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="popup-section">
+        <div class="popup-section-hdr" onclick="this.classList.toggle('collapsed'); this.nextElementSibling.classList.toggle('collapsed')">
+          <span class="popup-sec-title">Source Entity</span>
+          <svg class="popup-sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="popup-sec-body">
+          <div class="popup-entity-link">
+            <svg class="popup-entity-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2.5"/><path d="M13 9.5a1.1 1.1 0 00.22 1.22l.04.04a1.33 1.33 0 11-1.89 1.89l-.04-.04"/></svg>
+            <span class="popup-entity-name">Watermaker Unit</span>
+            <span class="popup-entity-meta">E-012</span>
+          </div>
+        </div>
+      </div>
+      <div class="popup-footer">
+        <button class="popup-btn popup-btn-primary" onclick="closePopup('view-equip')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Changes
+        </button>
+        <button class="popup-btn popup-btn-secondary" onclick="closePopup('view-equip')">Cancel</button>
+        <button class="popup-btn popup-btn-danger" onclick="showDeleteConfirm('view-equip')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          Delete
+        </button>
+      </div>
+    </div>
+    <div class="popup-delete-confirm" id="popup-del-view-equip">
+      <div class="popup-delete-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+      <div class="popup-delete-title">Delete this handover note?</div>
+      <div class="popup-delete-text">This will permanently remove this note from your handover draft.</div>
+      <div class="popup-delete-actions">
+        <button class="popup-btn-delete-confirm" onclick="closePopup('view-equip')">Delete Note</button>
+        <button class="popup-btn-delete-cancel" onclick="hideDeleteConfirm('view-equip')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="lens-base.js"></script>
+<script>
+/* Drawer */
+function toggleDrawer() {
+  var d = document.getElementById('drawer');
+  var b = document.getElementById('backdrop');
+  d.classList.toggle('open');
+  b.classList.toggle('visible');
+}
+
+/* Day collapse */
+function toggleDay(hdr) {
+  hdr.classList.toggle('collapsed');
+  hdr.nextElementSibling.classList.toggle('collapsed');
+}
+
+/* Popup open/close */
+function openPopup(id) {
+  var el = document.getElementById('popup-' + id);
+  if (!el) return;
+  // Reset delete confirm state
+  var main = document.getElementById('popup-main-' + id);
+  var del = document.getElementById('popup-del-' + id);
+  if (main) { main.classList.remove('hidden'); }
+  if (del) { del.classList.remove('open'); }
+  // Add weight class for delete
+  el.classList.remove('weight-delete');
+  el.classList.add('open');
+}
+function closePopup(id) {
+  var el = document.getElementById('popup-' + id);
+  if (el) el.classList.remove('open');
+}
+
+/* Delete confirmation cascade */
+function showDeleteConfirm(id) {
+  var main = document.getElementById('popup-main-' + id);
+  var del = document.getElementById('popup-del-' + id);
+  var overlay = document.getElementById('popup-' + id);
+  if (main) main.classList.add('hidden');
+  if (del) del.classList.add('open');
+  if (overlay) overlay.classList.add('weight-delete');
+}
+function hideDeleteConfirm(id) {
+  var main = document.getElementById('popup-main-' + id);
+  var del = document.getElementById('popup-del-' + id);
+  var overlay = document.getElementById('popup-' + id);
+  if (main) main.classList.remove('hidden');
+  if (del) del.classList.remove('open');
+  if (overlay) overlay.classList.remove('weight-delete');
+}
+
+/* Radio-style select — only one active per group */
+function selectRadio(e) {
+  var item = e.target.closest('.radio-item');
+  if (!item) return;
+  var row = item.parentElement;
+  row.querySelectorAll('.radio-item').forEach(function(r) { r.classList.remove('selected'); });
+  item.classList.add('selected');
+}
+
+/* Auto-open drawer for demo */
+setTimeout(function() { toggleDrawer(); }, 300);
+</script>
+
+</body>
+</html>
