@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { useParams } from 'next/navigation';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
 import { HandoverContent } from '@/components/lens-v2/entity';
 import lensStyles from '@/components/lens-v2/lens.module.css';
@@ -9,12 +9,12 @@ function LensContent() {
   return <div className={lensStyles.root}><HandoverContent /></div>;
 }
 
-export default function HandoverExportPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function HandoverExportPage() {
+  const params = useParams();
   return (
     <EntityLensPage
       entityType="handover_export"
-      entityId={id}
+      entityId={params.id as string}
       content={LensContent}
     />
   );

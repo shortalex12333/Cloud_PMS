@@ -530,23 +530,30 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
         else:
             sections = []
 
-        # Sign the export file URL
-        file_name = data.get("file_name")
-        export_path = file_name or f"handovers/{yacht_id}/{export_id}.html"
-        export_url = _sign_url(supabase, "handover-exports", export_path)
+        # Sign the export file URL — use original_storage_url path
+        raw_storage_url = data.get("original_storage_url") or data.get("file_name") or ""
+        # Strip bucket prefix if present (e.g., "handover-exports/85fe1119-.../original/abc.html" → "85fe1119-.../original/abc.html")
+        export_path = raw_storage_url.replace("handover-exports/", "", 1) if raw_storage_url.startswith("handover-exports/") else raw_storage_url
+        export_url = _sign_url(supabase, "handover-exports", export_path) if export_path else None
 
         nav = [n for n in [
             _nav("handover_export", data.get("draft_id"), "Source Draft"),
         ] if n]
 
         user_sig = data.get("user_signature")
+        dept = data.get("department") or ""
         _entity_response = {
             "id": data.get("id"),
             "yacht_id": data.get("yacht_id"),
+            "title": f"{dept} Handover Report".strip() if dept else "Handover Report",
+            "status": data.get("review_status", "pending_review"),
             "review_status": data.get("review_status"),
             "export_type": data.get("export_type"),
             "export_status": data.get("export_status"),
-            "file_name": file_name,
+            "department": dept or None,
+            "original_storage_url": data.get("original_storage_url"),
+            "document_hash": data.get("document_hash"),
+            "file_name": data.get("file_name"),
             "export_url": export_url,
             "sections": sections,
             "user_signature": user_sig,
