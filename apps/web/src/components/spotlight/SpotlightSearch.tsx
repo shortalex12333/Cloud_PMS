@@ -30,7 +30,7 @@ import { useNeedsAttention } from '@/hooks/useNeedsAttention';
 import QueryInterpretation from './QueryInterpretation';
 import SettingsModal from '@/components/SettingsModal';
 import { EntityLine, StatusLine } from '@/components/celeste';
-import { EmailInboxView } from '@/components/email/EmailInboxView';
+// EmailInboxView moved to /email route
 
 import SuggestedActions from '@/components/SuggestedActions';
 import FilterChips from './FilterChips';
@@ -756,15 +756,7 @@ export default function SpotlightSearch({
             />
           )}
 
-          {/* Email List (beneath search bar per UX doctrine) */}
-          {showEmailList && !hasQuery && (
-            <div
-              style={{ maxHeight: '60vh', overflowY: 'auto', overflowX: 'hidden', background: 'var(--surface-primary)' }}
-              data-testid="email-list-inline"
-            >
-              <EmailInboxView className="p-4" />
-            </div>
-          )}
+          {/* Email moved to /email route */}
 
           {/* Results - Spotlight-style grouped by domain */}
           {hasQuery && (
@@ -986,16 +978,16 @@ export default function SpotlightSearch({
             borderTop: '1px solid var(--search-icon-strip-border)',
             background: 'var(--search-icon-strip-bg)',
           }}>
-            {/* Email toggle */}
+            {/* Email — navigates to /email */}
             <button
-              onClick={() => toggleEmailScope(!emailScopeActive)}
-              aria-label="Toggle email scope"
+              onClick={() => router.push('/email')}
+              aria-label="Email"
               style={{
                 width: 32, height: 32, borderRadius: 4,
-                background: emailScopeActive ? 'var(--teal-bg)' : 'transparent',
+                background: 'transparent',
                 border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: emailScopeActive ? 'var(--mark)' : 'var(--txt-ghost)',
+                color: 'var(--txt-ghost)',
                 transition: 'background 100ms, color 100ms',
               }}
             >
@@ -1075,7 +1067,6 @@ export default function SpotlightSearch({
         onHandoverDraft={() => setShowHandoverDraft(true)}
         onLedger={() => setShowLedger(true)}
         onLogReceiving={() => router.push('/receiving/new')}
-        onEmail={() => router.push('/email')}
       />
 
     </div>
