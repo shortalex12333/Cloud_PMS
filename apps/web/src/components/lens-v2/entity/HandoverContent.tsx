@@ -347,7 +347,7 @@ export function HandoverContent() {
         }>;
         const totalItems = secs.reduce((n, s) => n + (s.items?.length ?? 0), 0);
         const criticalSecs = secs.filter(s => s.is_critical).length;
-        const docNumber = entity?.doc_number ?? entity?.id?.slice(0, 8) ?? '0001';
+        const docNumber = (entity?.doc_number as string) ?? (typeof entity?.id === 'string' ? entity.id.slice(0, 8) : '0001');
         const isEditable = status === 'pending_review';
 
         if (isLoading) {
@@ -561,7 +561,6 @@ export function HandoverContent() {
         <NotesSection
           notes={noteItems}
           canAddNote
-          defaultCollapsed
           onAddNote={() => {
             const addAction = getAction('add_to_handover');
             if (addAction) {
@@ -580,7 +579,6 @@ export function HandoverContent() {
           attachments={attachmentItems}
           onAddFile={() => {}}
           canAddFile
-          defaultCollapsed
         />
       </ScrollReveal>
 
