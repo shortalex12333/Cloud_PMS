@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Split View — Celeste Design Prototype</title>
+<link rel="stylesheet" href="prototype-tokens.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--txt-primary);
+  height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column;
+  font-size: 13px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Topbar: imported from elegant.html exactly ─── */
+.topbar {
+  height: 40px; flex-shrink: 0;
+  display: flex; align-items: center; padding: 0 20px; gap: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(12,11,10,0.70);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.topbar-brand { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #4A9EC0; }
+.topbar-sep   { width: 1px; height: 12px; background: var(--border); margin: 0 4px; }
+.topbar-vessel { font-size: 11px; color: var(--txt-tertiary); }
+.topbar-vessel em { font-style: normal; color: rgba(74,158,192,0.80); }
+.topbar-spacer { flex: 1; }
+.topbar-role {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--txt-ghost);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 3px; padding: 2px 7px;
+}
+
+/* ═══ SPLIT LAYOUT ═══ */
+.split { display: flex; flex: 1; overflow: hidden; }
+
+/* ─── LEFT PANE ─── */
+.left-pane {
+  width: 320px; flex-shrink: 0;
+  border-right: 1px solid var(--border-sub);
+  display: flex; flex-direction: column;
+  background: var(--surface);
+}
+.list-hdr {
+  display: flex; align-items: center; padding: 10px 14px;
+  border-bottom: 1px solid var(--border-sub); gap: 6px; flex-shrink: 0;
+}
+.list-hdr-icon { width: 22px; height: 22px; border-radius: 5px; background: var(--teal-bg); display: flex; align-items: center; justify-content: center; }
+.list-hdr-icon svg { width: 11px; height: 11px; color: var(--mark); }
+.list-title { font-size: 12px; font-weight: 600; color: var(--txt); }
+.list-count { font-size: 10px; color: var(--txt3); font-family: var(--font-mono); }
+.list-hdr-spacer { flex: 1; }
+.list-refresh { width: 22px; height: 22px; border-radius: 4px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--txt-ghost); }
+.list-refresh:hover { background: var(--surface-hover); color: var(--txt3); }
+.list-filters {
+  display: flex; gap: 2px; padding: 6px 14px;
+  border-bottom: 1px solid var(--border-faint); flex-shrink: 0;
+}
+.list-filter {
+  padding: 3px 8px; border-radius: 3px; font-size: 10px; font-weight: 600;
+  cursor: pointer; border: none; background: none;
+  color: var(--txt3); font-family: var(--font-sans);
+  text-transform: uppercase; letter-spacing: 0.04em; transition: all 60ms;
+}
+.list-filter:hover { color: var(--txt2); }
+.list-filter.active { background: var(--teal-bg); color: var(--mark); }
+.list-scroll { flex: 1; overflow-y: auto; }
+
+/* Day labels */
+.day-label { font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--txt-ghost); padding: 8px 14px 3px; }
+
+/* Thread rows */
+.thr {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px; min-height: 44px; cursor: pointer;
+  transition: background 60ms;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  position: relative;
+}
+.thr:first-of-type { border-top: none; }
+.thr:hover { background: rgba(255,255,255,0.04); }
+.thr.selected { background: var(--teal-bg); }
+.thr.unread::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px; border-radius: 1px; background: var(--mark); }
+.thr.unread .thr-subj { font-weight: 500; }
+.thr-icon { width: 14px; height: 14px; color: var(--txt3); flex-shrink: 0; }
+.thr-text { flex: 1; min-width: 0; }
+.thr-subj { font-size: 13px; font-weight: 400; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.thr-meta { font-size: 10px; color: var(--txt2); font-family: var(--font-mono); letter-spacing: 0.03em; margin-top: 1px; display: flex; align-items: center; gap: 4px; }
+.thr-meta svg { width: 10px; height: 10px; color: var(--txt3); }
+.thr-ts { font-family: var(--font-mono); font-size: 10px; color: var(--txt-ghost); flex-shrink: 0; }
+
+/* ─── RIGHT PANE ─── */
+.right-pane { flex: 1; overflow-y: auto; background: var(--surface-base); }
+
+/* Empty state */
+.right-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 48px; }
+.right-empty svg { width: 40px; height: 40px; color: var(--txt-ghost); margin-bottom: 10px; }
+.right-empty-title { font-size: 13px; font-weight: 500; color: var(--txt2); margin-bottom: 4px; }
+.right-empty-text { font-size: 11px; color: var(--txt3); max-width: 220px; line-height: 1.5; }
+
+/* ═══ THREAD DETAIL ═══ */
+.detail { display: none; }
+.detail.active { display: block; }
+
+/* Identity */
+.dt-identity { padding: 20px 24px 14px; }
+.dt-pills { display: flex; gap: 6px; margin-bottom: 6px; }
+.dt-pill { font-size: 9px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; }
+.dt-pill.linked { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.dt-pill.neutral { background: var(--neutral-bg); color: var(--txt3); border: 1px solid var(--border-sub); }
+.dt-subject { font-size: 18px; font-weight: 600; color: var(--txt); line-height: 1.3; margin-bottom: 4px; }
+.dt-context { font-size: 12px; color: var(--txt3); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.dt-context .sender { color: var(--mark); font-weight: 500; }
+.dt-context .mono { font-family: var(--font-mono); font-size: 11px; }
+
+/* Sections */
+.dt-section { border-top: 1px solid var(--border-sub); margin: 0 24px; }
+.dt-sec-hdr { display: flex; align-items: center; gap: 6px; padding: 12px 0; cursor: pointer; user-select: none; }
+.dt-sec-icon { width: 14px; height: 14px; color: var(--txt3); flex-shrink: 0; }
+.dt-sec-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--txt3); flex: 1; }
+.dt-sec-action { font-size: 11px; font-weight: 500; color: var(--mark); cursor: pointer; background: none; border: none; font-family: var(--font-sans); }
+.dt-sec-action:hover { text-decoration: underline; }
+.dt-sec-count { font-family: var(--font-mono); font-size: 10px; color: var(--txt-ghost); }
+.dt-sec-chevron { width: 12px; height: 12px; color: var(--txt-ghost); transition: transform 150ms; }
+.dt-sec-hdr.collapsed .dt-sec-chevron { transform: rotate(-90deg); }
+.dt-sec-body { padding-bottom: 12px; }
+.dt-sec-body.collapsed { display: none; }
+
+/* Linked object rows */
+.link-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; min-height: 36px; }
+.link-row + .link-row { border-top: 1px solid var(--border-faint); }
+.link-icon { width: 24px; height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--teal-bg); color: var(--mark); }
+.link-icon svg { width: 12px; height: 12px; }
+.link-text { flex: 1; min-width: 0; cursor: pointer; }
+.link-name { font-size: 12px; font-weight: 500; color: var(--mark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.link-meta { font-size: 9px; color: var(--txt3); font-family: var(--font-mono); margin-top: 1px; display: flex; gap: 5px; text-transform: uppercase; }
+.link-badge { font-size: 8px; font-weight: 600; text-transform: uppercase; padding: 1px 4px; border-radius: 2px; background: var(--neutral-bg); color: var(--txt3); border: 1px solid var(--border-sub); }
+.link-remove { width: 20px; height: 20px; border-radius: 3px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--txt-ghost); flex-shrink: 0; }
+.link-remove:hover { background: var(--red-bg); color: var(--red); }
+.link-remove svg { width: 11px; height: 11px; }
+
+/* ═══ MESSAGE — renders body by default ═══ */
+.msg-wrap { padding: 0 24px 16px; }
+.msg-card { border-radius: 6px; overflow: hidden; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border-sub); }
+.msg-card.outbound { border-left: 2px solid var(--mark); }
+.msg-hdr { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; min-height: 44px; transition: background 60ms; }
+.msg-hdr:hover { background: rgba(255,255,255,0.03); }
+.msg-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--teal-bg); color: var(--mark); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; font-family: var(--font-mono); flex-shrink: 0; }
+.msg-info { flex: 1; min-width: 0; }
+.msg-sender { font-size: 13px; font-weight: 500; color: var(--txt); }
+.msg-date { font-size: 10px; color: var(--txt-ghost); font-family: var(--font-mono); margin-top: 1px; }
+.msg-chevron { width: 12px; height: 12px; color: var(--txt-ghost); flex-shrink: 0; transition: transform 150ms; }
+.msg-chevron.open { transform: rotate(180deg); }
+
+/* Body — visible by default for first message */
+.msg-body { padding: 12px 12px 12px 50px; font-size: 13px; color: var(--txt); line-height: 1.65; white-space: pre-line; max-width: 560px; border-top: 1px solid var(--border-faint); }
+.msg-body.collapsed { display: none; }
+
+/* ═══ ATTACHMENTS — distinct from linked objects ═══ */
+.att-section { border-top: 1px solid var(--border-sub); margin: 0 24px; }
+.att-sec-hdr { display: flex; align-items: center; gap: 6px; padding: 12px 0; }
+.att-sec-icon { width: 14px; height: 14px; color: var(--txt3); }
+.att-sec-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--txt3); flex: 1; }
+.att-sec-count { font-family: var(--font-mono); font-size: 10px; color: var(--txt-ghost); }
+
+.att-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; min-height: 44px; cursor: pointer;
+  border-radius: 5px; transition: background 60ms;
+  margin-bottom: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-sub);
+}
+.att-row:hover { background: var(--surface-hover); border-color: var(--border-top); }
+.att-thumb {
+  width: 36px; height: 36px; border-radius: 4px;
+  background: var(--neutral-bg); display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+}
+.att-thumb svg { width: 16px; height: 16px; color: var(--txt3); }
+.att-thumb.pdf { background: rgba(192,80,58,0.1); }
+.att-thumb.pdf svg { color: var(--red); }
+.att-text { flex: 1; min-width: 0; }
+.att-name { font-size: 12px; font-weight: 500; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.att-meta { font-size: 10px; color: var(--txt3); font-family: var(--font-mono); margin-top: 1px; display: flex; gap: 6px; }
+.att-actions { display: flex; gap: 2px; }
+.att-act {
+  width: 28px; height: 28px; border-radius: 4px; border: none;
+  background: none; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  color: var(--txt-ghost); transition: all 60ms;
+}
+.att-act:hover { background: var(--surface-hover); color: var(--mark); }
+.att-act.save:hover { background: var(--teal-bg); color: var(--mark); }
+.att-act svg { width: 13px; height: 13px; }
+
+/* Footer */
+.dt-footer { border-top: 1px solid var(--border-sub); margin: 0 24px; padding: 14px 0; display: flex; gap: 6px; }
+.dt-btn { display: flex; align-items: center; gap: 5px; padding: 7px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); border: none; transition: background 60ms; }
+.dt-btn.primary { background: var(--teal-bg); color: var(--mark); border: 1px solid rgba(90,171,204,0.2); }
+.dt-btn.primary:hover { background: rgba(90,171,204,0.18); }
+.dt-btn.secondary { background: none; color: var(--txt3); border: 1px solid var(--border-sub); }
+.dt-btn.secondary:hover { background: var(--surface-hover); }
+.dt-btn svg { width: 12px; height: 12px; }
+
+/* ─── SHOW RELATED OVERLAY ─── */
+.related-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 99; opacity: 0; pointer-events: none; transition: opacity 180ms; }
+.related-backdrop.open { opacity: 1; pointer-events: auto; }
+.related-overlay {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 400px;
+  background: var(--surface); border-left: 1px solid var(--border-side);
+  box-shadow: -20px 0 80px rgba(0,0,0,0.50);
+  z-index: 100; display: flex; flex-direction: column;
+  transform: translateX(100%); opacity: 0; pointer-events: none;
+  transition: transform 250ms cubic-bezier(0.16,1,0.3,1), opacity 180ms;
+}
+.related-overlay.open { transform: translateX(0); opacity: 1; pointer-events: auto; }
+.rel-hdr { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border-sub); gap: 8px; flex-shrink: 0; }
+.rel-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--txt2); flex: 1; }
+.rel-close { width: 28px; height: 28px; border-radius: 6px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--txt-ghost); }
+.rel-close:hover { background: var(--surface-hover); }
+.rel-body { flex: 1; overflow-y: auto; padding: 12px; background: var(--surface-base); }
+.rel-placeholder { display: flex; flex-direction: column; align-items: center; padding: 48px 24px; text-align: center; }
+.rel-placeholder svg { width: 32px; height: 32px; color: var(--txt-ghost); margin-bottom: 8px; }
+.rel-placeholder-text { font-size: 12px; color: var(--txt3); line-height: 1.5; }
+
+/* Related button */
+.dt-related-btn {
+  position: fixed; top: 56px; right: 16px; z-index: 50;
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 5px; font-size: 10px; font-weight: 500;
+  cursor: pointer; font-family: var(--font-sans);
+  background: var(--surface); color: var(--txt3);
+  border: 1px solid var(--border-sub);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.dt-related-btn:hover { color: var(--mark); border-color: rgba(90,171,204,0.2); }
+.dt-related-btn svg { width: 11px; height: 11px; }
+
+/* Light mode */
+[data-theme="light"] .left-pane { background: #FAFAFA; }
+[data-theme="light"] .thr:hover { background: rgba(0,0,0,0.03); }
+[data-theme="light"] .thr.selected { background: rgba(90,171,204,0.08); }
+[data-theme="light"] .msg-card { background: #F8F8F8; border-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .att-row { background: #F8F8F8; border-color: rgba(0,0,0,0.08); }
+</style>
+</head>
+<body>
+
+<!-- Topbar — identical to elegant.html -->
+<header class="topbar">
+  <div class="topbar-brand">Celeste</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-vessel"><em>SY M/Y Test Vessel</em></div>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-role">Chief Engineer</div>
+</header>
+
+<div class="split">
+
+  <!-- ═══ LEFT: Thread list ═══ -->
+  <div class="left-pane">
+    <div class="list-hdr">
+      <div class="list-hdr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg></div>
+      <span class="list-title">Email</span>
+      <span class="list-count">8</span>
+      <div class="list-hdr-spacer"></div>
+      <button class="list-refresh"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></button>
+    </div>
+    <div class="list-filters">
+      <button class="list-filter active">All</button>
+      <button class="list-filter">Unlinked</button>
+      <button class="list-filter">Linked</button>
+    </div>
+    <div class="list-scroll">
+      <div class="day-label">Today</div>
+      <div class="thr unread selected" onclick="selectThread(this,'po')">
+        <svg class="thr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+        <div class="thr-text"><div class="thr-subj">Re: PO-2026-0099 — Watermaker Membrane</div><div class="thr-meta"><span>MARINE SPARES</span><span>·</span><span>1</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></div></div>
+        <span class="thr-ts">2h</span>
+      </div>
+      <div class="thr unread" onclick="selectThread(this,'wo')">
+        <svg class="thr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+        <div class="thr-text"><div class="thr-subj">Re: WO-TEST-1774108085407 Parts</div><div class="thr-meta"><span>YACHTSPARES</span><span>·</span><span>2</span></div></div>
+        <span class="thr-ts">1h</span>
+      </div>
+      <div class="thr unread" onclick="selectThread(this,'svc')">
+        <svg class="thr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+        <div class="thr-text"><div class="thr-subj">Service Report — SN592403 500hr</div><div class="thr-meta"><span>CAT MARINE</span><span>·</span><span>1</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></div></div>
+        <span class="thr-ts">5h</span>
+      </div>
+      <div class="day-label">Yesterday</div>
+      <div class="thr" onclick="selectThread(this,'wty')">
+        <svg class="thr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+        <div class="thr-text"><div class="thr-subj">Warranty Claim WC-2026-041</div><div class="thr-meta"><span>KOHLER MARINE</span><span>·</span><span>1</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></div></div>
+        <span class="thr-ts">1d</span>
+      </div>
+      <div class="day-label">Last 7 Days</div>
+      <div class="thr" onclick="selectThread(this,'empty')">
+        <svg class="thr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+        <div class="thr-text"><div class="thr-subj">Tyrwhitt return confirmation</div><div class="thr-meta"><span>INTELLIGENTRETURNS</span><span>·</span><span>1</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></div></div>
+        <span class="thr-ts">23 Mar</span>
+      </div>
+      <div class="thr" onclick="selectThread(this,'crew')">
+        <svg class="thr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+        <div class="thr-text"><div class="thr-subj">Crew Transfer — 15 Apr 2026</div><div class="thr-meta"><span>YACHT MGMT</span><span>·</span><span>1</span></div></div>
+        <span class="thr-ts">6h</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT: Thread detail ═══ -->
+  <div class="right-pane" id="right-pane">
+
+    <!-- PO Thread (default active) -->
+    <div class="detail active" id="detail-po">
+      <div class="dt-identity">
+        <div class="dt-pills">
+          <span class="dt-pill linked">1 Linked</span>
+          <span class="dt-pill neutral">2 Attachments</span>
+        </div>
+        <div class="dt-subject">Re: PO-2026-0099 — Watermaker Membrane + Fuel Filters</div>
+        <div class="dt-context">
+          <span class="sender">Marine Spares International</span><span>·</span>
+          <span class="mono">1 message</span><span>·</span>
+          <span class="mono">25 Mar 2026, 07:28</span>
+        </div>
+      </div>
+
+      <!-- Linked Objects -->
+      <div class="dt-section">
+        <div class="dt-sec-hdr" onclick="toggleSec(this)">
+          <svg class="dt-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          <span class="dt-sec-title">Linked Objects</span>
+          <span class="dt-sec-count">1</span>
+          <button class="dt-sec-action">+ Link</button>
+          <svg class="dt-sec-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="dt-sec-body">
+          <div class="link-row">
+            <div class="link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="4" rx="2"/><rect x="3" y="5" width="18" height="17" rx="2.5"/><path d="M8 12l3 3 5-5"/></svg></div>
+            <div class="link-text">
+              <div class="link-name">S34 UI ClickWO cl-1774108085407</div>
+              <div class="link-meta"><span>Work Order</span><span>WO-TEST-1774108085407</span><span class="link-badge">Suggested</span></div>
+            </div>
+            <button class="link-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attachments — distinct section with thumbnails + actions -->
+      <div class="att-section">
+        <div class="att-sec-hdr">
+          <svg class="att-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+          <span class="att-sec-title">Attachments</span>
+          <span class="att-sec-count">2</span>
+        </div>
+
+        <div class="att-row" onclick="alert('Opens in Document Viewer overlay — renders PDF inline, with Save to Storage button')">
+          <div class="att-thumb pdf">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="att-text">
+            <div class="att-name">invoice_PO-2026-0099.pdf</div>
+            <div class="att-meta"><span>PDF</span><span>176 KB</span></div>
+          </div>
+          <div class="att-actions">
+            <button class="att-act save" title="Save to yacht storage">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="att-act" title="Open in new tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="att-row" onclick="alert('Opens in Document Viewer')">
+          <div class="att-thumb pdf">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="att-text">
+            <div class="att-name">packing_slip.pdf</div>
+            <div class="att-meta"><span>PDF</span><span>44 KB</span></div>
+          </div>
+          <div class="att-actions">
+            <button class="att-act save" title="Save to yacht storage">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="att-act" title="Open in new tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message — body renders by default -->
+      <div class="msg-wrap">
+        <div style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--txt-ghost); padding:12px 0 8px; display:flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--txt3)"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+          Messages <span style="font-family:var(--font-mono); font-weight:400; color:var(--txt-ghost);">1</span>
+        </div>
+        <div class="msg-card" id="msg-po-1">
+          <div class="msg-hdr" onclick="toggleMsg('msg-po-1')">
+            <div class="msg-avatar">MS</div>
+            <div class="msg-info">
+              <div class="msg-sender">Marine Spares International</div>
+              <div class="msg-date">25 Mar 2026, 07:28</div>
+            </div>
+            <svg class="msg-chevron open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div class="msg-body">Dear Chief Engineer,
+Your order PO-2026-0099 has been confirmed.
+
+Line items:
+1. Watermaker RO Membrane (Part: MEM-RO-400) x1 — €890.00
+2. Fuel Filter Element (Part: FF-CAT-001) x4 — €124.00
+3. O-Ring Kit (Part: ORK-SW-02) x3 — €233.50
+
+Total: €1,247.50
+Estimated delivery: 28 Mar 2026 to Marina Port Vell, Barcelona.
+
+Best regards,
+Marine Spares International</div>
+        </div>
+      </div>
+
+      <div class="dt-footer">
+        <button class="dt-btn secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 10 20 15 15 20"/><path d="M4 4v7a4 4 0 004 4h12"/></svg> Reply</button>
+        <button class="dt-btn secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 10 20 15 15 20"/><path d="M4 4v7a4 4 0 004 4h12"/></svg> Forward</button>
+        <button class="dt-btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Open in Outlook</button>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="right-empty" id="detail-empty" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+      <div class="right-empty-title">Select a thread</div>
+      <div class="right-empty-text">Click an email on the left to view its contents, linked objects, and attachments.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Related button + overlay -->
+<button class="dt-related-btn" onclick="toggleRelated()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+  Related
+</button>
+<div class="related-backdrop" id="rel-backdrop" onclick="toggleRelated()"></div>
+<div class="related-overlay" id="related">
+  <div class="rel-hdr">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--txt3)"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+    <span class="rel-title">Show Related</span>
+    <button class="rel-close" onclick="toggleRelated()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="rel-body">
+    <div class="rel-placeholder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+      <div class="rel-placeholder-text">Related entities for this thread — equipment, work orders, parts discovered via the linking pipeline.</div>
+    </div>
+  </div>
+</div>
+
+<script src="lens-base.js"></script>
+<script>
+function selectThread(el, id) {
+  document.querySelectorAll('.thr').forEach(function(t) { t.classList.remove('selected'); });
+  el.classList.add('selected');
+  document.querySelectorAll('.detail, .right-empty').forEach(function(d) { d.classList.remove('active'); d.style.display = 'none'; });
+  var detail = document.getElementById('detail-' + id);
+  if (detail) { detail.style.display = 'block'; detail.classList.add('active'); } else { var empty = document.getElementById('detail-empty'); empty.style.display = 'flex'; }
+}
+function toggleMsg(id) {
+  var card = document.getElementById(id);
+  card.querySelector('.msg-body').classList.toggle('collapsed');
+  card.querySelector('.msg-chevron').classList.toggle('open');
+}
+function toggleSec(hdr) {
+  hdr.classList.toggle('collapsed');
+  hdr.nextElementSibling.classList.toggle('collapsed');
+}
+function toggleRelated() {
+  document.getElementById('related').classList.toggle('open');
+  document.getElementById('rel-backdrop').classList.toggle('open');
+}
+document.querySelectorAll('.list-filter').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.list-filter').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
