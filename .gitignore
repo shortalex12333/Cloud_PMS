@@ -82,3 +82,4 @@ playwright-report/
 *_before_changes.json
 *_after_changes*.json
 .vercel
+docs/DEPLOYMENT_GUIDE.md
