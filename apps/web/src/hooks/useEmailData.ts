@@ -455,7 +455,7 @@ export function useChangeLink() {
 /**
  * Remove (unlink) a link
  */
-function useRemoveLink() {
+export function useRemoveLink() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -827,11 +827,12 @@ export type ThreadLink = {
   id: string;
   object_type: string;
   object_id: string;
-  confidence: number;
-  confidence_level: LinkConfidence;
+  confidence: string; // 'deterministic' | 'user_confirmed' | 'suggested'
   suggested_reason: string | null;
-  accepted: boolean;
-  created_at: string;
+  accepted_at: string | null;
+  accepted_by: string | null;
+  is_active: boolean;
+  score: number;
 };
 
 export type ThreadLinksResponse = {
@@ -865,9 +866,9 @@ export function useThreadLinks(threadId: string | null, confidenceThreshold: num
       }
 
       const data = await response.json();
-      // Filter by confidence threshold
+      // Filter: keep all active links (confidence is a string: deterministic/user_confirmed/suggested)
       const filteredLinks = (data.links || []).filter(
-        (link: ThreadLink) => link.confidence >= confidenceThreshold
+        (link: ThreadLink) => link.is_active !== false
       );
 
       return {

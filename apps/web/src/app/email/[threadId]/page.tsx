@@ -11,13 +11,16 @@
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, X as XIcon, ExternalLink, Wrench, Package, AlertTriangle, FileText, Link2 } from 'lucide-react';
 import { LinkEmailModal } from '@/components/email/LinkEmailModal';
+import { supabase } from '@/lib/supabaseClient';
+import { getEntityRoute } from '@/lib/featureFlags';
 import {
   useThread,
   useMessageContent,
   useThreadLinks,
   useMarkThreadRead,
+  useRemoveLink,
   type EmailMessage,
   type ThreadLink,
 } from '@/hooks/useEmailData';
@@ -216,42 +219,133 @@ function MessageContentView({ providerMessageId, attachments }: { providerMessag
   );
 }
 
-function LinkedObjectsPanel({ links }: { links: ThreadLink[] }) {
+const ENTITY_TABLE_MAP: Record<string, { table: string; select: string; nameField: string; refField: string }> = {
+  work_order: { table: 'pms_work_orders', select: 'id,title,wo_number,status', nameField: 'title', refField: 'wo_number' },
+  equipment: { table: 'pms_equipment', select: 'id,name,serial_number', nameField: 'name', refField: 'serial_number' },
+  fault: { table: 'pms_faults', select: 'id,title,fault_number', nameField: 'title', refField: 'fault_number' },
+  part: { table: 'pms_parts', select: 'id,name,part_number', nameField: 'name', refField: 'part_number' },
+  purchase_order: { table: 'pms_purchase_orders', select: 'id,title,po_number', nameField: 'title', refField: 'po_number' },
+};
+
+const ENTITY_ICONS: Record<string, React.ReactNode> = {
+  work_order: <Wrench size={14} />,
+  equipment: <Package size={14} />,
+  fault: <AlertTriangle size={14} />,
+  part: <FileText size={14} />,
+};
+
+function LinkedObjectsPanel({ links, threadId, onRefresh }: { links: ThreadLink[]; threadId: string; onRefresh: () => void }) {
   const router = useRouter();
+  const removeLink = useRemoveLink();
+  const [entityNames, setEntityNames] = React.useState<Record<string, { name: string; ref: string }>>({});
+
+  // Resolve entity names from IDs
+  React.useEffect(() => {
+    if (links.length === 0) return;
+    const resolve = async () => {
+      const resolved: Record<string, { name: string; ref: string }> = {};
+      for (const link of links) {
+        const config = ENTITY_TABLE_MAP[link.object_type];
+        if (!config) { resolved[link.object_id] = { name: link.object_id.slice(0, 8), ref: link.object_type }; continue; }
+        try {
+          const { data } = await supabase.from(config.table).select(config.select).eq('id', link.object_id).maybeSingle();
+          if (data) {
+            const d = data as Record<string, any>;
+            resolved[link.object_id] = { name: d[config.nameField] || link.object_id.slice(0, 8), ref: d[config.refField] || '' };
+          } else {
+            resolved[link.object_id] = { name: link.object_id.slice(0, 8), ref: 'not found' };
+          }
+        } catch {
+          resolved[link.object_id] = { name: link.object_id.slice(0, 8), ref: '' };
+        }
+      }
+      setEntityNames(resolved);
+    };
+    resolve();
+  }, [links]);
+
+  const handleRemove = async (linkId: string) => {
+    try {
+      await removeLink.mutateAsync(linkId);
+      onRefresh();
+    } catch { /* toast handled by hook */ }
+  };
 
   if (links.length === 0) return null;
 
-  const getObjectRoute = (type: string, id: string) => {
-    switch (type) {
-      case 'work_order': return `/work-orders/${id}`;
-      case 'equipment': return `/equipment/${id}`;
-      case 'fault': return `/faults/${id}`;
-      case 'part': return `/inventory/${id}`;
-      default: return `/app?entity=${type}&id=${id}`;
-    }
-  };
-
   return (
-    <div className="p-4 border-b border-surface-border">
-      <p className="text-xs font-medium text-txt-tertiary uppercase tracking-wider mb-3">Linked Objects</p>
-      <div className="space-y-2">
-        {links.map(link => (
-          <button
-            key={link.id}
-            onClick={() => router.push(getObjectRoute(link.object_type, link.object_id))}
-            className="w-full text-left px-3 py-2 bg-surface-elevated hover:bg-surface-hover rounded-lg transition-colors flex items-center gap-2"
-          >
-            <span className={cn(
-              'px-2 py-0.5 rounded text-xs font-medium',
-              link.confidence_level === 'deterministic' ? 'bg-status-success/20 text-status-success' :
-              link.confidence_level === 'user_confirmed' ? 'bg-brand-interactive/20 text-brand-interactive' :
-              'bg-status-warning/20 text-status-warning'
-            )}>
-              {link.object_type.replace(/_/g, ' ')}
-            </span>
-            <span className="text-sm text-txt-primary truncate">{link.object_id}</span>
-          </button>
-        ))}
+    <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-sub)' }}>
+      <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--txt3)', marginBottom: 10 }}>
+        Linked Objects
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {links.map(link => {
+          const entity = entityNames[link.object_id];
+          const icon = ENTITY_ICONS[link.object_type] || <Link2 size={14} />;
+          return (
+            <div
+              key={link.id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', borderRadius: 6,
+                background: 'var(--surface-base)',
+                border: '1px solid var(--border-sub)',
+                minHeight: 44,
+              }}
+            >
+              {/* Icon */}
+              <div style={{
+                width: 28, height: 28, borderRadius: 6,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: link.confidence === 'deterministic' ? 'var(--green-bg)' : 'var(--teal-bg)',
+                color: link.confidence === 'deterministic' ? 'var(--green)' : 'var(--mark)',
+                flexShrink: 0,
+              }}>
+                {icon}
+              </div>
+
+              {/* Name + ref */}
+              <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                onClick={() => router.push(getEntityRoute(link.object_type as any, link.object_id))}
+              >
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--mark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {entity?.name || '...'}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', marginTop: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ textTransform: 'uppercase' }}>{link.object_type.replace(/_/g, ' ')}</span>
+                  {entity?.ref && <span>{entity.ref}</span>}
+                  <span style={{
+                    padding: '0 4px', borderRadius: 2, fontSize: 9, fontWeight: 600,
+                    background: link.confidence === 'deterministic' ? 'var(--green-bg)' : 'var(--neutral-bg)',
+                    color: link.confidence === 'deterministic' ? 'var(--green)' : 'var(--txt3)',
+                    border: `1px solid ${link.confidence === 'deterministic' ? 'var(--green-border)' : 'var(--border-sub)'}`,
+                    textTransform: 'uppercase',
+                  }}>
+                    {link.confidence === 'deterministic' ? 'exact' : link.confidence === 'user_confirmed' ? 'confirmed' : 'suggested'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Open in lens */}
+              <button
+                onClick={() => router.push(getEntityRoute(link.object_type as any, link.object_id))}
+                style={{ width: 28, height: 28, borderRadius: 5, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--txt-ghost)', flexShrink: 0 }}
+                title="Open entity"
+              >
+                <ExternalLink size={13} />
+              </button>
+
+              {/* Remove link */}
+              <button
+                onClick={() => handleRemove(link.id)}
+                style={{ width: 28, height: 28, borderRadius: 5, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--txt-ghost)', flexShrink: 0 }}
+                title="Remove link"
+              >
+                <XIcon size={13} />
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -264,20 +358,15 @@ function ThreadContent({ threadId }: { threadId: string }) {
 
   const [expandedMessages, setExpandedMessages] = React.useState<Set<string>>(new Set());
   const [showLinkModal, setShowLinkModal] = React.useState(false);
+  const markedReadRef = React.useRef(false);
 
-  // Mark thread as read on mount
+  // Mark thread as read on mount — once only, via ref (no re-render)
   React.useEffect(() => {
-    if (thread && !thread.is_read) {
+    if (thread && !thread.is_read && !markedReadRef.current) {
+      markedReadRef.current = true;
       markRead.mutate(threadId);
     }
-  }, [thread, threadId, markRead]);
-
-  // Auto-expand first message
-  React.useEffect(() => {
-    if (thread?.messages?.length && expandedMessages.size === 0) {
-      setExpandedMessages(new Set([thread.messages[0].id]));
-    }
-  }, [thread?.messages, expandedMessages.size]);
+  }, [threadId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleMessage = React.useCallback((messageId: string) => {
     setExpandedMessages(prev => {
@@ -321,7 +410,7 @@ function ThreadContent({ threadId }: { threadId: string }) {
       </div>
 
       {/* Linked objects */}
-      <LinkedObjectsPanel links={links} />
+      <LinkedObjectsPanel links={links} threadId={threadId} onRefresh={() => refetch()} />
 
       {/* Messages */}
       <div className="p-6 space-y-4">
