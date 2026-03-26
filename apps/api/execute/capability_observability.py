@@ -50,15 +50,22 @@ from typing import Dict, List, Any, Optional
 logger = logging.getLogger("capability_observability")
 logger.setLevel(logging.INFO)
 
-# Create logs directory if needed
+# Create logs directory if needed (fall back to /tmp if permissions deny /app/logs)
 LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
+try:
+    os.makedirs(LOG_DIR, exist_ok=True)
+except PermissionError:
+    LOG_DIR = os.path.join("/tmp", "celeste-logs")
+    os.makedirs(LOG_DIR, exist_ok=True)
 
 # File handler for JSON lines
 log_file = os.path.join(LOG_DIR, "capability_requests.jsonl")
-file_handler = logging.FileHandler(log_file, mode="a")
-file_handler.setFormatter(logging.Formatter("%(message)s"))
-logger.addHandler(file_handler)
+try:
+    file_handler = logging.FileHandler(log_file, mode="a")
+    file_handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(file_handler)
+except PermissionError:
+    pass  # Log to stdout only in restricted environments
 
 
 def determine_outcome(
