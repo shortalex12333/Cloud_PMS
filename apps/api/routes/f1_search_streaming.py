@@ -287,7 +287,7 @@ _pool: Optional[asyncpg.Pool] = None
 
 async def _init_connection(conn):
     """Initialize connection with statement_timeout (Supabase doesn't support as startup param)."""
-    await conn.execute("SET statement_timeout = '800ms'")
+    await conn.execute("SET statement_timeout = '5000ms'")
     # NOTE: hnsw.ef_search is set via SET LOCAL inside f1_search_cards (migration 40).
     # Session-level SET here would be reset by Supavisor transaction mode.
 
@@ -302,7 +302,7 @@ async def get_db_pool() -> asyncpg.Pool:
             READ_DSN,
             min_size=2,
             max_size=10,
-            command_timeout=1.5,  # 1500ms - must exceed statement_timeout (800ms) + network latency
+            command_timeout=8.0,  # 8s - NLP queries with entity extraction + trigram search need 3-6s
             statement_cache_size=0,  # LAW 14: Disable statement caching for pgbouncer/Supavisor compatibility
             init=_init_connection,  # Set statement_timeout after connection
         )
@@ -318,7 +318,7 @@ async def get_db_connection() -> asyncpg.Connection:
         statement_cache_size=0,  # LAW 14: Disable statement caching for pgbouncer/Supavisor compatibility
     )
     # Set statement_timeout after connection (Supabase doesn't support as startup param)
-    await conn.execute("SET statement_timeout = '800ms'")
+    await conn.execute("SET statement_timeout = '5000ms'")
     return conn
 
 
