@@ -25,8 +25,8 @@ const MAX_RECENT_QUERIES = 5;
 const CACHE_TTL = 5 * 60 * 1000;  // 5 minutes
 
 // F1 Architecture: L1/L2 Budget Enforcement
-const L1_TIMEOUT_MS = 3000;       // 3s timeout for primary search (includes network latency)
-const L2_TIMEOUT_MS = 5000;       // 5s timeout for fallback search
+const L1_TIMEOUT_MS = 10000;      // 10s timeout for primary search (NLP queries with entity extraction take 4-8s)
+const L2_TIMEOUT_MS = 12000;      // 12s timeout for fallback search
 const TOKEN_REFRESH_TIMEOUT_MS = 2000; // 2s timeout for token refresh
 
 /**
