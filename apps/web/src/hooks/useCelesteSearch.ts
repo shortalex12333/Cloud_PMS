@@ -595,14 +595,14 @@ async function* streamSearch(
           rrf_score?: number;
         } & SearchResult;
 
-        const payload = backendResult.payload || {};
+        const payload = backendResult.payload || {} as any;
         return {
           ...backendResult,
           id: backendResult.object_id || backendResult.primary_id || backendResult.id,
           type: (backendResult.object_type || payload.source_table || backendResult.source_table || backendResult.type) as SearchResult['type'],
-          title: payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
+          title: payload.label || payload.subject || payload.name || payload.title || payload.part_name || payload.certificate_name || backendResult.title || 'Untitled',
           subtitle: payload.code || payload.status || backendResult.subtitle,
-          snippet: backendResult.snippet || (payload as any).snippet,
+          snippet: backendResult.snippet || payload.preview_text || payload.snippet,
           score: backendResult.fused_score ?? backendResult.rrf_score ?? backendResult.score ?? 0,
           actions: backendResult.actions || [],
           metadata: { ...backendResult.metadata, payload },
@@ -747,14 +747,14 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
           rrf_score?: number;
         } & SearchResult;
 
-        const payload = backendResult.payload || {};
+        const payload = backendResult.payload || {} as any;
         return {
           ...backendResult,
           id: backendResult.object_id || backendResult.primary_id || backendResult.id,
           type: (backendResult.object_type || payload.source_table || backendResult.source_table || backendResult.type) as SearchResult['type'],
-          title: payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
+          title: payload.label || payload.subject || payload.name || payload.title || payload.part_name || payload.certificate_name || backendResult.title || 'Untitled',
           subtitle: payload.code || payload.status || backendResult.subtitle,
-          snippet: backendResult.snippet || (payload as any).snippet,
+          snippet: backendResult.snippet || payload.preview_text || payload.snippet,
           score: backendResult.fused_score ?? backendResult.rrf_score ?? backendResult.score ?? 0,
           actions: backendResult.actions || [],
           metadata: { ...backendResult.metadata, payload },
