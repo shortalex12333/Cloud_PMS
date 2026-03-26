@@ -1,0 +1,85 @@
+# =============================================================================
+# Combined Service — Single Container for Render Free Tier Testing
+# =============================================================================
+# Runs API + all 5 workers + nightly scheduler in one process.
+# Memory capped at 512MB to simulate Render free tier.
+#
+# Usage:
+#   docker compose -f docker-compose.combined.yml up --build
+#
+# Verify:
+#   curl http://localhost:8000/healthz           # API health
+#   curl http://localhost:8000/workers/health     # Worker status
+#   docker stats --no-stream                      # Memory check (<512MB)
+# =============================================================================
+
+services:
+  celeste-unified:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # -- Core --
+      - PORT=8000
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+
+      # -- API --
+      - STREAMING_ENABLED_ORGS=85fe1119-b04c-41ac-80f1-829d23322598
+      - ORG_TOKENS_PER_SEC=50
+      - ORG_BURST_CAPACITY=100
+      - yTEST_YACHT_001_SUPABASE_URL=https://vzsohavtuotocgrfkfyd.supabase.co
+      - DEFAULT_YACHT_CODE=yTEST_YACHT_001
+      - SUPABASE_URL=https://vzsohavtuotocgrfkfyd.supabase.co
+      - HANDOVER_EXPORT_SERVICE_URL=http://host.docker.internal:10000
+      - HANDOVER_USE_MICROSERVICE=true
+
+      # -- Projection Worker --
+      - F1_PROJECTION_WORKER_ENABLED=true
+      - PROJECTION_BATCH_SIZE=25
+      - PROJECTION_POLL_INTERVAL=5
+
+      # -- Embedding Worker (reduced batch for memory) --
+      - EMBED_MODEL=text-embedding-3-small
+      - EMBED_DIM=1536
+      - EMBED_PROVIDER=openai
+      - BATCH_SIZE=50
+
+      # -- Extraction Worker (minimal batch for memory) --
+      - EXTRACTION_BATCH_SIZE=1
+      - EXTRACTION_POLL_INTERVAL=10
+
+      # -- Email Watcher --
+      - EMAIL_WATCHER_ENABLED=true
+      - EMAIL_WATCHER_POLL_INTERVAL=30
+      - EMAIL_WATCHER_BATCH_SIZE=10
+
+      # -- Nightly Feedback --
+      - MIN_CLICKS=1
+      - LOOKBACK_DAYS=30
+      - DRY_RUN=false
+
+    command: >
+      sh -c "cd /app && uvicorn combined_service:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M

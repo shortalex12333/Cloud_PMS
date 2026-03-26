@@ -1,0 +1,142 @@
+# =============================================================================
+# Render Blueprint — Combined Service (Free Tier)
+# =============================================================================
+# Replaces: render.yaml (7 separate services @ $56/mo)
+# This runs everything in 1 free web service @ $0/mo.
+#
+# IMPORTANT: All env vars marked sync: false must be set manually
+# in the Render dashboard (or via API).
+#
+# After deploy, set up UptimeRobot (free) to ping /healthz every 14 min
+# to prevent Render free-tier spin-down.
+# =============================================================================
+
+services:
+  - type: web
+    name: celeste-unified
+    runtime: python
+    plan: free
+    region: oregon
+    repo: https://github.com/shortalex12333/Cloud_PMS
+    branch: main
+    rootDir: ""
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: cd apps/api && uvicorn combined_service:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    autoDeploy: "yes"
+    envVars:
+      # -- Python --
+      - key: PYTHON_VERSION
+        value: 3.11.6
+
+      # -- Database --
+      - key: DATABASE_URL
+        sync: false
+      - key: READ_DB_DSN
+        sync: false
+
+      # -- Redis --
+      - key: REDIS_URL
+        sync: false
+
+      # -- OpenAI --
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # -- Master Supabase --
+      - key: MASTER_SUPABASE_URL
+        sync: false
+      - key: MASTER_SUPABASE_SERVICE_KEY
+        sync: false
+      - key: MASTER_SUPABASE_JWT_SECRET
+        sync: false
+
+      # -- Tenant Supabase --
+      - key: yTEST_YACHT_001_SUPABASE_URL
+        value: https://vzsohavtuotocgrfkfyd.supabase.co
+      - key: yTEST_YACHT_001_SUPABASE_SERVICE_KEY
+        sync: false
+      - key: yTEST_YACHT_001_SUPABASE_ANON_KEY
+        sync: false
+      - key: DEFAULT_YACHT_CODE
+        value: yTEST_YACHT_001
+      - key: SUPABASE_URL
+        value: https://vzsohavtuotocgrfkfyd.supabase.co
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: TENANT_SUPABASE_ANON_KEY
+        sync: false
+      - key: TENANT_SUPABASE_JWT_SECRET
+        sync: false
+
+      # -- Azure OAuth --
+      - key: AZURE_READ_APP_ID
+        value: 41f6dc82-8127-4330-97e0-c6b26e6aa967
+      - key: AZURE_READ_CLIENT_SECRET
+        sync: false
+      - key: AZURE_WRITE_APP_ID
+        value: f0b8944b-8127-4f0f-8ed5-5487462df50c
+      - key: AZURE_WRITE_CLIENT_SECRET
+        sync: false
+
+      # -- API config --
+      - key: STREAMING_ENABLED_ORGS
+        value: 85fe1119-b04c-41ac-80f1-829d23322598
+      - key: ORG_TOKENS_PER_SEC
+        value: "50"
+      - key: ORG_BURST_CAPACITY
+        value: "100"
+      - key: SHOPPING_LIST_LENS_V1_ENABLED
+        value: "true"
+
+      # -- Handover Export (external service) --
+      - key: HANDOVER_EXPORT_SERVICE_URL
+        sync: false
+      - key: HANDOVER_USE_MICROSERVICE
+        value: "true"
+
+      # -- Projection Worker --
+      - key: F1_PROJECTION_WORKER_ENABLED
+        value: "true"
+      - key: PROJECTION_BATCH_SIZE
+        value: "25"
+      - key: PROJECTION_POLL_INTERVAL
+        value: "5"
+
+      # -- Embedding Worker --
+      - key: EMBED_MODEL
+        value: text-embedding-3-small
+      - key: EMBED_DIM
+        value: "1536"
+      - key: EMBED_PROVIDER
+        value: openai
+      - key: BATCH_SIZE
+        value: "50"
+
+      # -- Extraction Worker --
+      - key: EXTRACTION_BATCH_SIZE
+        value: "1"
+      - key: EXTRACTION_POLL_INTERVAL
+        value: "10"
+
+      # -- Email Watcher --
+      - key: EMAIL_WATCHER_ENABLED
+        value: "true"
+      - key: EMAIL_WATCHER_POLL_INTERVAL
+        value: "30"
+      - key: EMAIL_WATCHER_BATCH_SIZE
+        value: "10"
+
+      # -- Nightly Feedback --
+      - key: MIN_CLICKS
+        value: "1"
+      - key: LOOKBACK_DAYS
+        value: "30"
+      - key: DRY_RUN
+        value: "false"
+
+      # -- Logging --
+      - key: LOG_LEVEL
+        value: INFO
+      - key: PYTHONUNBUFFERED
+        value: "1"
