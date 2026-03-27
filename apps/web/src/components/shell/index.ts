@@ -7,3 +7,4 @@ export { DomainListView, type ListRecord } from './DomainListView';
 export { ShellWrapper } from './ShellWrapper';
 export { useVesselSurface, useDomainRecords, useSidebarCounts } from './hooks';
 export { DOMAIN_TO_API } from './api';
+export { ShellProvider, useShellContext } from './ShellContext';

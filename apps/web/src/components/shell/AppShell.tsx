@@ -21,6 +21,7 @@ import { Topbar } from './Topbar';
 import { Sidebar, type DomainId } from './Sidebar';
 import { Subbar } from './Subbar';
 import { useSidebarCounts } from './hooks';
+import { ShellProvider, useShellContext } from './ShellContext';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -95,13 +96,9 @@ export function AppShell({ children }: AppShellProps) {
 
   const activeDomainLabel = activeDomain !== 'surface' ? DOMAIN_LABELS[activeDomain] : null;
 
-  // State for subbar
-  const [activeChip, setActiveChip] = React.useState('All');
-
   // Navigation handler
   const handleSelectDomain = React.useCallback(
     (domain: DomainId) => {
-      setActiveChip('All');
       router.push(DOMAIN_TO_PATH[domain]);
     },
     [router]
@@ -118,6 +115,42 @@ export function AppShell({ children }: AppShellProps) {
   const sidebarCounts = useSidebarCounts();
 
   const showSubbar = activeDomain !== 'surface';
+
+  return (
+    <ShellProvider activeDomain={activeDomain}>
+      <AppShellInner
+        activeDomain={activeDomain}
+        activeDomainLabel={activeDomainLabel}
+        showSubbar={showSubbar}
+        sidebarCounts={sidebarCounts}
+        onSelectDomain={handleSelectDomain}
+        onClearScope={handleClearScope}
+      >
+        {children}
+      </AppShellInner>
+    </ShellProvider>
+  );
+}
+
+/** Inner shell that reads ShellContext for Subbar state */
+function AppShellInner({
+  activeDomain,
+  activeDomainLabel,
+  showSubbar,
+  sidebarCounts,
+  onSelectDomain,
+  onClearScope,
+  children,
+}: {
+  activeDomain: DomainId;
+  activeDomainLabel: string | null;
+  showSubbar: boolean;
+  sidebarCounts: ReturnType<typeof useSidebarCounts>;
+  onSelectDomain: (domain: DomainId) => void;
+  onClearScope: () => void;
+  children: React.ReactNode;
+}) {
+  const { activeChip, setActiveChip, setSearchQuery } = useShellContext();
 
   return (
     <div
@@ -141,7 +174,7 @@ export function AppShell({ children }: AppShellProps) {
       <Topbar
         activeDomain={activeDomain !== 'surface' ? activeDomain : null}
         activeDomainLabel={activeDomainLabel}
-        onClearScope={handleClearScope}
+        onClearScope={onClearScope}
       />
 
       {/* Row 2: Subbar (hidden on Vessel Surface) */}
@@ -150,6 +183,7 @@ export function AppShell({ children }: AppShellProps) {
           activeDomain={activeDomain}
           activeChip={activeChip}
           onChipClick={setActiveChip}
+          onSearch={setSearchQuery}
         />
       )}
 
@@ -164,7 +198,7 @@ export function AppShell({ children }: AppShellProps) {
         {/* Left sidebar */}
         <Sidebar
           activeDomain={activeDomain}
-          onSelectDomain={handleSelectDomain}
+          onSelectDomain={onSelectDomain}
           counts={sidebarCounts}
         />
 
