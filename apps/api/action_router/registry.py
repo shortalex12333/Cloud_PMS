@@ -3918,6 +3918,28 @@ def _count_matches(query_tokens: List[str], target_set: set, fuzzy: bool = True)
     return sum(1 for qt in query_tokens if _token_matches(qt, target_set, fuzzy))
 
 
+# Fields that indicate the action needs a pre-existing entity to operate on.
+# Actions requiring these fields are filtered out of spotlight search (no entity context).
+ENTITY_CONTEXT_FIELDS = {
+    'entity_id',
+    'work_order_id', 'equipment_id', 'fault_id', 'part_id',
+    'document_id', 'certificate_id', 'receiving_id', 'handover_id',
+    'purchase_order_id', 'warranty_id', 'shopping_list_id',
+    'item_id', 'note_id', 'comment_id',
+}
+
+
+def _requires_entity_context(action: ActionDefinition) -> bool:
+    """True if this action requires a pre-existing entity to operate on."""
+    for field in action.required_fields:
+        if field in ENTITY_CONTEXT_FIELDS:
+            return True
+        # Catch any *_entity_id pattern (source_entity_id, target_entity_id, etc.)
+        if field.endswith('_id') and field != 'yacht_id':
+            return True
+    return False
+
+
 def _match_score(query_tokens: List[str], action: ActionDefinition) -> float:
     """
     Compute match score for an action against query tokens.
@@ -3988,6 +4010,7 @@ def search_actions(
     query: str = None,
     role: str = None,
     domain: str = None,
+    has_entity_context: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Search actions with role-gating and optional domain filter.
@@ -3996,6 +4019,9 @@ def search_actions(
         query: Search query (optional, returns all if empty)
         role: User role for filtering (required for gating)
         domain: Domain filter (optional, e.g., "certificates")
+        has_entity_context: True when an entity_id is provided (lens page).
+            When False (spotlight search), actions requiring entity-scoped
+            fields (work_order_id, equipment_id, etc.) are filtered out.
 
     Returns:
         List of action dicts with match_score, sorted by score desc
@@ -4004,6 +4030,10 @@ def search_actions(
     query_tokens = _tokenize(query) if query else []
 
     for action_id, action in ACTION_REGISTRY.items():
+        # Entity context gating: skip entity-scoped actions from spotlight
+        if not has_entity_context and _requires_entity_context(action):
+            continue
+
         # Role gating: skip if user role not in allowed_roles
         if role and role not in action.allowed_roles:
             continue
