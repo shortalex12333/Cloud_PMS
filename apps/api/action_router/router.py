@@ -550,8 +550,8 @@ async def list_actions_endpoint(
     user_role = user_context.get("role")
     yacht_id = user_context.get("yacht_id")
 
-    # Search actions with role-gating
-    actions = search_actions(query=q, role=user_role, domain=domain)
+    # Search actions with role-gating and entity context filtering
+    actions = search_actions(query=q, role=user_role, domain=domain, has_entity_context=bool(entity_id))
 
     # Enrich with storage options
     for action in actions:
