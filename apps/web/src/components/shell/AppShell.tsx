@@ -22,6 +22,7 @@ import { Sidebar, type DomainId } from './Sidebar';
 import { Subbar } from './Subbar';
 import { useSidebarCounts } from './hooks';
 import { ShellProvider, useShellContext } from './ShellContext';
+import { SearchOverlay } from './SearchOverlay';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -114,6 +115,9 @@ export function AppShell({ children }: AppShellProps) {
   // Sidebar count badges from Vessel Surface endpoint
   const sidebarCounts = useSidebarCounts();
 
+  // Global search overlay state
+  const [searchOpen, setSearchOpen] = React.useState(false);
+
   const showSubbar = activeDomain !== 'surface';
 
   return (
@@ -125,9 +129,11 @@ export function AppShell({ children }: AppShellProps) {
         sidebarCounts={sidebarCounts}
         onSelectDomain={handleSelectDomain}
         onClearScope={handleClearScope}
+        onSearchFocus={() => setSearchOpen(true)}
       >
         {children}
       </AppShellInner>
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </ShellProvider>
   );
 }
@@ -140,6 +146,7 @@ function AppShellInner({
   sidebarCounts,
   onSelectDomain,
   onClearScope,
+  onSearchFocus,
   children,
 }: {
   activeDomain: DomainId;
@@ -148,6 +155,7 @@ function AppShellInner({
   sidebarCounts: ReturnType<typeof useSidebarCounts>;
   onSelectDomain: (domain: DomainId) => void;
   onClearScope: () => void;
+  onSearchFocus: () => void;
   children: React.ReactNode;
 }) {
   const { activeChip, setActiveChip, setSearchQuery } = useShellContext();
@@ -175,6 +183,7 @@ function AppShellInner({
         activeDomain={activeDomain !== 'surface' ? activeDomain : null}
         activeDomainLabel={activeDomainLabel}
         onClearScope={onClearScope}
+        onSearchFocus={onSearchFocus}
       />
 
       {/* Row 2: Subbar (hidden on Vessel Surface) */}
