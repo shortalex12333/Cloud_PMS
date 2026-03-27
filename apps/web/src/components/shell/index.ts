@@ -8,3 +8,4 @@ export { ShellWrapper } from './ShellWrapper';
 export { useVesselSurface, useDomainRecords, useSidebarCounts } from './hooks';
 export { DOMAIN_TO_API } from './api';
 export { ShellProvider, useShellContext } from './ShellContext';
+export { Tier3SearchPopup, type Tier3Result } from './Tier3SearchPopup';
