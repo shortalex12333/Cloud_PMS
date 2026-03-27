@@ -37,7 +37,7 @@ function FaultsPageContent() {
   }, [router, searchParams]);
 
   return (
-    <div className="h-screen bg-surface-base">
+    <div className="h-full bg-surface-base">
       <FilteredEntityList<Fault>
         domain="faults"
         queryKey={['faults']}
@@ -64,7 +64,7 @@ export default function FaultsPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="h-screen flex items-center justify-center bg-surface-base">
+        <div className="h-full flex items-center justify-center bg-surface-base">
           <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
         </div>
       }
