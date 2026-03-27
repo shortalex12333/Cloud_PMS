@@ -29,6 +29,8 @@ import {
   Plus,
 } from 'lucide-react';
 import type { DomainId } from './Sidebar';
+import { useVesselSurface } from './hooks';
+import type { VesselSurfaceResponse } from './api';
 
 /* ─────────────────────────────────────────────
    TYPES
@@ -130,6 +132,75 @@ const MOCK_CERTIFICATES: SurfaceCertificate[] = [
 
 export function VesselSurface() {
   const router = useRouter();
+  const { data: liveData } = useVesselSurface();
+
+  // Derive display data from live endpoint, fall back to static mock
+  const workOrders = liveData?.work_orders?.items?.length
+    ? liveData.work_orders.items.map((wo) => ({
+        id: wo.id,
+        ref: wo.id.replace('-', '\u00b7'),
+        title: wo.title,
+        equipment: wo.equipment_name || wo.equipment_id || '',
+        assigned: wo.assigned_to || 'Unassigned',
+        status: wo.status as SurfaceWorkOrder['status'],
+        age: wo.age_days !== undefined ? `${wo.age_days}d` : '\u2014',
+      }))
+    : MOCK_WORK_ORDERS;
+
+  const faults = liveData?.faults?.items?.length
+    ? liveData.faults.items.map((f) => ({
+        id: f.id,
+        ref: f.id.replace('-', '\u00b7'),
+        title: f.title,
+        equipment: f.equipment_name || f.equipment_id || '',
+        severity: (f.severity || f.status || 'open') as SurfaceFault['severity'],
+        age: f.age_days !== undefined ? `${f.age_days}d` : '\u2014',
+      }))
+    : MOCK_FAULTS;
+
+  const handover = liveData?.last_handover
+    ? {
+        id: liveData.last_handover.id,
+        from: liveData.last_handover.from_crew,
+        to: liveData.last_handover.to_crew,
+        date: new Date(liveData.last_handover.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        status: liveData.last_handover.status as SurfaceHandover['status'],
+      }
+    : MOCK_HANDOVER;
+
+  const parts = liveData?.parts_below_min?.items?.length
+    ? liveData.parts_below_min.items.map((p) => ({
+        id: p.id,
+        name: p.name,
+        stock: p.stock_level,
+        minStock: p.min_stock,
+        location: p.location || '',
+      }))
+    : MOCK_PARTS;
+
+  const activity = liveData?.recent_activity?.length
+    ? liveData.recent_activity.map((a) => ({
+        id: a.entity_id,
+        ref: a.entity_ref,
+        action: a.action,
+        actor: a.actor,
+        time: formatTimeAgo(a.timestamp),
+      }))
+    : MOCK_ACTIVITY;
+
+  const certificates = liveData?.certificates_expiring?.items?.length
+    ? liveData.certificates_expiring.items.map((c) => ({
+        id: c.id,
+        name: c.name,
+        daysRemaining: c.days_remaining,
+        status: (c.days_remaining <= 0 ? 'expired' : c.days_remaining <= 45 ? 'expiring' : 'valid') as SurfaceCertificate['status'],
+      }))
+    : MOCK_CERTIFICATES;
+
+  const woCount = liveData?.work_orders?.open_count ?? MOCK_WORK_ORDERS.length;
+  const faultCount = liveData?.faults?.open_count ?? MOCK_FAULTS.length;
+  const partsCount = liveData?.parts_below_min?.count ?? MOCK_PARTS.length;
+  const certCount = liveData?.certificates_expiring?.count ?? MOCK_CERTIFICATES.length;
 
   const navigateToDomain = React.useCallback(
     (domain: DomainId) => {
@@ -165,11 +236,11 @@ export function VesselSurface() {
         span={2}
         icon={ClipboardList}
         label="Work Orders"
-        count={MOCK_WORK_ORDERS.length}
-        countSeverity={MOCK_WORK_ORDERS.some(w => w.status === 'overdue') ? 'warning' : undefined}
+        count={woCount}
+        countSeverity={workOrders.some(w => w.status === 'overdue') ? 'warning' : undefined}
         onHeaderClick={() => navigateToDomain('work-orders')}
       >
-        {MOCK_WORK_ORDERS.map((wo) => (
+        {workOrders.map((wo) => (
           <SurfaceRow
             key={wo.id}
             severity={wo.status === 'overdue' ? 'critical' : wo.status === 'due_soon' ? 'warning' : undefined}
@@ -196,11 +267,11 @@ export function VesselSurface() {
       <SurfaceCard
         icon={AlertTriangle}
         label="Faults"
-        count={MOCK_FAULTS.length}
-        countSeverity={MOCK_FAULTS.some(f => f.severity === 'critical') ? 'critical' : undefined}
+        count={faultCount}
+        countSeverity={faults.some(f => f.severity === 'critical') ? 'critical' : undefined}
         onHeaderClick={() => navigateToDomain('faults')}
       >
-        {MOCK_FAULTS.map((f) => (
+        {faults.map((f) => (
           <SurfaceRow
             key={f.id}
             severity={f.severity === 'critical' ? 'critical' : f.severity === 'warning' ? 'warning' : undefined}
@@ -232,11 +303,11 @@ export function VesselSurface() {
         onHeaderClick={() => navigateToDomain('handover-export')}
       >
         <SurfaceRow
-          severity={MOCK_HANDOVER.status === 'signed' ? 'info' : undefined}
-          title={<>{MOCK_HANDOVER.from} \u2192 {MOCK_HANDOVER.to}</>}
-          meta={MOCK_HANDOVER.date}
-          pill={{ label: MOCK_HANDOVER.status, variant: MOCK_HANDOVER.status === 'signed' ? 'signed' : 'open' }}
-          onClick={() => router.push(`/handover-export?id=${MOCK_HANDOVER.id}`)}
+          severity={handover.status === 'signed' ? 'info' : undefined}
+          title={<>{handover.from} \u2192 {handover.to}</>}
+          meta={handover.date}
+          pill={{ label: handover.status, variant: handover.status === 'signed' ? 'signed' : 'open' }}
+          onClick={() => router.push(`/handover-export?id=${handover.id}`)}
         />
       </SurfaceCard>
 
@@ -244,11 +315,11 @@ export function VesselSurface() {
       <SurfaceCard
         icon={Package}
         label="Parts Below Min"
-        count={MOCK_PARTS.length}
-        countSeverity={MOCK_PARTS.some(p => p.stock === 0) ? 'critical' : 'warning'}
+        count={partsCount}
+        countSeverity={parts.some(p => p.stock === 0) ? 'critical' : 'warning'}
         onHeaderClick={() => navigateToDomain('inventory')}
       >
-        {MOCK_PARTS.map((p) => (
+        {parts.map((p) => (
           <SurfaceRow
             key={p.id}
             severity={p.stock === 0 ? 'critical' : 'warning'}
@@ -259,7 +330,7 @@ export function VesselSurface() {
           />
         ))}
         <SurfaceFooter
-          count={MOCK_PARTS.length}
+          count={partsCount}
           label="below threshold"
           onClick={() => navigateToDomain('inventory')}
         />
@@ -275,7 +346,7 @@ export function VesselSurface() {
         icon={Activity}
         label="Recent Activity"
       >
-        {MOCK_ACTIVITY.map((a) => (
+        {activity.map((a) => (
           <div
             key={a.id}
             style={{
@@ -307,11 +378,11 @@ export function VesselSurface() {
       <SurfaceCard
         icon={Award}
         label="Certificates"
-        count={MOCK_CERTIFICATES.length}
-        countSeverity={MOCK_CERTIFICATES.some(c => c.daysRemaining < 30) ? 'warning' : undefined}
+        count={certCount}
+        countSeverity={certificates.some(c => c.daysRemaining < 30) ? 'warning' : undefined}
         onHeaderClick={() => navigateToDomain('certificates')}
       >
-        {MOCK_CERTIFICATES.map((c) => (
+        {certificates.map((c) => (
           <SurfaceRow
             key={c.id}
             severity={c.daysRemaining < 30 ? 'warning' : undefined}
@@ -628,6 +699,18 @@ function QuickActions({ actions }: { actions: { label: string; onClick: () => vo
 /* ─────────────────────────────────────────────
    HELPERS
    ───────────────────────────────────────────── */
+
+function formatTimeAgo(timestamp: string): string {
+  const now = Date.now();
+  const then = new Date(timestamp).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay}d ago`;
+}
 
 function statusToVariant(status: string): PillVariant {
   switch (status) {

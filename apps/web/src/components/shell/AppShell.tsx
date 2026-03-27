@@ -20,6 +20,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Topbar } from './Topbar';
 import { Sidebar, type DomainId } from './Sidebar';
 import { Subbar } from './Subbar';
+import { useSidebarCounts } from './hooks';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -113,6 +114,9 @@ export function AppShell({ children }: AppShellProps) {
     // For now, this is a no-op since Tier 1 search is wired separately.
   }, []);
 
+  // Sidebar count badges from Vessel Surface endpoint
+  const sidebarCounts = useSidebarCounts();
+
   const showSubbar = activeDomain !== 'surface';
 
   return (
@@ -161,6 +165,7 @@ export function AppShell({ children }: AppShellProps) {
         <Sidebar
           activeDomain={activeDomain}
           onSelectDomain={handleSelectDomain}
+          counts={sidebarCounts}
         />
 
         {/* Main content area */}
