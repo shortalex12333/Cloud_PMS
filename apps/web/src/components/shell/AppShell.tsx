@@ -200,6 +200,7 @@ function AppShellInner({
       <div
         style={{
           display: 'grid',
+          // TODO P1: responsive — single column below 900px
           gridTemplateColumns: '192px 1fr',
           overflow: 'hidden',
         }}

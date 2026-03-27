@@ -114,6 +114,10 @@ export function Tier3SearchPopup({
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setFocusedIndex((i) => Math.max(i - 1, 0));
+      } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && results[focusedIndex]) {
+        // Cmd+Enter: open entity in new tab
+        e.preventDefault();
+        window.open(`/inventory?id=${results[focusedIndex].id}`, '_blank');
       } else if (e.key === 'Enter' && results[focusedIndex]?.addable) {
         e.preventDefault();
         onSelect(results[focusedIndex]);
@@ -354,6 +358,7 @@ export function Tier3SearchPopup({
             <div style={{ display: 'flex', gap: 10, fontSize: 9, color: 'var(--txt-ghost)', fontFamily: 'var(--font-mono, ui-monospace, monospace)' }}>
               <span>\u2191\u2193 navigate</span>
               <span>\u21B5 add</span>
+              <span>\u2318\u21B5 open in tab</span>
               <span>esc close</span>
             </div>
             <button
