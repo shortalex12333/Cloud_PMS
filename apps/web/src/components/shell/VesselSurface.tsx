@@ -258,7 +258,7 @@ export function VesselSurface() {
         />
         <QuickActions
           actions={[
-            { label: 'Create Work Order', onClick: () => {} },
+            { label: 'Create Work Order', onClick: () => router.push('/work-orders') },
           ]}
         />
       </SurfaceCard>
@@ -289,7 +289,7 @@ export function VesselSurface() {
         />
         <QuickActions
           actions={[
-            { label: 'Log Fault', onClick: () => {} },
+            { label: 'Log Fault', onClick: () => router.push('/faults') },
           ]}
         />
       </SurfaceCard>
@@ -336,7 +336,7 @@ export function VesselSurface() {
         />
         <QuickActions
           actions={[
-            { label: 'Add to Shopping List', onClick: () => {} },
+            { label: 'Add to Shopping List', onClick: () => router.push('/shopping-list') },
           ]}
         />
       </SurfaceCard>
