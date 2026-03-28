@@ -244,7 +244,7 @@ export function VesselSurface() {
           <SurfaceRow
             key={wo.id}
             severity={wo.status === 'overdue' ? 'critical' : wo.status === 'due_soon' ? 'warning' : undefined}
-            title={<><span style={{ color: 'var(--mark)', fontSize: 11 }}>{wo.ref}</span> {wo.title}</>}
+            title={<><span style={{ color: 'var(--mark)', fontSize: 11, fontFamily: 'var(--font-mono, ui-monospace, monospace)' }}>{wo.ref}</span> {wo.title}</>}
             meta={wo.equipment}
             pill={{ label: wo.status.replace('_', ' '), variant: statusToVariant(wo.status) }}
             time={wo.age}
@@ -275,7 +275,7 @@ export function VesselSurface() {
           <SurfaceRow
             key={f.id}
             severity={f.severity === 'critical' ? 'critical' : f.severity === 'warning' ? 'warning' : undefined}
-            title={<><span style={{ color: 'var(--mark)', fontSize: 11 }}>{f.ref}</span> {f.title}</>}
+            title={<><span style={{ color: 'var(--mark)', fontSize: 11, fontFamily: 'var(--font-mono, ui-monospace, monospace)' }}>{f.ref}</span> {f.title}</>}
             meta={f.equipment}
             pill={{ label: f.severity, variant: f.severity === 'critical' ? 'critical' : f.severity === 'warning' ? 'warn' : 'open' }}
             time={f.age}
@@ -540,11 +540,11 @@ function SurfaceRow({
       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {title}
         </div>
         {meta && (
-          <div style={{ fontSize: 10, color: 'var(--txt3)', fontFamily: 'var(--font-mono, ui-monospace, monospace)', marginTop: 1 }}>
+          <div style={{ fontSize: 10.5, color: 'var(--txt3)', fontFamily: 'var(--font-mono, ui-monospace, monospace)', marginTop: 1 }}>
             {meta}
           </div>
         )}
