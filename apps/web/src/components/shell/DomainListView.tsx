@@ -106,9 +106,6 @@ export function DomainListView({
         <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--txt3)' }}>
           No {domainLabel.toLowerCase()} match
         </span>
-        <span style={{ fontSize: 11, color: 'var(--txt-ghost)' }}>
-          {searchQuery ? 'Try a different search or clear filters' : 'No records found'}
-        </span>
       </div>
     );
   }
