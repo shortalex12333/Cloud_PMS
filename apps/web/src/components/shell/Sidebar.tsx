@@ -128,7 +128,7 @@ export function Sidebar({ activeDomain, onSelectDomain, counts }: SidebarProps) 
           <div
             style={{
               fontSize: 8,
-              fontWeight: 700,
+              fontWeight: 600,
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
               color: 'var(--txt-ghost)',

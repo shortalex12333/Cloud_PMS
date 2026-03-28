@@ -78,7 +78,7 @@ export function Topbar({
       <div
         style={{
           fontSize: 9,
-          fontWeight: 700,
+          fontWeight: 600,
           letterSpacing: '0.20em',
           textTransform: 'uppercase',
           color: 'var(--mark)',

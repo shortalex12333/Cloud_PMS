@@ -154,7 +154,7 @@ function ColLabel({ children, style }: { children: React.ReactNode; style?: Reac
     <div
       style={{
         fontSize: 8.5,
-        fontWeight: 700,
+        fontWeight: 600,
         letterSpacing: '0.10em',
         textTransform: 'uppercase',
         color: 'var(--txt-ghost)',
