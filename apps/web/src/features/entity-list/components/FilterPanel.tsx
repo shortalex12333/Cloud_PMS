@@ -8,8 +8,6 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { X, ChevronDown } from 'lucide-react';
 import type { FilterFieldConfig, ActiveFilters, DateRange } from '../types/filter-config';
 import { isDateRange, FILTER_CATEGORY_LABELS } from '../types/filter-config';
@@ -17,16 +15,6 @@ import { getFiltersByDomain } from '@/lib/filters/catalog';
 import type { QuickFilter } from '@/lib/filters/catalog';
 import { mapLegacyFilter } from '@/lib/filters/mapLegacyFilter';
 
-// ─── Domain routes for the domain pill navigator ───
-const DOMAIN_ROUTES = [
-  { slug: 'work-orders', label: 'Work Orders', href: '/work-orders' },
-  { slug: 'faults', label: 'Faults', href: '/faults' },
-  { slug: 'equipment', label: 'Equipment', href: '/equipment' },
-  { slug: 'inventory', label: 'Inventory', href: '/inventory' },
-  { slug: 'certificates', label: 'Certificates', href: '/certificates' },
-  { slug: 'receiving', label: 'Receiving', href: '/receiving' },
-  { slug: 'shopping-list', label: 'Shopping List', href: '/shopping-list' },
-] as const;
 
 interface FilterPanelProps {
   filters: FilterFieldConfig[];
@@ -47,7 +35,6 @@ export function FilterPanel({
   isOpen,
   onClose,
 }: FilterPanelProps) {
-  const pathname = usePathname();
   const activeCount = Object.keys(activeFilters).length;
 
   // Quick presets from catalog
@@ -414,40 +401,6 @@ const overlineStyle: React.CSSProperties = {
   marginBottom: 10,
 };
 
-const domainPillBase: React.CSSProperties = {
-  flexShrink: 0,
-  minHeight: 44,
-  padding: '0 12px',
-  borderRadius: 6,
-  fontSize: 12,
-  fontWeight: 500,
-  whiteSpace: 'nowrap',
-  display: 'flex',
-  alignItems: 'center',
-  background: 'var(--neutral-bg)',
-  color: 'var(--txt3)',
-  transition: 'background 60ms, color 60ms',
-};
-
-const domainPillActive: React.CSSProperties = {
-  background: 'var(--teal-bg)',
-  color: 'var(--mark)',
-};
-
-const presetPillStyle: React.CSSProperties = {
-  minHeight: 44,
-  padding: '0 10px',
-  borderRadius: 6,
-  fontSize: 11,
-  fontWeight: 500,
-  display: 'flex',
-  alignItems: 'center',
-  background: 'var(--neutral-bg)',
-  color: 'var(--txt3)',
-  border: '1px solid var(--border-faint)',
-  cursor: 'pointer',
-  transition: 'background 60ms, color 60ms, border-color 60ms',
-};
 
 const activePillStyle: React.CSSProperties = {
   display: 'inline-flex',
