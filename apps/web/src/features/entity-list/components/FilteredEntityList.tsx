@@ -202,12 +202,12 @@ export function FilteredEntityList<T extends { id: string }>({
   } else if (items.length === 0) {
     resultsContent = (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 40, textAlign: 'center' }}>
-        <p style={{ fontSize: 15, color: 'var(--txt2)', marginBottom: 8 }}>No matching items</p>
+        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--txt3)', marginBottom: 4 }}>No {domain?.replace(/-/g, ' ') || 'records'} match</p>
         <button
           onClick={() => setActiveFilters({})}
-          style={{ fontSize: 13, color: 'var(--teal)', background: 'none', border: 'none', cursor: 'pointer' }}
+          style={{ fontSize: 11, color: 'var(--mark)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }}
         >
-          Clear all filters
+          Clear filters
         </button>
       </div>
     );

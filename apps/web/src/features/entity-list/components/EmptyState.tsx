@@ -8,6 +8,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ message }: EmptyStateProps) {
   const { label } = useDomain();
+  const domainName = label?.toLowerCase() || 'records';
 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-6">
@@ -25,12 +26,9 @@ export function EmptyState({ message }: EmptyStateProps) {
           <path d="M21 21l-4.35-4.35" />
         </svg>
       </div>
-      <h3 className="text-lg font-medium text-txt-primary mb-2">
-        {message || `No ${label || 'items'} found`}
+      <h3 style={{ fontSize: 15, fontWeight: 500, color: 'var(--txt3)', marginBottom: 4 }}>
+        {message || `No ${domainName} recorded`}
       </h3>
-      <p className="text-sm text-txt-secondary max-w-sm">
-        Search is primary. Use the search bar above to find what you&apos;re looking for.
-      </p>
     </div>
   );
 }

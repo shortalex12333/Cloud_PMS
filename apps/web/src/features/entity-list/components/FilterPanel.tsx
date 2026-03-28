@@ -123,55 +123,11 @@ export function FilterPanel({
 
   return (
     <aside style={panelStyle} data-testid="filter-panel">
-      {/* 1. Domain Pills */}
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-faint)' }}>
-        <div style={overlineStyle}>Domain</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {DOMAIN_ROUTES.map(d => (
-            <Link
-              key={d.slug}
-              href={d.href}
-              style={{
-                ...domainPillBase,
-                ...(activeDomain === d.slug ? domainPillActive : {}),
-                textDecoration: 'none',
-              }}
-            >
-              {d.label}
-            </Link>
-          ))}
-        </div>
-      </div>
+      {/* Domain pills and Quick Presets removed — sidebar handles domain
+         switching, subbar chips handle presets. Filter panel is for
+         power-user filters only: status, priority, dates. */}
 
-      {/* 2. Quick Presets */}
-      {quickPresets.length > 0 && (
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-faint)' }}>
-          <div style={overlineStyle}>Quick Presets</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {quickPresets.map(p => (
-              <button
-                key={p.filter_id}
-                onClick={() => applyPreset(p)}
-                style={presetPillStyle}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'var(--teal-bg)';
-                  e.currentTarget.style.color = 'var(--mark)';
-                  e.currentTarget.style.borderColor = 'transparent';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'var(--neutral-bg)';
-                  e.currentTarget.style.color = 'var(--txt3)';
-                  e.currentTarget.style.borderColor = 'var(--border-faint)';
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 3. Active Filter Pills */}
+      {/* Active Filter Pills */}
       {activeCount > 0 && (
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-faint)' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
