@@ -31,6 +31,7 @@ import {
 import type { DomainId } from './Sidebar';
 import { useVesselSurface } from './hooks';
 import type { VesselSurfaceResponse } from './api';
+import { useBreakpoint } from './useBreakpoint';
 
 /* ─────────────────────────────────────────────
    TYPES
@@ -133,6 +134,8 @@ const MOCK_CERTIFICATES: SurfaceCertificate[] = [
 export function VesselSurface() {
   const router = useRouter();
   const { data: liveData } = useVesselSurface();
+  const breakpoint = useBreakpoint();
+  const gridCols = breakpoint === 'wide' ? '1fr 1fr 1fr' : breakpoint === 'medium' ? '1fr 1fr' : '1fr';
 
   // Derive display data from live endpoint, fall back to static mock
   const workOrders = liveData?.work_orders?.items?.length
@@ -224,7 +227,7 @@ export function VesselSurface() {
         overflowY: 'auto',
         padding: '16px 20px 40px',
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr',
+        gridTemplateColumns: gridCols,
         gap: 14,
         alignContent: 'start',
       }}

@@ -23,6 +23,7 @@ import { Subbar } from './Subbar';
 import { useSidebarCounts } from './hooks';
 import { ShellProvider, useShellContext } from './ShellContext';
 import { SearchOverlay } from './SearchOverlay';
+import { useBreakpoint } from './useBreakpoint';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -159,6 +160,8 @@ function AppShellInner({
   children: React.ReactNode;
 }) {
   const { activeChip, setActiveChip, setSearchQuery } = useShellContext();
+  const breakpoint = useBreakpoint();
+  const sidebarWidth = breakpoint === 'narrow' ? 48 : 192;
 
   return (
     <div
@@ -200,8 +203,7 @@ function AppShellInner({
       <div
         style={{
           display: 'grid',
-          // TODO P1: responsive — single column below 900px
-          gridTemplateColumns: '192px 1fr',
+          gridTemplateColumns: `${sidebarWidth}px 1fr`,
           overflow: 'hidden',
         }}
       >
