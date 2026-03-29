@@ -187,7 +187,7 @@ export function VesselSurface() {
         ref: a.entity_ref,
         action: a.action,
         actor: a.actor,
-        time: formatTimeAgo(a.timestamp),
+        time: a.time_display || formatTimeAgo(a.timestamp),
       }))
     : MOCK_ACTIVITY;
 

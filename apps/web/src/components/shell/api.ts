@@ -99,6 +99,7 @@ export interface SurfaceActivityItem {
   action: string;
   actor: string;
   timestamp: string;
+  time_display?: string;
   summary: string;
 }
 
