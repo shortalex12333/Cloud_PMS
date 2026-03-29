@@ -120,6 +120,30 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     # shopping_list prefill intentionally empty for Phase 2 — add as needed
     # ── Hours of Rest ─────────────────────────────────────────────────────────
     # hours_of_rest prefill intentionally empty for Phase 2 — add as needed
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # CROSS-DOMAIN CANONICAL ACTIONS — prefill from source entity context
+    # ══════════════════════════════════════════════════════════════════════════
+
+    # add_to_handover: pre-populates entity reference from ANY source entity
+    ("work_order", "add_to_handover"):   {"entity_id": "id", "title": "title"},
+    ("fault", "add_to_handover"):        {"entity_id": "id", "title": "title"},
+    ("equipment", "add_to_handover"):    {"entity_id": "id", "title": "name"},
+    ("part", "add_to_handover"):         {"entity_id": "id", "title": "name"},
+    ("certificate", "add_to_handover"):  {"entity_id": "id", "title": "certificate_name"},
+    ("document", "add_to_handover"):     {"entity_id": "id", "title": "name"},
+    ("receiving", "add_to_handover"):    {"entity_id": "id", "title": "vendor_name"},
+    ("shopping_list", "add_to_handover"):{"entity_id": "id", "title": "item_name"},
+    ("warranty", "add_to_handover"):     {"entity_id": "id", "title": "vendor_name"},
+    ("hours_of_rest", "add_to_handover"):{"entity_id": "id", "title": "crew_member_name"},
+    ("purchase_order", "add_to_handover"):{"entity_id": "id", "title": "po_number"},
+
+    # add_to_shopping_list from parts: pre-populates part reference
+    ("part", "add_to_shopping_list"):    {"part_id": "id", "part_name": "name", "part_number": "part_number"},
+
+    # file_warranty_claim from parts + equipment
+    ("part", "file_warranty_claim"):     {"part_id": "id", "part_name": "name"},
+    ("equipment", "file_warranty_claim"):{"equipment_id": "id", "equipment_name": "name"},
 }
 
 

@@ -468,6 +468,18 @@ except Exception as e:
     logger.error("Entity lens endpoints will not be available")
 
 # ============================================================================
+# VESSEL SURFACE + DOMAIN LIST + TIER 3 INLINE SEARCH ROUTES
+# ============================================================================
+
+try:
+    from routes.vessel_surface_routes import router as vessel_surface_router
+    app.include_router(vessel_surface_router)
+    logger.info("✅ Vessel Surface routes registered at /api/vessel/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Vessel Surface routes: {e}")
+    logger.error("Vessel Surface endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 

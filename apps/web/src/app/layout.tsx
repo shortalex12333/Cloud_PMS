@@ -3,7 +3,6 @@ import '@/styles/globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { MicroactionsProvider } from '@/providers/MicroactionsProvider';
-import { AuthDebug } from '@/components/AuthDebug';
 import { ShellWrapper } from '@/components/shell/ShellWrapper';
 
 export const metadata: Metadata = {
@@ -25,7 +24,6 @@ export default function RootLayout({
               <ShellWrapper>
                 {children}
               </ShellWrapper>
-              {process.env.NODE_ENV === 'development' && <AuthDebug />}
             </MicroactionsProvider>
           </AuthProvider>
         </QueryProvider>
