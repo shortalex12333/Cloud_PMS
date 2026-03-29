@@ -17,6 +17,7 @@ import type { FilterFieldConfig, ActiveFilters } from '../types/filter-config';
 import { isDateRange } from '../types/filter-config';
 import { mapLegacyFilter } from '@/lib/filters/mapLegacyFilter';
 import type { EntityAdapter, EntityListResult } from '../types';
+import { groupByUrgency, SectionHeader } from './UrgencyGroupHeaders';
 
 /** Sort column mapping per domain */
 const SORT_PRIORITY_COLUMN: Record<string, string> = {
@@ -213,38 +214,45 @@ export function FilteredEntityList<T extends { id: string }>({
       </div>
     );
   } else {
+    const renderRow = (item: EntityListResult, index: number) =>
+      item.entityRef ? (
+        <EntityRecordRow
+          key={item.id}
+          data={{
+            id: item.id,
+            entityRef: item.entityRef,
+            title: item.title,
+            equipmentRef: item.equipmentRef,
+            equipmentName: item.equipmentName,
+            assignedTo: item.assignedTo,
+            meta: item.subtitle,
+            status: item.status || '',
+            statusVariant: (item.statusVariant || 'open') as RecordRowData['statusVariant'],
+            severity: (item.severity || null) as RecordRowData['severity'],
+            age: item.age,
+            entityType: item.type?.replace('pms_', '') || '',
+          }}
+          onClick={() => handleSelect(item.id)}
+        />
+      ) : (
+        <SpotlightResultRow
+          key={item.id}
+          result={item}
+          isSelected={item.id === selectedId}
+          index={index}
+          onClick={() => handleSelect(item.id)}
+        />
+      );
+
+    const groups = groupByUrgency(items, domain);
+
     resultsContent = (
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {items.map((item, index) => (
-          item.entityRef ? (
-            <EntityRecordRow
-              key={item.id}
-              data={{
-                id: item.id,
-                entityRef: item.entityRef,
-                title: item.title,
-                equipmentRef: item.equipmentRef,
-                equipmentName: item.equipmentName,
-                assignedTo: item.assignedTo,
-                meta: item.subtitle,
-                status: item.status || '',
-                statusVariant: (item.statusVariant || 'open') as RecordRowData['statusVariant'],
-                severity: (item.severity || null) as RecordRowData['severity'],
-                age: item.age,
-                entityType: item.type?.replace('pms_', '') || '',
-              }}
-              onClick={() => handleSelect(item.id)}
-            />
-          ) : (
-            <SpotlightResultRow
-              key={item.id}
-              result={item}
-              isSelected={item.id === selectedId}
-              index={index}
-              onClick={() => handleSelect(item.id)}
-            />
-          )
-        ))}
+        {groups ? (
+          <GroupedList groups={groups} renderRow={renderRow} />
+        ) : (
+          items.map(renderRow)
+        )}
         <div ref={loadMoreRef} style={{ height: 16 }} />
         {isFetchingNextPage && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -345,3 +353,36 @@ export function FilteredEntityList<T extends { id: string }>({
   );
 }
 
+/** Renders items grouped by urgency tier with collapsible section headers */
+function GroupedList({
+  groups,
+  renderRow,
+}: {
+  groups: ReturnType<typeof groupByUrgency>;
+  renderRow: (item: EntityListResult, index: number) => React.ReactNode;
+}) {
+  const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    groups?.forEach((g) => { if (g.group.collapsed) init[g.group.key] = true; });
+    return init;
+  });
+
+  if (!groups) return null;
+
+  return (
+    <>
+      {groups.map((g) => (
+        <React.Fragment key={g.group.key}>
+          <SectionHeader
+            label={g.group.label}
+            count={g.items.length}
+            colour={g.group.colour}
+            collapsed={g.group.collapsed !== undefined ? collapsed[g.group.key] : undefined}
+            onToggle={g.group.collapsed !== undefined ? () => setCollapsed((prev) => ({ ...prev, [g.group.key]: !prev[g.group.key] })) : undefined}
+          />
+          {!collapsed[g.group.key] && g.items.map(renderRow)}
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
