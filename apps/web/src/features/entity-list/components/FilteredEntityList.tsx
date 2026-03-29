@@ -201,8 +201,8 @@ export function FilteredEntityList<T extends { id: string }>({
     resultsContent = <EmptyState message={emptyMessage} />;
   } else if (items.length === 0) {
     resultsContent = (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 40, textAlign: 'center' }}>
-        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--txt3)', marginBottom: 4 }}>No {domain?.replace(/-/g, ' ') || 'records'} match</p>
+      <div data-testid="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 40, textAlign: 'center' }}>
+        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--txt3)', marginBottom: 4 }}>No {domain?.replace(/-/g, ' ') || 'records'} match</p>
         <button
           onClick={() => setActiveFilters({})}
           style={{ fontSize: 11, color: 'var(--mark)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }}

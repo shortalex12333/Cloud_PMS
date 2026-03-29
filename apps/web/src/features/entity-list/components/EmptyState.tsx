@@ -11,7 +11,7 @@ export function EmptyState({ message }: EmptyStateProps) {
   const domainName = label?.toLowerCase() || 'records';
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-6">
+    <div className="flex flex-col items-center justify-center h-full text-center px-6" data-testid="empty-state">
       <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: 'var(--split-bg)' }}>
         <svg
           width="32"
