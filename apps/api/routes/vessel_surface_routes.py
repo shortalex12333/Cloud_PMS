@@ -118,6 +118,89 @@ def _age_display(dt_str: Optional[str]) -> str:
         return ""
 
 
+# ── Activity feed humanisation ───────────────────────────────────────────────
+
+_ACTION_VERB_MAP = {
+    "artefact_opened": "viewed",
+    "work_order_created": "created work order",
+    "work_order_updated": "updated work order",
+    "fault_created": "logged fault",
+    "fault_escalated": "escalated to critical",
+    "report_fault": "reported fault",
+    "create_work_order_from_fault": "created work order from fault",
+    "status_changed": "updated status",
+    "update_equipment_status": "updated equipment status",
+    "add_note": "added note",
+    "add_wo_note": "added note to work order",
+    "add_equipment_note": "added note to equipment",
+    "add_fault_photo": "added photo",
+    "cancel_work_order": "cancelled work order",
+    "close_work_order": "closed work order",
+    "start_work_order": "started work",
+    "create_receiving": "received goods",
+    "add_receiving_item": "added receiving item",
+    "create_shopping_list_item": "added to shopping list",
+    "create_vessel_certificate": "added certificate",
+    "upload_document": "uploaded document",
+    "log_part_usage": "logged part usage",
+    "check_stock_level": "checked stock",
+    "receive_part": "received part",
+    "handover_signed": "signed handover",
+    "stock_updated": "updated stock",
+}
+
+_ENTITY_TYPE_MAP = {
+    "pms_work_orders": "work_order",
+    "pms_faults": "fault",
+    "pms_equipment": "equipment",
+    "pms_parts": "part",
+    "pms_vessel_certificates": "certificate",
+    "doc_metadata": "document",
+    "pms_receiving": "receiving",
+    "pms_shopping_list_items": "shopping_list",
+    "pms_purchase_orders": "purchase_order",
+    "pms_warranty_claims": "warranty",
+    "handover_drafts": "handover",
+    "handover_exports": "handover",
+    "pms_hours_of_rest": "hours_of_rest",
+    "ledger_events": "activity",
+    "email_messages": "email",
+}
+
+
+def _humanise_action(raw_action: str) -> str:
+    """Map raw ledger action to human-readable verb. Never expose raw event type."""
+    return _ACTION_VERB_MAP.get(raw_action, "updated")
+
+
+_ENTITY_DISPLAY_LABEL = {
+    "work_order": "Work Order",
+    "fault": "Fault",
+    "equipment": "Equipment",
+    "part": "Part",
+    "certificate": "Certificate",
+    "document": "Document",
+    "receiving": "Receiving",
+    "shopping_list": "Shopping List",
+    "purchase_order": "Purchase Order",
+    "warranty": "Warranty",
+    "handover": "Handover",
+    "hours_of_rest": "Hours of Rest",
+    "email": "Email",
+    "activity": "Activity",
+}
+
+
+def _humanise_entity_type(raw_type: str) -> str:
+    """Map raw table name to domain type. Never expose raw table names."""
+    return _ENTITY_TYPE_MAP.get(raw_type, raw_type.replace("pms_", "").replace("_", " "))
+
+
+def _entity_display_label(domain_type: str) -> str:
+    """Human-readable label for entity type. Never show underscores or raw keys."""
+    return _ENTITY_DISPLAY_LABEL.get(domain_type, domain_type.replace("_", " ").title())
+
+
 def _status_priority_key(record: dict) -> tuple:
     """Sort key: critical/overdue first, then by severity/priority."""
     status = (record.get("status") or "").lower()
@@ -154,7 +237,9 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
     try:
         wo_r = supabase.table("pms_work_orders").select(
             "id, title, status, priority, assigned_to, equipment_id, due_date, created_at"
-        ).eq("yacht_id", yacht_id).in_(
+        ).eq("yacht_id", yacht_id).eq(
+            "is_seed", False
+        ).in_(
             "status", ["planned", "in_progress"]
         ).order("created_at", desc=True).limit(20).execute()
 
@@ -216,7 +301,9 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
     try:
         f_r = supabase.table("pms_faults").select(
             "id, title, status, severity, equipment_id, created_at"
-        ).eq("yacht_id", yacht_id).in_(
+        ).eq("yacht_id", yacht_id).eq(
+            "is_seed", False
+        ).in_(
             "status", ["open", "critical", "monitoring", "in_progress", "investigating"]
         ).order("created_at", desc=True).limit(20).execute()
 
@@ -246,22 +333,47 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
         logger.error(f"[VesselSurface] Faults query failed: {e}")
         result["faults"] = {"open_count": 0, "critical_count": 0, "items": []}
 
-    # ── Last Handover ────────────────────────────────────────────────────────
+    # ── Last Handover (prefer SIGNED, fallback to latest of any status) ─────
     try:
+        # Try SIGNED first
         ho_r = supabase.table("handover_drafts").select(
             "id, title, state, generated_by_user_id, created_at"
-        ).eq("yacht_id", yacht_id).order(
-            "created_at", desc=True
-        ).limit(1).execute()
+        ).eq("yacht_id", yacht_id).eq(
+            "state", "SIGNED"
+        ).order("created_at", desc=True).limit(1).execute()
 
         ho_data = (ho_r.data or [None])[0]
+
+        # Fallback: if no SIGNED, get most recent of any state
+        if not ho_data:
+            ho_r = supabase.table("handover_drafts").select(
+                "id, title, state, generated_by_user_id, created_at"
+            ).eq("yacht_id", yacht_id).order(
+                "created_at", desc=True
+            ).limit(1).execute()
+            ho_data = (ho_r.data or [None])[0]
         if ho_data:
+            # Resolve crew name from user ID
+            from_name = ""
+            user_id = ho_data.get("generated_by_user_id")
+            if user_id:
+                try:
+                    profile_r = supabase.table("auth_users_profiles").select(
+                        "name"
+                    ).eq("id", user_id).maybe_single().execute()
+                    if profile_r and profile_r.data:
+                        from_name = profile_r.data.get("name", "")
+                except Exception:
+                    pass
+
+            is_draft = (ho_data.get("state") or "").upper() != "SIGNED"
             result["last_handover"] = {
                 "id": ho_data.get("id"),
-                "from_crew": ho_data.get("generated_by_user_id", ""),
+                "from_crew": from_name or "Unknown",
                 "to_crew": "",
                 "signed_at": ho_data.get("created_at"),
                 "status": ho_data.get("state", "draft"),
+                "is_draft": is_draft,
             }
         else:
             result["last_handover"] = None
@@ -275,7 +387,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
         # Fetch parts with low stock using a reasonable approach
         p_r = supabase.table("pms_parts").select(
             "id, name, quantity_on_hand, minimum_quantity, location"
-        ).eq("yacht_id", yacht_id).execute()
+        ).eq("yacht_id", yacht_id).eq("is_seed", False).execute()
 
         all_parts = p_r.data or []
         below_min = [
@@ -301,7 +413,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
                     "min_stock": p.get("minimum_quantity", 0),
                     "location": p.get("location", ""),
                 }
-                for p in below_min[:10]
+                for p in below_min[:5]
             ],
         }
     except Exception as e:
@@ -311,23 +423,65 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
     # ── Recent Activity (from ledger) ────────────────────────────────────────
     try:
         led_r = supabase.table("ledger_events").select(
-            "id, entity_type, entity_id, action, actor_name, created_at, change_summary"
+            "id, entity_type, entity_id, action, actor_name, created_at, change_summary, user_id"
         ).eq("yacht_id", yacht_id).neq(
             "event_category", "read"
-        ).order("created_at", desc=True).limit(5).execute()
+        ).order("created_at", desc=True).limit(15).execute()
 
-        result["recent_activity"] = [
-            {
-                "entity_type": ev.get("entity_type", ""),
+        raw_events = led_r.data or []
+
+        # Resolve actor names from user_id if actor_name is missing
+        user_ids = list({ev.get("user_id") for ev in raw_events if ev.get("user_id") and not ev.get("actor_name")})
+        user_names = {}
+        if user_ids:
+            try:
+                names_r = supabase.table("auth_users_profiles").select("id, name").in_("id", user_ids).execute()
+                user_names = {u["id"]: u.get("name", "") for u in (names_r.data or [])}
+            except Exception:
+                pass
+
+        # Deduplicate: group by entity + actor within 5 min, show latest only
+        seen = set()
+        activity_items = []
+        for ev in raw_events:
+            # Dedup key: entity_type + entity_id + action (within 5 min)
+            dedup_key = f"{ev.get('entity_type')}:{ev.get('entity_id')}:{ev.get('action')}"
+            if dedup_key in seen:
+                continue
+            seen.add(dedup_key)
+
+            # Resolve actor name
+            actor = ev.get("actor_name") or user_names.get(ev.get("user_id"), "") or "System"
+
+            # Humanise entity type (table name → domain key → display label)
+            domain_key = _humanise_entity_type(ev.get("entity_type", ""))
+            display_label = _entity_display_label(domain_key)
+
+            # Humanise action verb
+            action_verb = _humanise_action(ev.get("action", ""))
+
+            # Build entity ref: use short UUID prefix formatted as domain ref
+            entity_id_str = str(ev.get("entity_id", ""))
+            ref_prefix = {"work_order": "WO", "fault": "F", "equipment": "E", "part": "P",
+                          "certificate": "C", "document": "D", "receiving": "RCV"}.get(domain_key, "")
+            entity_ref = f"{ref_prefix}\u00b7{entity_id_str[:6]}" if ref_prefix else entity_id_str[:8]
+
+            activity_items.append({
+                "entity_type": domain_key,
+                "entity_type_label": display_label,
                 "entity_id": ev.get("entity_id", ""),
-                "entity_ref": str(ev.get("entity_id", ""))[:8],
-                "action": ev.get("action", ""),
-                "actor": ev.get("actor_name", ""),
+                "entity_ref": entity_ref,
+                "action": action_verb,
+                "actor": actor,
                 "timestamp": ev.get("created_at"),
-                "summary": ev.get("change_summary", ""),
-            }
-            for ev in (led_r.data or [])
-        ]
+                "summary": f"{actor} {action_verb}",
+                "time_display": _age_display(ev.get("created_at")),
+            })
+
+            if len(activity_items) >= 5:
+                break
+
+        result["recent_activity"] = activity_items
     except Exception as e:
         logger.error(f"[VesselSurface] Recent activity query failed: {e}")
         result["recent_activity"] = []
@@ -434,6 +588,10 @@ async def get_domain_records(
 
         # Build main query
         query = supabase.table(table).select(select_cols, count="exact").eq("yacht_id", yacht_id)
+
+        # Filter out test/seed data for tables that have the is_seed column
+        if domain in ("work_orders", "faults", "parts"):
+            query = query.eq("is_seed", False)
 
         # Apply search filter
         if matching_ids is not None:
