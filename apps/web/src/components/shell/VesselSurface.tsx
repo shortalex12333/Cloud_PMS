@@ -553,18 +553,17 @@ function SurfaceRow({
         )}
       </div>
 
-      {stockBar && (
-        <div style={{ width: 32, height: 3, background: 'var(--border-sub)', borderRadius: 2, overflow: 'hidden', flexShrink: 0 }}>
-          <div
-            style={{
-              height: '100%',
-              borderRadius: 2,
-              width: `${Math.max(5, (stockBar.current / stockBar.min) * 100)}%`,
-              background: stockBar.current === 0 ? 'var(--red)' : 'var(--amber)',
-            }}
-          />
-        </div>
-      )}
+      {stockBar && (() => {
+        const fillPct = stockBar.min > 0
+          ? Math.min(100, Math.max(0, (stockBar.current / stockBar.min) * 100))
+          : 100;
+        const barColour = fillPct === 0 ? 'var(--red)' : fillPct < 50 ? 'var(--amber)' : 'var(--green)';
+        return (
+          <div style={{ width: 36, height: 3, background: 'var(--border-sub)', borderRadius: 2, overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ height: '100%', borderRadius: 2, width: `${Math.max(3, fillPct)}%`, background: barColour }} />
+          </div>
+        );
+      })()}
 
       {pill && <StatusPill label={pill.label} variant={pill.variant} />}
 
