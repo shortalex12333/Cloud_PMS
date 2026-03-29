@@ -241,33 +241,31 @@ export function Subbar({
           flexShrink: 0,
         }}
       >
-        {config.chips.map((chip) => (
-          <button
-            key={chip}
-            onClick={() => onChipClick?.(chip)}
-            style={{
-              height: 20,
-              padding: '0 8px',
-              borderRadius: 3,
-              border: `1px solid ${
-                activeChip === chip
-                  ? 'var(--mark-hover)'
-                  : 'var(--border-sub)'
-              }`,
-              background:
-                activeChip === chip ? 'var(--teal-bg)' : 'var(--surface-el)',
-              fontSize: 9.5,
-              fontWeight: 500,
-              color:
-                activeChip === chip ? 'var(--mark)' : 'var(--txt3)',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              transition: 'background 70ms, color 70ms, border-color 70ms',
-            }}
-          >
-            {chip}
-          </button>
-        ))}
+        {config.chips.map((chip) => {
+          const active = activeChip === chip;
+          const cs = active ? getChipColour(chip) : null;
+          return (
+            <button
+              key={chip}
+              onClick={() => onChipClick?.(chip)}
+              style={{
+                height: 20,
+                padding: '0 8px',
+                borderRadius: 3,
+                border: `1px solid ${active ? (cs?.border || 'var(--mark-hover)') : 'var(--border-sub)'}`,
+                background: active ? (cs?.bg || 'var(--teal-bg)') : 'var(--surface-el)',
+                fontSize: 9.5,
+                fontWeight: 500,
+                color: active ? (cs?.color || 'var(--mark)') : 'var(--txt3)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'background 70ms, color 70ms, border-color 70ms',
+              }}
+            >
+              {chip}
+            </button>
+          );
+        })}
       </div>
 
       {/* Primary action button */}
@@ -296,4 +294,18 @@ export function Subbar({
       </button>
     </div>
   );
+}
+
+/** Map chip label to severity colour when active */
+function getChipColour(chip: string): { bg: string; color: string; border: string } | null {
+  const c = chip.toLowerCase();
+  if (c === 'emergency' || c === 'critical' || c === 'overdue' || c === 'zero stock' || c === 'rejected')
+    return { bg: 'var(--red-bg)', color: 'var(--red)', border: 'var(--red-border)' };
+  if (c === 'warning' || c === 'due soon' || c === 'expiring' || c === 'low stock' || c === 'non-compliant')
+    return { bg: 'var(--amber-bg)', color: 'var(--amber)', border: 'var(--amber-border)' };
+  if (c === 'completed' || c === 'signed' || c === 'accepted' || c === 'compliant')
+    return { bg: 'var(--green-bg)', color: 'var(--green)', border: 'var(--green-border)' };
+  if (c === 'cancelled' || c === 'monitoring')
+    return { bg: 'var(--status-neutral-bg)', color: 'var(--txt-ghost)', border: 'var(--border-faint)' };
+  return null; // default teal for All, Open, Engine, Pending Parts, etc.
 }
