@@ -307,7 +307,7 @@ export function VesselSurface() {
       >
         <SurfaceRow
           severity={handover.status === 'signed' ? 'info' : undefined}
-          title={<>{handover.from} \u2192 {handover.to}</>}
+          title={<>{handover.from} → {handover.to}</>}
           meta={handover.date}
           pill={{ label: handover.status, variant: handover.status === 'signed' ? 'signed' : 'open' }}
           onClick={() => router.push(`/handover-export?id=${handover.id}`)}
