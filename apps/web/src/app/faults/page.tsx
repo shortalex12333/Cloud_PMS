@@ -42,7 +42,7 @@ function FaultsPageContent() {
         domain="faults"
         queryKey={['faults']}
         table="pms_faults"
-        columns="id, title, description, status, severity, fault_code, equipment_id, detected_at, resolved_at, created_at, updated_at"
+        columns="id, title, description, status, severity, fault_code, fault_number, equipment_id, equipment_name, reported_by_name, detected_at, resolved_at, created_at, updated_at"
         adapter={faultToListResult}
         filterConfig={FAULT_FILTERS}
         selectedId={selectedId}

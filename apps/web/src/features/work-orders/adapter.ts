@@ -1,6 +1,9 @@
 import type { EntityListResult } from '@/features/entity-list/types';
 import type { WorkOrder } from './types';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUUID(s: string): boolean { return UUID_RE.test(s); }
+
 function formatAge(dateStr?: string): string {
   if (!dateStr) return '\u2014';
   const now = Date.now();
@@ -54,7 +57,8 @@ export function workOrderToListResult(wo: WorkOrder): EntityListResult {
     entityRef: wo.wo_number ? `WO\u00b7${wo.wo_number}` : wo.id.slice(0, 8),
     equipmentRef: wo.equipment_id ? wo.equipment_id.slice(0, 8) : undefined,
     equipmentName: wo.equipment_name || undefined,
-    assignedTo: wo.assigned_to_name || undefined,
+    // Use name fields if available; assigned_to may be UUID or name
+    assignedTo: wo.assigned_to_name || (wo.assigned_to && !isUUID(wo.assigned_to) ? wo.assigned_to : undefined),
     status: statusDisplay,
     statusVariant: woStatusVariant(wo.status, wo.priority),
     severity: woSeverity(wo.status, wo.priority),

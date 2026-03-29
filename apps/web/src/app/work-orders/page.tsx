@@ -42,7 +42,7 @@ function WorkOrdersPageContent() {
         domain="work-orders"
         queryKey={['work-orders']}
         table="pms_work_orders"
-        columns="id, title, description, status, priority, wo_number, equipment_id, assigned_to, due_date, created_at, updated_at"
+        columns="id, title, description, status, priority, wo_number, equipment_id, equipment_name, assigned_to, assigned_to_name, due_date, created_at, updated_at"
         adapter={workOrderToListResult}
         filterConfig={WORK_ORDER_FILTERS}
         selectedId={selectedId}

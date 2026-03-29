@@ -7,6 +7,7 @@ export interface WorkOrder {
   priority: string;
   equipment_id?: string;
   equipment_name?: string;
+  assigned_to?: string;
   assigned_to_id?: string;
   assigned_to_name?: string;
   due_date?: string;

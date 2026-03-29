@@ -48,10 +48,14 @@ export function faultToListResult(fault: Fault): EntityListResult {
     },
 
     // Extended fields for EntityRecordRow
-    entityRef: fault.fault_number ? `F\u00b7${fault.fault_number}` : fault.id.slice(0, 8),
+    entityRef: fault.fault_code
+      ? `F\u00b7${fault.fault_code}`
+      : fault.fault_number
+        ? `F\u00b7${fault.fault_number}`
+        : fault.id.slice(0, 8),
     equipmentRef: fault.equipment_id ? fault.equipment_id.slice(0, 8) : undefined,
     equipmentName: fault.equipment_name || undefined,
-    assignedTo: fault.reported_by_name || undefined,
+    assignedTo: undefined, // reported_by_name not available in table
     status: severityDisplay || statusDisplay,
     statusVariant: faultStatusVariant(fault.status, fault.severity),
     severity: faultSeverity(fault.severity),
