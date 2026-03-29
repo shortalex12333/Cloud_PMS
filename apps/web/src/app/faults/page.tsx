@@ -41,8 +41,8 @@ function FaultsPageContent() {
       <FilteredEntityList<Fault>
         domain="faults"
         queryKey={['faults']}
-        table="pms_faults"
-        columns="id, title, description, status, severity, fault_code, equipment_id, detected_at, resolved_at, created_at, updated_at"
+        table="v_faults_enriched"
+        columns="id, title, description, status, severity, fault_code, equipment_id, equipment_name, detected_at, resolved_at, created_at, updated_at"
         adapter={faultToListResult}
         filterConfig={FAULT_FILTERS}
         selectedId={selectedId}

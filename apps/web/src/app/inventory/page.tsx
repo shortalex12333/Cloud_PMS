@@ -105,7 +105,7 @@ function InventoryPageContent() {
       <FilteredEntityList<Part>
         domain="inventory"
         queryKey={['inventory']}
-        table="pms_parts"
+        table="v_parts_enriched"
         columns="id, name, part_number, description, category, manufacturer, quantity_on_hand, minimum_quantity, unit, location, is_critical, unit_cost, created_at, updated_at"
         adapter={partToListResult}
         filterConfig={INVENTORY_FILTERS}
