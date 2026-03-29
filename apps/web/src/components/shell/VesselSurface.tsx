@@ -167,7 +167,7 @@ export function VesselSurface() {
         from: liveData.last_handover.from_crew,
         to: liveData.last_handover.to_crew,
         date: new Date(liveData.last_handover.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-        status: liveData.last_handover.status as SurfaceHandover['status'],
+        status: (liveData.last_handover.is_draft ? 'draft' : liveData.last_handover.status) as SurfaceHandover['status'],
       }
     : MOCK_HANDOVER;
 
@@ -306,10 +306,10 @@ export function VesselSurface() {
         onHeaderClick={() => navigateToDomain('handover-export')}
       >
         <SurfaceRow
-          severity={handover.status === 'signed' ? 'info' : undefined}
+          severity={handover.status === 'signed' ? 'info' : handover.status === 'draft' ? 'warning' : undefined}
           title={<>{handover.from} → {handover.to}</>}
           meta={handover.date}
-          pill={{ label: handover.status, variant: handover.status === 'signed' ? 'signed' : 'open' }}
+          pill={{ label: handover.status, variant: handover.status === 'signed' ? 'signed' : handover.status === 'draft' ? 'warn' : 'open' }}
           onClick={() => router.push(`/handover-export?id=${handover.id}`)}
         />
       </SurfaceCard>

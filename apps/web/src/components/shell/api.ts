@@ -56,6 +56,7 @@ export interface VesselSurfaceResponse {
     to_crew: string;
     signed_at: string;
     status: string;
+    is_draft?: boolean;
   } | null;
   parts_below_min: {
     count: number;
