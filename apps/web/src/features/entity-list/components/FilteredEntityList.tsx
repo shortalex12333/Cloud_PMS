@@ -10,6 +10,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation';
 import { FilterPanel } from './FilterPanel';
 import SpotlightResultRow from '@/components/spotlight/SpotlightResultRow';
+import { EntityRecordRow, type RecordRowData } from './EntityRecordRow';
 import { EmptyState } from './EmptyState';
 import { useFilteredEntityList } from '../hooks/useFilteredEntityList';
 import type { FilterFieldConfig, ActiveFilters } from '../types/filter-config';
@@ -215,13 +216,34 @@ export function FilteredEntityList<T extends { id: string }>({
     resultsContent = (
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {items.map((item, index) => (
-          <SpotlightResultRow
-            key={item.id}
-            result={item}
-            isSelected={item.id === selectedId}
-            index={index}
-            onClick={() => handleSelect(item.id)}
-          />
+          item.entityRef ? (
+            <EntityRecordRow
+              key={item.id}
+              data={{
+                id: item.id,
+                entityRef: item.entityRef,
+                title: item.title,
+                equipmentRef: item.equipmentRef,
+                equipmentName: item.equipmentName,
+                assignedTo: item.assignedTo,
+                meta: item.subtitle,
+                status: item.status || '',
+                statusVariant: (item.statusVariant || 'open') as RecordRowData['statusVariant'],
+                severity: (item.severity || null) as RecordRowData['severity'],
+                age: item.age,
+                entityType: item.type?.replace('pms_', '') || '',
+              }}
+              onClick={() => handleSelect(item.id)}
+            />
+          ) : (
+            <SpotlightResultRow
+              key={item.id}
+              result={item}
+              isSelected={item.id === selectedId}
+              index={index}
+              onClick={() => handleSelect(item.id)}
+            />
+          )
         ))}
         <div ref={loadMoreRef} style={{ height: 16 }} />
         {isFetchingNextPage && (
