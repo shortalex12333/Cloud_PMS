@@ -28,6 +28,8 @@ interface TopbarProps {
   onSearchFocus?: () => void;
   /** Called when menu icon is clicked (opens command palette) */
   onMenuClick?: () => void;
+  /** Compact mode: hide vessel name, separators, role badge */
+  compact?: boolean;
 }
 
 export function Topbar({
@@ -36,6 +38,7 @@ export function Topbar({
   onClearScope,
   onSearchFocus,
   onMenuClick,
+  compact,
 }: TopbarProps) {
   const { user } = useAuth();
   const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -88,39 +91,15 @@ export function Topbar({
         CELESTE
       </div>
 
-      {/* Separator */}
-      <div
-        style={{
-          width: 1,
-          height: 12,
-          background: 'var(--border-sub)',
-          flexShrink: 0,
-        }}
-      />
-
-      {/* Vessel name */}
-      <div
-        style={{
-          fontSize: 11,
-          color: 'var(--txt3)',
-          flexShrink: 0,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        <em style={{ fontStyle: 'normal', color: 'var(--topbar-vessel-em)' }}>
-          {vesselName}
-        </em>
-      </div>
-
-      {/* Separator */}
-      <div
-        style={{
-          width: 1,
-          height: 12,
-          background: 'var(--border-sub)',
-          flexShrink: 0,
-        }}
-      />
+      {!compact && (
+        <>
+          <div style={{ width: 1, height: 12, background: 'var(--border-sub)', flexShrink: 0 }} />
+          <div style={{ fontSize: 11, color: 'var(--txt3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            <em style={{ fontStyle: 'normal', color: 'var(--topbar-vessel-em)' }}>{vesselName}</em>
+          </div>
+          <div style={{ width: 1, height: 12, background: 'var(--border-sub)', flexShrink: 0 }} />
+        </>
+      )}
 
       {/* Global search bar — Tier 1 */}
       <div
@@ -214,22 +193,24 @@ export function Topbar({
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Role badge */}
-      <div
-        style={{
-          fontSize: 9,
-          letterSpacing: '0.07em',
-          textTransform: 'uppercase',
-          color: 'var(--txt-ghost)',
-          background: 'var(--surface-el)',
-          border: '1px solid var(--border-sub)',
-          borderRadius: 3,
-          padding: '2px 6px',
-          flexShrink: 0,
-        }}
-      >
-        {roleName}
-      </div>
+      {/* Role badge — hidden in compact mode */}
+      {!compact && (
+        <div
+          style={{
+            fontSize: 9,
+            letterSpacing: '0.07em',
+            textTransform: 'uppercase',
+            color: 'var(--txt-ghost)',
+            background: 'var(--surface-el)',
+            border: '1px solid var(--border-sub)',
+            borderRadius: 3,
+            padding: '2px 6px',
+            flexShrink: 0,
+          }}
+        >
+          {roleName}
+        </div>
+      )}
 
       {/* Menu icon — opens command palette */}
       <button

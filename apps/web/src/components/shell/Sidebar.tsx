@@ -96,13 +96,16 @@ interface SidebarProps {
   onSelectDomain: (domain: DomainId) => void;
   /** Domain record counts keyed by domain ID */
   counts?: Partial<Record<DomainId, { count: number; severity?: 'critical' | 'warning' | 'ok' | null }>>;
+  /** Icon-only mode at narrow widths */
+  compact?: boolean;
 }
 
-export function Sidebar({ activeDomain, onSelectDomain, counts }: SidebarProps) {
+export function Sidebar({ activeDomain, onSelectDomain, counts, compact }: SidebarProps) {
   return (
     <nav
+      data-testid="sidebar"
       style={{
-        width: 192,
+        width: '100%',
         flexShrink: 0,
         borderRight: '1px solid var(--border-faint)',
         display: 'flex',
@@ -125,18 +128,20 @@ export function Sidebar({ activeDomain, onSelectDomain, counts }: SidebarProps) 
           {groupIndex > 0 && (
             <div style={{ height: 1, background: 'var(--border-faint)', margin: '6px 0' }} />
           )}
-          <div
-            style={{
-              fontSize: 8,
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: 'var(--txt-ghost)',
-              padding: '12px 14px 5px',
-            }}
-          >
-            {group.label}
-          </div>
+          {!compact && (
+            <div
+              style={{
+                fontSize: 8,
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: 'var(--txt-ghost)',
+                padding: '12px 14px 5px',
+              }}
+            >
+              {group.label}
+            </div>
+          )}
           {group.items.map((item) => {
             const countData = counts?.[item.id];
             return (
@@ -148,6 +153,7 @@ export function Sidebar({ activeDomain, onSelectDomain, counts }: SidebarProps) 
                 severity={countData?.severity}
                 active={activeDomain === item.id}
                 onClick={() => onSelectDomain(item.id)}
+                compact={compact}
               />
             );
           })}
@@ -212,6 +218,7 @@ function DomainItem({
   severity,
   active,
   onClick,
+  compact,
 }: {
   icon: React.ElementType;
   label: string;
@@ -219,6 +226,7 @@ function DomainItem({
   severity?: 'critical' | 'warning' | 'ok' | null;
   active: boolean;
   onClick: () => void;
+  compact?: boolean;
 }) {
   const [hovered, setHovered] = React.useState(false);
 
@@ -241,8 +249,9 @@ function DomainItem({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        padding: '7px 14px',
+        gap: compact ? 0 : 8,
+        padding: compact ? '7px 0' : '7px 14px',
+        justifyContent: compact ? 'center' : undefined,
         cursor: 'pointer',
         borderLeft: `2px solid ${active ? 'var(--mark)' : 'transparent'}`,
         transition: 'background 70ms',
@@ -263,22 +272,24 @@ function DomainItem({
           transition: 'color 70ms',
         }}
       />
-      <span
-        style={{
-          flex: 1,
-          minWidth: 0,
-          fontSize: 12,
-          fontWeight: 500,
-          color: active ? 'var(--mark)' : 'var(--txt2)',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          transition: 'color 70ms',
-        }}
-      >
-        {label}
-      </span>
-      {count !== undefined && (
+      {!compact && (
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: 12,
+            fontWeight: 500,
+            color: active ? 'var(--mark)' : 'var(--txt2)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            transition: 'color 70ms',
+          }}
+        >
+          {label}
+        </span>
+      )}
+      {!compact && count !== undefined && (
         <span
           style={{
             fontSize: 9.5,

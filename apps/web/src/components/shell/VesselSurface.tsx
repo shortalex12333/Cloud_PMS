@@ -135,7 +135,7 @@ export function VesselSurface() {
   const router = useRouter();
   const { data: liveData } = useVesselSurface();
   const breakpoint = useBreakpoint();
-  const gridCols = breakpoint === 'wide' ? '1fr 1fr 1fr' : breakpoint === 'medium' ? '1fr 1fr' : '1fr';
+  const gridCols = breakpoint === 'desktop' ? '1fr 1fr 1fr' : (breakpoint === 'laptop' || breakpoint === 'tablet') ? '1fr 1fr' : '1fr';
 
   // Derive display data from live endpoint, fall back to static mock
   const workOrders = liveData?.work_orders?.items?.length

@@ -161,7 +161,8 @@ function AppShellInner({
 }) {
   const { activeChip, setActiveChip, setSearchQuery } = useShellContext();
   const breakpoint = useBreakpoint();
-  const sidebarWidth = breakpoint === 'narrow' ? 48 : 192;
+  const sidebarWidth = breakpoint === 'mobile' ? 0 : breakpoint === 'tablet' ? 48 : 192;
+  const showSidebar = breakpoint !== 'mobile';
 
   return (
     <div
@@ -187,6 +188,7 @@ function AppShellInner({
         activeDomainLabel={activeDomainLabel}
         onClearScope={onClearScope}
         onSearchFocus={onSearchFocus}
+        compact={breakpoint === 'tablet' || breakpoint === 'mobile'}
       />
 
       {/* Row 2: Subbar (hidden on Vessel Surface) */}
@@ -203,16 +205,19 @@ function AppShellInner({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: `${sidebarWidth}px 1fr`,
+          gridTemplateColumns: showSidebar ? `${sidebarWidth}px 1fr` : '1fr',
           overflow: 'hidden',
         }}
       >
         {/* Left sidebar */}
-        <Sidebar
-          activeDomain={activeDomain}
-          onSelectDomain={onSelectDomain}
-          counts={sidebarCounts}
-        />
+        {showSidebar && (
+          <Sidebar
+            activeDomain={activeDomain}
+            onSelectDomain={onSelectDomain}
+            counts={sidebarCounts}
+            compact={sidebarWidth === 48}
+          />
+        )}
 
         {/* Main content area */}
         <main
