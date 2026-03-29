@@ -111,6 +111,15 @@ const SUBBAR_CONFIGS: Partial<Record<DomainId, DomainSubbarConfig>> = {
   },
 };
 
+/** Sort options per domain */
+const SORT_OPTIONS: Partial<Record<DomainId, { options: string[]; defaultSort: string }>> = {
+  'work-orders': { options: ['Urgency', 'Due Date', 'Newest', 'Assigned'], defaultSort: 'Urgency' },
+  faults: { options: ['Severity', 'Newest', 'Assigned', 'Equipment'], defaultSort: 'Severity' },
+  inventory: { options: ['Stock Level', 'Name', 'Location'], defaultSort: 'Stock Level' },
+  equipment: { options: ['Name', 'Location', 'Newest'], defaultSort: 'Name' },
+  certificates: { options: ['Expiry Date', 'Name', 'Newest'], defaultSort: 'Expiry Date' },
+};
+
 interface SubbarProps {
   activeDomain: DomainId;
   totalCount?: number;
@@ -267,6 +276,31 @@ export function Subbar({
           );
         })}
       </div>
+
+      {/* Sort control */}
+      {SORT_OPTIONS[activeDomain] && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <span style={{ fontSize: 10, color: 'var(--txt-ghost)' }}>Sort by</span>
+          <select
+            defaultValue={SORT_OPTIONS[activeDomain]!.defaultSort}
+            style={{
+              height: 20,
+              padding: '0 4px',
+              borderRadius: 3,
+              border: '1px solid var(--border-sub)',
+              background: 'var(--surface-el)',
+              fontSize: 9.5,
+              color: 'var(--txt3)',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            {SORT_OPTIONS[activeDomain]!.options.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Primary action button */}
       <button
