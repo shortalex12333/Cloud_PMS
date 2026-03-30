@@ -278,7 +278,7 @@ export function FilteredEntityList<T extends { id: string }>({
     resultsContent = (
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {groups ? (
-          <GroupedList groups={groups} renderRow={renderRow} />
+          <GroupedList groups={groups} renderRow={renderRow} forceExpand={!!shell.debouncedQuery} />
         ) : (
           items.map(renderRow)
         )}
@@ -386,9 +386,11 @@ export function FilteredEntityList<T extends { id: string }>({
 function GroupedList({
   groups,
   renderRow,
+  forceExpand,
 }: {
   groups: ReturnType<typeof groupByUrgency>;
   renderRow: (item: EntityListResult, index: number) => React.ReactNode;
+  forceExpand?: boolean;
 }) {
   const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
@@ -409,7 +411,7 @@ function GroupedList({
             collapsed={g.group.collapsed !== undefined ? collapsed[g.group.key] : undefined}
             onToggle={g.group.collapsed !== undefined ? () => setCollapsed((prev) => ({ ...prev, [g.group.key]: !prev[g.group.key] })) : undefined}
           />
-          {!collapsed[g.group.key] && g.items.map(renderRow)}
+          {(forceExpand || !collapsed[g.group.key]) && g.items.map(renderRow)}
         </React.Fragment>
       ))}
     </>
