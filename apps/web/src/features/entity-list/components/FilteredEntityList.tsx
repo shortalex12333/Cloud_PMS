@@ -18,6 +18,7 @@ import { isDateRange } from '../types/filter-config';
 import { mapLegacyFilter } from '@/lib/filters/mapLegacyFilter';
 import type { EntityAdapter, EntityListResult } from '../types';
 import { groupByUrgency, SectionHeader } from './UrgencyGroupHeaders';
+import { useShellContext } from '@/components/shell/ShellContext';
 
 /** Sort column mapping per domain */
 const SORT_PRIORITY_COLUMN: Record<string, string> = {
@@ -97,6 +98,29 @@ export function FilteredEntityList<T extends { id: string }>({
   const [currentSortBy, setCurrentSortBy] = useState(sortBy);
   const [currentSortDir, setCurrentSortDir] = useState<'asc' | 'desc'>('desc');
 
+  // Shell context: Subbar search + chip filters
+  const shell = useShellContext();
+
+  // Merge Subbar filters into active filters for the query
+  const mergedFilters = useMemo(() => {
+    const merged = { ...activeFilters };
+
+    // Subbar search → ilike on title (text search)
+    if (shell.debouncedQuery) {
+      merged['title'] = shell.debouncedQuery;
+    }
+
+    // Subbar chip → map to filter field
+    if (shell.activeChip && shell.activeChip !== 'All') {
+      const chipFilter = mapChipToFilter(shell.activeChip, domain);
+      if (chipFilter) {
+        merged[chipFilter.key] = chipFilter.value;
+      }
+    }
+
+    return merged;
+  }, [activeFilters, shell.debouncedQuery, shell.activeChip, domain]);
+
   // Mobile state
   const [panelOpen, setPanelOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -112,8 +136,13 @@ export function FilteredEntityList<T extends { id: string }>({
   const activeDomain = domain || queryKey[0] || '';
 
   // Derive text fields from filterConfig so the hook uses ilike instead of eq
+  // Always include 'title' for Subbar search
   const textFields = useMemo(
-    () => new Set(filterConfig.filter(f => f.type === 'text').map(f => f.key)),
+    () => {
+      const fields = new Set(filterConfig.filter(f => f.type === 'text').map(f => f.key));
+      fields.add('title');
+      return fields;
+    },
     [filterConfig],
   );
 
@@ -130,7 +159,7 @@ export function FilteredEntityList<T extends { id: string }>({
     table,
     columns,
     adapter,
-    filters: activeFilters,
+    filters: mergedFilters,
     sortBy: currentSortBy,
     sortDir: currentSortDir,
     textFields,
@@ -385,4 +414,47 @@ function GroupedList({
       ))}
     </>
   );
+}
+
+/** Map Subbar chip label to a Supabase filter field + value */
+function mapChipToFilter(
+  chip: string,
+  domain?: string
+): { key: string; value: string } | null {
+  const c = chip.toLowerCase();
+
+  // Status chips (work for most domains)
+  if (c === 'open') return { key: 'status', value: 'open' };
+  if (c === 'overdue') return { key: 'status', value: 'overdue' };
+  if (c === 'in progress') return { key: 'status', value: 'in_progress' };
+  if (c === 'completed') return { key: 'status', value: 'completed' };
+  if (c === 'cancelled') return { key: 'status', value: 'cancelled' };
+  if (c === 'pending') return { key: 'status', value: 'pending' };
+  if (c === 'draft') return { key: 'status', value: 'draft' };
+  if (c === 'signed') return { key: 'status', value: 'signed' };
+  if (c === 'investigating') return { key: 'status', value: 'investigating' };
+  if (c === 'resolved') return { key: 'status', value: 'resolved' };
+
+  // Severity chips (faults)
+  if (c === 'critical') return { key: 'severity', value: 'critical' };
+  if (c === 'high') return { key: 'severity', value: 'high' };
+  if (c === 'medium') return { key: 'severity', value: 'medium' };
+  if (c === 'low') return { key: 'severity', value: 'low' };
+
+  // Priority chips (work orders)
+  if (c === 'emergency') return { key: 'priority', value: 'emergency' };
+  if (c === 'routine') return { key: 'priority', value: 'routine' };
+
+  // Assignment chips
+  if (c === 'unassigned') return { key: 'assigned_to', value: '' };
+  if (c === 'my tasks') return null; // Would need current user ID — skip for now
+
+  // Stock chips (parts)
+  if (c === 'zero stock') return { key: '_stock_status', value: 'out' };
+  if (c === 'low stock') return { key: '_stock_status', value: 'low' };
+
+  // Domain-specific text search chips
+  if (c === 'engine' || c === 'pending parts') return { key: 'title', value: chip };
+
+  return null;
 }
