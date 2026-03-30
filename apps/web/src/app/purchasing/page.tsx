@@ -74,7 +74,7 @@ function PurchasingPageContent() {
       <FilteredEntityList<PurchaseOrder>
         domain="purchasing"
         queryKey={['purchasing']}
-        table="pms_purchase_orders"
+        table="v_purchase_orders_enriched"
         columns="id, po_number, status, supplier_id, ordered_at, received_at, currency, created_at, updated_at"
         adapter={poAdapter}
         filterConfig={[]}

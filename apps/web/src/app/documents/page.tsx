@@ -75,7 +75,7 @@ function DocumentsPageContent() {
       <FilteredEntityList<Document>
         domain="documents"
         queryKey={['documents']}
-        table="doc_metadata"
+        table="v_documents_enriched"
         columns="id, filename, doc_type, oem, model, content_type, source, created_at, updated_at"
         adapter={docAdapter}
         filterConfig={[]}
