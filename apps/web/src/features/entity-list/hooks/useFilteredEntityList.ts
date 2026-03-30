@@ -64,7 +64,12 @@ export function useFilteredEntityList<T extends { id: string }>({
         .select(columns, { count: 'exact' });
 
       // Filter out test/seed data on tables that have the is_seed column
-      const SEED_FILTERED_TABLES = ['pms_work_orders', 'pms_faults', 'pms_parts'];
+      // Enriched views (v_*) have is_seed built in, but filter here too for raw table queries
+      const SEED_FILTERED_TABLES = [
+        'pms_work_orders', 'pms_faults', 'pms_parts',
+        'pms_receiving', 'pms_shopping_list_items', 'pms_purchase_orders',
+        'pms_warranty_claims', 'doc_metadata',
+      ];
       if (SEED_FILTERED_TABLES.includes(table)) {
         q = q.eq('is_seed', false);
       }

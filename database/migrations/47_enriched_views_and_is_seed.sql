@@ -57,3 +57,34 @@ GRANT SELECT ON v_faults_enriched TO authenticated;
 GRANT SELECT ON v_faults_enriched TO anon;
 GRANT SELECT ON v_parts_enriched TO authenticated;
 GRANT SELECT ON v_parts_enriched TO anon;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- STEP 4: Remaining entity tables — is_seed + views
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE pms_receiving ADD COLUMN IF NOT EXISTS is_seed BOOLEAN DEFAULT true;
+ALTER TABLE pms_shopping_list_items ADD COLUMN IF NOT EXISTS is_seed BOOLEAN DEFAULT true;
+ALTER TABLE pms_purchase_orders ADD COLUMN IF NOT EXISTS is_seed BOOLEAN DEFAULT true;
+ALTER TABLE pms_warranty_claims ADD COLUMN IF NOT EXISTS is_seed BOOLEAN DEFAULT true;
+ALTER TABLE doc_metadata ADD COLUMN IF NOT EXISTS is_seed BOOLEAN DEFAULT true;
+
+CREATE OR REPLACE VIEW v_receiving_enriched AS
+SELECT r.* FROM pms_receiving r WHERE r.is_seed = false;
+
+CREATE OR REPLACE VIEW v_shopping_list_enriched AS
+SELECT s.* FROM pms_shopping_list_items s WHERE s.is_seed = false;
+
+CREATE OR REPLACE VIEW v_purchase_orders_enriched AS
+SELECT p.* FROM pms_purchase_orders p WHERE p.is_seed = false;
+
+CREATE OR REPLACE VIEW v_warranty_enriched AS
+SELECT w.* FROM pms_warranty_claims w WHERE w.is_seed = false;
+
+CREATE OR REPLACE VIEW v_documents_enriched AS
+SELECT d.* FROM doc_metadata d WHERE d.is_seed = false;
+
+GRANT SELECT ON v_receiving_enriched TO authenticated, anon;
+GRANT SELECT ON v_shopping_list_enriched TO authenticated, anon;
+GRANT SELECT ON v_purchase_orders_enriched TO authenticated, anon;
+GRANT SELECT ON v_warranty_enriched TO authenticated, anon;
+GRANT SELECT ON v_documents_enriched TO authenticated, anon;
