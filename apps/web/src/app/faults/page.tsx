@@ -37,12 +37,12 @@ function FaultsPageContent() {
   }, [router, searchParams]);
 
   return (
-    <div className="h-screen bg-surface-base">
+    <div className="h-full bg-surface-base">
       <FilteredEntityList<Fault>
         domain="faults"
         queryKey={['faults']}
-        table="pms_faults"
-        columns="id, title, description, status, severity, fault_code, equipment_id, detected_at, resolved_at, created_at, updated_at"
+        table="v_faults_enriched"
+        columns="id, title, description, status, severity, fault_code, equipment_id, equipment_name, detected_at, resolved_at, created_at, updated_at"
         adapter={faultToListResult}
         filterConfig={FAULT_FILTERS}
         selectedId={selectedId}
@@ -64,7 +64,7 @@ export default function FaultsPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="h-screen flex items-center justify-center bg-surface-base">
+        <div className="h-full flex items-center justify-center bg-surface-base">
           <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
         </div>
       }

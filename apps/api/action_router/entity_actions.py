@@ -114,7 +114,84 @@ def get_available_actions(
             "optional_fields":      optional_fields,
         })
 
+    # ── Cross-domain canonical actions ──────────────────────────────────────
+    # These actions must appear on entity types beyond their registry domain.
+    # The handlers already exist — we're making them discoverable from more contexts.
+    _inject_cross_domain_actions(result, entity_type, entity_data, user_role)
+
     return result
+
+
+# ── Cross-domain canonical action injection ──────────────────────────────
+# Spec requires these actions on entity types outside their registry domain.
+# This is additive only — no new handlers, no new mutations.
+
+# Maps: action_id → set of entity_types where it should appear
+_CROSS_DOMAIN_ACTIONS: dict[str, set[str]] = {
+    # add_to_handover: on ALL entity types (handover aggregator)
+    "add_to_handover": {
+        "work_order", "fault", "equipment", "part", "certificate",
+        "document", "receiving", "shopping_list", "warranty",
+        "hours_of_rest", "purchase_order",
+        # handover_export already gets it via domain match
+    },
+    # report_fault: also on equipment (log fault from equipment lens)
+    "report_fault": {"equipment"},
+    # add_to_shopping_list: also on parts (add low-stock part to shopping list)
+    "add_to_shopping_list": {"part"},
+    # file_warranty_claim: also on parts + equipment
+    "file_warranty_claim": {"part", "equipment"},
+}
+
+
+def _inject_cross_domain_actions(
+    result: list[dict],
+    entity_type: str,
+    entity_data: dict,
+    user_role: str,
+) -> None:
+    """Inject canonical cross-domain actions into the action list."""
+    existing_ids = {a["action_id"] for a in result}
+
+    for action_id, entity_types in _CROSS_DOMAIN_ACTIONS.items():
+        if entity_type not in entity_types:
+            continue
+        if action_id in existing_ids:
+            continue  # Already present via domain match
+
+        action_def = ACTION_REGISTRY.get(action_id)
+        if not action_def:
+            continue
+
+        # Role gate
+        allowed = action_def.allowed_roles or []
+        if user_role not in allowed:
+            continue
+
+        # No state gate for cross-domain actions (they operate on their target domain)
+        prefill = resolve_prefill(entity_type, action_id, entity_data)
+        required_fields, optional_fields = get_field_schema(action_id)
+
+        variant_str = (
+            action_def.variant.value
+            if hasattr(action_def.variant, "value")
+            else str(action_def.variant)
+        )
+
+        result.append({
+            "action_id":            action_id,
+            "label":                action_def.label,
+            "variant":              variant_str,
+            "icon":                 "",
+            "is_primary":           False,
+            "requires_signature":   (variant_str == "SIGNED"),
+            "confirmation_message": None,
+            "disabled":             False,
+            "disabled_reason":      None,
+            "prefill":              prefill,
+            "required_fields":      required_fields,
+            "optional_fields":      optional_fields,
+        })
 
 
 def _apply_state_gate(

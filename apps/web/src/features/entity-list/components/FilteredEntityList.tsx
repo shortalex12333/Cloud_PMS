@@ -10,12 +10,15 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation';
 import { FilterPanel } from './FilterPanel';
 import SpotlightResultRow from '@/components/spotlight/SpotlightResultRow';
+import { EntityRecordRow, type RecordRowData } from './EntityRecordRow';
 import { EmptyState } from './EmptyState';
 import { useFilteredEntityList } from '../hooks/useFilteredEntityList';
 import type { FilterFieldConfig, ActiveFilters } from '../types/filter-config';
 import { isDateRange } from '../types/filter-config';
 import { mapLegacyFilter } from '@/lib/filters/mapLegacyFilter';
 import type { EntityAdapter, EntityListResult } from '../types';
+import { groupByUrgency, SectionHeader } from './UrgencyGroupHeaders';
+import { useShellContext } from '@/components/shell/ShellContext';
 
 /** Sort column mapping per domain */
 const SORT_PRIORITY_COLUMN: Record<string, string> = {
@@ -95,6 +98,29 @@ export function FilteredEntityList<T extends { id: string }>({
   const [currentSortBy, setCurrentSortBy] = useState(sortBy);
   const [currentSortDir, setCurrentSortDir] = useState<'asc' | 'desc'>('desc');
 
+  // Shell context: Subbar search + chip filters
+  const shell = useShellContext();
+
+  // Merge Subbar filters into active filters for the query
+  const mergedFilters = useMemo(() => {
+    const merged = { ...activeFilters };
+
+    // Subbar search → ilike on title (text search)
+    if (shell.debouncedQuery) {
+      merged['title'] = shell.debouncedQuery;
+    }
+
+    // Subbar chip → map to filter field
+    if (shell.activeChip && shell.activeChip !== 'All') {
+      const chipFilter = mapChipToFilter(shell.activeChip, domain);
+      if (chipFilter) {
+        merged[chipFilter.key] = chipFilter.value;
+      }
+    }
+
+    return merged;
+  }, [activeFilters, shell.debouncedQuery, shell.activeChip, domain]);
+
   // Mobile state
   const [panelOpen, setPanelOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -110,8 +136,13 @@ export function FilteredEntityList<T extends { id: string }>({
   const activeDomain = domain || queryKey[0] || '';
 
   // Derive text fields from filterConfig so the hook uses ilike instead of eq
+  // Always include 'title' for Subbar search
   const textFields = useMemo(
-    () => new Set(filterConfig.filter(f => f.type === 'text').map(f => f.key)),
+    () => {
+      const fields = new Set(filterConfig.filter(f => f.type === 'text').map(f => f.key));
+      fields.add('title');
+      return fields;
+    },
     [filterConfig],
   );
 
@@ -128,7 +159,7 @@ export function FilteredEntityList<T extends { id: string }>({
     table,
     columns,
     adapter,
-    filters: activeFilters,
+    filters: mergedFilters,
     sortBy: currentSortBy,
     sortDir: currentSortDir,
     textFields,
@@ -201,28 +232,56 @@ export function FilteredEntityList<T extends { id: string }>({
     resultsContent = <EmptyState message={emptyMessage} />;
   } else if (items.length === 0) {
     resultsContent = (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 40, textAlign: 'center' }}>
-        <p style={{ fontSize: 15, color: 'var(--txt2)', marginBottom: 8 }}>No matching items</p>
+      <div data-testid="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 40, textAlign: 'center' }}>
+        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--txt3)', marginBottom: 4 }}>No {domain?.replace(/-/g, ' ') || 'records'} match</p>
         <button
           onClick={() => setActiveFilters({})}
-          style={{ fontSize: 13, color: 'var(--teal)', background: 'none', border: 'none', cursor: 'pointer' }}
+          style={{ fontSize: 11, color: 'var(--mark)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }}
         >
-          Clear all filters
+          Clear filters
         </button>
       </div>
     );
   } else {
+    const renderRow = (item: EntityListResult, index: number) =>
+      item.entityRef ? (
+        <EntityRecordRow
+          key={item.id}
+          data={{
+            id: item.id,
+            entityRef: item.entityRef,
+            title: item.title,
+            equipmentRef: item.equipmentRef,
+            equipmentName: item.equipmentName,
+            assignedTo: item.assignedTo,
+            meta: item.subtitle,
+            status: item.status || '',
+            statusVariant: (item.statusVariant || 'open') as RecordRowData['statusVariant'],
+            severity: (item.severity || null) as RecordRowData['severity'],
+            age: item.age,
+            entityType: item.type?.replace('pms_', '') || '',
+          }}
+          onClick={() => handleSelect(item.id)}
+        />
+      ) : (
+        <SpotlightResultRow
+          key={item.id}
+          result={item}
+          isSelected={item.id === selectedId}
+          index={index}
+          onClick={() => handleSelect(item.id)}
+        />
+      );
+
+    const groups = groupByUrgency(items, domain);
+
     resultsContent = (
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {items.map((item, index) => (
-          <SpotlightResultRow
-            key={item.id}
-            result={item}
-            isSelected={item.id === selectedId}
-            index={index}
-            onClick={() => handleSelect(item.id)}
-          />
-        ))}
+        {groups ? (
+          <GroupedList groups={groups} renderRow={renderRow} forceExpand={!!shell.debouncedQuery} />
+        ) : (
+          items.map(renderRow)
+        )}
         <div ref={loadMoreRef} style={{ height: 16 }} />
         {isFetchingNextPage && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -323,3 +382,81 @@ export function FilteredEntityList<T extends { id: string }>({
   );
 }
 
+/** Renders items grouped by urgency tier with collapsible section headers */
+function GroupedList({
+  groups,
+  renderRow,
+  forceExpand,
+}: {
+  groups: ReturnType<typeof groupByUrgency>;
+  renderRow: (item: EntityListResult, index: number) => React.ReactNode;
+  forceExpand?: boolean;
+}) {
+  const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    groups?.forEach((g) => { if (g.group.collapsed) init[g.group.key] = true; });
+    return init;
+  });
+
+  if (!groups) return null;
+
+  return (
+    <>
+      {groups.map((g) => (
+        <React.Fragment key={g.group.key}>
+          <SectionHeader
+            label={g.group.label}
+            count={g.items.length}
+            colour={g.group.colour}
+            collapsed={g.group.collapsed !== undefined ? collapsed[g.group.key] : undefined}
+            onToggle={g.group.collapsed !== undefined ? () => setCollapsed((prev) => ({ ...prev, [g.group.key]: !prev[g.group.key] })) : undefined}
+          />
+          {(forceExpand || !collapsed[g.group.key]) && g.items.map(renderRow)}
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
+
+/** Map Subbar chip label to a Supabase filter field + value */
+function mapChipToFilter(
+  chip: string,
+  domain?: string
+): { key: string; value: string } | null {
+  const c = chip.toLowerCase();
+
+  // Status chips (work for most domains)
+  if (c === 'open') return { key: 'status', value: 'open' };
+  if (c === 'overdue') return { key: 'status', value: 'overdue' };
+  if (c === 'in progress') return { key: 'status', value: 'in_progress' };
+  if (c === 'completed') return { key: 'status', value: 'completed' };
+  if (c === 'cancelled') return { key: 'status', value: 'cancelled' };
+  if (c === 'pending') return { key: 'status', value: 'pending' };
+  if (c === 'draft') return { key: 'status', value: 'draft' };
+  if (c === 'signed') return { key: 'status', value: 'signed' };
+  if (c === 'investigating') return { key: 'status', value: 'investigating' };
+  if (c === 'resolved') return { key: 'status', value: 'resolved' };
+
+  // Severity chips (faults)
+  if (c === 'critical') return { key: 'severity', value: 'critical' };
+  if (c === 'high') return { key: 'severity', value: 'high' };
+  if (c === 'medium') return { key: 'severity', value: 'medium' };
+  if (c === 'low') return { key: 'severity', value: 'low' };
+
+  // Priority chips (work orders)
+  if (c === 'emergency') return { key: 'priority', value: 'emergency' };
+  if (c === 'routine') return { key: 'priority', value: 'routine' };
+
+  // Assignment chips
+  if (c === 'unassigned') return { key: 'assigned_to', value: '' };
+  if (c === 'my tasks') return null; // Would need current user ID — skip for now
+
+  // Stock chips (parts)
+  if (c === 'zero stock') return { key: '_stock_status', value: 'out' };
+  if (c === 'low stock') return { key: '_stock_status', value: 'low' };
+
+  // Domain-specific text search chips
+  if (c === 'engine' || c === 'pending parts') return { key: 'title', value: chip };
+
+  return null;
+}

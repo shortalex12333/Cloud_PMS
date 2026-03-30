@@ -63,6 +63,12 @@ export function useFilteredEntityList<T extends { id: string }>({
         .from(table)
         .select(columns, { count: 'exact' });
 
+      // Filter out test/seed data on tables that have the is_seed column
+      const SEED_FILTERED_TABLES = ['pms_work_orders', 'pms_faults', 'pms_parts'];
+      if (SEED_FILTERED_TABLES.includes(table)) {
+        q = q.eq('is_seed', false);
+      }
+
       // Apply filters
       for (const [key, value] of Object.entries(filters)) {
         if (value == null) continue;

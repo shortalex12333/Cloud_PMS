@@ -8,8 +8,6 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { X, ChevronDown } from 'lucide-react';
 import type { FilterFieldConfig, ActiveFilters, DateRange } from '../types/filter-config';
 import { isDateRange, FILTER_CATEGORY_LABELS } from '../types/filter-config';
@@ -17,16 +15,6 @@ import { getFiltersByDomain } from '@/lib/filters/catalog';
 import type { QuickFilter } from '@/lib/filters/catalog';
 import { mapLegacyFilter } from '@/lib/filters/mapLegacyFilter';
 
-// ─── Domain routes for the domain pill navigator ───
-const DOMAIN_ROUTES = [
-  { slug: 'work-orders', label: 'Work Orders', href: '/work-orders' },
-  { slug: 'faults', label: 'Faults', href: '/faults' },
-  { slug: 'equipment', label: 'Equipment', href: '/equipment' },
-  { slug: 'inventory', label: 'Inventory', href: '/inventory' },
-  { slug: 'certificates', label: 'Certificates', href: '/certificates' },
-  { slug: 'receiving', label: 'Receiving', href: '/receiving' },
-  { slug: 'shopping-list', label: 'Shopping List', href: '/shopping-list' },
-] as const;
 
 interface FilterPanelProps {
   filters: FilterFieldConfig[];
@@ -47,7 +35,6 @@ export function FilterPanel({
   isOpen,
   onClose,
 }: FilterPanelProps) {
-  const pathname = usePathname();
   const activeCount = Object.keys(activeFilters).length;
 
   // Quick presets from catalog
@@ -123,55 +110,11 @@ export function FilterPanel({
 
   return (
     <aside style={panelStyle} data-testid="filter-panel">
-      {/* 1. Domain Pills */}
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-faint)' }}>
-        <div style={overlineStyle}>Domain</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {DOMAIN_ROUTES.map(d => (
-            <Link
-              key={d.slug}
-              href={d.href}
-              style={{
-                ...domainPillBase,
-                ...(activeDomain === d.slug ? domainPillActive : {}),
-                textDecoration: 'none',
-              }}
-            >
-              {d.label}
-            </Link>
-          ))}
-        </div>
-      </div>
+      {/* Domain pills and Quick Presets removed — sidebar handles domain
+         switching, subbar chips handle presets. Filter panel is for
+         power-user filters only: status, priority, dates. */}
 
-      {/* 2. Quick Presets */}
-      {quickPresets.length > 0 && (
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-faint)' }}>
-          <div style={overlineStyle}>Quick Presets</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {quickPresets.map(p => (
-              <button
-                key={p.filter_id}
-                onClick={() => applyPreset(p)}
-                style={presetPillStyle}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'var(--teal-bg)';
-                  e.currentTarget.style.color = 'var(--mark)';
-                  e.currentTarget.style.borderColor = 'transparent';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'var(--neutral-bg)';
-                  e.currentTarget.style.color = 'var(--txt3)';
-                  e.currentTarget.style.borderColor = 'var(--border-faint)';
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 3. Active Filter Pills */}
+      {/* Active Filter Pills */}
       {activeCount > 0 && (
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-faint)' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -458,40 +401,6 @@ const overlineStyle: React.CSSProperties = {
   marginBottom: 10,
 };
 
-const domainPillBase: React.CSSProperties = {
-  flexShrink: 0,
-  minHeight: 44,
-  padding: '0 12px',
-  borderRadius: 6,
-  fontSize: 12,
-  fontWeight: 500,
-  whiteSpace: 'nowrap',
-  display: 'flex',
-  alignItems: 'center',
-  background: 'var(--neutral-bg)',
-  color: 'var(--txt3)',
-  transition: 'background 60ms, color 60ms',
-};
-
-const domainPillActive: React.CSSProperties = {
-  background: 'var(--teal-bg)',
-  color: 'var(--mark)',
-};
-
-const presetPillStyle: React.CSSProperties = {
-  minHeight: 44,
-  padding: '0 10px',
-  borderRadius: 6,
-  fontSize: 11,
-  fontWeight: 500,
-  display: 'flex',
-  alignItems: 'center',
-  background: 'var(--neutral-bg)',
-  color: 'var(--txt3)',
-  border: '1px solid var(--border-faint)',
-  cursor: 'pointer',
-  transition: 'background 60ms, color 60ms, border-color 60ms',
-};
 
 const activePillStyle: React.CSSProperties = {
   display: 'inline-flex',

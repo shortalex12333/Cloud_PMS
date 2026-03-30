@@ -3,7 +3,7 @@ import '@/styles/globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { MicroactionsProvider } from '@/providers/MicroactionsProvider';
-import { AuthDebug } from '@/components/AuthDebug';
+import { ShellWrapper } from '@/components/shell/ShellWrapper';
 
 export const metadata: Metadata = {
   title: 'CelesteOS - Engineering Intelligence for Yachts',
@@ -21,8 +21,9 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <MicroactionsProvider>
-              {children}
-              {process.env.NODE_ENV === 'development' && <AuthDebug />}
+              <ShellWrapper>
+                {children}
+              </ShellWrapper>
             </MicroactionsProvider>
           </AuthProvider>
         </QueryProvider>

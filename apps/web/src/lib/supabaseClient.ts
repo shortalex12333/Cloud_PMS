@@ -28,7 +28,7 @@ function getSupabaseClient(): SupabaseClient {
 
   // If we have an instance but it was created server-side (no persistence), reset it
   if (supabaseInstance && !(supabaseInstance as any).auth?.persistSession) {
-    console.log('[Supabase] Resetting server-side instance for client-side use');
+    // Reset server-side instance for client-side use
     supabaseInstance = null;
   }
 
@@ -45,7 +45,7 @@ function getSupabaseClient(): SupabaseClient {
     console.error('[Supabase] ❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is not set!');
   }
   if (supabaseUrl && supabaseAnonKey) {
-    console.log('[Supabase] ✅ Client initialized:', supabaseUrl.substring(0, 30) + '...');
+    // Client initialized
   }
 
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -53,7 +53,7 @@ function getSupabaseClient(): SupabaseClient {
   }
 
   // Create client with persistence ENABLED (client-side only)
-  console.log('[Supabase] Creating client with persistSession: true');
+  // Creating client with persistSession: true
   supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,  // Always true on client-side
@@ -64,7 +64,7 @@ function getSupabaseClient(): SupabaseClient {
     },
   });
 
-  console.log('[Supabase] Client created, persist setting:', (supabaseInstance as any).auth?.persistSession);
+  // Client created
   return supabaseInstance;
 }
 

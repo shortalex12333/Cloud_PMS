@@ -357,6 +357,15 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'] },
     },
+    // =========================================================================
+    // SHARD 50: Interface Pivot — Vessel Surface, Sidebar, Scope Tag, Auth
+    // =========================================================================
+    {
+      name: 'shard-50-interface-pivot',
+      testDir: './e2e/shard-50-interface-pivot',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
 
   // Web server configuration (if running locally)

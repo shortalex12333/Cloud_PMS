@@ -1,0 +1,12 @@
+export { MOCK_FAULT_RECORDS } from './faults';
+export { MOCK_WORK_ORDER_RECORDS } from './work-orders';
+export { MOCK_PART_RECORDS } from './parts';
+export { MOCK_EQUIPMENT_RECORDS } from './equipment';
+export { MOCK_HANDOVER_RECORDS } from './handover';
+export { MOCK_HOURS_OF_REST_RECORDS } from './hours-of-rest';
+export { MOCK_SHOPPING_LIST_RECORDS } from './shopping-list';
+export { MOCK_PURCHASE_ORDER_RECORDS } from './purchase-orders';
+export { MOCK_RECEIVING_RECORDS } from './receiving';
+export { MOCK_CERTIFICATE_RECORDS } from './certificates';
+export { MOCK_DOCUMENT_RECORDS } from './documents';
+export { MOCK_WARRANTY_RECORDS } from './warranties';

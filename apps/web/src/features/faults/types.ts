@@ -1,6 +1,7 @@
 export interface Fault {
   id: string;
   fault_number?: string;
+  fault_code?: string;
   title: string;
   description?: string;
   status: string;

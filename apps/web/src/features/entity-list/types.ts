@@ -3,7 +3,8 @@
  * Used by EntityList, EntityDetailOverlay, and lens-specific adapters
  */
 
-// Result format matching SpotlightResultRow expectations
+// Result format for list views — extends SpotlightResultRow fields
+// with structured row anatomy data for EntityRecordRow
 export interface EntityListResult {
   id: string;
   type: string;
@@ -11,6 +12,16 @@ export interface EntityListResult {
   subtitle: string;
   snippet?: string;
   metadata?: Record<string, unknown>;
+
+  // Extended fields for EntityRecordRow (optional for backwards compat)
+  entityRef?: string;
+  equipmentRef?: string;
+  equipmentName?: string;
+  assignedTo?: string;
+  status?: string;
+  statusVariant?: string;
+  severity?: string | null;
+  age?: string;
 }
 
 // Generic fetch function signature
