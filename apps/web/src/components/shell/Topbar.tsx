@@ -175,7 +175,13 @@ export function Topbar({
             outline: 'none',
             caretColor: 'var(--mark)',
           }}
-          onFocus={() => onSearchFocus?.()}
+          onFocus={() => {
+            // Blur immediately — this input is a trigger, not the actual search.
+            // SpotlightSearch in the overlay handles the real input.
+            searchInputRef.current?.blur();
+            onSearchFocus?.();
+          }}
+          readOnly
         />
 
         <span

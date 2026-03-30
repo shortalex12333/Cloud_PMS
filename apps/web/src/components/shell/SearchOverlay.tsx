@@ -67,7 +67,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
           padding: '0 20px',
         }}
       >
-        <SpotlightSearch onClose={onClose} isModal />
+        <SpotlightSearch onClose={onClose} />
       </div>
     </div>
   );
