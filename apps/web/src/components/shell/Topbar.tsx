@@ -14,8 +14,10 @@
  */
 
 import * as React from 'react';
-import { Search, X, Menu } from 'lucide-react';
+import { Search, X, Menu, LogOut, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabaseClient';
 
 interface TopbarProps {
   /** Current active domain for scope tag (null = global) */
@@ -41,7 +43,25 @@ export function Topbar({
   compact,
 }: TopbarProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  // Close menu on outside click
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    window.addEventListener('mousedown', handler);
+    return () => window.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
+  const handleSignOut = React.useCallback(async () => {
+    await supabase.auth.signOut();
+    router.replace('/login');
+  }, [router]);
 
   const vesselName = user?.yachtName || 'Vessel';
   const roleName = user?.role
@@ -218,34 +238,82 @@ export function Topbar({
         </div>
       )}
 
-      {/* Menu icon — opens command palette */}
-      <button
-        onClick={onMenuClick}
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 4,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--txt3)',
-          transition: 'background 80ms, color 80ms',
-          flexShrink: 0,
-          cursor: 'pointer',
-          background: 'transparent',
-          border: 'none',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'var(--surface-hover)';
-          e.currentTarget.style.color = 'var(--txt2)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent';
-          e.currentTarget.style.color = 'var(--txt3)';
-        }}
-      >
-        <Menu style={{ width: 14, height: 14 }} />
-      </button>
+      {/* Menu button + dropdown */}
+      <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: menuOpen ? 'var(--mark)' : 'var(--txt3)',
+            transition: 'background 80ms, color 80ms',
+            cursor: 'pointer',
+            background: menuOpen ? 'var(--teal-bg)' : 'transparent',
+            border: 'none',
+          }}
+          onMouseEnter={(e) => { if (!menuOpen) { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.color = 'var(--txt2)'; } }}
+          onMouseLeave={(e) => { if (!menuOpen) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--txt3)'; } }}
+        >
+          <Menu style={{ width: 14, height: 14 }} />
+        </button>
+
+        {menuOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 34,
+              right: 0,
+              width: 200,
+              background: 'var(--surface-el)',
+              borderTop: '1px solid var(--border-top)',
+              borderRight: '1px solid var(--border-side)',
+              borderBottom: '1px solid var(--border-bottom)',
+              borderLeft: '1px solid var(--border-side)',
+              borderRadius: 4,
+              boxShadow: 'var(--shadow-drop)',
+              overflow: 'hidden',
+              zIndex: 200,
+            }}
+          >
+            {/* User info */}
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-faint)' }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--txt)' }}>
+                {user?.email || 'User'}
+              </div>
+              <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--txt-ghost)', marginTop: 2 }}>
+                {roleName} · {vesselName}
+              </div>
+            </div>
+
+            {/* Sign out */}
+            <button
+              onClick={handleSignOut}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: 12,
+                color: 'var(--red)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background 60ms',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <LogOut style={{ width: 13, height: 13 }} />
+              Sign out
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   );
 }

@@ -186,7 +186,7 @@ function ReceivingPageContent() {
       <FilteredEntityList<ReceivingItem>
         domain="receiving"
         queryKey={['receiving']}
-        table="pms_receiving"
+        table="v_receiving_enriched"
         columns="id, vendor_name, vendor_reference, status, received_date, notes, po_number, created_at"
         adapter={receivingToListResult}
         filterConfig={RECEIVING_FILTERS}
