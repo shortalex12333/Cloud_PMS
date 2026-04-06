@@ -20,6 +20,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import styles from '../lens.module.css';
 import { IdentityStrip, type PillDef, type DetailLine } from '../IdentityStrip';
+import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActionFields';
 import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
@@ -117,16 +118,14 @@ export function WarrantyContent() {
   const addNoteAction = getAction('add_warranty_note');
   const uploadDocAction = getAction('add_warranty_attachment');
 
-  const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+  // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
     actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
   } | null>(null);
 
   function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
-    const fields: ActionPopupField[] = action.required_fields
-      .filter(f => !BACKEND_AUTO.has(f) && !(f in action.prefill))
-      .map(f => ({ name: f, label: f.replace(/_/g, ' '), type: 'kv-edit' as const, placeholder: `Enter ${f.replace(/_/g, ' ')}...`, value: (action.prefill[f] as string) ?? '' }));
-    const sigLevel = (action as any).signature_level ?? (action.requires_signature ? 3 : 0);
+    const fields = mapActionFields(action as any);
+    const sigLevel = getSignatureLevel(action as any);
     setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
   }
 
@@ -207,7 +206,7 @@ export function WarrantyContent() {
       onClick: SPECIAL_HANDLERS[a.action_id]
         ? SPECIAL_HANDLERS[a.action_id]
         : () => {
-            const hasFields = a.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in a.prefill));
+            const hasFields = actionHasFields(a as any);
             if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
           },
       disabled: a.disabled,
