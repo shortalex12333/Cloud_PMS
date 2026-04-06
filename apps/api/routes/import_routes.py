@@ -43,21 +43,14 @@ IMPORT_DEV_MODE = os.getenv("IMPORT_DEV_MODE", "false").lower() == "true"
 # Import token verification (separate from Supabase auth)
 IMPORT_JWT_SECRET = os.getenv("IMPORT_JWT_SECRET", "")
 
-# Supabase client for tenant DB (service role — bypasses RLS)
-_tenant_client = None
-
-
+# Supabase client — use the shared client from integrations/supabase.py
 def get_tenant_client():
-    """Lazy-init Supabase client for tenant DB with service role key."""
-    global _tenant_client
-    if _tenant_client is None:
-        from supabase import create_client
-        url = os.getenv("yTEST_YACHT_001_SUPABASE_URL") or os.getenv("TENANT_1_SUPABASE_URL")
-        key = os.getenv("yTEST_YACHT_001_SUPABASE_SERVICE_1") or os.getenv("TENANT_1_SUPABASE_SERVICE_KEY")
-        if not url or not key:
-            raise RuntimeError("Tenant Supabase URL/key not configured")
-        _tenant_client = create_client(url, key)
-    return _tenant_client
+    """Get the shared Supabase client for tenant DB (service role)."""
+    from integrations.supabase import get_supabase_client
+    client = get_supabase_client()
+    if client is None:
+        raise RuntimeError("Tenant Supabase client not available")
+    return client
 
 
 def resolve_auth(request: Request, x_import_dev_token: Optional[str] = Header(None)) -> dict:
