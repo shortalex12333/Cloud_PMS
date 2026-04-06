@@ -40,6 +40,9 @@ router = APIRouter(prefix="/api/import", tags=["import"])
 # Dev mode bypass for local testing
 IMPORT_DEV_MODE = os.getenv("IMPORT_DEV_MODE", "false").lower() == "true"
 
+# Import token verification (separate from Supabase auth)
+IMPORT_JWT_SECRET = os.getenv("IMPORT_JWT_SECRET", "")
+
 # Supabase client for tenant DB (service role — bypasses RLS)
 _tenant_client = None
 
@@ -74,19 +77,44 @@ def resolve_auth(request: Request, x_import_dev_token: Optional[str] = Header(No
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
 
     token = auth_header[7:]
-    try:
-        from middleware.auth import decode_jwt
-        payload = decode_jwt(token)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}")
+    if not token:
+        raise HTTPException(status_code=401, detail="Empty token")
+
+    # Verify with IMPORT_JWT_SECRET (dedicated import signing key)
+    if IMPORT_JWT_SECRET:
+        try:
+            import jwt as pyjwt
+            payload = pyjwt.decode(
+                token,
+                IMPORT_JWT_SECRET,
+                algorithms=["HS256"],
+                audience="celeste-import",
+                options={"verify_exp": True},
+            )
+        except pyjwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Import token expired. Please re-authenticate.")
+        except pyjwt.InvalidAudienceError:
+            raise HTTPException(status_code=401, detail="Invalid token audience")
+        except pyjwt.InvalidTokenError as e:
+            raise HTTPException(status_code=401, detail=f"Invalid import token: {str(e)}")
+    else:
+        # Fallback: verify with Supabase JWT secrets (legacy or dev)
+        try:
+            from middleware.auth import decode_jwt
+            payload = decode_jwt(token)
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}")
+
+    # Validate scope
+    if payload.get("scope") != "import" and not IMPORT_DEV_MODE:
+        raise HTTPException(status_code=403, detail="Token does not have import scope")
 
     yacht_id = payload.get("yacht_id")
     email = payload.get("email") or payload.get("sub")
 
     if not yacht_id:
-        # Try to resolve yacht_id from user profile
         raise HTTPException(status_code=403, detail="Token missing yacht_id claim")
 
     return {"yacht_id": yacht_id, "email": email}
