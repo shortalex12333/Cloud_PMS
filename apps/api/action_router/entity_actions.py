@@ -10,9 +10,9 @@ Flat entities (equipment, part, certificate, etc.): role filter only, no state g
 
 No DB calls. Read-only with respect to entity_data input.
 """
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
-from action_router.registry import ACTION_REGISTRY, get_actions_for_domain
+from action_router.registry import ACTION_REGISTRY, get_actions_for_domain, FieldClassification
 from action_router.entity_prefill import (
     ENTITY_TYPE_TO_DOMAIN,
     resolve_prefill,
@@ -112,6 +112,7 @@ def get_available_actions(
             "prefill":              prefill,
             "required_fields":      required_fields,
             "optional_fields":      optional_fields,
+            "field_schema":         _build_field_schema(action_def),
         })
 
     # ── Cross-domain canonical actions ──────────────────────────────────────
@@ -191,7 +192,70 @@ def _inject_cross_domain_actions(
             "prefill":              prefill,
             "required_fields":      required_fields,
             "optional_fields":      optional_fields,
+            "field_schema":         _build_field_schema(action_def),
         })
+
+
+def _build_field_schema(action_def) -> List[Dict[str, Any]]:
+    """
+    Build a frontend-consumable field schema from action field_metadata.
+    Returns a list of field definitions with type, label, options, required.
+    Excludes CONTEXT and BACKEND_AUTO fields (server-injected).
+    """
+    if not action_def.field_metadata:
+        return []
+
+    schema = []
+    for fm in action_def.field_metadata:
+        cls = fm.classification
+        # Skip server-only fields
+        if cls in (FieldClassification.CONTEXT, FieldClassification.BACKEND_AUTO,
+                   "CONTEXT", "BACKEND_AUTO"):
+            continue
+
+        is_required = cls in (FieldClassification.REQUIRED, "REQUIRED")
+
+        # Infer field type from metadata
+        # Field types use hyphens to match frontend ActionPopup type conventions
+        if fm.options:
+            field_type = "select"
+        elif fm.lookup_required:
+            field_type = "entity-search"
+        elif "description" in fm.name or "notes" in fm.name or "reason" in fm.name or "draft" in fm.name:
+            field_type = "text-area"
+        elif "date" in fm.name or fm.name.endswith("_at") or "expiry" in fm.name:
+            field_type = "date-pick"
+        elif "amount" in fm.name or "minutes" in fm.name or "quantity" in fm.name or "cost" in fm.name or "total" in fm.name:
+            field_type = "number"
+        else:
+            field_type = "kv-edit"
+
+        field = {
+            "name": fm.name,
+            "type": field_type,
+            "label": fm.description or fm.name.replace("_", " ").title(),
+            "required": is_required,
+        }
+
+        if fm.options:
+            field["options"] = [{"value": o, "label": o.replace("_", " ").title()} for o in fm.options]
+
+        if fm.lookup_required:
+            # Infer search domain from field name
+            domain_map = {
+                "equipment_id": "equipment",
+                "equipment_ids": "equipment",
+                "fault_id": "faults",
+                "part_id": "parts",
+                "assigned_to": "crew",
+                "work_order_id": "work_orders",
+                "document_id": "documents",
+            }
+            field["search_domain"] = domain_map.get(fm.name, fm.name.replace("_id", ""))
+
+        schema.append(field)
+
+    return schema
 
 
 def _apply_state_gate(
