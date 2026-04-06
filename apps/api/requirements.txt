@@ -38,6 +38,14 @@ openai==1.59.5
 PyMuPDF>=1.24.0
 # spacy is optional - code gracefully degrades without it
 
+# Import Pipeline (PMS onboarding)
+openpyxl==3.1.5              # XLSX parsing (read-only streaming)
+xlrd==2.0.1                  # Legacy .xls parsing
+rapidfuzz==3.9.7             # Fuzzy column name matching
+sqlparse==0.5.3              # SQL dump tokenization
+python-dateutil==2.9.0       # Multi-format date parsing
+pyyaml>=6.0                  # projection.yaml config loading (also used by projection_worker)
+
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3
