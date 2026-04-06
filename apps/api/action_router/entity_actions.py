@@ -216,18 +216,19 @@ def _build_field_schema(action_def) -> List[Dict[str, Any]]:
         is_required = cls in (FieldClassification.REQUIRED, "REQUIRED")
 
         # Infer field type from metadata
+        # Field types use hyphens to match frontend ActionPopup type conventions
         if fm.options:
             field_type = "select"
         elif fm.lookup_required:
-            field_type = "entity_search"
+            field_type = "entity-search"
         elif "description" in fm.name or "notes" in fm.name or "reason" in fm.name or "draft" in fm.name:
-            field_type = "textarea"
+            field_type = "text-area"
         elif "date" in fm.name or fm.name.endswith("_at") or "expiry" in fm.name:
-            field_type = "date"
+            field_type = "date-pick"
         elif "amount" in fm.name or "minutes" in fm.name or "quantity" in fm.name or "cost" in fm.name or "total" in fm.name:
             field_type = "number"
         else:
-            field_type = "text"
+            field_type = "kv-edit"
 
         field = {
             "name": fm.name,
