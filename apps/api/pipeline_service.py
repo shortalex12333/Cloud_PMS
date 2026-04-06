@@ -88,7 +88,7 @@ ALLOWED_ORIGINS_STR = os.getenv(
 
 # Normalize: strip whitespace, remove empties, deduplicate
 # Always include localhost for local dev regardless of env override
-_LOCAL_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3007", "http://localhost:3009", "http://localhost:3333", "http://localhost:8000"]
+_LOCAL_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3007", "http://localhost:3009", "http://localhost:3333", "http://localhost:8000", "https://registration.celeste7.ai"]
 ALLOWED_ORIGINS = list(dict.fromkeys([
     origin.strip()
     for origin in ALLOWED_ORIGINS_STR.split(",")
@@ -478,6 +478,18 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to register Vessel Surface routes: {e}")
     logger.error("Vessel Surface endpoints will not be available")
+
+# ============================================================================
+# IMPORT PIPELINE ROUTES
+# ============================================================================
+
+try:
+    from routes.import_routes import router as import_router
+    app.include_router(import_router)
+    logger.info("✅ Import pipeline routes registered at /api/import/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Import pipeline routes: {e}")
+    logger.error("Import endpoints will not be available")
 
 # ============================================================================
 # REQUEST/RESPONSE MODELS
