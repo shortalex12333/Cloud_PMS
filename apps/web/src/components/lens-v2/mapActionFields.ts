@@ -14,18 +14,26 @@ import type { ActionPopupField } from './ActionPopup';
 /** Fields the backend handles automatically — never shown in the form */
 const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
 
+interface FieldSchemaDef {
+  name: string;
+  type?: string;
+  label?: string;
+  placeholder?: string;
+  required?: boolean;
+  options?: { value: string; label: string }[] | string[];
+  search_domain?: string;
+}
+
 interface ActionDef {
   action_id: string;
   label: string;
   required_fields: string[];
   prefill: Record<string, unknown>;
   requires_signature: boolean;
-  field_metadata?: Record<string, {
-    type?: string;
-    label?: string;
-    placeholder?: string;
-    options?: { value: string; label: string }[] | string[];
-  }>;
+  /** Legacy keyed-by-name format */
+  field_metadata?: Record<string, FieldSchemaDef>;
+  /** New array format from ENGINEER01's field_schema */
+  field_schema?: FieldSchemaDef[];
   signature_level?: number;
 }
 
@@ -34,10 +42,21 @@ interface ActionDef {
  * ActionPopupField[] for ActionPopup to render.
  */
 export function mapActionFields(action: ActionDef): ActionPopupField[] {
+  // Build lookup from field_schema array OR field_metadata record
+  const schemaLookup: Record<string, FieldSchemaDef> = {};
+  if (action.field_schema) {
+    for (const s of action.field_schema) schemaLookup[s.name] = s;
+  }
+  if (action.field_metadata) {
+    for (const [k, v] of Object.entries(action.field_metadata)) {
+      if (!schemaLookup[k]) schemaLookup[k] = v;
+    }
+  }
+
   return action.required_fields
     .filter((f) => !BACKEND_AUTO.has(f) && !(f in action.prefill))
     .map((f) => {
-      const meta = action.field_metadata?.[f];
+      const meta = schemaLookup[f];
 
       // Map backend field type to ActionPopup field type
       let fieldType: ActionPopupField['type'] = 'kv-edit';
@@ -47,6 +66,8 @@ export function mapActionFields(action: ActionDef): ActionPopupField[] {
       else if (meta?.type === 'entity-search') fieldType = 'entity-search';
       else if (meta?.type === 'person' || meta?.type === 'person-assign') fieldType = 'person-assign';
       else if (meta?.type === 'status') fieldType = 'status-set';
+      else if (meta?.type === 'number') fieldType = 'kv-edit'; // number renders as text input with type hint
+      else if (meta?.type === 'text') fieldType = 'kv-edit';
       else if (meta?.type) fieldType = meta.type as ActionPopupField['type'];
 
       // Normalise options: backend may send string[] or {value,label}[]
