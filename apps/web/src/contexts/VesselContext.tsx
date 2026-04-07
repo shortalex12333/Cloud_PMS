@@ -13,11 +13,7 @@
 
 import * as React from 'react';
 import { useAuth } from '@/hooks/useAuth';
-
-export interface FleetVessel {
-  yacht_id: string;
-  yacht_name: string;
-}
+import type { FleetVessel } from './AuthContext';
 
 interface VesselState {
   /** Currently active vessel ID. null = "All Vessels" mode. */
@@ -39,10 +35,9 @@ const VesselContext = React.createContext<VesselState | null>(null);
 export function VesselProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
-  // Parse fleet_vessels from user metadata (set by bootstrap)
+  // Parse fleet_vessels from bootstrap data
   const fleetVessels: FleetVessel[] = React.useMemo(() => {
-    const raw = (user as Record<string, unknown>)?.fleet_vessels;
-    if (Array.isArray(raw) && raw.length > 0) return raw as FleetVessel[];
+    if (Array.isArray(user?.fleet_vessels) && user.fleet_vessels.length > 0) return user.fleet_vessels;
     // Single vessel fallback
     if (user?.yachtId) {
       return [{ yacht_id: user.yachtId, yacht_name: user.yachtName || 'Vessel' }];

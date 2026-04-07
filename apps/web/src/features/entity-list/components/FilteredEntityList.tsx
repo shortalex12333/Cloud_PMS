@@ -274,6 +274,7 @@ export function FilteredEntityList<T extends { id: string }>({
             severity: (item.severity || null) as RecordRowData['severity'],
             age: item.age,
             entityType: item.type?.replace('pms_', '') || '',
+            vesselName: item.vesselName,
           }}
           onClick={() => handleSelect(item.id)}
         />

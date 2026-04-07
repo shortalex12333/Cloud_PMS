@@ -11,13 +11,13 @@
  * - NO mic icon, NO search icon (minimal per ChatGPT)
  * - NO category buttons (Faults, Work Orders, etc.)
  * - Shadow only, no border
- * - Utility icon row (Email, Menu, Settings)
+ * - Utility icons moved to Topbar hamburger menu
  * - ALL values tokenized via CSS custom properties
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Settings, BookOpen, Mail, Menu as MenuIcon, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Paperclip, type LucideIcon } from 'lucide-react';
+import { X, Settings, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Paperclip, type LucideIcon } from 'lucide-react';
 import { CommandPalette } from './CommandPalette';
 import { cn } from '@/lib/utils';
 import { useCelesteSearch } from '@/hooks/useCelesteSearch';
@@ -973,61 +973,7 @@ export default function SpotlightSearch({
             </div>
           </div>
 
-          {/* ── Icon Strip (Email / Menu / Settings) ── */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '8px 14px',
-            borderTop: '1px solid var(--search-icon-strip-border)',
-            background: 'var(--search-icon-strip-bg)',
-          }}>
-            {/* Email — navigates to /email */}
-            <button
-              onClick={() => router.push('/email')}
-              aria-label="Email"
-              style={{
-                width: 32, height: 32, borderRadius: 4,
-                background: 'transparent',
-                border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--txt-ghost)',
-                transition: 'background 100ms, color 100ms',
-              }}
-            >
-              <Mail style={{ width: 16, height: 16 }} strokeWidth={1.6} />
-            </button>
-
-            {/* Menu — opens command palette */}
-            <button
-              onClick={() => setShowMenu(true)}
-              aria-label="Menu"
-              style={{
-                width: 32, height: 32, borderRadius: 4,
-                background: 'transparent',
-                border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--txt-ghost)',
-                transition: 'background 100ms, color 100ms',
-              }}
-            >
-              <MenuIcon style={{ width: 16, height: 16 }} strokeWidth={1.6} />
-            </button>
-
-            {/* Settings */}
-            <button
-              onClick={() => setShowSettings(true)}
-              aria-label="Settings"
-              style={{
-                width: 32, height: 32, borderRadius: 4,
-                background: 'transparent',
-                border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--txt-ghost)',
-                transition: 'background 100ms, color 100ms',
-              }}
-            >
-              <Settings style={{ width: 16, height: 16 }} strokeWidth={1.6} />
-            </button>
-          </div>
+          {/* Icon strip removed — Email/Settings now in Topbar hamburger menu */}
         </div>
 
         {/* ── Idle State: SmartPointers + LensPillStrip ── */}

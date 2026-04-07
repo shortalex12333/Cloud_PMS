@@ -54,6 +54,8 @@ export interface RecordRowData {
   severity?: Severity;
   age?: string;
   entityType: string;
+  /** Vessel name — shown in overview (multi-vessel) mode */
+  vesselName?: string;
 }
 
 type Severity = 'critical' | 'warning' | 'info' | null;
@@ -186,8 +188,14 @@ export function EntityRecordRow({ data, onClick, onEquipmentClick }: EntityRecor
           {data.title}
         </div>
 
-        {/* Line 2: equipment ref + assigned */}
+        {/* Line 2: vessel name (overview) + equipment ref + assigned */}
         <div style={{ fontSize: 10.5, fontFamily: 'var(--font-mono, ui-monospace, monospace)', color: 'var(--txt3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {data.vesselName && (
+            <>
+              <span style={{ color: 'var(--txt-ghost)', fontStyle: 'italic' }}>{data.vesselName}</span>
+              {(data.equipmentRef || data.assignedTo || data.meta) && ' \u00b7 '}
+            </>
+          )}
           {data.equipmentRef && (
             <span
               style={{ color: 'var(--mark)', cursor: onEquipmentClick ? 'pointer' : 'inherit' }}

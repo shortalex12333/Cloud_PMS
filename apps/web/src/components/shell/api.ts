@@ -116,6 +116,8 @@ export interface DomainRecordsResponse {
   total_count: number;
   filtered_count: number;
   records: DomainRecord[];
+  /** True when vessel_id=all (fleet overview mode) */
+  is_overview?: boolean;
 }
 
 export interface DomainRecord {
@@ -130,6 +132,10 @@ export interface DomainRecord {
   age_display?: string;
   updated_at?: string;
   meta: string;
+  /** Present in overview mode — identifies which vessel this record belongs to */
+  yacht_id?: string;
+  /** Vessel name — present in overview mode for display */
+  yacht_name?: string;
 }
 
 /* ─────────────────────────────────────────────

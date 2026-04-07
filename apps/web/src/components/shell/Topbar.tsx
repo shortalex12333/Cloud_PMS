@@ -14,7 +14,7 @@
  */
 
 import * as React from 'react';
-import { Search, X, Menu, LogOut, User } from 'lucide-react';
+import { Search, X, Menu, LogOut, User, Mail, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
@@ -31,6 +31,10 @@ interface TopbarProps {
   onSearchFocus?: () => void;
   /** Called when menu icon is clicked (opens command palette) */
   onMenuClick?: () => void;
+  /** Called when Email is selected from the menu */
+  onEmailClick?: () => void;
+  /** Called when Settings is selected from the menu */
+  onSettingsClick?: () => void;
   /** Compact mode: hide vessel name, separators, role badge */
   compact?: boolean;
 }
@@ -41,6 +45,8 @@ export function Topbar({
   onClearScope,
   onSearchFocus,
   onMenuClick,
+  onEmailClick,
+  onSettingsClick,
   compact,
 }: TopbarProps) {
   const { user } = useAuth();
@@ -294,6 +300,53 @@ export function Topbar({
                 {roleName} · {vesselName}
               </div>
             </div>
+
+            {/* Email */}
+            <button
+              onClick={() => { setMenuOpen(false); onEmailClick?.(); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: 12,
+                color: 'var(--txt2)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background 60ms',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Mail style={{ width: 13, height: 13 }} />
+              Email
+            </button>
+
+            {/* Settings */}
+            <button
+              onClick={() => { setMenuOpen(false); onSettingsClick?.(); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: 12,
+                color: 'var(--txt2)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background 60ms',
+                borderBottom: '1px solid var(--border-faint)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Settings style={{ width: 13, height: 13 }} />
+              Settings
+            </button>
 
             {/* Sign out */}
             <button

@@ -22,6 +22,8 @@ export interface EntityListResult {
   statusVariant?: string;
   severity?: string | null;
   age?: string;
+  /** Vessel name — present in overview (multi-vessel) mode */
+  vesselName?: string;
 }
 
 // Generic fetch function signature
