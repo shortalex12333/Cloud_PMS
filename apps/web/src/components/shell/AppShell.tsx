@@ -159,7 +159,7 @@ function AppShellInner({
   onSearchFocus: () => void;
   children: React.ReactNode;
 }) {
-  const { activeChip, setActiveChip, setSearchQuery } = useShellContext();
+  const { activeChip, setActiveChip, setSearchQuery, setActiveSort } = useShellContext();
   const breakpoint = useBreakpoint();
   const sidebarWidth = breakpoint === 'mobile' ? 0 : breakpoint === 'tablet' ? 48 : 192;
   const showSidebar = breakpoint !== 'mobile';
@@ -198,6 +198,7 @@ function AppShellInner({
           activeChip={activeChip}
           onChipClick={setActiveChip}
           onSearch={setSearchQuery}
+          onSortChange={setActiveSort}
         />
       )}
 

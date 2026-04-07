@@ -126,6 +126,7 @@ interface SubbarProps {
   activeChip?: string;
   onChipClick?: (chip: string) => void;
   onSearch?: (query: string) => void;
+  onSortChange?: (sort: string) => void;
   onPrimaryAction?: () => void;
 }
 
@@ -135,6 +136,7 @@ export function Subbar({
   activeChip = 'All',
   onChipClick,
   onSearch,
+  onSortChange,
   onPrimaryAction,
 }: SubbarProps) {
   // Hide when Vessel Surface is active
@@ -283,6 +285,7 @@ export function Subbar({
           <span style={{ fontSize: 10, color: 'var(--txt-ghost)' }}>Sort by</span>
           <select
             defaultValue={SORT_OPTIONS[activeDomain]!.defaultSort}
+            onChange={(e) => onSortChange?.(e.target.value)}
             style={{
               height: 20,
               padding: '0 4px',
