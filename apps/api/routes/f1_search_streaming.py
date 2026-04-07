@@ -753,6 +753,7 @@ async def call_hyper_search_multi(
     rrf_k: int = 60,
     page_limit: int = 20,
     object_types: Optional[List[str]] = None,
+    vessel_ids: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Call hyper_search_multi RPC via asyncpg (single round-trip).
@@ -769,6 +770,7 @@ async def call_hyper_search_multi(
         rrf_k: RRF smoothing constant (default 60)
         page_limit: Max results to return (default 20)
         object_types: Optional list of object_types to filter results
+        vessel_ids: Optional list of yacht UUIDs for multi-vessel search (overview mode)
     """
     # Ensure max 3 rewrites
     rewrites = rewrites[:3]
@@ -790,22 +792,46 @@ async def call_hyper_search_multi(
     original_query = texts[0] if texts else ""
     trgm_limit = 0.07 if len(original_query.strip()) <= 6 else 0.15
 
-    # Use f1_search_cards wrapper (unambiguous name, avoids overload collision)
-    # Pass object_types as 8th parameter (NULL = search all types)
-    rows = await conn.fetch(
-        """
-        SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-        FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
-        """,
-        texts,
-        vec_literals,
-        uuid.UUID(ctx.org_id),
-        uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
-        rrf_k,
-        page_limit,
-        trgm_limit,
-        object_types,
-    )
+    # Multi-vessel search: run per-vessel and merge by fused_score
+    if vessel_ids and len(vessel_ids) > 1:
+        all_results = []
+        for vid in vessel_ids:
+            try:
+                vid_uuid = uuid.UUID(vid)
+            except ValueError:
+                continue
+            vessel_rows = await conn.fetch(
+                """
+                SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
+                FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
+                """,
+                texts, vec_literals, uuid.UUID(ctx.org_id), vid_uuid,
+                rrf_k, page_limit, trgm_limit, object_types,
+            )
+            for r in vessel_rows:
+                d = dict(r)
+                if isinstance(d.get("payload"), dict):
+                    d["payload"]["yacht_id"] = vid
+                all_results.append(d)
+
+        all_results.sort(key=lambda r: r.get("fused_score", 0), reverse=True)
+        rows = all_results[:page_limit]
+    else:
+        # Single vessel search (existing behavior)
+        rows = await conn.fetch(
+            """
+            SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
+            FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
+            """,
+            texts,
+            vec_literals,
+            uuid.UUID(ctx.org_id),
+            uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
+            rrf_k,
+            page_limit,
+            trgm_limit,
+            object_types,
+        )
 
     # Convert asyncpg Records to dicts
     return [dict(r) for r in rows]
@@ -846,6 +872,9 @@ async def f1_search_stream(
     """
     # Build UserContext from auth; fail 400 if org_id missing
     ctx = build_user_context(auth)
+
+    # Multi-vessel: extract vessel_ids for fleet users (overview mode search)
+    fleet_vessel_ids = auth.get("vessel_ids") if auth.get("is_fleet_user") else None
 
     # Feature gate: only allow whitelisted orgs
     if STREAMING_ENABLED_ORGS and ctx.org_id not in STREAMING_ENABLED_ORGS:
@@ -1051,7 +1080,8 @@ async def f1_search_stream(
                                 conn, rewrites, ctx,
                                 rrf_k=60,
                                 page_limit=60,  # LAW 22: Fetch more for RRF candidate pool
-                                object_types=None  # ALL types compete globally
+                                object_types=None,  # ALL types compete globally
+                                vessel_ids=fleet_vessel_ids,  # Multi-vessel fan-out for fleet users
                             )
                             span.set_attribute("result_count", len(results))
                             return results
@@ -1155,16 +1185,36 @@ async def f1_search_stream(
                             span.set_attribute("yacht_id", ctx.yacht_id)
                             span.set_attribute("embedding_dim", len(query_embedding))
                             span.set_attribute("law22_no_threshold", True)
-                            # LAW 22: NO threshold - let RRF handle ranking
-                            # LAW 22: Increased match_count for larger candidate pool
-                            results = await call_match_search_index(
-                                conn,
-                                query_embedding,
-                                ctx.yacht_id,
-                                match_threshold=0.0,  # LAW 22: NO THRESHOLD AMPUTATION
-                                match_count=60,  # LAW 22: Larger candidate pool for RRF
-                                object_type=None  # ALL types compete globally
-                            )
+
+                            # Multi-vessel vector search: fan-out per vessel, merge by similarity
+                            if fleet_vessel_ids and len(fleet_vessel_ids) > 1:
+                                all_vec_results = []
+                                for vid in fleet_vessel_ids:
+                                    try:
+                                        v_results = await call_match_search_index(
+                                            conn, query_embedding, vid,
+                                            match_threshold=0.0,
+                                            match_count=60,
+                                            object_type=None
+                                        )
+                                        for r in v_results:
+                                            if isinstance(r.get("payload"), dict):
+                                                r["payload"]["yacht_id"] = vid
+                                        all_vec_results.extend(v_results)
+                                    except Exception as ve:
+                                        logger.warning(f"[F1Search] Vector search failed for vessel {vid[:8]}: {ve}")
+                                all_vec_results.sort(key=lambda r: r.get("similarity", 0), reverse=True)
+                                results = all_vec_results[:60]
+                            else:
+                                # Single vessel (existing behavior)
+                                results = await call_match_search_index(
+                                    conn,
+                                    query_embedding,
+                                    ctx.yacht_id,
+                                    match_threshold=0.0,  # LAW 22: NO THRESHOLD AMPUTATION
+                                    match_count=60,  # LAW 22: Larger candidate pool for RRF
+                                    object_type=None  # ALL types compete globally
+                                )
                             span.set_attribute("result_count", len(results))
                             return results
 

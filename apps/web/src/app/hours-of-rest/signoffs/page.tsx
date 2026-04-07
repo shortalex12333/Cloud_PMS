@@ -354,8 +354,9 @@ function SignoffsPageContent() {
     finalized: signoffs.filter((s) => s.status === 'finalized').length,
   }), [signoffs]);
 
-  const handleSelect = React.useCallback((id: string) => {
-    router.push(`/hours-of-rest/signoffs?id=${id}`, { scroll: false });
+  const handleSelect = React.useCallback((id: string, yachtId?: string) => {
+    const qs = yachtId ? `id=${id}&yacht_id=${yachtId}` : `id=${id}`;
+    router.push(`/hours-of-rest/signoffs?${qs}`, { scroll: false });
   }, [router]);
 
   const handleCloseDetail = React.useCallback(() => {

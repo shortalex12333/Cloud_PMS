@@ -13,6 +13,7 @@ import hashlib
 import json
 
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ async def get_ledger_events(
     action: Optional[str] = Query(default=None, description="Filter by action: add_note, artefact_opened, etc."),
     date_from: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD)"),
+    yacht_id: Optional[str] = Query(default=None, alias="yacht_id", description="Vessel scope (fleet users)"),
     user_context: dict = Depends(get_authenticated_user)
 ):
     """
@@ -43,10 +45,7 @@ async def get_ledger_events(
     """
     try:
         tenant_alias = user_context.get("tenant_key_alias", "")
-        yacht_id = user_context.get("yacht_id")
-
-        if not yacht_id:
-            raise HTTPException(status_code=400, detail="No yacht_id in user context")
+        yacht_id = resolve_yacht_id(user_context, yacht_id)
 
         db_client = _get_tenant_client(tenant_alias)
 
@@ -97,6 +96,7 @@ async def get_entity_ledger_events(
     entity_type: str,
     entity_id: str,
     limit: int = Query(default=50, le=100),
+    yacht_id: Optional[str] = Query(default=None, description="Vessel scope (fleet users)"),
     user_context: dict = Depends(get_authenticated_user)
 ):
     """
@@ -105,10 +105,7 @@ async def get_entity_ledger_events(
     """
     try:
         tenant_alias = user_context.get("tenant_key_alias", "")
-        yacht_id = user_context.get("yacht_id")
-
-        if not yacht_id:
-            raise HTTPException(status_code=400, detail="No yacht_id in user context")
+        yacht_id = resolve_yacht_id(user_context, yacht_id)
 
         db_client = _get_tenant_client(tenant_alias)
 
@@ -139,6 +136,7 @@ async def get_entity_ledger_events(
 @router.get("/day-anchors")
 async def get_day_anchors(
     days: int = Query(default=30, le=90, description="Number of days to fetch"),
+    yacht_id: Optional[str] = Query(default=None, description="Vessel scope (fleet users)"),
     user_context: dict = Depends(get_authenticated_user)
 ):
     """
@@ -147,10 +145,7 @@ async def get_day_anchors(
     """
     try:
         tenant_alias = user_context.get("tenant_key_alias", "")
-        yacht_id = user_context.get("yacht_id")
-
-        if not yacht_id:
-            raise HTTPException(status_code=400, detail="No yacht_id in user context")
+        yacht_id = resolve_yacht_id(user_context, yacht_id)
 
         db_client = _get_tenant_client(tenant_alias)
 
@@ -193,7 +188,9 @@ async def record_ledger_event(
     """
     try:
         tenant_alias = user_context.get("tenant_key_alias", "")
-        yacht_id = user_context.get("yacht_id")
+        # Accept yacht_id from event payload for fleet users, validate against vessel_ids
+        requested_yacht_id = event_data.get("yacht_id")
+        yacht_id = resolve_yacht_id(user_context, requested_yacht_id)
         user_id = user_context.get("user_id")
 
         if not yacht_id or not user_id:
@@ -284,7 +281,7 @@ async def record_read_event(
     entity_id   = body.get("entity_id", "")
     metadata    = body.get("metadata", {})
 
-    yacht_id      = user_context.get("yacht_id")
+    yacht_id      = resolve_yacht_id(user_context, body.get("yacht_id"))
     user_id       = user_context.get("user_id") or user_context.get("sub")
     user_role     = user_context.get("role", "")
     actor_name    = user_context.get("email", "")
@@ -327,6 +324,7 @@ async def get_ledger_timeline(
     limit: int = 50,
     offset: int = 0,
     event_category: Optional[str] = None,
+    yacht_id: Optional[str] = Query(default=None, description="Vessel scope (fleet users)"),
     user_context: dict = Depends(get_authenticated_user),
 ):
     """
@@ -336,17 +334,13 @@ async def get_ledger_timeline(
       manager             -> interior department events (manager + interior)
       all other roles     -> own events only
     """
-    # Department → member roles mapping (deterministic, mirrors DB trigger)
-    # Only the two HoD-scoped departments are needed here.
-    # "deck"/"general" are intentionally absent: captain is handled by the
-    # `pass` branch (sees all), and deck/general crew fall into the `else` branch (self-only).
     _DEPT_MEMBER_ROLES: dict = {
         "engineering": ["chief_engineer", "eto"],
         "interior":    ["manager", "interior"],
     }
 
     tenant_alias = user_context.get("tenant_key_alias", "")
-    yacht_id     = user_context.get("yacht_id")
+    yacht_id     = resolve_yacht_id(user_context, yacht_id)
     user_id      = user_context.get("user_id") or user_context.get("sub")
     user_role    = user_context.get("role", "")
     department   = user_context.get("department", "")

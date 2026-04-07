@@ -24,6 +24,8 @@ export interface EntityListResult {
   age?: string;
   /** Vessel name — present in overview (multi-vessel) mode */
   vesselName?: string;
+  /** Vessel ID — present in overview mode, used for cross-vessel navigation */
+  yachtId?: string;
 }
 
 // Generic fetch function signature

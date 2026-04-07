@@ -263,9 +263,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
 
     # ── Work Orders: top 3 by urgency ────────────────────────────────────────
     try:
-        wo_q = supabase.table("pms_work_orders").select(
-            "id, title, status, priority, assigned_to, equipment_id, due_date, created_at"
-        )
+        wo_select = "id, title, status, priority, assigned_to, equipment_id, due_date, created_at"
+        if is_overview:
+            wo_select = "yacht_id, " + wo_select
+        wo_q = supabase.table("pms_work_orders").select(wo_select)
         wo_r = _scope_query(wo_q, yacht_ids).eq(
             "is_seed", False
         ).in_(
@@ -307,6 +308,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
             "items": [
                 {
                     "id": w.get("id"),
+                    **({"yacht_id": w.get("yacht_id")} if is_overview else {}),
                     "title": w.get("title", ""),
                     "equipment_id": w.get("equipment_id"),
                     "equipment_name": equip_names.get(w.get("equipment_id"), ""),
@@ -328,9 +330,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
 
     # ── Faults: top 3 by severity ────────────────────────────────────────────
     try:
-        f_q = supabase.table("pms_faults").select(
-            "id, title, status, severity, equipment_id, created_at"
-        )
+        f_select = "id, title, status, severity, equipment_id, created_at"
+        if is_overview:
+            f_select = "yacht_id, " + f_select
+        f_q = supabase.table("pms_faults").select(f_select)
         f_r = _scope_query(f_q, yacht_ids).eq(
             "is_seed", False
         ).in_(
@@ -349,6 +352,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
             "items": [
                 {
                     "id": f.get("id"),
+                    **({"yacht_id": f.get("yacht_id")} if is_overview else {}),
                     "title": f.get("title", ""),
                     "severity": f.get("severity", "normal"),
                     "status": f.get("status", "open"),
@@ -417,9 +421,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
     try:
         # Supabase doesn't support "column < other_column" in PostgREST easily
         # Fetch parts with low stock using a reasonable approach
-        p_q = supabase.table("pms_parts").select(
-            "id, name, quantity_on_hand, minimum_quantity, location"
-        )
+        p_select = "id, name, quantity_on_hand, minimum_quantity, location"
+        if is_overview:
+            p_select = "yacht_id, " + p_select
+        p_q = supabase.table("pms_parts").select(p_select)
         p_r = _scope_query(p_q, yacht_ids).eq("is_seed", False).execute()
 
         all_parts = p_r.data or []
@@ -441,6 +446,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
             "items": [
                 {
                     "id": p.get("id"),
+                    **({"yacht_id": p.get("yacht_id")} if is_overview else {}),
                     "name": p.get("name", ""),
                     "stock_level": p.get("quantity_on_hand", 0),
                     "min_stock": p.get("minimum_quantity", 0),
@@ -525,9 +531,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
         cutoff = (datetime.now(timezone.utc) + timedelta(days=45)).strftime("%Y-%m-%d")
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-        cert_q = supabase.table("pms_vessel_certificates").select(
-            "id, certificate_name, certificate_type, expiry_date, status"
-        )
+        cert_select = "id, certificate_name, certificate_type, expiry_date, status"
+        if is_overview:
+            cert_select = "yacht_id, " + cert_select
+        cert_q = supabase.table("pms_vessel_certificates").select(cert_select)
         cert_r = _scope_query(cert_q, yacht_ids).gte(
             "expiry_date", today
         ).lte(
@@ -540,6 +547,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
             "items": [
                 {
                     "id": c.get("id"),
+                    **({"yacht_id": c.get("yacht_id")} if is_overview else {}),
                     "certificate_name": c.get("certificate_name", ""),
                     "certificate_type": c.get("certificate_type", ""),
                     "expiry_date": c.get("expiry_date"),
@@ -577,6 +585,17 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
         result["domain_counts"] = counts
     except Exception:
         result["domain_counts"] = {}
+
+    # Enrich surface items with yacht_name in overview mode
+    if is_overview and auth.get("fleet_vessels"):
+        name_map = {v["yacht_id"]: v.get("yacht_name", "") for v in auth["fleet_vessels"]}
+        for section_key in ("work_orders", "faults", "parts_below_min", "certificates_expiring"):
+            section = result.get(section_key)
+            if section and "items" in section:
+                for item in section["items"]:
+                    yid = item.get("yacht_id")
+                    if yid:
+                        item["yacht_name"] = name_map.get(yid, "")
 
     return result
 

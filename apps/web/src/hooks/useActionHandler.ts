@@ -88,10 +88,12 @@ export function useActionHandler() {
         }));
 
         // Build payload for Action Router
+        // Context.yacht_id from the caller (record's yacht_id) takes precedence
+        // over activeVesselId — critical for cross-vessel actions in overview mode
         const payload = {
           action: action,
           context: {
-            yacht_id: activeVesselId || user.yachtId,
+            yacht_id: context.yacht_id || activeVesselId || user.yachtId,
             user_id: user.id,
             ...context,
           },

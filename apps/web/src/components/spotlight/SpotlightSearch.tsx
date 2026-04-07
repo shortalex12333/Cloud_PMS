@@ -235,8 +235,11 @@ export default function SpotlightSearch({
   // Needs Attention data — role-aware, time-aware scoring
   const { pointers: attentionPointers, counts: attentionCounts, loading: attentionLoading, role: attentionRole } = useNeedsAttention();
 
-  // Pass yacht_id from AuthContext to hooks - this is the ONLY correct source
-  // Pass objectType for domain-scoped search when in fragmented routes
+  // In overview mode (isAllVessels), pass all vessel IDs for cross-vessel search
+  const searchVesselIds = activeVessel.isAllVessels
+    ? activeVessel.vessels.map(v => v.yacht_id)
+    : undefined;
+
   const {
     query,
     results: apiResults,
@@ -250,7 +253,8 @@ export default function SpotlightSearch({
     refetch,
   } = useCelesteSearch(
     (activeVessel.vesselId || user?.yachtId) ?? null,
-    objectType ? [objectType] : null
+    objectType ? [objectType] : null,
+    searchVesselIds
   );
 
   // Router for fragmented routes navigation
