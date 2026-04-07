@@ -69,6 +69,7 @@ export function useFilteredEntityList<T extends { id: string }>({
         'pms_work_orders', 'pms_faults', 'pms_parts',
         'pms_receiving', 'pms_shopping_list_items', 'pms_purchase_orders',
         'pms_warranty_claims', 'doc_metadata',
+        'pms_equipment', 'pms_vessel_certificates', 'pms_hours_of_rest',
       ];
       if (SEED_FILTERED_TABLES.includes(table)) {
         q = q.eq('is_seed', false);
