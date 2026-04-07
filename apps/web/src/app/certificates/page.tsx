@@ -69,7 +69,7 @@ function CertificatesPageContent() {
         domain="certificates"
         queryKey={['certificates']}
         table="v_certificates_enriched"
-        columns="id, certificate_name, certificate_number, certificate_type, issuing_authority, issue_date, expiry_date, status, created_at, updated_at"
+        columns="*"
         adapter={certAdapter}
         filterConfig={[]}
         selectedId={selectedId}

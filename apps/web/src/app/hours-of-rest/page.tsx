@@ -77,7 +77,7 @@ function HoRPageContent() {
         domain="hours-of-rest"
         queryKey={['hours-of-rest']}
         table="v_hours_of_rest_enriched"
-        columns="id, crew_member_name, record_date, total_rest_hours, total_work_hours, is_compliant, status, created_at, updated_at"
+        columns="*"
         adapter={horAdapter}
         filterConfig={[]}
         selectedId={selectedId}
