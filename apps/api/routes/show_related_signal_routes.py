@@ -41,6 +41,7 @@ router = APIRouter(prefix="/v1/show-related-signal", tags=["show-related-signal"
 # Adding a new entity type: add it to entity_serializer.py only. This gate
 # automatically stays in sync.
 from services.entity_serializer import SUPPORTED_ENTITY_TYPES as _SUPPORTED
+from middleware.vessel_access import resolve_yacht_id
 VALID_ENTITY_TYPES = sorted(_SUPPORTED)
 
 
@@ -76,6 +77,7 @@ async def view_signal_related(
     entity_type: str = Query(..., description="Entity type (e.g. 'work_order', 'fault')"),
     entity_id: UUID = Query(..., description="Entity UUID"),
     limit: int = Query(default=10, ge=1, le=50, description="Max results (1–50)"),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user),
 ):
     """
@@ -115,7 +117,10 @@ async def view_signal_related(
             detail=f"Invalid entity_type. Must be one of: {', '.join(VALID_ENTITY_TYPES)}",
         )
 
-    ctx = _build_user_context(auth)
+    # Resolve yacht_id for fleet users (overview mode passes record's yacht_id)
+    resolved_yacht_id = resolve_yacht_id(auth, yacht_id)
+    auth_with_resolved = {**auth, "yacht_id": resolved_yacht_id}
+    ctx = _build_user_context(auth_with_resolved)
 
     # Preferred path: asyncpg (direct PostgreSQL) — requires READ_DB_DSN / DATABASE_URL.
     # Fallback path: Supabase HTTP client — works in all environments with tenant credentials.

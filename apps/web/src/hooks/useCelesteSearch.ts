@@ -407,7 +407,7 @@ function findPrefixCachedResults(query: string): SearchResult[] {
  * Build search payload per search-engine-spec.md
  * @param yachtId - yacht_id from AuthContext (NOT from deprecated getYachtId())
  */
-async function buildSearchPayload(query: string, streamId: string, yachtId: string | null) {
+async function buildSearchPayload(query: string, streamId: string, yachtId: string | null, vesselIds?: string[]) {
   const { data: { session } } = await supabase.auth.getSession();
   // Use yacht_id from AuthContext, not from user_metadata (which is never set)
   const yachtSignature = await getYachtSignature(yachtId);
@@ -418,6 +418,8 @@ async function buildSearchPayload(query: string, streamId: string, yachtId: stri
     query,
     query_type: 'free-text',
     limit: 75, // Spotlight-style grouping needs domain diversity
+    // vessel_ids for multi-vessel overview mode search
+    ...(vesselIds && vesselIds.length > 1 ? { vessel_ids: vesselIds } : {}),
     auth: session?.user ? {
       user_id: session.user.id,
       yacht_id: yachtId,
@@ -517,7 +519,8 @@ async function* streamSearch(
   query: string,
   signal: AbortSignal,
   yachtId: string | null,
-  objectTypes: string[] | null = null
+  objectTypes: string[] | null = null,
+  vesselIds?: string[]
 ): AsyncGenerator<SearchResult[], void, unknown> {
   console.log('[useCelesteSearch] 🎬 streamSearch STARTED (F1 SSE)');
 
@@ -549,6 +552,11 @@ async function* streamSearch(
   searchUrl.searchParams.set('q', query);
   if (objectTypes && objectTypes.length > 0) {
     searchUrl.searchParams.set('object_types', objectTypes.join(','));
+  }
+
+  // Multi-vessel overview mode: pass vessel_ids for cross-vessel search
+  if (vesselIds && vesselIds.length > 1) {
+    searchUrl.searchParams.set('vessel_ids', vesselIds.join(','));
   }
 
   console.log('[useCelesteSearch] 📤 F1 SSE request to:', searchUrl.toString());
@@ -686,7 +694,7 @@ async function* streamSearch(
  * @param yachtId - yacht_id from AuthContext (NOT from deprecated getYachtId())
  * @param objectTypes - Optional array of object types to filter results
  */
-async function fetchSearch(query: string, signal: AbortSignal, yachtId: string | null, objectTypes: string[] | null = null): Promise<SearchResult[]> {
+async function fetchSearch(query: string, signal: AbortSignal, yachtId: string | null, objectTypes: string[] | null = null, vesselIds?: string[]): Promise<SearchResult[]> {
   // F1 Architecture: Pipeline-core backend, configurable via env var
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -712,6 +720,10 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
   searchUrl.searchParams.set('q', query);
   if (objectTypes && objectTypes.length > 0) {
     searchUrl.searchParams.set('object_types', objectTypes.join(','));
+  }
+  // Multi-vessel overview mode
+  if (vesselIds && vesselIds.length > 1) {
+    searchUrl.searchParams.set('vessel_ids', vesselIds.join(','));
   }
 
   try {
@@ -829,7 +841,7 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
  * @param objectTypes - Optional array of object types to filter results (e.g., ['work_order', 'fault']).
  *                      Used for domain-scoped search when in fragmented routes.
  */
-export function useCelesteSearch(yachtId: string | null = null, objectTypes: string[] | null = null) {
+export function useCelesteSearch(yachtId: string | null = null, objectTypes: string[] | null = null, vesselIds?: string[]) {
   const [state, setState] = useState<SearchState>({
     query: '',
     results: [],
@@ -850,6 +862,8 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
   // Store objectTypes in a ref for stable access in callbacks
   const objectTypesRef = useRef<string[] | null>(objectTypes);
   objectTypesRef.current = objectTypes;
+  const vesselIdsRef = useRef<string[] | undefined>(vesselIds);
+  vesselIdsRef.current = vesselIds;
 
   // Stable result map to prevent reordering
   const resultMapRef = useRef<Map<string, SearchResult>>(new Map());
@@ -1028,9 +1042,9 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
       // Try streaming first
       let hasResults = false;
 
-      console.log('[useCelesteSearch] 📡 About to call streamSearch with yachtId:', yachtId, 'objectTypes:', objectTypesRef.current);
+      console.log('[useCelesteSearch] 📡 About to call streamSearch with yachtId:', yachtId, 'objectTypes:', objectTypesRef.current, 'vesselIds:', vesselIdsRef.current);
       try {
-        for await (const chunk of streamSearch(query, signal, yachtId, objectTypesRef.current)) {
+        for await (const chunk of streamSearch(query, signal, yachtId, objectTypesRef.current, vesselIdsRef.current)) {
           if (signal.aborted) break;
 
           hasResults = true;
@@ -1046,7 +1060,7 @@ export function useCelesteSearch(yachtId: string | null = null, objectTypes: str
         // If streaming fails, fall back to regular fetch
         if (!signal.aborted) {
           console.warn('[useCelesteSearch] Streaming failed, using fallback:', streamError);
-          const results = await fetchSearch(query, signal, yachtId, objectTypesRef.current);
+          const results = await fetchSearch(query, signal, yachtId, objectTypesRef.current, vesselIdsRef.current);
           hasResults = results.length > 0;
 
           setState(prev => ({

@@ -43,11 +43,15 @@ def validate_yacht_isolation(
             message="User is not assigned to any yacht",
         )
 
-    # Verify yacht_id match
-    if context_yacht_id != user_yacht_id:
+    # Verify yacht_id match — support multi-vessel fleet users
+    # Fleet users have vessel_ids array; check membership instead of strict equality
+    vessel_ids = user_context.get("vessel_ids", [user_yacht_id])
+    vessel_ids_str = [str(v) for v in vessel_ids]
+
+    if str(context_yacht_id) not in vessel_ids_str:
         return ValidationResult.failure(
             error_code="yacht_mismatch",
-            message=f"Access denied: User yacht ({user_yacht_id}) does not match requested yacht ({context_yacht_id})",
+            message=f"Access denied: Requested yacht ({context_yacht_id}) not in user's vessel list",
             details={
                 "user_yacht_id": user_yacht_id,
                 "requested_yacht_id": context_yacht_id,

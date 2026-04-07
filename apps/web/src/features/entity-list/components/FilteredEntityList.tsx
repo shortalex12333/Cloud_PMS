@@ -45,8 +45,8 @@ interface FilteredEntityListProps<T extends { id: string }> {
   adapter: EntityAdapter<T>;
   /** Available filter fields */
   filterConfig: FilterFieldConfig[];
-  /** Called when user selects an item */
-  onSelect: (id: string) => void;
+  /** Called when user selects an item. yachtId present in overview mode for cross-vessel navigation. */
+  onSelect: (id: string, yachtId?: string) => void;
   /** Currently selected item ID */
   selectedId: string | null;
   /** Message when no items exist */
@@ -197,7 +197,7 @@ export function FilteredEntityList<T extends { id: string }>({
     return () => { observerRef.current?.disconnect(); };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const handleSelect = useCallback((id: string) => { onSelect(id); }, [onSelect]);
+  const handleSelect = useCallback((id: string, yachtId?: string) => { onSelect(id, yachtId); }, [onSelect]);
 
   // Sort handler
   const handleSortChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -276,7 +276,7 @@ export function FilteredEntityList<T extends { id: string }>({
             entityType: item.type?.replace('pms_', '') || '',
             vesselName: item.vesselName,
           }}
-          onClick={() => handleSelect(item.id)}
+          onClick={() => handleSelect(item.id, item.yachtId)}
         />
       ) : (
         <SpotlightResultRow
@@ -284,7 +284,7 @@ export function FilteredEntityList<T extends { id: string }>({
           result={item}
           isSelected={item.id === selectedId}
           index={index}
-          onClick={() => handleSelect(item.id)}
+          onClick={() => handleSelect(item.id, item.yachtId)}
         />
       );
 

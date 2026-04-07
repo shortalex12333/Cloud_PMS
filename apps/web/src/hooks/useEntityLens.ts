@@ -18,7 +18,9 @@ export interface UseEntityLensResult {
 
 export function useEntityLens(
   entityType: EntityType,
-  entityId: string
+  entityId: string,
+  /** Optional yacht_id for cross-vessel access in overview mode */
+  yachtId?: string | null
 ): UseEntityLensResult {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -34,7 +36,8 @@ export function useEntityLens(
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/v1/entity/${entityType}/${entityId}`, {
+      const yachtParam = yachtId ? `?yacht_id=${yachtId}` : '';
+      const res = await fetch(`${API_BASE}/v1/entity/${entityType}/${entityId}${yachtParam}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`${res.status}`);
@@ -47,7 +50,7 @@ export function useEntityLens(
     } finally {
       setIsLoading(false);
     }
-  }, [entityType, entityId, token]);
+  }, [entityType, entityId, yachtId, token]);
 
   // AbortController prevents stale responses when entityId changes rapidly
   useEffect(() => {
@@ -58,7 +61,8 @@ export function useEntityLens(
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_BASE}/v1/entity/${entityType}/${entityId}`, {
+        const yachtParam = yachtId ? `?yacht_id=${yachtId}` : '';
+      const res = await fetch(`${API_BASE}/v1/entity/${entityType}/${entityId}${yachtParam}`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         });
@@ -78,7 +82,7 @@ export function useEntityLens(
     run();
 
     return () => controller.abort();
-  }, [entityType, entityId, token]);
+  }, [entityType, entityId, yachtId, token]);
 
   const executeAction = useCallback(
     async (actionId: string, payload: Record<string, unknown> = {}): Promise<ActionResult> => {
@@ -95,7 +99,7 @@ export function useEntityLens(
         },
         body: JSON.stringify({
           action: actionId,
-          context: { entity_id: entityId },
+          context: { entity_id: entityId, ...(yachtId ? { yacht_id: yachtId } : {}) },
           payload: mergedPayload,
         }),
       });
@@ -106,7 +110,7 @@ export function useEntityLens(
       }
       return result;
     },
-    [token, entityId, availableActions, fetchEntity, queryClient]
+    [token, entityId, yachtId, availableActions, fetchEntity, queryClient]
   );
 
   const getAction = useCallback(

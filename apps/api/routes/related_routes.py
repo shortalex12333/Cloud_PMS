@@ -31,6 +31,7 @@ from supabase import Client
 
 # Auth middleware
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 
 # Centralized Supabase client factory
 from integrations.supabase import get_supabase_client, get_tenant_client
@@ -56,8 +57,8 @@ router = APIRouter(prefix="/v1/related", tags=["related-entities"])
 
 class AddEntityLinkRequest(BaseModel):
     """Request to add an explicit entity link."""
-    # SECURITY: yacht_id removed from request schema per invariant #1
-    # yacht_id MUST come from server-resolved auth context, never client payload
+    # SECURITY: yacht_id validated against auth['vessel_ids'] for fleet users
+    yacht_id: Optional[str] = Field(default=None, description="Vessel scope for fleet users (validated against vessel_ids)")
     source_entity_type: str = Field(..., description="Source entity type (e.g., 'work_order')")
     source_entity_id: UUID = Field(..., description="Source entity UUID")
     target_entity_type: str = Field(..., description="Target entity type")
@@ -97,6 +98,7 @@ async def view_related_entities(
     entity_type: str = Query(..., description="Entity type (e.g., 'work_order', 'fault', 'equipment')"),
     entity_id: UUID = Query(..., description="Entity UUID"),
     limit: int = Query(default=10, ge=1, description="Max results per group (1-50)"),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user)
 ):
     """
@@ -152,11 +154,11 @@ async def view_related_entities(
         supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = RelatedHandlers(supabase)
 
-        yacht_id = auth["yacht_id"]
+        resolved_yacht_id = resolve_yacht_id(auth, yacht_id)
         user_id = auth["user_id"]
 
         result = await handlers.get_related(
-            yacht_id=yacht_id,
+            yacht_id=resolved_yacht_id,
             entity_type=entity_type,
             entity_id=str(entity_id),
             user_id=user_id,
@@ -223,10 +225,10 @@ async def add_entity_link(
         supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = RelatedHandlers(supabase)
 
-        # SECURITY: yacht_id ONLY from auth context - invariant #1
-        # No payload yacht_id validation needed - field removed from schema
+        # SECURITY: yacht_id validated against auth['vessel_ids'] for fleet users
+        resolved_yacht_id = resolve_yacht_id(auth, request.yacht_id)
         result = await handlers.add_related(
-            yacht_id=auth["yacht_id"],
+            yacht_id=resolved_yacht_id,
             user_id=auth["user_id"],
             source_entity_type=request.source_entity_type,
             source_entity_id=str(request.source_entity_id),

@@ -180,9 +180,12 @@ export function useFilteredEntityList<T extends { id: string }>({
       const items: EntityListResult[] = records.map((record: Record<string, unknown>) => {
         const mapped = apiRecordToAdapterInput(record, apiDomain) as T;
         const result = adapter(mapped);
-        // Attach vessel name from API response (present in overview mode)
+        // Attach vessel attribution from API response (present in overview mode)
         if (record.yacht_name && typeof record.yacht_name === 'string') {
           result.vesselName = record.yacht_name;
+        }
+        if (record.yacht_id && typeof record.yacht_id === 'string') {
+          result.yachtId = record.yacht_id;
         }
         return result;
       });

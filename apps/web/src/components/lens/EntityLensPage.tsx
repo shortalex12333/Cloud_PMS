@@ -102,7 +102,9 @@ export function EntityLensPage({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const lens = useEntityLens(entityType, entityId);
+  // Read yacht_id from URL for cross-vessel access in overview mode
+  const yachtIdParam = searchParams.get('yacht_id');
+  const lens = useEntityLens(entityType, entityId, yachtIdParam);
 
   const [pendingSignature, setPendingSignature] = React.useState<{
     action: AvailableAction;

@@ -14,6 +14,7 @@ from supabase import Client
 
 # SECURITY FIX P0-002: Import auth dependency
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 
 # Centralized Supabase client factory
 from integrations.supabase import get_supabase_client, get_tenant_client
@@ -65,8 +66,8 @@ async def create_context(
     3. Return context (per schema)
     """
     try:
-        # SECURITY: Override client-supplied IDs with JWT-verified values
-        data.yacht_id = auth["yacht_id"]
+        # SECURITY: Validate yacht_id against vessel_ids for fleet users
+        data.yacht_id = resolve_yacht_id(auth, data.yacht_id)
         data.user_id = auth["user_id"]
 
         supabase = get_tenant_client(auth['tenant_key_alias'])
@@ -96,8 +97,8 @@ async def update_anchor(
     3. Return updated context (per schema)
     """
     try:
-        # SECURITY: Extract IDs from JWT, not client
-        yacht_id = auth["yacht_id"]
+        # SECURITY: Validate yacht_id against vessel_ids for fleet users
+        yacht_id = resolve_yacht_id(auth)
         user_id = auth["user_id"]
 
         supabase = get_tenant_client(auth['tenant_key_alias'])
@@ -134,9 +135,8 @@ async def get_related_artifacts(
     CRITICAL: NO audit event for viewing related (not in spec)
     """
     try:
-        # SECURITY: Verify yacht_id matches authenticated user
-        if str(data.yacht_id) != str(auth["yacht_id"]):
-            raise HTTPException(status_code=403, detail="Yacht ID mismatch")
+        # SECURITY: Validate yacht_id against vessel_ids for fleet users
+        data.yacht_id = resolve_yacht_id(auth, str(data.yacht_id) if data.yacht_id else None)
 
         supabase = get_tenant_client(auth['tenant_key_alias'])
         response = get_related(supabase, data)
@@ -168,9 +168,8 @@ async def add_relation(
     4. Return created relation (per schema)
     """
     try:
-        # SECURITY: Verify yacht_id matches authenticated user
-        if str(data.yacht_id) != str(auth["yacht_id"]):
-            raise HTTPException(status_code=403, detail="Yacht ID mismatch")
+        # SECURITY: Validate yacht_id against vessel_ids for fleet users
+        data.yacht_id = resolve_yacht_id(auth, str(data.yacht_id) if data.yacht_id else None)
 
         supabase = get_tenant_client(auth['tenant_key_alias'])
         response = add_user_relation(supabase, data)
@@ -200,8 +199,8 @@ async def end_context(
     3. Return success
     """
     try:
-        # SECURITY: Extract IDs from JWT, not client
-        yacht_id = auth["yacht_id"]
+        # SECURITY: Validate against vessel_ids for fleet users
+        yacht_id = resolve_yacht_id(auth)
         user_id = auth["user_id"]
 
         supabase = get_tenant_client(auth['tenant_key_alias'])

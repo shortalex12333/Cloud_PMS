@@ -55,9 +55,10 @@ function DocumentsPageContent() {
   const selectedId = searchParams.get('id');
 
   const handleSelect = React.useCallback(
-    (id: string) => {
+    (id: string, yachtId?: string) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set('id', id);
+      if (yachtId) params.set('yacht_id', yachtId);
       router.push(`/documents?${params.toString()}`, { scroll: false });
     },
     [router, searchParams]

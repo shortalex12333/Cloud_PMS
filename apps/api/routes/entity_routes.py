@@ -11,11 +11,12 @@ Missing endpoints added here: certificate, document, hours_of_rest,
 shopping_list, warranty, handover_export, purchase_order.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 from integrations.supabase import get_tenant_client, get_supabase_client
 from action_router.entity_actions import get_available_actions
 
@@ -94,9 +95,9 @@ def _nav(entity_type: str, entity_id, label: str):
 # Returns domain="vessel" or domain="crew" so the frontend can adapt labels.
 
 @router.get("/v1/entity/certificate/{certificate_id}")
-async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -167,9 +168,9 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
 # Filter: deleted_at IS NULL (soft-delete). url = storage_path for v1.
 
 @router.get("/v1/entity/document/{document_id}")
-async def get_document_entity(document_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_document_entity(document_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -225,9 +226,9 @@ async def get_document_entity(document_id: str, auth: dict = Depends(get_authent
 # status derived from is_daily_compliant.
 
 @router.get("/v1/entity/hours_of_rest/{record_id}")
-async def get_hours_of_rest_entity(record_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_hours_of_rest_entity(record_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -304,9 +305,9 @@ async def get_hours_of_rest_entity(record_id: str, auth: dict = Depends(get_auth
 # Lens: HoRSignoffContent.tsx
 
 @router.get("/v1/entity/hours_of_rest_signoff/{signoff_id}")
-async def get_hor_signoff_entity(signoff_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_hor_signoff_entity(signoff_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -385,9 +386,9 @@ async def get_hor_signoff_entity(signoff_id: str, auth: dict = Depends(get_authe
 # Returns single item wrapped in items:[...] array for the LensContent component.
 
 @router.get("/v1/entity/shopping_list/{item_id}")
-async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -443,9 +444,9 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
 # claimed_amount, status, equipment_id, fault_id, work_order_id, manufacturer
 
 @router.get("/v1/entity/warranty/{warranty_id}")
-async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -505,9 +506,9 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
 # Frontend expects both user_signature (snake) and userSignature (camel).
 
 @router.get("/v1/entity/handover_export/{export_id}")
-async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -581,9 +582,9 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
 # Column name variants handled with fallbacks.
 
 @router.get("/v1/entity/purchase_order/{po_id}")
-async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -652,10 +653,10 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
 # ── Fault ──────────────────────────────────────────────────────────────────────
 
 @router.get("/v1/entity/fault/{fault_id}")
-async def get_fault_entity(fault_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_fault_entity(fault_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     """Fetch fault by ID for entity viewer (ContextPanel)."""
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -734,10 +735,10 @@ async def _is_user_hod(user_id: str, yacht_id: str, supabase) -> bool:
 # ── Work Order ─────────────────────────────────────────────────────────────────
 
 @router.get("/v1/entity/work_order/{work_order_id}")
-async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     """Fetch work order by ID with all related data for entity viewer (ContextPanel)."""
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         user_id = auth['user_id']
         user_role = auth.get('role', 'crew')
 
@@ -828,10 +829,10 @@ async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_aut
 # ── Equipment ──────────────────────────────────────────────────────────────────
 
 @router.get("/v1/entity/equipment/{equipment_id}")
-async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     """Fetch equipment by ID for entity viewer (ContextPanel)."""
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -903,10 +904,10 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
 # ── Part ───────────────────────────────────────────────────────────────────────
 
 @router.get("/v1/entity/part/{part_id}")
-async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     """Fetch part by ID for entity viewer (ContextPanel)."""
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
@@ -959,10 +960,10 @@ async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_u
 # ── Receiving ──────────────────────────────────────────────────────────────────
 
 @router.get("/v1/entity/receiving/{receiving_id}")
-async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authenticated_user)):
+async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
     """Fetch receiving by ID for entity viewer (DeepLinkHandler)."""
     try:
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 

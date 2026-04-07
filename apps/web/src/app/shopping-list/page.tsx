@@ -192,8 +192,9 @@ function ShoppingListPageContent() {
   const selectedId = searchParams.get('id');
 
   const handleSelect = React.useCallback(
-    (id: string) => {
-      router.push(`/shopping-list?id=${id}`, { scroll: false });
+    (id: string, yachtId?: string) => {
+      const qs = yachtId ? `id=${id}&yacht_id=${yachtId}` : `id=${id}`;
+      router.push(`/shopping-list?${qs}`, { scroll: false });
     },
     [router]
   );
