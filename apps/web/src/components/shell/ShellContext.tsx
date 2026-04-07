@@ -21,8 +21,10 @@ interface ShellState {
   searchQuery: string;
   debouncedQuery: string;
   activeChip: string;
+  activeSort: string;
   setSearchQuery: (q: string) => void;
   setActiveChip: (chip: string) => void;
+  setActiveSort: (sort: string) => void;
 }
 
 const ShellContext = React.createContext<ShellState | null>(null);
@@ -37,12 +39,14 @@ export function ShellProvider({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedQuery, setDebouncedQuery] = React.useState('');
   const [activeChip, setActiveChip] = React.useState('All');
+  const [activeSort, setActiveSort] = React.useState('');
 
-  // Reset search and chip when domain changes
+  // Reset search, chip, and sort when domain changes
   React.useEffect(() => {
     setSearchQuery('');
     setDebouncedQuery('');
     setActiveChip('All');
+    setActiveSort('');
   }, [activeDomain]);
 
   // Debounce search query — 300ms to avoid excessive API calls per REVIEWER01
@@ -59,10 +63,12 @@ export function ShellProvider({
       searchQuery,
       debouncedQuery,
       activeChip,
+      activeSort,
       setSearchQuery,
       setActiveChip,
+      setActiveSort,
     }),
-    [activeDomain, searchQuery, debouncedQuery, activeChip]
+    [activeDomain, searchQuery, debouncedQuery, activeChip, activeSort]
   );
 
   return (
@@ -81,8 +87,10 @@ export function useShellContext(): ShellState {
       searchQuery: '',
       debouncedQuery: '',
       activeChip: 'All',
+      activeSort: '',
       setSearchQuery: () => {},
       setActiveChip: () => {},
+      setActiveSort: () => {},
     };
   }
   return ctx;

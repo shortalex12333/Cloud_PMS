@@ -121,6 +121,20 @@ export function FilteredEntityList<T extends { id: string }>({
     return merged;
   }, [activeFilters, shell.debouncedQuery, shell.activeChip, domain]);
 
+  // Apply shell sort to query sort
+  const effectiveSortBy = useMemo(() => {
+    if (!shell.activeSort) return currentSortBy;
+    return mapSortToColumn(shell.activeSort, domain) || currentSortBy;
+  }, [shell.activeSort, currentSortBy, domain]);
+
+  const effectiveSortDir = useMemo((): 'asc' | 'desc' => {
+    if (!shell.activeSort) return currentSortDir;
+    const s = shell.activeSort.toLowerCase();
+    if (s === 'newest') return 'desc';
+    if (s === 'name' || s === 'assigned' || s === 'due date' || s === 'expiry date') return 'asc';
+    return 'desc';
+  }, [shell.activeSort, currentSortDir]);
+
   // Mobile state
   const [panelOpen, setPanelOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -160,8 +174,8 @@ export function FilteredEntityList<T extends { id: string }>({
     columns,
     adapter,
     filters: mergedFilters,
-    sortBy: currentSortBy,
-    sortDir: currentSortDir,
+    sortBy: effectiveSortBy,
+    sortDir: effectiveSortDir,
     textFields,
   });
 
@@ -416,6 +430,22 @@ function GroupedList({
       ))}
     </>
   );
+}
+
+/** Map sort dropdown label to Supabase column name */
+function mapSortToColumn(sort: string, domain?: string): string | null {
+  const s = sort.toLowerCase();
+  if (s === 'newest') return 'created_at';
+  if (s === 'urgency') return domain === 'faults' ? 'severity' : 'status';
+  if (s === 'severity') return 'severity';
+  if (s === 'due date') return 'due_date';
+  if (s === 'expiry date') return 'expiry_date';
+  if (s === 'assigned') return 'assigned_to';
+  if (s === 'name') return 'name';
+  if (s === 'equipment') return 'equipment_name';
+  if (s === 'location') return 'location';
+  if (s === 'stock level') return 'quantity_on_hand';
+  return null;
 }
 
 /** Map Subbar chip label to a Supabase filter field + value */
