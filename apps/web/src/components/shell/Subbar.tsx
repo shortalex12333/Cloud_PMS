@@ -243,13 +243,18 @@ export function Subbar({
         />
       </div>
 
-      {/* Filter chips */}
+      {/* Filter chips — horizontal scroll on narrow widths */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 4,
-          flexShrink: 0,
+          flexShrink: 1,
+          minWidth: 0,
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
         }}
       >
         {config.chips.map((chip) => {
