@@ -52,18 +52,18 @@ DOMAIN_TABLE_MAP = {
 
 # Select columns per domain (lightweight — only what list views need)
 DOMAIN_SELECT = {
-    "work_orders": "id, title, status, priority, assigned_to, equipment_id, due_date, created_at, updated_at",
-    "faults": "id, title, status, severity, equipment_id, created_at, updated_at",
-    "equipment": "id, name, system, location, status, manufacturer, model, created_at, updated_at",
-    "parts": "id, name, part_number, quantity_on_hand, minimum_quantity, location, unit_cost, created_at, updated_at",
+    "work_orders": "id, title, wo_number, status, priority, assigned_to, equipment_id, due_date, severity, created_at, updated_at",
+    "faults": "id, title, fault_code, status, severity, equipment_id, created_at, updated_at",
+    "equipment": "id, name, code, system_type, location, status, manufacturer, model, serial_number, criticality, created_at, updated_at",
+    "parts": "id, name, part_number, quantity_on_hand, minimum_quantity, location, unit_cost, manufacturer, category, is_critical, created_at, updated_at",
     "certificates": "id, certificate_name, certificate_type, certificate_number, issuing_authority, issue_date, expiry_date, status, created_at",
-    "documents": "id, name, document_type, storage_path, created_at, updated_at",
-    "handover": "id, title, state, generated_by_user_id, created_at",
-    "hours_of_rest": "id, crew_member_name, date, rest_hours, status, created_at",
-    "shopping_list": "id, item_name, quantity, status, requested_by, created_at, updated_at",
-    "purchase_orders": "id, po_number, supplier_name, status, total_amount, currency, created_at, updated_at",
-    "receiving": "id, po_id, received_by, status, received_date, created_at",
-    "warranty": "id, vendor_name, part_number, status, expiry_date, claimed_amount, currency, created_at",
+    "documents": "*",
+    "handover": "id, title, state, department, generated_by_user_id, period_start, period_end, total_entries, critical_entries, created_at",
+    "hours_of_rest": "*",
+    "shopping_list": "*",
+    "purchase_orders": "*",
+    "receiving": "*",
+    "warranty": "*",
 }
 
 # Default sort per domain
@@ -590,7 +590,12 @@ async def get_domain_records(
         query = supabase.table(table).select(select_cols, count="exact").eq("yacht_id", yacht_id)
 
         # Filter out test/seed data for tables that have the is_seed column
-        if domain in ("work_orders", "faults", "parts"):
+        SEED_FILTERED_DOMAINS = (
+            "work_orders", "faults", "parts", "equipment", "certificates",
+            "documents", "hours_of_rest", "shopping_list", "purchase_orders",
+            "receiving", "warranty",
+        )
+        if domain in SEED_FILTERED_DOMAINS:
             query = query.eq("is_seed", False)
 
         # Apply search filter
