@@ -113,8 +113,9 @@ export function useFilteredEntityList<T extends { id: string }>({
   textFields,
 }: UseFilteredEntityListOptions<T>) {
   const { user } = useAuth();
-  const { vesselId: activeVesselId } = useActiveVessel();
-  const effectiveVesselId = activeVesselId || user?.yachtId;
+  const { vesselId: activeVesselId, isAllVessels } = useActiveVessel();
+  // "all" for fleet overview mode, otherwise specific vessel ID
+  const effectiveVesselId = isAllVessels ? 'all' : (activeVesselId || user?.yachtId);
 
   // Derive API domain from queryKey or table name
   const domain = queryKey[0] || '';
@@ -178,7 +179,12 @@ export function useFilteredEntityList<T extends { id: string }>({
       // Convert API records through adapter
       const items: EntityListResult[] = records.map((record: Record<string, unknown>) => {
         const mapped = apiRecordToAdapterInput(record, apiDomain) as T;
-        return adapter(mapped);
+        const result = adapter(mapped);
+        // Attach vessel name from API response (present in overview mode)
+        if (record.yacht_name && typeof record.yacht_name === 'string') {
+          result.vesselName = record.yacht_name;
+        }
+        return result;
       });
 
       return {

@@ -22,6 +22,11 @@ export type BootstrapStatus =
   | 'subscription_required' // Yacht active but subscription not paid/expired/cancelled
   | 'error';       // Bootstrap failed (will retry)
 
+export interface FleetVessel {
+  yacht_id: string;
+  yacht_name: string;
+}
+
 export type CelesteUser = {
   id: string;
   email: string | null;
@@ -33,6 +38,8 @@ export type CelesteUser = {
   bootstrapStatus: BootstrapStatus;
   subscriptionStatus?: string;
   subscriptionPlan?: string;
+  /** Fleet vessels this user has access to (fleet managers only) */
+  fleet_vessels?: FleetVessel[];
   validatedAt: number;
 };
 
@@ -246,6 +253,7 @@ function processBootstrapData(baseUser: CelesteUser, data: any): CelesteUser {
     yachtId: data.yacht_id,
     yachtName: data.yacht_name,
     tenantKeyAlias: data.tenant_key_alias || null,
+    fleet_vessels: Array.isArray(data.fleet_vessels) ? data.fleet_vessels : undefined,
     bootstrapStatus: 'active',
     validatedAt: Date.now(),
   };

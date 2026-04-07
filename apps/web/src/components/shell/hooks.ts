@@ -23,7 +23,8 @@ import type { DomainId } from './Sidebar';
 export function useVesselSurface() {
   const { user } = useAuth();
   const vessel = useActiveVessel();
-  const vesselId = vessel.vesselId || user?.yachtId;
+  // "all" for fleet overview mode, otherwise specific vessel ID
+  const vesselId = vessel.isAllVessels ? 'all' : (vessel.vesselId || user?.yachtId);
 
   return useQuery<VesselSurfaceResponse>({
     queryKey: ['vessel-surface', vesselId],
@@ -44,7 +45,8 @@ export function useDomainRecords(
 ) {
   const { user } = useAuth();
   const vessel = useActiveVessel();
-  const vesselId = vessel.vesselId || user?.yachtId;
+  // "all" for fleet overview mode, otherwise specific vessel ID
+  const vesselId = vessel.isAllVessels ? 'all' : (vessel.vesselId || user?.yachtId);
   const apiDomain = DOMAIN_TO_API[domain];
 
   return useQuery<DomainRecordsResponse>({

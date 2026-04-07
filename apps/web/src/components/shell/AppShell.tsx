@@ -119,6 +119,15 @@ export function AppShell({ children }: AppShellProps) {
   // Global search overlay state
   const [searchOpen, setSearchOpen] = React.useState(false);
 
+  // Topbar menu handlers
+  const handleEmailClick = React.useCallback(() => {
+    router.push('/email');
+  }, [router]);
+
+  const handleSettingsClick = React.useCallback(() => {
+    window.dispatchEvent(new CustomEvent('openSettingsModal'));
+  }, []);
+
   const showSubbar = activeDomain !== 'surface';
 
   return (
@@ -131,6 +140,8 @@ export function AppShell({ children }: AppShellProps) {
         onSelectDomain={handleSelectDomain}
         onClearScope={handleClearScope}
         onSearchFocus={() => setSearchOpen(true)}
+        onEmailClick={handleEmailClick}
+        onSettingsClick={handleSettingsClick}
       >
         {children}
       </AppShellInner>
@@ -148,6 +159,8 @@ function AppShellInner({
   onSelectDomain,
   onClearScope,
   onSearchFocus,
+  onEmailClick,
+  onSettingsClick,
   children,
 }: {
   activeDomain: DomainId;
@@ -157,6 +170,8 @@ function AppShellInner({
   onSelectDomain: (domain: DomainId) => void;
   onClearScope: () => void;
   onSearchFocus: () => void;
+  onEmailClick: () => void;
+  onSettingsClick: () => void;
   children: React.ReactNode;
 }) {
   const { activeChip, setActiveChip, setSearchQuery, setActiveSort } = useShellContext();
@@ -188,6 +203,8 @@ function AppShellInner({
         activeDomainLabel={activeDomainLabel}
         onClearScope={onClearScope}
         onSearchFocus={onSearchFocus}
+        onEmailClick={onEmailClick}
+        onSettingsClick={onSettingsClick}
         compact={breakpoint === 'tablet' || breakpoint === 'mobile'}
       />
 

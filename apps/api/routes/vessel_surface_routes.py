@@ -84,13 +84,32 @@ DOMAIN_DEFAULT_SORT = {
 
 
 def _validate_vessel_access(auth: dict, vessel_id: str):
-    """Enforce vessel isolation: requested vessel_id must be in user's vessel_ids."""
+    """Enforce vessel isolation: requested vessel_id must be in user's vessel_ids.
+    Special case: vessel_id='all' is valid for fleet users (overview mode).
+    """
     vessel_ids = auth.get("vessel_ids", [auth.get("yacht_id")])
+    if vessel_id == "all":
+        if not auth.get("is_fleet_user"):
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: overview mode requires fleet access"
+            )
+        return  # All vessels in auth context are valid
     if str(vessel_id) not in [str(v) for v in vessel_ids]:
         raise HTTPException(
             status_code=403,
             detail="Access denied: vessel_id does not match authenticated session"
         )
+
+
+def _resolve_yacht_ids(auth: dict, vessel_id: str) -> List[str]:
+    """Resolve vessel_id parameter to list of yacht_ids to query.
+    Single vessel: returns [vessel_id]
+    Overview mode (vessel_id='all'): returns all vessel_ids from auth context.
+    """
+    if vessel_id == "all":
+        return auth.get("vessel_ids", [auth.get("yacht_id")])
+    return [vessel_id]
 
 
 def _age_display(dt_str: Optional[str]) -> str:
@@ -219,25 +238,35 @@ def _status_priority_key(record: dict) -> tuple:
 # ENDPOINT 1: VESSEL SURFACE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def _scope_query(query, yacht_ids: List[str]):
+    """Apply yacht_id scoping: .eq for single vessel, .in_ for overview mode."""
+    if len(yacht_ids) == 1:
+        return query.eq("yacht_id", yacht_ids[0])
+    return query.in_("yacht_id", yacht_ids)
+
+
 @router.get("/{vessel_id}/surface")
 async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authenticated_user)):
     """
     Returns current-state summary for the Vessel Surface home screen.
     6 sections, read-only, scoped to authenticated vessel.
+    When vessel_id='all', aggregates across all fleet vessels (overview mode).
     """
     _validate_vessel_access(auth, vessel_id)
 
     tenant_key = auth["tenant_key_alias"]
-    yacht_id = vessel_id  # Use URL vessel_id (already validated against auth vessel_ids)
+    yacht_ids = _resolve_yacht_ids(auth, vessel_id)
+    is_overview = vessel_id == "all"
     supabase = get_tenant_client(tenant_key)
 
-    result = {}
+    result = {"is_overview": is_overview}
 
     # ── Work Orders: top 3 by urgency ────────────────────────────────────────
     try:
-        wo_r = supabase.table("pms_work_orders").select(
+        wo_q = supabase.table("pms_work_orders").select(
             "id, title, status, priority, assigned_to, equipment_id, due_date, created_at"
-        ).eq("yacht_id", yacht_id).eq(
+        )
+        wo_r = _scope_query(wo_q, yacht_ids).eq(
             "is_seed", False
         ).in_(
             "status", ["planned", "in_progress"]
@@ -299,9 +328,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
 
     # ── Faults: top 3 by severity ────────────────────────────────────────────
     try:
-        f_r = supabase.table("pms_faults").select(
+        f_q = supabase.table("pms_faults").select(
             "id, title, status, severity, equipment_id, created_at"
-        ).eq("yacht_id", yacht_id).eq(
+        )
+        f_r = _scope_query(f_q, yacht_ids).eq(
             "is_seed", False
         ).in_(
             "status", ["open", "critical", "monitoring", "in_progress", "investigating"]
@@ -336,9 +366,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
     # ── Last Handover (prefer SIGNED, fallback to latest of any status) ─────
     try:
         # Try SIGNED first
-        ho_r = supabase.table("handover_drafts").select(
+        ho_q = supabase.table("handover_drafts").select(
             "id, title, state, generated_by_user_id, created_at"
-        ).eq("yacht_id", yacht_id).eq(
+        )
+        ho_r = _scope_query(ho_q, yacht_ids).eq(
             "state", "SIGNED"
         ).order("created_at", desc=True).limit(1).execute()
 
@@ -346,9 +377,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
 
         # Fallback: if no SIGNED, get most recent of any state
         if not ho_data:
-            ho_r = supabase.table("handover_drafts").select(
+            ho_q2 = supabase.table("handover_drafts").select(
                 "id, title, state, generated_by_user_id, created_at"
-            ).eq("yacht_id", yacht_id).order(
+            )
+            ho_r = _scope_query(ho_q2, yacht_ids).order(
                 "created_at", desc=True
             ).limit(1).execute()
             ho_data = (ho_r.data or [None])[0]
@@ -385,9 +417,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
     try:
         # Supabase doesn't support "column < other_column" in PostgREST easily
         # Fetch parts with low stock using a reasonable approach
-        p_r = supabase.table("pms_parts").select(
+        p_q = supabase.table("pms_parts").select(
             "id, name, quantity_on_hand, minimum_quantity, location"
-        ).eq("yacht_id", yacht_id).eq("is_seed", False).execute()
+        )
+        p_r = _scope_query(p_q, yacht_ids).eq("is_seed", False).execute()
 
         all_parts = p_r.data or []
         below_min = [
@@ -422,9 +455,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
 
     # ── Recent Activity (from ledger) ────────────────────────────────────────
     try:
-        led_r = supabase.table("ledger_events").select(
+        led_q = supabase.table("ledger_events").select(
             "id, entity_type, entity_id, action, actor_name, created_at, change_summary, user_id"
-        ).eq("yacht_id", yacht_id).neq(
+        )
+        led_r = _scope_query(led_q, yacht_ids).neq(
             "event_category", "read"
         ).order("created_at", desc=True).limit(15).execute()
 
@@ -491,9 +525,10 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
         cutoff = (datetime.now(timezone.utc) + timedelta(days=45)).strftime("%Y-%m-%d")
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-        cert_r = supabase.table("pms_vessel_certificates").select(
+        cert_q = supabase.table("pms_vessel_certificates").select(
             "id, certificate_name, certificate_type, expiry_date, status"
-        ).eq("yacht_id", yacht_id).gte(
+        )
+        cert_r = _scope_query(cert_q, yacht_ids).gte(
             "expiry_date", today
         ).lte(
             "expiry_date", cutoff
@@ -572,11 +607,15 @@ async def get_domain_records(
         raise HTTPException(status_code=400, detail=f"Unknown domain: {domain}")
 
     tenant_key = auth["tenant_key_alias"]
-    yacht_id = vessel_id  # Use URL vessel_id (already validated against auth vessel_ids)
+    yacht_ids = _resolve_yacht_ids(auth, vessel_id)  # List of yacht_ids to query
+    is_overview = vessel_id == "all"
     supabase = get_tenant_client(tenant_key)
 
     table = DOMAIN_TABLE_MAP[domain]
     select_cols = DOMAIN_SELECT.get(domain, "*")
+    # Ensure yacht_id is in select for overview attribution
+    if is_overview and select_cols != "*" and "yacht_id" not in select_cols:
+        select_cols = f"yacht_id, {select_cols}"
     sort_field = sort or DOMAIN_DEFAULT_SORT.get(domain, "created_at")
     sort_desc = sort_field in ("created_at", "updated_at", "date")
 
@@ -584,10 +623,14 @@ async def get_domain_records(
         # If NLP query provided, search via search_index first for IDs
         matching_ids = None
         if q and q.strip():
-            matching_ids = await _search_domain_ids(supabase, yacht_id, domain, q.strip())
+            matching_ids = await _search_domain_ids(supabase, yacht_ids, domain, q.strip())
 
-        # Build main query
-        query = supabase.table(table).select(select_cols, count="exact").eq("yacht_id", yacht_id)
+        # Build main query — use .in_ for overview mode, .eq for single vessel
+        query = supabase.table(table).select(select_cols, count="exact")
+        if len(yacht_ids) == 1:
+            query = query.eq("yacht_id", yacht_ids[0])
+        else:
+            query = query.in_("yacht_id", yacht_ids)
 
         # Filter out test/seed data for tables that have the is_seed column
         SEED_FILTERED_DOMAINS = (
@@ -629,13 +672,20 @@ async def get_domain_records(
         records = result.data or []
         total = result.count or len(records)
 
-        # Format records for frontend
+        # Format records for frontend (include yacht_id for overview attribution)
         formatted = [_format_record(domain, r) for r in records]
+
+        # Enrich with yacht_name in overview mode (resolve from auth context)
+        if is_overview and auth.get("fleet_vessels"):
+            name_map = {v["yacht_id"]: v.get("yacht_name", "") for v in auth["fleet_vessels"]}
+            for rec in formatted:
+                rec["yacht_name"] = name_map.get(rec.get("yacht_id"), "")
 
         return {
             "domain": domain,
             "total_count": total,
             "filtered_count": len(formatted),
+            "is_overview": is_overview,
             "records": formatted,
         }
     except HTTPException:
@@ -645,12 +695,13 @@ async def get_domain_records(
         raise HTTPException(status_code=500, detail=f"Failed to query {domain}")
 
 
-async def _search_domain_ids(supabase, yacht_id: str, domain: str, query: str) -> List[str]:
+async def _search_domain_ids(supabase, yacht_ids: List[str], domain: str, query: str) -> List[str]:
     """
     Search search_index for matching IDs within a domain.
     Uses full-text search (tsv column) for natural language queries,
     with ilike fallback for short queries or codes that FTS may miss.
     Domain-scoped via object_type filter — same approach as f1_search_cards.
+    Supports multiple yacht_ids for overview mode.
     """
     domain_to_object_type = {
         "work_orders": ["work_order"],
@@ -678,11 +729,12 @@ async def _search_domain_ids(supabase, yacht_id: str, domain: str, query: str) -
 
         if words:
             try:
-                q = supabase.table("search_index").select("object_id").eq(
-                    "yacht_id", yacht_id
-                ).in_(
-                    "object_type", object_types
-                )
+                q = supabase.table("search_index").select("object_id")
+                if len(yacht_ids) == 1:
+                    q = q.eq("yacht_id", yacht_ids[0])
+                else:
+                    q = q.in_("yacht_id", yacht_ids)
+                q = q.in_("object_type", object_types)
                 for word in words:
                     q = q.ilike("search_text", f"%{word}%")
                 q = q.limit(200)
@@ -694,9 +746,12 @@ async def _search_domain_ids(supabase, yacht_id: str, domain: str, query: str) -
         # Fallback: single phrase match if multi-word returned nothing
         if not ids:
             try:
-                r = supabase.table("search_index").select("object_id").eq(
-                    "yacht_id", yacht_id
-                ).in_(
+                q = supabase.table("search_index").select("object_id")
+                if len(yacht_ids) == 1:
+                    q = q.eq("yacht_id", yacht_ids[0])
+                else:
+                    q = q.in_("yacht_id", yacht_ids)
+                r = q.in_(
                     "object_type", object_types
                 ).ilike(
                     "search_text", f"%{query}%"
@@ -715,9 +770,10 @@ def _format_record(domain: str, record: dict) -> dict:
     """Format a raw DB record into the standard list view shape."""
     now = datetime.now(timezone.utc)
 
-    # Common fields
+    # Common fields (yacht_id included for overview mode attribution)
     base = {
         "id": record.get("id"),
+        "yacht_id": record.get("yacht_id"),
         "updated_at": record.get("updated_at") or record.get("created_at"),
         "age_display": _age_display(record.get("created_at")),
     }
@@ -840,7 +896,7 @@ async def search_inline(
         raise HTTPException(status_code=400, detail=f"Unknown target domain: {search_domain}")
 
     tenant_key = auth["tenant_key_alias"]
-    yacht_id = vessel_id  # Use URL vessel_id (already validated against auth vessel_ids)
+    yacht_ids = _resolve_yacht_ids(auth, vessel_id)
     supabase = get_tenant_client(tenant_key)
 
     table = DOMAIN_TABLE_MAP[search_domain]
@@ -849,7 +905,7 @@ async def search_inline(
     try:
         # Fast text search: use ilike on key columns
         select_cols = DOMAIN_SELECT.get(search_domain, "*")
-        query = supabase.table(table).select(select_cols).eq("yacht_id", yacht_id)
+        query = _scope_query(supabase.table(table).select(select_cols), yacht_ids)
 
         # Soft-delete filter
         if search_domain == "documents":
@@ -1018,7 +1074,7 @@ async def action_prefill(
         raise HTTPException(status_code=400, detail="action_id, source_entity_type, and source_entity_id required")
 
     tenant_key = auth["tenant_key_alias"]
-    yacht_id = vessel_id  # Use URL vessel_id (already validated against auth vessel_ids)
+    yacht_ids = _resolve_yacht_ids(auth, vessel_id)
     supabase = get_tenant_client(tenant_key)
 
     prefill = {}
@@ -1039,7 +1095,7 @@ async def action_prefill(
         if not table:
             return {"prefill_fields": {}}
 
-        r = supabase.table(table).select("*").eq("id", source_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        r = _scope_query(supabase.table(table).select("*"), yacht_ids).eq("id", source_id).maybe_single().execute()
         if not r or not r.data:
             return {"prefill_fields": {}}
 
