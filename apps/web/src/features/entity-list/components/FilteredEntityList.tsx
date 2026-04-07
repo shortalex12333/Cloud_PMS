@@ -317,14 +317,16 @@ export function FilteredEntityList<T extends { id: string }>({
     />
   ) : null;
 
-  // FilterPanel wrapper for mobile
+  // FilterPanel wrapper — bottom sheet on mobile, side panel on desktop
   const filterPanelWrapper = (
     <div style={isMobile ? {
-      position: 'fixed', top: 0, left: 0, bottom: 0,
-      width: 280, zIndex: 100,
-      transform: panelOpen ? 'translateX(0)' : 'translateX(-100%)',
+      position: 'fixed', left: 0, right: 0, bottom: 0,
+      maxHeight: '60vh', zIndex: 100,
+      borderTopLeftRadius: 8, borderTopRightRadius: 8,
+      transform: panelOpen ? 'translateY(0)' : 'translateY(100%)',
       transition: 'transform 200ms ease',
-      boxShadow: panelOpen ? '4px 0 24px rgba(0,0,0,0.3)' : 'none',
+      boxShadow: panelOpen ? '0 -4px 24px rgba(0,0,0,0.3)' : 'none',
+      overflowY: 'auto',
     } : undefined}>
       <FilterPanel
         filters={filterConfig}
