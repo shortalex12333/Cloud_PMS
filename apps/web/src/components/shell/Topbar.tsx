@@ -17,6 +17,7 @@ import * as React from 'react';
 import { Search, X, Menu, LogOut, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import { supabase } from '@/lib/supabaseClient';
 
 interface TopbarProps {
@@ -63,7 +64,8 @@ export function Topbar({
     router.replace('/login');
   }, [router]);
 
-  const vesselName = user?.yachtName || 'Vessel';
+  const vessel = useActiveVessel();
+  const vesselName = vessel.vesselName;
   const roleName = user?.role
     ? user.role.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
     : 'Member';
@@ -114,9 +116,13 @@ export function Topbar({
       {!compact && (
         <>
           <div style={{ width: 1, height: 12, background: 'var(--border-sub)', flexShrink: 0 }} />
-          <div style={{ fontSize: 11, color: 'var(--txt3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            <em style={{ fontStyle: 'normal', color: 'var(--topbar-vessel-em)' }}>{vesselName}</em>
-          </div>
+          {vessel.isFleetUser ? (
+            <VesselDropdown vessel={vessel} />
+          ) : (
+            <div style={{ fontSize: 11, color: 'var(--txt3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              <em style={{ fontStyle: 'normal', color: 'var(--topbar-vessel-em)' }}>{vesselName}</em>
+            </div>
+          )}
           <div style={{ width: 1, height: 12, background: 'var(--border-sub)', flexShrink: 0 }} />
         </>
       )}
@@ -315,5 +321,116 @@ export function Topbar({
         )}
       </div>
     </header>
+  );
+}
+
+/** Vessel selector dropdown for fleet managers */
+function VesselDropdown({ vessel }: { vessel: ReturnType<typeof useActiveVessel> }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('mousedown', handler);
+    return () => window.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          fontSize: 11,
+          color: 'var(--topbar-vessel-em)',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '2px 4px',
+          borderRadius: 3,
+          transition: 'background 60ms',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+      >
+        <em style={{ fontStyle: 'normal' }}>{vessel.vesselName}</em>
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M2 3l2 2 2-2" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 28,
+            left: 0,
+            minWidth: 180,
+            background: 'var(--surface-el)',
+            borderTop: '1px solid var(--border-top)',
+            borderRight: '1px solid var(--border-side)',
+            borderBottom: '1px solid var(--border-bottom)',
+            borderLeft: '1px solid var(--border-side)',
+            borderRadius: 4,
+            boxShadow: 'var(--shadow-drop)',
+            overflow: 'hidden',
+            zIndex: 200,
+          }}
+        >
+          {/* All Vessels option */}
+          <button
+            onClick={() => { vessel.setActiveVessel(null); setOpen(false); }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              width: '100%',
+              padding: '8px 12px',
+              fontSize: 11,
+              color: vessel.isAllVessels ? 'var(--mark)' : 'var(--txt2)',
+              background: vessel.isAllVessels ? 'var(--teal-bg)' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'background 60ms',
+              borderBottom: '1px solid var(--border-faint)',
+            }}
+            onMouseEnter={(e) => { if (!vessel.isAllVessels) e.currentTarget.style.background = 'var(--surface-hover)'; }}
+            onMouseLeave={(e) => { if (!vessel.isAllVessels) e.currentTarget.style.background = 'transparent'; }}
+          >
+            All Vessels
+          </button>
+
+          {/* Individual vessels */}
+          {vessel.vessels.map((v) => (
+            <button
+              key={v.yacht_id}
+              onClick={() => { vessel.setActiveVessel(v.yacht_id); setOpen(false); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                width: '100%',
+                padding: '8px 12px',
+                fontSize: 11,
+                color: vessel.vesselId === v.yacht_id ? 'var(--mark)' : 'var(--txt2)',
+                background: vessel.vesselId === v.yacht_id ? 'var(--teal-bg)' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background 60ms',
+              }}
+              onMouseEnter={(e) => { if (vessel.vesselId !== v.yacht_id) e.currentTarget.style.background = 'var(--surface-hover)'; }}
+              onMouseLeave={(e) => { if (vessel.vesselId !== v.yacht_id) e.currentTarget.style.background = 'transparent'; }}
+            >
+              {v.yacht_name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
