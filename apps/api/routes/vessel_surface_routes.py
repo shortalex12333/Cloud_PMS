@@ -84,9 +84,9 @@ DOMAIN_DEFAULT_SORT = {
 
 
 def _validate_vessel_access(auth: dict, vessel_id: str):
-    """Enforce vessel isolation: auth yacht_id must match requested vessel_id."""
-    auth_yacht = auth.get("yacht_id")
-    if not auth_yacht or str(auth_yacht) != str(vessel_id):
+    """Enforce vessel isolation: requested vessel_id must be in user's vessel_ids."""
+    vessel_ids = auth.get("vessel_ids", [auth.get("yacht_id")])
+    if str(vessel_id) not in [str(v) for v in vessel_ids]:
         raise HTTPException(
             status_code=403,
             detail="Access denied: vessel_id does not match authenticated session"
@@ -228,7 +228,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
     _validate_vessel_access(auth, vessel_id)
 
     tenant_key = auth["tenant_key_alias"]
-    yacht_id = auth["yacht_id"]
+    yacht_id = vessel_id  # Use URL vessel_id (already validated against auth vessel_ids)
     supabase = get_tenant_client(tenant_key)
 
     result = {}
@@ -572,7 +572,7 @@ async def get_domain_records(
         raise HTTPException(status_code=400, detail=f"Unknown domain: {domain}")
 
     tenant_key = auth["tenant_key_alias"]
-    yacht_id = auth["yacht_id"]
+    yacht_id = vessel_id  # Use URL vessel_id (already validated against auth vessel_ids)
     supabase = get_tenant_client(tenant_key)
 
     table = DOMAIN_TABLE_MAP[domain]
@@ -835,7 +835,7 @@ async def search_inline(
         raise HTTPException(status_code=400, detail=f"Unknown target domain: {search_domain}")
 
     tenant_key = auth["tenant_key_alias"]
-    yacht_id = auth["yacht_id"]
+    yacht_id = vessel_id  # Use URL vessel_id (already validated against auth vessel_ids)
     supabase = get_tenant_client(tenant_key)
 
     table = DOMAIN_TABLE_MAP[search_domain]
@@ -1013,7 +1013,7 @@ async def action_prefill(
         raise HTTPException(status_code=400, detail="action_id, source_entity_type, and source_entity_id required")
 
     tenant_key = auth["tenant_key_alias"]
-    yacht_id = auth["yacht_id"]
+    yacht_id = vessel_id  # Use URL vessel_id (already validated against auth vessel_ids)
     supabase = get_tenant_client(tenant_key)
 
     prefill = {}

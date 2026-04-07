@@ -296,7 +296,7 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
     try:
         # Query user_accounts - PK column is 'id' in production schema
         result = client.table('user_accounts').select(
-            'yacht_id, status'
+            'yacht_id, status, fleet_vessel_ids'
         ).eq('id', user_id).single().execute()
 
         if not result.data:
@@ -363,8 +363,40 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
             logger.error(f"[Auth] SECURITY: Failed to query tenant DB for role: {role_err}")
             return None
 
+        # ── Multi-vessel / fleet support ────────────────────────────────────
+        # If fleet_vessel_ids is set, user has access to multiple vessels.
+        # Build vessel_ids array. If NULL, single-vessel mode (backward compatible).
+        raw_fleet_ids = user_account.get('fleet_vessel_ids')
+        if raw_fleet_ids and isinstance(raw_fleet_ids, list) and len(raw_fleet_ids) > 0:
+            vessel_ids = raw_fleet_ids
+            # Ensure primary yacht_id is in the list
+            if yacht_id not in vessel_ids:
+                vessel_ids.insert(0, yacht_id)
+            is_fleet_user = True
+        else:
+            vessel_ids = [yacht_id]
+            is_fleet_user = False
+
+        # Resolve fleet vessel names from fleet_registry (for fleet users)
+        fleet_vessels = []
+        if is_fleet_user:
+            try:
+                fleet_names_result = client.table('fleet_registry').select(
+                    'yacht_id, yacht_name'
+                ).in_('yacht_id', vessel_ids).execute()
+                fleet_vessels = [
+                    {'yacht_id': v['yacht_id'], 'yacht_name': v.get('yacht_name', '')}
+                    for v in (fleet_names_result.data or [])
+                ]
+            except Exception as fleet_err:
+                logger.warning(f"[Auth] Fleet vessel name lookup failed: {fleet_err}")
+                fleet_vessels = [{'yacht_id': vid, 'yacht_name': ''} for vid in vessel_ids]
+
         tenant_info = {
             'yacht_id': yacht_id,
+            'vessel_ids': vessel_ids,
+            'is_fleet_user': is_fleet_user,
+            'fleet_vessels': fleet_vessels if is_fleet_user else None,
             'tenant_key_alias': tenant_key_alias,
             'role': tenant_role,
             'department': tenant_dept,
@@ -499,7 +531,8 @@ def extract_user_id(token: str) -> str:
 # ============================================================================
 
 async def get_authenticated_user(
-    authorization: str = Header(..., alias='Authorization')
+    authorization: str = Header(..., alias='Authorization'),
+    x_active_vessel: Optional[str] = Header(None, alias='X-Active-Vessel'),
 ) -> dict:
     """
     FastAPI dependency for JWT validation + tenant lookup.
@@ -563,6 +596,9 @@ async def get_authenticated_user(
         'user_id': user_id,
         'email': payload.get('email'),
         'yacht_id': tenant['yacht_id'],
+        'vessel_ids': tenant.get('vessel_ids', [tenant['yacht_id']]),
+        'is_fleet_user': tenant.get('is_fleet_user', False),
+        'fleet_vessels': tenant.get('fleet_vessels'),
         'tenant_key_alias': tenant['tenant_key_alias'],
         'role': tenant['role'],
         'department': tenant.get('department', ''),

@@ -6,6 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import {
   fetchVesselSurface,
   fetchDomainRecords,
@@ -21,7 +22,8 @@ import type { DomainId } from './Sidebar';
  */
 export function useVesselSurface() {
   const { user } = useAuth();
-  const vesselId = user?.yachtId;
+  const vessel = useActiveVessel();
+  const vesselId = vessel.vesselId || user?.yachtId;
 
   return useQuery<VesselSurfaceResponse>({
     queryKey: ['vessel-surface', vesselId],
@@ -41,7 +43,8 @@ export function useDomainRecords(
   params?: { q?: string; status?: string; limit?: number; offset?: number }
 ) {
   const { user } = useAuth();
-  const vesselId = user?.yachtId;
+  const vessel = useActiveVessel();
+  const vesselId = vessel.vesselId || user?.yachtId;
   const apiDomain = DOMAIN_TO_API[domain];
 
   return useQuery<DomainRecordsResponse>({

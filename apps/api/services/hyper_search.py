@@ -103,6 +103,7 @@ async def call_hyper_search(
     page_limit: int = 20,
     object_types: Optional[List[str]] = None,
     exclude_ids: Optional[List[str]] = None,
+    vessel_ids: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Call f1_search_cards RPC via asyncpg (single round-trip).
@@ -142,32 +143,54 @@ async def call_hyper_search(
     original_query = texts[0] if texts else ""
     trgm_limit = 0.07 if len(original_query.strip()) <= 6 else 0.15
 
-    # Use f1_search_cards wrapper (avoids function overload ambiguity)
-    rows = await conn.fetch(
-        """
-        SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-        FROM f1_search_cards(
-            $1::text[],
-            $2::vector(1536)[],
-            $3::uuid,
-            $4::uuid,
-            $5::int,
-            $6::int,
-            $7::real,
-            $8::text[]
-        )
-        """,
-        texts,
-        vec_literals,
-        uuid.UUID(ctx.org_id),
-        uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
-        rrf_k,
-        page_limit,
-        trgm_limit,
-        object_types,
-    )
+    # Multi-vessel search: run search per vessel and merge by fused_score.
+    # Each vessel gets its own f1_search_cards call — results are attributed.
+    if vessel_ids and len(vessel_ids) > 1:
+        import asyncio
+        all_results = []
 
-    results = [dict(r) for r in rows]
+        async def search_vessel(vid: str):
+            try:
+                vid_uuid = uuid.UUID(vid)
+            except ValueError:
+                return []  # Skip non-UUID vessel IDs
+            vessel_rows = await conn.fetch(
+                """
+                SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
+                FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
+                """,
+                texts, vec_literals, uuid.UUID(ctx.org_id), vid_uuid,
+                rrf_k, page_limit, trgm_limit, object_types,
+            )
+            results = []
+            for r in vessel_rows:
+                d = dict(r)
+                # Attribute each result to its vessel
+                if isinstance(d.get("payload"), dict):
+                    d["payload"]["yacht_id"] = vid
+                results.append(d)
+            return results
+
+        # Run searches sequentially (same connection, can't parallelize on one conn)
+        for vid in vessel_ids:
+            vessel_results = await search_vessel(vid)
+            all_results.extend(vessel_results)
+
+        # Merge by fused_score descending, take top page_limit
+        all_results.sort(key=lambda r: r.get("fused_score", 0), reverse=True)
+        results = all_results[:page_limit]
+    else:
+        # Single vessel search (existing behavior)
+        rows = await conn.fetch(
+            """
+            SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
+            FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
+            """,
+            texts, vec_literals, uuid.UUID(ctx.org_id),
+            uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
+            rrf_k, page_limit, trgm_limit, object_types,
+        )
+        results = [dict(r) for r in rows]
 
     # Post-RPC exclusion (e.g. exclude the source entity from its own results)
     if exclude_ids:

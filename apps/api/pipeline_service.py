@@ -644,6 +644,10 @@ class BootstrapResponse(BaseModel):
     subscription_status: Optional[str] = None
     subscription_plan: Optional[str] = None
     subscription_expires_at: Optional[str] = None
+    # Multi-vessel / fleet support
+    is_fleet_user: bool = False
+    vessel_ids: Optional[List[str]] = None
+    fleet_vessels: Optional[List[Dict[str, str]]] = None
 
 
 @app.post("/v1/bootstrap", response_model=BootstrapResponse)
@@ -692,6 +696,10 @@ async def bootstrap(
         subscription_status=auth.get('subscription_status'),
         subscription_plan=auth.get('subscription_plan'),
         subscription_expires_at=auth.get('subscription_expires_at'),
+        # Multi-vessel / fleet support
+        is_fleet_user=auth.get('is_fleet_user', False),
+        vessel_ids=auth.get('vessel_ids'),
+        fleet_vessels=auth.get('fleet_vessels'),
     )
 
 

@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { MicroactionsProvider } from '@/providers/MicroactionsProvider';
 import { ShellWrapper } from '@/components/shell/ShellWrapper';
+import { VesselProvider } from '@/contexts/VesselContext';
 
 export const metadata: Metadata = {
   title: 'CelesteOS - Engineering Intelligence for Yachts',
@@ -20,11 +21,13 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <QueryProvider>
           <AuthProvider>
-            <MicroactionsProvider>
-              <ShellWrapper>
+            <VesselProvider>
+              <MicroactionsProvider>
+                <ShellWrapper>
                 {children}
-              </ShellWrapper>
-            </MicroactionsProvider>
+                </ShellWrapper>
+              </MicroactionsProvider>
+            </VesselProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

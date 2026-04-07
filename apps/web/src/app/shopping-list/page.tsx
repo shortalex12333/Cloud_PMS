@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
 import { fetchShoppingListItem } from '@/features/shopping-list/api';
@@ -14,6 +15,7 @@ import type { ShoppingListItem } from '@/features/shopping-list/types';
 
 function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => void }) {
   const { session, user } = useAuth();
+  const { vesselId: activeVesselId } = useActiveVessel();
   const token = session?.access_token;
   const [isActionLoading, setIsActionLoading] = React.useState(false);
 
@@ -26,13 +28,13 @@ function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => vo
 
   // Action: Approve Item (HOD)
   const handleApprove = React.useCallback(async () => {
-    if (!user?.yachtId || !id) return;
+    if (!(activeVesselId || user?.yachtId) || !id) return;
 
     setIsActionLoading(true);
     try {
       await executeAction(
         'approve_shopping_list_item',
-        { yacht_id: user.yachtId, shopping_list_item_id: id },
+        { yacht_id: activeVesselId || user?.yachtId || "", shopping_list_item_id: id },
         {}
       );
       onRefresh();
@@ -41,17 +43,17 @@ function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => vo
     } finally {
       setIsActionLoading(false);
     }
-  }, [id, user?.yachtId, onRefresh]);
+  }, [id, activeVesselId || user?.yachtId, onRefresh]);
 
   // Action: Reject Item (HOD)
   const handleReject = React.useCallback(async () => {
-    if (!user?.yachtId || !id) return;
+    if (!(activeVesselId || user?.yachtId) || !id) return;
 
     setIsActionLoading(true);
     try {
       await executeAction(
         'reject_shopping_list_item',
-        { yacht_id: user.yachtId, shopping_list_item_id: id },
+        { yacht_id: activeVesselId || user?.yachtId || "", shopping_list_item_id: id },
         {}
       );
       onRefresh();
@@ -60,17 +62,17 @@ function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => vo
     } finally {
       setIsActionLoading(false);
     }
-  }, [id, user?.yachtId, onRefresh]);
+  }, [id, activeVesselId || user?.yachtId, onRefresh]);
 
   // Action: Promote to Part (engineers)
   const handlePromoteToPart = React.useCallback(async () => {
-    if (!user?.yachtId || !id) return;
+    if (!(activeVesselId || user?.yachtId) || !id) return;
 
     setIsActionLoading(true);
     try {
       await executeAction(
         'promote_candidate_to_part',
-        { yacht_id: user.yachtId, shopping_list_item_id: id },
+        { yacht_id: activeVesselId || user?.yachtId || "", shopping_list_item_id: id },
         {}
       );
       onRefresh();
@@ -79,7 +81,7 @@ function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => vo
     } finally {
       setIsActionLoading(false);
     }
-  }, [id, user?.yachtId, onRefresh]);
+  }, [id, activeVesselId || user?.yachtId, onRefresh]);
 
   if (isLoading) {
     return (

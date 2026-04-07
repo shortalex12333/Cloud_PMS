@@ -38,6 +38,7 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import { isHOD } from '@/contexts/AuthContext';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
 import { EntityLensPage } from '@/components/lens/EntityLensPage';
@@ -309,6 +310,7 @@ function SignoffsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, session } = useAuth();
+  const { vesselId: activeVesselId } = useActiveVessel();
   const token = session?.access_token;
   const selectedId = searchParams.get('id');
 
@@ -320,12 +322,12 @@ function SignoffsPageContent() {
 
   // Fetch signoffs
   const { data, isLoading, error } = useQuery({
-    queryKey: ['hor-signoffs', user?.yachtId, departmentScope],
-    queryFn: () => fetchSignoffs(user?.yachtId || '', token || '', {
+    queryKey: ['hor-signoffs', activeVesselId || user?.yachtId, departmentScope],
+    queryFn: () => fetchSignoffs(activeVesselId || user?.yachtId || '', token || '', {
       department: departmentScope,
       month: getCurrentMonth(),
     }),
-    enabled: !!user?.yachtId && !!token,
+    enabled: !!(activeVesselId || user?.yachtId) && !!token,
     staleTime: 30000,
   });
 

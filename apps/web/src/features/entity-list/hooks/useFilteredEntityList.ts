@@ -11,6 +11,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import type { ActiveFilters, DateRange } from '../types/filter-config';
 import { isDateRange } from '../types/filter-config';
 import type { EntityListResult, EntityAdapter } from '../types';
@@ -47,7 +48,8 @@ export function useFilteredEntityList<T extends { id: string }>({
   textFields,
 }: UseFilteredEntityListOptions<T>) {
   const { user, session } = useAuth();
-  const yachtId = user?.yachtId;
+  const { vesselId } = useActiveVessel();
+  const yachtId = vesselId || user?.yachtId;
 
   const filterKeys = Object.entries(filters)
     .sort(([a], [b]) => a.localeCompare(b))
