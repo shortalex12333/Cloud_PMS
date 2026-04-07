@@ -41,7 +41,7 @@ function EquipmentPageContent() {
       <FilteredEntityList<Equipment>
         domain="equipment"
         queryKey={['equipment']}
-        table="pms_equipment"
+        table="v_equipment_enriched"
         columns="id, name, description, location, manufacturer, model, serial_number, status, criticality, attention_flag, attention_reason, created_at, updated_at"
         adapter={equipmentToListResult}
         filterConfig={EQUIPMENT_FILTERS}
