@@ -366,6 +366,15 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'] },
     },
+    // =========================================================================
+    // SHARD 51: Fleet Verification — auth, vessel switching, overview, search
+    // =========================================================================
+    {
+      name: 'shard-51-fleet-verification',
+      testDir: './e2e/shard-51-fleet-verification',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
 
   // Web server configuration (if running locally)
