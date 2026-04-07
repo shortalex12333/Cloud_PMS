@@ -16,6 +16,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner'; // Using sonner for toast notifications
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 
 // types/actions.ts (Phase 3) exports only ACTION_DISPLAY/getActionDisplay — not imported here
 // MicroAction is a plain string action ID; backend owns all eligibility checks.
@@ -56,6 +57,7 @@ interface ActionHandlerState {
 export function useActionHandler() {
   const router = useRouter();
   const { user, session } = useAuth();
+  const { vesselId: activeVesselId } = useActiveVessel();
   const [state, setState] = useState<ActionHandlerState>({
     isLoading: false,
     error: null,
@@ -89,7 +91,7 @@ export function useActionHandler() {
         const payload = {
           action: action,
           context: {
-            yacht_id: user.yachtId,
+            yacht_id: activeVesselId || user.yachtId,
             user_id: user.id,
             ...context,
           },

@@ -8,6 +8,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import { getEntityRoute } from '@/lib/featureFlags';
 import type { ScoredPointer, AttentionCounts, EntitySource, CrewRole } from '@/lib/attention/types';
 import {
@@ -459,15 +460,17 @@ function horSignoffText(signoff: HoRSignoff, role: CrewRole): SignoffText {
 
 export function useNeedsAttention(): UseNeedsAttentionReturn {
   const { user } = useAuth();
+  const { vesselId: activeVesselId } = useActiveVessel();
   const role = normaliseRole(user?.role ?? 'crew');
+  const effectiveVesselId = activeVesselId || user?.yachtId;
 
   const { data, isLoading } = useQuery({
-    queryKey: [...ATTENTION_QUERY_KEY, user?.yachtId, role],
+    queryKey: [...ATTENTION_QUERY_KEY, effectiveVesselId, role],
     queryFn: () => fetchAllAttention(
-      { yachtId: user?.yachtId ?? undefined, id: user?.id ?? undefined, department: ((user as Record<string, unknown>)?.department as string) ?? undefined },
+      { yachtId: effectiveVesselId ?? undefined, id: user?.id ?? undefined, department: ((user as Record<string, unknown>)?.department as string) ?? undefined },
       role,
     ),
-    enabled: !!user?.yachtId,
+    enabled: !!effectiveVesselId,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });

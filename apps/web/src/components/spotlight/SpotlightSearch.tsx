@@ -41,6 +41,7 @@ import { toast } from 'sonner';
 
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import {
   groupResultsByDomain,
   type GroupedResults,
@@ -226,6 +227,7 @@ export default function SpotlightSearch({
   // Get user context from auth (yacht_id comes from bootstrap, not DB query)
   // CRITICAL: Must get user FIRST before useCelesteSearch to pass yachtId
   const { user } = useAuth();
+  const activeVessel = useActiveVessel();
 
   // Get domain context for domain-scoped search (null when not in fragmented route)
   const { objectType, label: domainLabel } = useDomain();
@@ -247,7 +249,7 @@ export default function SpotlightSearch({
     actionSuggestions,
     refetch,
   } = useCelesteSearch(
-    user?.yachtId ?? null,
+    (activeVessel.vesselId || user?.yachtId) ?? null,
     objectType ? [objectType] : null
   );
 
@@ -736,7 +738,7 @@ export default function SpotlightSearch({
           {hasQuery && actionSuggestions.length > 0 && (
             <SuggestedActions
               actions={actionSuggestions}
-              yachtId={user?.yachtId ?? null}
+              yachtId={(activeVessel.vesselId || user?.yachtId) ?? null}
               query={query}
               onActionComplete={refetch}
             />

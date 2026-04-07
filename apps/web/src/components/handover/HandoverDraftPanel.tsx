@@ -21,6 +21,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import { getEntityRoute } from '@/lib/featureFlags';
 import { toast } from 'sonner';
 
@@ -490,6 +491,7 @@ function ItemPopup({
 
 export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps) {
   const { user } = useAuth();
+  const { vesselId: activeVesselId } = useActiveVessel();
   const router = useRouter();
   const [items, setItems] = useState<HandoverItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -499,13 +501,13 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
 
   // ── Fetch ──
   const fetchItems = useCallback(async () => {
-    if (!user?.id || !user?.yachtId) return;
+    if (!user?.id || !(activeVesselId || user?.yachtId)) return;
     setLoading(true);
     try {
       const { data: exports } = await supabase
         .from('handover_exports')
         .select('edited_content')
-        .eq('yacht_id', user.yachtId)
+        .eq('yacht_id', activeVesselId || user.yachtId)
         .not('export_status', 'eq', 'failed');
 
       const exportedIds = new Set<string>();
@@ -516,7 +518,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
       const { data, error } = await supabase
         .from('handover_items')
         .select('*')
-        .eq('yacht_id', user.yachtId)
+        .eq('yacht_id', activeVesselId || user.yachtId)
         .eq('added_by', user.id)
         .is('deleted_at', null)
         .neq('export_status', 'exported')
@@ -530,13 +532,13 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     } finally {
       setLoading(false);
     }
-  }, [user?.id, user?.yachtId]);
+  }, [user?.id, activeVesselId || user?.yachtId]);
 
   useEffect(() => { if (isOpen) fetchItems(); }, [isOpen, fetchItems]);
 
   // ── Save (Create + Update) ──
   const handleSave = useCallback(async (data: { id?: string; summary: string; category: string; status: string; section: string }) => {
-    if (!user?.id || !user?.yachtId) return;
+    if (!user?.id || !(activeVesselId || user?.yachtId)) return;
 
     if (data.id) {
       // Update — ui_status stored in metadata (DB status has check constraint: pending/acknowledged/completed/deferred)
@@ -561,7 +563,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
       const { error } = await supabase
         .from('handover_items')
         .insert({
-          yacht_id: user.yachtId,
+          yacht_id: activeVesselId || user.yachtId,
           added_by: user.id,
           entity_type: 'note',
           entity_id: crypto.randomUUID(),
@@ -579,7 +581,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
       toast.success('Handover note added');
     }
     fetchItems();
-  }, [user?.id, user?.yachtId, fetchItems]);
+  }, [user?.id, activeVesselId || user?.yachtId, fetchItems]);
 
   // ── Delete (soft) ──
   const handleDelete = useCallback(async (id: string) => {
@@ -596,7 +598,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
 
   // ── Export ──
   const handleExport = useCallback(async () => {
-    if (!user?.id || !user?.yachtId || items.length === 0) return;
+    if (!user?.id || !(activeVesselId || user?.yachtId) || items.length === 0) return;
     setExporting(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -625,7 +627,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     } finally {
       setExporting(false);
     }
-  }, [user?.id, user?.yachtId, items, fetchItems, router]);
+  }, [user?.id, activeVesselId || user?.yachtId, items, fetchItems, router]);
 
   // ── Toggle day ──
   const toggleDay = useCallback((date: string) => {

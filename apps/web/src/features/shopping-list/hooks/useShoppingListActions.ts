@@ -13,6 +13,7 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import { isHOD, isEngineer } from '@/contexts/AuthContext';
 import { executeAction } from '@/lib/actionClient';
 import type { CreateShoppingListItemPayload } from '../types';
@@ -24,6 +25,7 @@ export interface UseShoppingListActionsOptions {
 
 export function useShoppingListActions(options: UseShoppingListActionsOptions = {}) {
   const { user } = useAuth();
+  const { vesselId: activeVesselId } = useActiveVessel();
   const router = useRouter();
   const { onSuccess, onError } = options;
 
@@ -35,7 +37,7 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
   // Action: Create Shopping List Item (All crew)
   const createItem = useCallback(
     async (payload: CreateShoppingListItemPayload) => {
-      if (!user?.yachtId) {
+      if (!activeVesselId || user?.yachtId) {
         const error = new Error('No yacht context available');
         onError?.(error);
         throw error;
@@ -44,7 +46,7 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
       try {
         const result = await executeAction(
           'create_shopping_list_item',
-          { yacht_id: user.yachtId },
+          { yacht_id: activeVesselId || user?.yachtId || "" },
           {
             ...payload,
             source_type: payload.source_type || 'manual_add',
@@ -58,13 +60,13 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
         throw error;
       }
     },
-    [user?.yachtId, onSuccess, onError]
+    [activeVesselId || user?.yachtId, onSuccess, onError]
   );
 
   // Action: Approve Shopping List Item (HoD only)
   const approveItem = useCallback(
     async (itemId: string, quantityApproved?: number, approvalNotes?: string) => {
-      if (!user?.yachtId || !canApproveReject) {
+      if (!(activeVesselId || user?.yachtId) || !canApproveReject) {
         const error = new Error('Not authorized to approve items');
         onError?.(error);
         throw error;
@@ -73,7 +75,7 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
       try {
         const result = await executeAction(
           'approve_shopping_list_item',
-          { yacht_id: user.yachtId, shopping_list_item_id: itemId },
+          { yacht_id: activeVesselId || user?.yachtId || "", shopping_list_item_id: itemId },
           {
             ...(quantityApproved !== undefined && { quantity_approved: quantityApproved }),
             ...(approvalNotes && { approval_notes: approvalNotes }),
@@ -87,13 +89,13 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
         throw error;
       }
     },
-    [user?.yachtId, canApproveReject, onSuccess, onError]
+    [activeVesselId || user?.yachtId, canApproveReject, onSuccess, onError]
   );
 
   // Action: Reject Shopping List Item (HoD only)
   const rejectItem = useCallback(
     async (itemId: string, rejectionReason: string, rejectionNotes?: string) => {
-      if (!user?.yachtId || !canApproveReject) {
+      if (!(activeVesselId || user?.yachtId) || !canApproveReject) {
         const error = new Error('Not authorized to reject items');
         onError?.(error);
         throw error;
@@ -102,7 +104,7 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
       try {
         const result = await executeAction(
           'reject_shopping_list_item',
-          { yacht_id: user.yachtId, shopping_list_item_id: itemId },
+          { yacht_id: activeVesselId || user?.yachtId || "", shopping_list_item_id: itemId },
           {
             rejection_reason: rejectionReason,
             ...(rejectionNotes && { rejection_notes: rejectionNotes }),
@@ -116,13 +118,13 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
         throw error;
       }
     },
-    [user?.yachtId, canApproveReject, onSuccess, onError]
+    [activeVesselId || user?.yachtId, canApproveReject, onSuccess, onError]
   );
 
   // Action: Promote Candidate to Part (Engineers only)
   const promoteToPart = useCallback(
     async (itemId: string) => {
-      if (!user?.yachtId || !canPromoteToPart) {
+      if (!(activeVesselId || user?.yachtId) || !canPromoteToPart) {
         const error = new Error('Not authorized to promote items to parts');
         onError?.(error);
         throw error;
@@ -131,7 +133,7 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
       try {
         const result = await executeAction(
           'promote_candidate_to_part',
-          { yacht_id: user.yachtId, shopping_list_item_id: itemId },
+          { yacht_id: activeVesselId || user?.yachtId || "", shopping_list_item_id: itemId },
           {}
         );
         onSuccess?.();
@@ -142,7 +144,7 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
         throw error;
       }
     },
-    [user?.yachtId, canPromoteToPart, onSuccess, onError]
+    [activeVesselId || user?.yachtId, canPromoteToPart, onSuccess, onError]
   );
 
   // Action: Link to Work Order (Navigation - All crew)

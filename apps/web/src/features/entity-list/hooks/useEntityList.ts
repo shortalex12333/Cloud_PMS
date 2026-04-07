@@ -2,6 +2,7 @@
 
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import type { FetchParams, FetchResponse, EntityAdapter, EntityListResult } from '../types';
 
 const PAGE_SIZE = 50;
@@ -19,7 +20,8 @@ export function useEntityList<T extends { id: string }>({
 }: UseEntityListOptions<T>) {
   const { user, session } = useAuth();
   const token = session?.access_token;
-  const yachtId = user?.yachtId;
+  const { vesselId: activeVesselId } = useActiveVessel();
+  const yachtId = activeVesselId || user?.yachtId;
 
   const query = useInfiniteQuery({
     queryKey: [...queryKey, yachtId],
