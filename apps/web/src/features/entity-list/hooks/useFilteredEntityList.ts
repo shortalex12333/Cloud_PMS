@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * useFilteredEntityList — React Query hook that queries Supabase directly
- * with server-side filtering, sorting, and pagination.
+ * useFilteredEntityList — React Query hook that fetches entity data
+ * from the Render API (pipeline-core).
  *
- * Replaces the old pattern of fetchFn → callCelesteApi → Python backend.
- * Filters are applied at the Supabase query level for efficiency.
+ * Architecture: Frontend → Render API → Tenant Supabase
+ * Frontend does NOT query tenant DB directly.
+ * See: docs/Explanations/DB_architecture.md
  */
 
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -17,24 +18,88 @@ import { isDateRange } from '../types/filter-config';
 import type { EntityListResult, EntityAdapter } from '../types';
 
 const PAGE_SIZE = 50;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
+/** Map frontend domain slugs to API domain params */
+const DOMAIN_MAP: Record<string, string> = {
+  'work-orders': 'work_orders',
+  faults: 'faults',
+  equipment: 'equipment',
+  inventory: 'parts',
+  certificates: 'certificates',
+  documents: 'documents',
+  'handover-export': 'handover',
+  'hours-of-rest': 'hours_of_rest',
+  'shopping-list': 'shopping_list',
+  purchasing: 'purchase_orders',
+  receiving: 'receiving',
+  warranties: 'warranty',
+};
 
 interface UseFilteredEntityListOptions<T> {
-  /** React Query key */
   queryKey: string[];
-  /** Supabase table name */
+  /** Supabase table name — kept for backwards compat but no longer used for queries */
   table: string;
-  /** Columns to select */
+  /** Columns — kept for backwards compat but no longer used */
   columns: string;
-  /** Adapter to convert raw row to EntityListResult */
+  /** Adapter to convert raw API record to EntityListResult */
   adapter: EntityAdapter<T>;
-  /** Active filters to apply */
+  /** Active filters */
   filters?: ActiveFilters;
-  /** Sort column (default: created_at) */
+  /** Sort column */
   sortBy?: string;
-  /** Sort direction (default: desc) */
+  /** Sort direction */
   sortDir?: 'asc' | 'desc';
-  /** Keys of filters that should use ilike (text search) instead of eq */
+  /** Text fields — no longer needed (API handles search) */
   textFields?: Set<string>;
+}
+
+/** Convert API record to the shape adapters expect */
+function apiRecordToAdapterInput(record: Record<string, unknown>, domain: string): Record<string, unknown> {
+  // Map API response fields to what the adapters expect
+  return {
+    id: record.id,
+    title: record.title,
+    description: record.meta,
+    status: record.status,
+    severity: record.severity,
+    priority: record.priority || record.severity,
+
+    // Work orders
+    wo_number: record.ref?.toString().replace('WO-', ''),
+    equipment_id: record.linked_equipment_id,
+    equipment_name: record.linked_equipment_name,
+    assigned_to: record.assigned_to,
+    assigned_to_name: record.assigned_to,
+    due_date: record.due_date,
+
+    // Faults
+    fault_code: record.ref?.toString().replace('F-', ''),
+    fault_number: record.ref?.toString().replace('F-', ''),
+    reported_by_name: record.assigned_to,
+
+    // Parts
+    name: record.title,
+    part_number: record.ref,
+    quantity_on_hand: record.stock_level ?? record.quantity_on_hand,
+    minimum_quantity: record.min_stock ?? record.minimum_quantity,
+    location: record.location,
+    category: record.category,
+
+    // Certificates
+    certificate_name: record.title,
+    certificate_number: record.ref,
+    certificate_type: record.certificate_type,
+    issuing_authority: record.issuing_authority,
+    expiry_date: record.expiry_date,
+
+    // Generic
+    created_at: record.updated_at || record.created_at || new Date().toISOString(),
+    updated_at: record.updated_at,
+
+    // Pass through everything else
+    ...record,
+  };
 }
 
 export function useFilteredEntityList<T extends { id: string }>({
@@ -47,9 +112,13 @@ export function useFilteredEntityList<T extends { id: string }>({
   sortDir = 'desc',
   textFields,
 }: UseFilteredEntityListOptions<T>) {
-  const { user, session } = useAuth();
-  const { vesselId } = useActiveVessel();
-  const yachtId = vesselId || user?.yachtId;
+  const { user } = useAuth();
+  const { vesselId: activeVesselId } = useActiveVessel();
+  const effectiveVesselId = activeVesselId || user?.yachtId;
+
+  // Derive API domain from queryKey or table name
+  const domain = queryKey[0] || '';
+  const apiDomain = DOMAIN_MAP[domain] || domain.replace(/-/g, '_');
 
   const filterKeys = Object.entries(filters)
     .sort(([a], [b]) => a.localeCompare(b))
@@ -57,114 +126,85 @@ export function useFilteredEntityList<T extends { id: string }>({
     .join('&');
 
   const query = useInfiniteQuery({
-    queryKey: [...queryKey, yachtId, filterKeys, sortBy, sortDir],
+    queryKey: [...queryKey, effectiveVesselId, filterKeys, sortBy, sortDir],
     queryFn: async ({ pageParam = 0 }) => {
-      if (!yachtId) throw new Error('Not authenticated');
+      if (!effectiveVesselId) throw new Error('No vessel selected');
 
-      let q = supabase
-        .from(table)
-        .select(columns, { count: 'exact' });
+      // Get auth token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
 
-      // Filter out test/seed data on tables that have the is_seed column
-      // Enriched views (v_*) have is_seed built in, but filter here too for raw table queries
-      const SEED_FILTERED_TABLES = [
-        'pms_work_orders', 'pms_faults', 'pms_parts',
-        'pms_receiving', 'pms_shopping_list_items', 'pms_purchase_orders',
-        'pms_warranty_claims', 'doc_metadata',
-        'pms_equipment', 'pms_vessel_certificates', 'pms_hours_of_rest',
-      ];
-      if (SEED_FILTERED_TABLES.includes(table)) {
-        q = q.eq('is_seed', false);
-      }
+      // Build query params
+      const params = new URLSearchParams();
+      params.set('limit', String(PAGE_SIZE));
+      params.set('offset', String(pageParam));
+      if (sortBy) params.set('sort', sortBy);
 
-      // Apply filters
+      // Map filters to API params
       for (const [key, value] of Object.entries(filters)) {
         if (value == null) continue;
-
-        // Special computed filters (prefixed with _)
-        if (key === '_stock_status') {
-          if (value === 'out') {
-            q = q.eq('quantity_on_hand', 0);
-          } else if (value === 'low') {
-            q = q.gt('quantity_on_hand', 0).not('minimum_quantity', 'is', null);
-            // Can't express qty <= min in a single PostgREST filter, so we'll filter client-side
-          } else if (value === 'in_stock') {
-            q = q.gt('quantity_on_hand', 0);
-          }
-          continue;
-        }
-
         if (isDateRange(value)) {
-          const range = value as DateRange;
-          if (range.from) q = q.gte(key, range.from);
-          if (range.to) q = q.lte(key, range.to + 'T23:59:59');
+          if (value.from) params.set('date_from', value.from);
+          if (value.to) params.set('date_to', value.to);
           continue;
         }
-
-        if (Array.isArray(value)) {
-          q = q.in(key, value);
-          continue;
-        }
-
-        if (typeof value === 'string') {
-          // Text search: use ilike for fields marked as text in config, eq for selects
-          if (textFields?.has(key)) {
-            q = q.ilike(key, `%${value}%`);
-          } else {
-            q = q.eq(key, value);
-          }
-          continue;
+        if (key === 'status' && typeof value === 'string') {
+          params.set('status', value);
+        } else if (key === 'title' && typeof value === 'string') {
+          params.set('q', value);
+        } else if (typeof value === 'string') {
+          params.set(key, value);
         }
       }
 
-      // Sort and paginate
-      q = q.order(sortBy, { ascending: sortDir === 'asc' })
-        .range(pageParam, pageParam + PAGE_SIZE - 1);
+      const url = `${API_BASE}/api/vessel/${effectiveVesselId}/domain/${apiDomain}/records?${params.toString()}`;
 
-      const { data, error, count } = await q;
-      if (error) throw new Error(error.message);
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      let rows = (data ?? []) as unknown as T[];
-
-      // Client-side filter for computed fields that can't be expressed in PostgREST
-      if (filters._stock_status === 'low') {
-        rows = rows.filter((r) => {
-          const rec = r as unknown as Record<string, unknown>;
-          const qty = (rec.quantity_on_hand as number) ?? 0;
-          const min = (rec.minimum_quantity as number) ?? 0;
-          return min > 0 && qty <= min && qty > 0;
-        });
+      if (!response.ok) {
+        throw new Error(`API ${response.status}: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      const records = data.records || data.items || [];
+      const totalCount = data.total_count ?? data.filtered_count ?? records.length;
+
+      // Convert API records through adapter
+      const items: EntityListResult[] = records.map((record: Record<string, unknown>) => {
+        const mapped = apiRecordToAdapterInput(record, apiDomain) as T;
+        return adapter(mapped);
+      });
 
       return {
-        items: rows.map(adapter),
-        rawItems: rows,
-        total: count ?? 0,
-        nextOffset: pageParam + PAGE_SIZE,
+        items,
+        total: totalCount,
+        nextOffset: pageParam + PAGE_SIZE < totalCount ? pageParam + PAGE_SIZE : undefined,
       };
     },
-    getNextPageParam: (lastPage) => {
-      if (lastPage.nextOffset >= lastPage.total) return undefined;
-      return lastPage.nextOffset;
-    },
     initialPageParam: 0,
-    enabled: !!yachtId,
-    staleTime: 30_000,
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
+    enabled: !!effectiveVesselId,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
   });
 
-  const items: EntityListResult[] = query.data?.pages.flatMap(p => p.items) ?? [];
-  const rawItems: T[] = query.data?.pages.flatMap(p => p.rawItems) ?? [];
+  // Flatten pages
+  const items = query.data?.pages.flatMap((p) => p.items) ?? [];
   const total = query.data?.pages[0]?.total ?? 0;
 
   return {
     items,
-    rawItems,
     total,
     isLoading: query.isLoading,
     isFetchingNextPage: query.isFetchingNextPage,
-    hasNextPage: query.hasNextPage,
+    hasNextPage: query.hasNextPage ?? false,
     fetchNextPage: query.fetchNextPage,
     error: query.error,
-    refetch: query.refetch,
   };
 }
