@@ -39,6 +39,10 @@ interface TopbarProps {
   onSettingsClick?: () => void;
   /** Compact mode: hide vessel name, separators, role badge */
   compact?: boolean;
+  /** Called when mobile nav hamburger is tapped (mobile only) */
+  onNavToggle?: () => void;
+  /** Whether to show the nav hamburger (mobile only) */
+  showNavToggle?: boolean;
 }
 
 export function Topbar({
@@ -51,6 +55,8 @@ export function Topbar({
   onCommandCenterClick,
   onSettingsClick,
   compact,
+  onNavToggle,
+  showNavToggle,
 }: TopbarProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -108,6 +114,32 @@ export function Topbar({
         zIndex: 100,
       }}
     >
+      {/* Mobile nav toggle */}
+      {showNavToggle && (
+        <button
+          onClick={onNavToggle}
+          aria-label="Open navigation"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--txt3)',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            flexShrink: 0,
+            transition: 'background 80ms',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          <LayoutGrid style={{ width: 14, height: 14 }} />
+        </button>
+      )}
+
       {/* Brand */}
       <div
         style={{

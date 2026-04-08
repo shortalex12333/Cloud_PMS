@@ -214,6 +214,29 @@ function AppShellInner({
   const breakpoint = useBreakpoint();
   const sidebarWidth = breakpoint === 'mobile' ? 0 : breakpoint === 'tablet' ? 48 : 192;
   const showSidebar = breakpoint !== 'mobile';
+  const isMobile = breakpoint === 'mobile';
+
+  // Mobile nav drawer state
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const mobileNavRef = React.useRef<HTMLDivElement>(null);
+
+  // Close mobile nav on outside click
+  React.useEffect(() => {
+    if (!mobileNavOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (mobileNavRef.current && !mobileNavRef.current.contains(e.target as Node)) {
+        setMobileNavOpen(false);
+      }
+    };
+    window.addEventListener('mousedown', handler);
+    return () => window.removeEventListener('mousedown', handler);
+  }, [mobileNavOpen]);
+
+  // Close mobile nav on domain selection
+  const handleMobileDomainSelect = React.useCallback((domain: Parameters<typeof onSelectDomain>[0]) => {
+    onSelectDomain(domain);
+    setMobileNavOpen(false);
+  }, [onSelectDomain]);
 
   return (
     <div
@@ -243,6 +266,8 @@ function AppShellInner({
         onCommandCenterClick={onCommandCenterClick}
         onSettingsClick={onSettingsClick}
         compact={breakpoint === 'tablet' || breakpoint === 'mobile'}
+        showNavToggle={isMobile}
+        onNavToggle={() => setMobileNavOpen((v) => !v)}
       />
 
       {/* Row 2: Subbar (hidden on Vessel Surface) */}
@@ -286,6 +311,48 @@ function AppShellInner({
           {children}
         </main>
       </div>
+
+      {/* Mobile nav drawer — slide-over sidebar */}
+      {isMobile && (
+        <>
+          {/* Backdrop */}
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.50)',
+              zIndex: 150,
+              opacity: mobileNavOpen ? 1 : 0,
+              visibility: mobileNavOpen ? 'visible' : 'hidden',
+              transition: 'opacity 200ms ease',
+            }}
+          />
+          {/* Drawer */}
+          <div
+            ref={mobileNavRef}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: 220,
+              background: 'var(--surface-base)',
+              borderRight: '1px solid var(--border-sub)',
+              zIndex: 160,
+              transform: mobileNavOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 200ms ease',
+              overflowY: 'auto',
+              paddingTop: 48,
+            }}
+          >
+            <Sidebar
+              activeDomain={activeDomain}
+              onSelectDomain={handleMobileDomainSelect}
+              counts={sidebarCounts}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
