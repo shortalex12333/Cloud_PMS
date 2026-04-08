@@ -13,7 +13,11 @@ from typing import Optional
 
 from mappers.date_normalizer import normalize_date
 from mappers.status_mapper import map_status, CANONICAL_STATUSES
+from mappers.source_profiles import get_file_reference_columns
 from handlers.schema_mapping import get_table
+from services.file_reference_resolver import (
+    FileReferenceResolver, FileResolutionResult, summarize_resolutions,
+)
 
 logger = logging.getLogger("import.service")
 
@@ -80,6 +84,8 @@ def transform_row(
     warnings = []
     result = {}
 
+    file_refs = []  # collected file reference values from _file_ref: sentinel columns
+
     # Apply column mappings
     for mapping in column_map:
         source_col = mapping.get("source")
@@ -87,6 +93,20 @@ def transform_row(
         action = mapping.get("action", "skip")
 
         if action == "skip" or not target_col:
+            continue
+
+        # File reference: collect for resolver, don't map to entity column
+        # Handles both legacy _file_ref: sentinel AND new link_as_document action
+        if action == "link_as_document" or (target_col and target_col.startswith("_file_ref:")):
+            ref_column = source_col
+            if target_col and target_col.startswith("_file_ref:"):
+                ref_column = target_col.split(":", 1)[1]
+            value = source_row.get(source_col, "")
+            if value and str(value).strip():
+                file_refs.append({
+                    "column": ref_column,
+                    "raw_reference": str(value).strip(),
+                })
             continue
 
         value = source_row.get(source_col, "")
@@ -220,7 +240,47 @@ def transform_row(
                     result["source_id"] = str(val).strip()
                     break
 
-    return result, warnings
+    return result, warnings, file_refs
+
+
+def resolve_file_references(
+    collected_refs: list[dict],
+    source: str,
+    domain: str,
+    supabase_client,
+    yacht_id: str,
+) -> list[FileResolutionResult]:
+    """
+    Resolve file references collected during transform against the yacht's documents.
+
+    Args:
+        collected_refs: List of {csv_row, column, raw_reference} dicts
+        source: PMS source name (e.g., "idea_yacht")
+        domain: Entity domain (e.g., "parts")
+        supabase_client: Shared Supabase client
+        yacht_id: Yacht UUID
+
+    Returns:
+        List of FileResolutionResult
+    """
+    if not collected_refs:
+        return []
+
+    file_ref_columns = get_file_reference_columns(source, domain)
+    resolver = FileReferenceResolver(supabase_client, yacht_id)
+
+    # Enrich each reference with document_type_hint from the profile
+    enriched = []
+    for ref in collected_refs:
+        col_meta = file_ref_columns.get(ref["column"], {})
+        enriched.append({
+            "raw_reference": ref["raw_reference"],
+            "document_type_hint": col_meta.get("document_type_hint"),
+            "csv_row": ref.get("csv_row"),
+            "column": ref["column"],
+        })
+
+    return resolver.resolve_batch(enriched)
 
 
 def dry_run_domain(
@@ -231,6 +291,7 @@ def dry_run_domain(
     yacht_id: str,
     session_id: str,
     date_format: Optional[str] = None,
+    supabase_client=None,
 ) -> dict:
     """
     Dry-run a domain: transform all rows, validate, count results.
@@ -244,16 +305,19 @@ def dry_run_domain(
             "errors": int,
             "warnings_count": int,
             "warnings": [...],
-            "first_10": [...]
+            "first_10": [...],
+            "file_resolutions": [...],
+            "resolution_summary": {...},
         }
     """
     all_warnings = []
     transformed = []
+    all_file_refs = []
     errors = 0
 
     for row_idx, row in enumerate(rows):
         try:
-            result, row_warnings = transform_row(
+            result, row_warnings, file_refs = transform_row(
                 row, column_map, domain, source, yacht_id, session_id, date_format
             )
             # Add row index to warnings
@@ -262,6 +326,11 @@ def dry_run_domain(
                 w["domain"] = domain
             all_warnings.extend(row_warnings)
             transformed.append(result)
+
+            # Collect file references with row index
+            for ref in file_refs:
+                ref["csv_row"] = row_idx
+            all_file_refs.extend(file_refs)
         except Exception as e:
             errors += 1
             all_warnings.append({
@@ -272,6 +341,15 @@ def dry_run_domain(
                 "domain": domain,
             })
 
+    # Resolve file references if we have a supabase client
+    file_resolutions = []
+    resolution_summary = {"total": 0, "resolved": 0, "unresolved": 0, "by_match_type": {}}
+    if all_file_refs and supabase_client:
+        file_resolutions = resolve_file_references(
+            all_file_refs, source, domain, supabase_client, yacht_id
+        )
+        resolution_summary = summarize_resolutions(file_resolutions)
+
     return {
         "total": len(rows),
         "new": len(transformed),
@@ -280,6 +358,8 @@ def dry_run_domain(
         "warnings_count": len(all_warnings),
         "warnings": all_warnings,
         "first_10": transformed[:10],
+        "file_resolutions": [r.to_dict() for r in file_resolutions],
+        "resolution_summary": resolution_summary,
     }
 
 
@@ -292,9 +372,14 @@ def commit_domain(
     session_id: str,
     supabase_client,
     date_format: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> tuple[int, list[str]]:
     """
     Commit a domain: transform rows and INSERT into entity table + search_index.
+    Also resolves file references and creates document links.
+
+    Args:
+        user_id: UUID of the authenticated user (for uploaded_by on attachment tables).
 
     Returns:
         (records_created, entity_ids)
@@ -307,11 +392,15 @@ def commit_domain(
         return 0, []
 
     transformed = []
-    for row in rows:
-        result, _ = transform_row(
+    all_file_refs = []
+    for row_idx, row in enumerate(rows):
+        result, _, file_refs = transform_row(
             row, column_map, domain, source, yacht_id, session_id, date_format
         )
         transformed.append(result)
+        for ref in file_refs:
+            ref["csv_row"] = row_idx
+        all_file_refs.extend(file_refs)
 
     if not transformed:
         return 0, []
@@ -367,6 +456,95 @@ def commit_domain(
                 logger.warning(f"[Import] search_index upsert warning for {domain}: {e}")
                 # Non-fatal — projection worker will catch up
 
+    # Resolve file references and create document links
+    unresolved_refs = []
+    if all_file_refs and entity_ids:
+        file_resolutions = resolve_file_references(
+            all_file_refs, source, domain, supabase_client, yacht_id
+        )
+        file_ref_columns = get_file_reference_columns(source, domain)
+
+        for resolution in file_resolutions:
+            if not resolution.resolved:
+                unresolved_refs.append({
+                    "row": resolution.csv_row,
+                    "column": resolution.column,
+                    "value": resolution.raw_reference,
+                })
+                continue
+
+            # Determine which entity this file ref belongs to
+            row_idx = resolution.csv_row
+            if row_idx is None or row_idx >= len(entity_ids):
+                continue
+            entity_id = entity_ids[row_idx]
+
+            col_meta = file_ref_columns.get(resolution.column, {})
+            link_table = col_meta.get("link_table", "pms_attachments")
+
+            try:
+                if link_table == "pms_equipment_documents":
+                    equip_doc_row = {
+                        "id": str(uuid.uuid4()),
+                        "yacht_id": yacht_id,
+                        "equipment_id": entity_id,
+                        "document_id": resolution.document_id,
+                        "storage_path": resolution.storage_path,
+                        "filename": resolution.filename,
+                        "document_type": col_meta.get("document_type_hint", "general"),
+                    }
+                    if user_id:
+                        equip_doc_row["uploaded_by"] = user_id
+                    supabase_client.table("pms_equipment_documents").insert(equip_doc_row).execute()
+                else:
+                    # Polymorphic attachment
+                    # mime_type, file_size, uploaded_by are NOT NULL on pms_attachments
+                    attach_row = {
+                        "id": str(uuid.uuid4()),
+                        "yacht_id": yacht_id,
+                        "entity_type": col_meta.get("entity_type", domain),
+                        "entity_id": entity_id,
+                        "filename": resolution.filename or resolution.raw_reference,
+                        "original_filename": resolution.raw_reference,
+                        "mime_type": "application/octet-stream",
+                        "file_size": 0,
+                        "storage_path": resolution.storage_path,
+                        "description": f"Linked during import (match: {resolution.match_type}, confidence: {resolution.confidence})",
+                    }
+                    if user_id:
+                        attach_row["uploaded_by"] = user_id
+                    supabase_client.table("pms_attachments").insert(attach_row).execute()
+
+                logger.info(
+                    "[Import] Linked doc %s → entity %s via %s (match=%s, conf=%.2f)",
+                    resolution.document_id, entity_id, link_table,
+                    resolution.match_type, resolution.confidence,
+                )
+            except Exception as e:
+                logger.warning(
+                    "[Import] Failed to link doc %s → entity %s: %s",
+                    resolution.document_id, entity_id, e,
+                )
+                unresolved_refs.append({
+                    "row": row_idx,
+                    "column": resolution.column,
+                    "value": resolution.raw_reference,
+                    "error": str(e),
+                })
+
+        # Store unresolved refs in import session metadata
+        if unresolved_refs:
+            try:
+                supabase_client.table("import_sessions").update({
+                    "metadata": {"unresolved_file_refs": unresolved_refs},
+                }).eq("id", session_id).execute()
+                logger.info(
+                    "[Import] %d unresolved file refs stored in session %s",
+                    len(unresolved_refs), session_id,
+                )
+            except Exception as e:
+                logger.warning("[Import] Could not store unresolved refs: %s", e)
+
     return len(entity_ids), entity_ids
 
 
@@ -396,11 +574,31 @@ def rollback_domain(
             return 0
 
         # Soft delete from entity table (set deleted_at, not DELETE)
+        now = datetime.now(timezone.utc).isoformat()
         supabase_client.table(table_name).update({
-            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "deleted_at": now,
         }).eq(
             "import_session_id", session_id
         ).eq("yacht_id", yacht_id).is_("deleted_at", "null").execute()
+
+        # Clean up document links created during import
+        for eid in entity_ids:
+            # pms_equipment_documents has NO deleted_at — hard delete is allowed
+            try:
+                supabase_client.table("pms_equipment_documents").delete().eq(
+                    "equipment_id", eid
+                ).eq("yacht_id", yacht_id).execute()
+            except Exception:
+                pass
+            # pms_attachments supports soft delete
+            try:
+                supabase_client.table("pms_attachments").update({
+                    "deleted_at": now,
+                }).eq("entity_id", eid).eq("yacht_id", yacht_id).is_(
+                    "deleted_at", "null"
+                ).execute()
+            except Exception:
+                pass
 
         # Remove from search_index (search_index may allow hard deletes)
         object_type = DOMAIN_TO_OBJECT_TYPE.get(domain)

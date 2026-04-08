@@ -3,8 +3,32 @@ Base parser types for the import pipeline.
 All parsers return ParseResult instances.
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Optional
+
+
+# Regex to detect file references in column values
+_FILE_REF_PATTERN = re.compile(
+    r'(?:'
+    r'[A-Za-z]:\\[^\s,;]+\.\w{2,4}'           # Windows path: C:\PMS\doc.pdf
+    r'|/[^\s,;]+\.\w{2,4}'                     # Unix path: /PMS/docs/report.pdf
+    r'|[^\s,;/\\]+\.(?:pdf|jpg|jpeg|png|doc|docx|xls|xlsx|tif|tiff|bmp|gif|txt|rtf|msg|eml)'
+    r')',
+    re.IGNORECASE,
+)
+
+
+def looks_like_file_ref(sample_values: list[str]) -> float:
+    """
+    Return 0.0-1.0 confidence that sample values contain file references.
+    Checks for Windows/Unix paths and common document file extensions.
+    """
+    non_empty = [v for v in sample_values if v and str(v).strip()]
+    if not non_empty:
+        return 0.0
+    hits = sum(1 for v in non_empty if _FILE_REF_PATTERN.search(str(v)))
+    return hits / len(non_empty)
 
 
 @dataclass

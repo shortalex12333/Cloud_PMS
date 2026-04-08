@@ -561,6 +561,7 @@ async def dry_run(
                 yacht_id=yacht_id,
                 session_id=session_id,
                 date_format=date_format,
+                supabase_client=sb,
             )
             domains[domain] = {
                 "total": domain_result["total"],
@@ -568,6 +569,8 @@ async def dry_run(
                 "duplicates": domain_result["duplicates"],
                 "errors": domain_result["errors"],
                 "warnings_count": domain_result["warnings_count"],
+                "file_resolutions": domain_result.get("file_resolutions", []),
+                "resolution_summary": domain_result.get("resolution_summary", {}),
             }
             warnings.extend(domain_result["warnings"])
             first_10[domain] = domain_result["first_10"]
@@ -583,12 +586,24 @@ async def dry_run(
     total_records = sum(d["total"] for d in domains.values())
     has_errors = any(d["errors"] > 0 for d in domains.values())
 
+    # Aggregate file reference resolution summary across all domains
+    file_ref_total = sum(d.get("resolution_summary", {}).get("total", 0) for d in domains.values())
+    file_ref_resolved = sum(d.get("resolution_summary", {}).get("resolved", 0) for d in domains.values())
+    file_ref_summary = None
+    if file_ref_total > 0:
+        file_ref_summary = {
+            "total": file_ref_total,
+            "matched": file_ref_resolved,
+            "placeholders": file_ref_total - file_ref_resolved,
+        }
+
     preview_summary = {
         "domains": domains,
         "total_records": total_records,
         "can_commit": not has_errors and total_records > 0,
         "warnings": warnings,
         "first_10": first_10,
+        "file_ref_summary": file_ref_summary,
     }
 
     # Store preview
@@ -637,6 +652,19 @@ async def commit_import(
     sb.table("import_sessions").update({"status": "importing"}).eq("id", session_id).execute()
 
     logger.info(f"[Import] Session {session_id[:8]}: commit started")
+
+    # Resolve user UUID for uploaded_by on attachment tables
+    user_id = None
+    email = auth.get("email")
+    if email:
+        try:
+            user_result = sb.table("auth_users_profiles").select("id").eq(
+                "yacht_id", yacht_id
+            ).limit(1).execute()
+            if user_result.data:
+                user_id = user_result.data[0]["id"]
+        except Exception as e:
+            logger.warning(f"[Import] Could not resolve user UUID: {e}")
 
     detection = sess.get("detection_result", {})
     data_files = detection.get("data_files", [])
@@ -690,6 +718,7 @@ async def commit_import(
                     session_id=session_id,
                     supabase_client=sb,
                     date_format=date_format,
+                    user_id=user_id,
                 )
                 records_created[domain] = count
             except Exception as e:
@@ -786,6 +815,43 @@ async def rollback_import(
 
 
 # =============================================================================
+# GET /api/import/session/{session_id}/unresolved
+# =============================================================================
+
+@router.get("/session/{session_id}/unresolved")
+async def get_unresolved_refs(
+    session_id: str,
+    request: Request,
+    x_import_dev_token: Optional[str] = Header(None),
+):
+    """
+    Get unresolved file references for an import session.
+    Useful for manual resolution or reporting on missing documents.
+    """
+    auth = resolve_auth(request, x_import_dev_token)
+    yacht_id = auth["yacht_id"]
+    sb = get_tenant_client()
+
+    result = sb.table("import_sessions").select(
+        "id, status, metadata"
+    ).eq("id", session_id).eq("yacht_id", yacht_id).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Import session not found")
+
+    sess = result.data[0]
+    metadata = sess.get("metadata") or {}
+    unresolved = metadata.get("unresolved_file_refs", [])
+
+    return {
+        "session_id": session_id,
+        "status": sess["status"],
+        "unresolved_file_refs": unresolved,
+        "count": len(unresolved),
+    }
+
+
+# =============================================================================
 # HELPERS
 # =============================================================================
 
@@ -793,6 +859,9 @@ def _parse_result_to_dict(result: ParseResult, source: str = "generic") -> dict:
     """Convert ParseResult to JSON-serializable dict for detection_result.
     Includes column mapping suggestions from the column matcher."""
     domain = result.domain_hint
+
+    # Build sample values dict for file ref detection
+    col_samples = {col.source_name: col.sample_values for col in result.columns}
 
     # Run column matcher if we have a domain
     column_mappings = {}
@@ -805,6 +874,7 @@ def _parse_result_to_dict(result: ParseResult, source: str = "generic") -> dict:
             domain=domain_for_profile,
             source=source,
             vocabulary=vocab,
+            column_samples=col_samples,
         )
         column_mappings = {m.source_name: m for m in mappings}
 
@@ -823,7 +893,12 @@ def _parse_result_to_dict(result: ParseResult, source: str = "generic") -> dict:
                 "confidence": column_mappings[col.source_name].confidence if col.source_name in column_mappings else 0.0,
                 "action": column_mappings[col.source_name].action if col.source_name in column_mappings else "skip",
                 "sample_values": col.sample_values[:5],
-                "inferred_type": col.inferred_type,
+                # Use column matcher's inferred_type (file_ref) if detected, otherwise parser's type
+                "inferred_type": (
+                    column_mappings[col.source_name].inferred_type
+                    if col.source_name in column_mappings and column_mappings[col.source_name].inferred_type
+                    else col.inferred_type
+                ),
             }
             for col in result.columns
         ],
