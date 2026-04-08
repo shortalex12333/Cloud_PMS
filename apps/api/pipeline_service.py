@@ -1316,7 +1316,7 @@ class QueryRequest(BaseModel):
 # Allowed tables for direct query (security whitelist)
 QUERYABLE_TABLES = {
     'pms_equipment', 'pms_faults', 'pms_work_orders', 'pms_parts',
-    'pms_notes', 'pms_attachments', 'pms_audit_log', 'pms_handover',
+    'pms_notes', 'pms_attachments', 'pms_audit_log', 'handover_items',
     'pms_purchase_orders', 'pms_suppliers', 'pms_worklist_tasks',
     'documents', 'email_threads', 'email_messages', 'email_links'
 }
