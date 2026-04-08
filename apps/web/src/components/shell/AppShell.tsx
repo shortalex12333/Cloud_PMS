@@ -24,6 +24,7 @@ import { useSidebarCounts } from './hooks';
 import { ShellProvider, useShellContext } from './ShellContext';
 import { SearchOverlay } from './SearchOverlay';
 import { useBreakpoint } from './useBreakpoint';
+import SettingsModal from '@/components/SettingsModal';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -118,6 +119,8 @@ export function AppShell({ children }: AppShellProps) {
 
   // Global search overlay state
   const [searchOpen, setSearchOpen] = React.useState(false);
+  // Settings modal state (rendered here, not inside SpotlightSearch)
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   // Topbar menu handlers
   const handleEmailClick = React.useCallback(() => {
@@ -125,7 +128,7 @@ export function AppShell({ children }: AppShellProps) {
   }, [router]);
 
   const handleSettingsClick = React.useCallback(() => {
-    window.dispatchEvent(new CustomEvent('openSettingsModal'));
+    setSettingsOpen(true);
   }, []);
 
   const showSubbar = activeDomain !== 'surface';
@@ -146,6 +149,7 @@ export function AppShell({ children }: AppShellProps) {
         {children}
       </AppShellInner>
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </ShellProvider>
   );
 }
