@@ -41,7 +41,7 @@ import time
 import logging
 import math
 import hashlib
-import signal
+from workers.shutdown import register_shutdown, is_shutting_down
 import uuid
 from typing import List, Dict, Any
 
@@ -81,22 +81,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Graceful shutdown
-_shutdown = False
+# Graceful shutdown (shared across all workers)
+register_shutdown()
 
 # Circuit breaker state
 _circuit_failures = 0
 _circuit_open_until = 0.0  # timestamp when circuit can close
-
-
-def signal_handler(signum, frame):
-    """Handle SIGINT/SIGTERM for graceful shutdown."""
-    global _shutdown
-    logger.info("Received shutdown signal, finishing current batch...")
-    _shutdown = True
-
-
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
 
 
 # ============================================================================
@@ -650,8 +640,6 @@ def _connection_is_alive(conn) -> bool:
 
 def main():
     """Main worker loop with connection resilience and circuit-breaker awareness."""
-    global _shutdown
-
     if not DB_DSN:
         logger.error("DATABASE_URL not set")
         return 1
@@ -686,7 +674,7 @@ def main():
     total_processed = 0
     start_time = time.time()
 
-    while not _shutdown:
+    while not is_shutting_down():
         # -- Connect (or reconnect) ----------------------------------------
         conn = None
         try:
@@ -758,7 +746,7 @@ def main():
         empty_batches = 0
 
         # -- Inner batch-processing loop -----------------------------------
-        while not _shutdown:
+        while not is_shutting_down():
             try:
                 # Health-check: detect silent TCP drops before each batch.
                 if not _connection_is_alive(conn):
@@ -800,7 +788,7 @@ def main():
                 )
                 # Sleep in small increments so SIGTERM is still handled promptly.
                 deadline = time.time() + wait
-                while not _shutdown and time.time() < deadline:
+                while not is_shutting_down() and time.time() < deadline:
                     time.sleep(min(5, deadline - time.time()))
 
             except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
@@ -831,7 +819,7 @@ def main():
         if conn is not None:
             try:
                 # Attempt final stats only on clean shutdown (not mid-reconnect).
-                if _shutdown:
+                if is_shutting_down():
                     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                         stats = get_embedding_stats(cur)
                         elapsed = time.time() - start_time

@@ -42,7 +42,7 @@ import json
 import re
 import hashlib
 import logging
-import signal
+from workers.shutdown import register_shutdown, is_shutting_down
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
@@ -80,19 +80,8 @@ except ImportError:
         "[ProjectionWorker] entity_serializer_sync not available — using legacy text build"
     )
 
-# Graceful shutdown flag
-_shutdown = False
-
-
-def signal_handler(signum, frame):
-    """Handle SIGINT/SIGTERM for graceful shutdown."""
-    global _shutdown
-    logging.getLogger('projection_worker').info("Received shutdown signal, finishing current batch...")
-    _shutdown = True
-
-
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
+# Graceful shutdown (shared across all workers)
+register_shutdown()
 
 # =============================================================================
 # LOGGING
@@ -861,7 +850,7 @@ def run_worker():
     reconnect_delay = 5
     reconnect_attempts = 0
 
-    while not _shutdown:
+    while not is_shutting_down():
         conn = None
         cur = None
         try:
@@ -891,7 +880,7 @@ def run_worker():
 
             logger.info("Starting worker loop...")
 
-            while not _shutdown:
+            while not is_shutting_down():
                 # Connection health check before processing each batch
                 try:
                     cur.execute("SELECT 1")
@@ -912,7 +901,7 @@ def run_worker():
                 logger.info(f"Processing {len(items)} items...")
 
                 for item in items:
-                    if _shutdown:
+                    if is_shutting_down():
                         break
 
                     object_type = item['object_type']

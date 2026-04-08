@@ -38,7 +38,7 @@ import os
 import sys
 import time
 import logging
-import signal
+from workers.shutdown import register_shutdown, is_shutting_down
 from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
 from dataclasses import dataclass
@@ -68,19 +68,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Graceful shutdown
-_shutdown = False
-
-
-def signal_handler(signum, frame):
-    """Handle SIGINT/SIGTERM for graceful shutdown."""
-    global _shutdown
-    logger.info("Received shutdown signal, finishing current batch...")
-    _shutdown = True
-
-
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
+# Graceful shutdown (shared across all workers)
+register_shutdown()
 
 
 # ============================================================================
@@ -168,7 +157,7 @@ def stream_aggregated_clicks(
             (min_clicks, lookback_days)
         )
 
-        while not _shutdown:
+        while not is_shutting_down():
             rows = cur.fetchmany(BATCH_SIZE)
             if not rows:
                 break
@@ -218,7 +207,7 @@ def apply_learned_keywords(
 
     with conn.cursor() as cur:
         for i in range(0, len(items), BATCH_SIZE):
-            if _shutdown:
+            if is_shutting_down():
                 logger.info("Shutdown requested, stopping early")
                 break
 
@@ -286,7 +275,7 @@ def record_learned_bridges(
     # Collect all bridge data for batch insert
     bridge_data = []
     for (yacht_id, object_type, object_id), keywords in object_keywords.items():
-        if _shutdown:
+        if is_shutting_down():
             break
         for query_text in keywords:
             bridge_data.append((yacht_id, object_type, object_id, query_text))
@@ -340,7 +329,7 @@ def cleanup_old_clicks(conn, retention_days: int = 90) -> int:
     logger.info(f"Cleaning up clicks older than {retention_days} days")
 
     with conn.cursor() as cur:
-        while not _shutdown:
+        while not is_shutting_down():
             cur.execute(
                 """
                 DELETE FROM search_click_events
