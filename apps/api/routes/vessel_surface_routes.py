@@ -347,6 +347,16 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
 
         critical_count = sum(1 for f in fault_items if (f.get("severity") or "").lower() == "critical")
 
+        # Resolve equipment names for faults (same pattern as work orders)
+        fault_equip_ids = list({f.get("equipment_id") for f in fault_top if f.get("equipment_id")})
+        fault_equip_names = {}
+        if fault_equip_ids:
+            try:
+                eq_r = supabase.table("pms_equipment").select("id, name").in_("id", fault_equip_ids).execute()
+                fault_equip_names = {e["id"]: e.get("name", "") for e in (eq_r.data or [])}
+            except Exception:
+                pass
+
         result["faults"] = {
             "open_count": len(fault_items),
             "critical_count": critical_count,
@@ -354,12 +364,13 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
                 {
                     "id": f.get("id"),
                     **({"yacht_id": f.get("yacht_id")} if is_overview else {}),
-                    "ref": f.get("fault_code") or f"F-{str(f.get('id', ''))[:6]}",
+                    "ref": f.get("fault_code") or "",
                     "title": f.get("title", ""),
                     "severity": f.get("severity", "normal"),
                     "status": f.get("status", "open"),
                     "assigned_to": f.get("assigned_to", ""),
                     "equipment_id": f.get("equipment_id"),
+                    "equipment_name": fault_equip_names.get(f.get("equipment_id"), ""),
                     "age_display": _age_display(f.get("created_at")),
                 }
                 for f in fault_top
@@ -801,7 +812,7 @@ def _format_record(domain: str, record: dict) -> dict:
 
     if domain == "work_orders":
         base.update({
-            "ref": f"WO-{str(record.get('id', ''))[:6]}",
+            "ref": record.get("wo_number") or "",
             "title": record.get("title", ""),
             "status": record.get("status", "open"),
             "priority": record.get("priority", "normal"),
@@ -811,7 +822,7 @@ def _format_record(domain: str, record: dict) -> dict:
         })
     elif domain == "faults":
         base.update({
-            "ref": f"F-{str(record.get('id', ''))[:6]}",
+            "ref": record.get("fault_code") or "",
             "title": record.get("title", ""),
             "status": record.get("status", "open"),
             "severity": record.get("severity", "normal"),

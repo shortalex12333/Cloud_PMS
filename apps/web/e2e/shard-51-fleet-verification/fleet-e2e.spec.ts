@@ -403,6 +403,26 @@ test.describe('10. C3: Cross-vessel lens detail', () => {
     // Verify we're on faults page
     expect(page.url()).toContain('/faults');
 
+    // Capture the domain records API response to verify yacht_id is present
+    let apiYachtId: string | null = null;
+    page.on('response', async (response) => {
+      const url = response.url();
+      if (url.includes('/domain/') && url.includes('/records')) {
+        try {
+          const json = await response.json();
+          const firstRecord = json?.records?.[0];
+          if (firstRecord?.yacht_id) {
+            apiYachtId = firstRecord.yacht_id;
+          }
+          console.log('[C3 DEBUG] API response vessel_id in URL:', url.includes('all') ? 'all' : 'single',
+            'first record yacht_id:', firstRecord?.yacht_id || 'MISSING');
+        } catch { /* ignore non-JSON responses */ }
+      }
+    });
+
+    // Wait for data to load after sidebar navigation
+    await page.waitForTimeout(3000);
+
     // HARD: Click a fault row
     const row = page.locator('div:has-text("F·")').filter({ has: page.locator('[style*="cursor: pointer"]') }).first();
     await expect(row).toBeVisible({ timeout: 10_000 });
@@ -413,7 +433,7 @@ test.describe('10. C3: Cross-vessel lens detail', () => {
     const url = page.url();
     const hasYachtId = url.includes('yacht_id=');
     const hasId = url.includes('id=');
-    record('c3-lens-yacht-id', hasYachtId && hasId, `URL: ${url}`);
+    record('c3-lens-yacht-id', hasYachtId && hasId, `URL: ${url}, API yacht_id: ${apiYachtId || 'not captured'}`);
     await page.screenshot({ path: 'evidence/c3-lens-yacht-id.png' });
     expect(hasId).toBe(true);
     expect(hasYachtId).toBe(true);
