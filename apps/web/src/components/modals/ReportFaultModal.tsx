@@ -204,25 +204,25 @@ export function ReportFaultModal({
               <SelectContent>
                 <SelectItem value="low">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className="h-2 w-2 rounded-full" style={{ background: 'var(--green)' }} />
                     Low - Minor issue, no immediate impact
                   </span>
                 </SelectItem>
                 <SelectItem value="medium">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                    <span className="h-2 w-2 rounded-full" style={{ background: 'var(--amber)' }} />
                     Medium - Affects performance, needs attention
                   </span>
                 </SelectItem>
                 <SelectItem value="high">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-orange-500" />
+                    <span className="h-2 w-2 rounded-full" style={{ background: 'var(--amber)' }} />
                     High - Significant impact, urgent repair needed
                   </span>
                 </SelectItem>
                 <SelectItem value="critical">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    <span className="h-2 w-2 rounded-full" style={{ background: 'var(--red)' }} />
                     Critical - Safety issue or system down
                   </span>
                 </SelectItem>

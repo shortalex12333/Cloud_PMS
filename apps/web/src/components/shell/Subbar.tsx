@@ -268,6 +268,7 @@ export function Subbar({
             <button
               key={chip}
               onClick={() => onChipClick?.(chip)}
+              aria-pressed={active}
               style={{
                 height: 20,
                 padding: '0 8px',
