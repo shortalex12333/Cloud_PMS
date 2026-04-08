@@ -29,6 +29,7 @@ from services.handover_export_service import HandoverExportService, create_expor
 from services.handover_html_parser import parse_handover_html
 from services.handover_microservice_client import HandoverMicroserviceClient
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 
 logger = logging.getLogger(__name__)
 
@@ -63,19 +64,19 @@ class ExportResponse(BaseModel):
 async def generate_export(
     request: ExportRequest,
     auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     db_client=Depends(lambda: None)  # Will be injected by app
 ) -> ExportResponse:
     """
     Generate a handover export.
 
-    Pulls items from the unified view (both pms_handover and handover_items),
+    Pulls items from the unified view (handover_items),
     groups by section, enriches with entity details, and generates HTML.
 
     Returns export metadata. Use /export/{export_id}/html to get the content.
     """
     try:
-        # SECURITY: yacht_id and user_id ONLY from auth context - never trust query params
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         user_id = auth['user_id']
 
         # Get db client from app state (injected via dependency)
@@ -420,6 +421,7 @@ async def generate_export(
 async def generate_export_html(
     request: ExportRequest,
     auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
 ) -> Response:
     """
     Generate and return HTML export directly.
@@ -428,8 +430,7 @@ async def generate_export_html(
     directly instead of just metadata.
     """
     try:
-        # SECURITY: yacht_id and user_id ONLY from auth context - never trust query params
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
         user_id = auth['user_id']
 
         from integrations.supabase import get_supabase_client
@@ -467,6 +468,7 @@ async def generate_export_html(
 @router.get("/exports")
 async def list_exports(
     auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
@@ -476,8 +478,7 @@ async def list_exports(
     Returns export records with metadata (not the actual HTML content).
     """
     try:
-        # SECURITY: yacht_id ONLY from auth context - never trust query params
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
 
         from integrations.supabase import get_supabase_client
         db = get_supabase_client()
@@ -503,14 +504,14 @@ async def list_exports(
 @router.get("/export/{export_id}")
 async def get_export(
     export_id: str,
-    auth: dict = Depends(get_authenticated_user)
+    auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
 ):
     """
     Get export record by ID.
     """
     try:
-        # SECURITY: yacht_id ONLY from auth context - never trust query params
-        yacht_id = auth['yacht_id']
+        yacht_id = resolve_yacht_id(auth, yacht_id)
 
         from integrations.supabase import get_supabase_client
         db = get_supabase_client()
