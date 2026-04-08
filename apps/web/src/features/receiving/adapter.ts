@@ -31,7 +31,7 @@ export function receivingToListResult(item: ReceivingItem): EntityListResult {
   return {
     id: item.id,
     type: 'pms_receiving',
-    title: item.supplier_name || `Receiving ${item.receiving_number || item.id.slice(0, 8)}`,
+    title: item.supplier_name || `Receiving ${item.receiving_number || 'Receiving'}`,
     subtitle: `${statusDisplay}${dateDisplay ? ` \u00b7 ${dateDisplay}` : ''}${item.items_count ? ` \u00b7 ${item.items_count} items` : ''}`,
     snippet: item.description || item.notes,
     metadata: {
@@ -43,7 +43,7 @@ export function receivingToListResult(item: ReceivingItem): EntityListResult {
     },
 
     // Extended fields for EntityRecordRow
-    entityRef: item.receiving_number || item.id.slice(0, 8),
+    entityRef: item.receiving_number || '',
     assignedTo: undefined,
     status: statusDisplay,
     statusVariant: receivingStatusVariant(item.status),

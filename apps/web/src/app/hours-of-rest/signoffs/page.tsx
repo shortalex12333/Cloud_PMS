@@ -187,7 +187,7 @@ function SignoffRow({
   isSelected: boolean;
   onClick: () => void;
 }) {
-  const displayName = signoff.user?.name ?? signoff.user?.email ?? signoff.user_id.slice(0, 8);
+  const displayName = signoff.user?.name ?? signoff.user?.email ?? 'Crew Member';
   const initials = getInitials(displayName);
 
   return (

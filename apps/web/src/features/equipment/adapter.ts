@@ -7,7 +7,7 @@ export function equipmentToListResult(equipment: Equipment): EntityListResult {
   return {
     id: equipment.id,
     type: 'pms_equipment',
-    title: equipment.name || `Equipment ${equipment.equipment_number || equipment.id.slice(0, 8)}`,
+    title: equipment.name || `Equipment ${equipment.equipment_number || 'Equipment'}`,
     subtitle: `${statusDisplay}${equipment.category ? ` \u00b7 ${equipment.category}` : ''}${equipment.location ? ` \u00b7 ${equipment.location}` : ''}`,
     snippet: equipment.description,
     metadata: {
@@ -20,7 +20,7 @@ export function equipmentToListResult(equipment: Equipment): EntityListResult {
     },
 
     // Extended fields for EntityRecordRow
-    entityRef: equipment.equipment_number || equipment.id.slice(0, 8),
+    entityRef: equipment.equipment_number || '',
     equipmentName: equipment.manufacturer && equipment.model
       ? `${equipment.manufacturer} ${equipment.model}`
       : undefined,

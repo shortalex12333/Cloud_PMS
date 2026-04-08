@@ -45,6 +45,7 @@ interface SurfaceWorkOrder {
   assigned: string;
   status: 'open' | 'overdue' | 'due_soon' | 'in_progress';
   age: string;
+  yacht_id?: string;
 }
 
 interface SurfaceFault {
@@ -54,6 +55,7 @@ interface SurfaceFault {
   equipment: string;
   severity: 'critical' | 'warning' | 'open';
   age: string;
+  yacht_id?: string;
 }
 
 interface SurfaceHandover {
@@ -62,6 +64,7 @@ interface SurfaceHandover {
   to: string;
   date: string;
   status: 'signed' | 'pending' | 'draft';
+  yacht_id?: string;
 }
 
 interface SurfacePart {
@@ -70,6 +73,7 @@ interface SurfacePart {
   stock: number;
   minStock: number;
   location: string;
+  yacht_id?: string;
 }
 
 interface SurfaceActivityItem {
@@ -101,23 +105,25 @@ export function VesselSurface() {
   const workOrders = liveData?.work_orders?.items?.length
     ? liveData.work_orders.items.map((wo) => ({
         id: wo.id,
-        ref: wo.id.replace('-', '\u00b7'),
+        ref: wo.ref || wo.wo_number || wo.title?.slice(0, 12) || 'WO',
         title: wo.title,
         equipment: wo.equipment_name || wo.equipment_id || '',
         assigned: wo.assigned_to || 'Unassigned',
         status: wo.status as SurfaceWorkOrder['status'],
         age: wo.age_days !== undefined ? `${wo.age_days}d` : '\u2014',
+        yacht_id: wo.yacht_id,
       }))
     : [];
 
   const faults = liveData?.faults?.items?.length
     ? liveData.faults.items.map((f) => ({
         id: f.id,
-        ref: f.id.replace('-', '\u00b7'),
+        ref: f.ref || f.fault_code || f.title?.slice(0, 12) || 'Fault',
         title: f.title,
         equipment: f.equipment_name || f.equipment_id || '',
         severity: (f.severity || f.status || 'open') as SurfaceFault['severity'],
         age: f.age_days !== undefined ? `${f.age_days}d` : '\u2014',
+        yacht_id: f.yacht_id,
       }))
     : [];
 
@@ -128,6 +134,7 @@ export function VesselSurface() {
         to: liveData.last_handover.to_crew,
         date: new Date(liveData.last_handover.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
         status: (liveData.last_handover.is_draft ? 'draft' : liveData.last_handover.status) as SurfaceHandover['status'],
+        yacht_id: (liveData.last_handover as any).yacht_id,
       }
     : null;
 
@@ -138,6 +145,7 @@ export function VesselSurface() {
         stock: p.stock_level,
         minStock: p.min_stock,
         location: p.location || '',
+        yacht_id: (p as any).yacht_id,
       }))
     : [];
 
@@ -211,7 +219,7 @@ export function VesselSurface() {
             meta={wo.equipment}
             pill={{ label: wo.status.replace('_', ' '), variant: statusToVariant(wo.status) }}
             time={wo.age}
-            onClick={() => router.push(`/work-orders?id=${wo.id}`)}
+            onClick={() => router.push(`/work-orders?id=${wo.id}${wo.yacht_id ? `&yacht_id=${wo.yacht_id}` : ''}`)}
           />
         ))}
         <SurfaceFooter
@@ -242,7 +250,7 @@ export function VesselSurface() {
             meta={f.equipment}
             pill={{ label: f.severity, variant: f.severity === 'critical' ? 'critical' : f.severity === 'warning' ? 'warn' : 'open' }}
             time={f.age}
-            onClick={() => router.push(`/faults?id=${f.id}`)}
+            onClick={() => router.push(`/faults?id=${f.id}${f.yacht_id ? `&yacht_id=${f.yacht_id}` : ''}`)}
           />
         ))}
         <SurfaceFooter
@@ -271,7 +279,7 @@ export function VesselSurface() {
             title={<>{handover.from} → {handover.to}</>}
             meta={handover.date}
             pill={{ label: handover.status, variant: handover.status === 'signed' ? 'signed' : handover.status === 'draft' ? 'warn' : 'open' }}
-            onClick={() => router.push(`/handover-export?id=${handover.id}`)}
+            onClick={() => router.push(`/handover-export?id=${handover.id}${handover.yacht_id ? `&yacht_id=${handover.yacht_id}` : ''}`)}
           />
         ) : (
           <div style={{ padding: '12px 0', fontSize: 11, color: 'var(--txt-ghost)' }}>No handover data</div>
@@ -293,7 +301,7 @@ export function VesselSurface() {
             title={p.name}
             meta={`${p.location} \u00b7 ${p.stock}/${p.minStock} in stock`}
             stockBar={{ current: p.stock, min: p.minStock }}
-            onClick={() => router.push(`/inventory?id=${p.id}`)}
+            onClick={() => router.push(`/inventory?id=${p.id}${p.yacht_id ? `&yacht_id=${p.yacht_id}` : ''}`)}
           />
         ))}
         <SurfaceFooter
@@ -357,7 +365,7 @@ export function VesselSurface() {
             meta={`Expires in ${c.daysRemaining} days`}
             pill={{ label: c.status, variant: c.status === 'expiring' ? 'warn' : c.status === 'expired' ? 'critical' : 'open' }}
             time={`${c.daysRemaining}d`}
-            onClick={() => router.push(`/certificates?id=${c.id}`)}
+            onClick={() => router.push(`/certificates?id=${c.id}${(c as any).yacht_id ? `&yacht_id=${(c as any).yacht_id}` : ''}`)}
           />
         ))}
       </SurfaceCard>

@@ -34,7 +34,7 @@ export function partToListResult(part: Part): EntityListResult {
     },
 
     // Extended fields for EntityRecordRow
-    entityRef: part.part_number || part.id.slice(0, 8),
+    entityRef: part.part_number || '',
     equipmentName: undefined,
     assignedTo: undefined,
     status: stockLabel,

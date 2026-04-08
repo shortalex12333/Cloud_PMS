@@ -27,9 +27,9 @@ function warrantyAdapter(w: Warranty): EntityListResult {
   return {
     id: w.id,
     type: 'pms_warranty_claims',
-    title: w.title || w.claim_number || w.id.slice(0, 8),
+    title: w.title || w.claim_number || 'Warranty',
     subtitle: `${status}${w.vendor_name ? ` \u00b7 ${w.vendor_name}` : ''}`,
-    entityRef: w.claim_number || w.id.slice(0, 8),
+    entityRef: w.claim_number || 'Warranty',
     status,
     statusVariant: w.status === 'expired' ? 'critical' : w.status === 'expiring_soon' ? 'warning' : 'open',
     severity: w.status === 'expired' ? 'critical' : w.status === 'expiring_soon' ? 'warning' : null,

@@ -54,8 +54,8 @@ export function workOrderToListResult(wo: WorkOrder): EntityListResult {
     },
 
     // Extended fields for EntityRecordRow
-    entityRef: wo.wo_number ? `WO\u00b7${wo.wo_number}` : wo.id.slice(0, 8),
-    equipmentRef: wo.equipment_id ? wo.equipment_id.slice(0, 8) : undefined,
+    entityRef: wo.wo_number ? `WO\u00b7${wo.wo_number}` : '',
+    equipmentRef: undefined,
     equipmentName: wo.equipment_name || undefined,
     assignedTo: wo.assigned_to_name || (wo.assigned_to && !isUUID(wo.assigned_to) ? wo.assigned_to : undefined),
     status: statusDisplay,

@@ -25,7 +25,7 @@ export function shoppingListToListResult(item: ShoppingListItem): EntityListResu
   return {
     id: item.id,
     type: 'pms_shopping_list',
-    title: item.part_name || `Item ${item.part_number || item.id.slice(0, 8)}`,
+    title: item.part_name || `Item ${item.part_number || 'Item'}`,
     subtitle: `${statusDisplay} \u00b7 Qty: ${item.quantity_requested}${item.unit_of_measure ? ` ${item.unit_of_measure}` : ''}${priorityDisplay ? ` \u00b7 ${priorityDisplay}` : ''}`,
     snippet: item.description || item.notes,
     metadata: {
@@ -38,7 +38,7 @@ export function shoppingListToListResult(item: ShoppingListItem): EntityListResu
     },
 
     // Extended fields for EntityRecordRow
-    entityRef: item.part_number || item.id.slice(0, 8),
+    entityRef: item.part_number || '',
     assignedTo: item.requested_by_name || undefined,
     status: statusDisplay,
     statusVariant: slStatusVariant(item.status),

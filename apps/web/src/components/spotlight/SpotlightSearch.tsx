@@ -179,7 +179,7 @@ function mapAPIResult(result: APISearchResult): SpotlightResult {
 
   // Final fallback
   if (!title) {
-    title = result.id ? `Document ${result.id.substring(0, 8)}` : 'Untitled Document';
+    title = 'Untitled Document';
   }
 
   // Try to construct subtitle from available fields

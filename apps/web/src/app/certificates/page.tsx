@@ -28,9 +28,9 @@ function certAdapter(c: Certificate): EntityListResult {
   return {
     id: c.id,
     type: 'pms_vessel_certificates',
-    title: c.certificate_name || c.certificate_number || c.id.slice(0, 8),
+    title: c.certificate_name || c.certificate_number || 'Certificate',
     subtitle: `${c.certificate_type || ''} · ${c.issuing_authority || ''}`.replace(/^ · |· $/g, ''),
-    entityRef: c.certificate_number || c.id.slice(0, 8),
+    entityRef: c.certificate_number || 'Certificate',
     status,
     statusVariant: c.status === 'expired' ? 'critical' : c.status === 'expiring_soon' ? 'warning' : 'open',
     severity: c.status === 'expired' ? 'critical' : c.status === 'expiring_soon' ? 'warning' : null,

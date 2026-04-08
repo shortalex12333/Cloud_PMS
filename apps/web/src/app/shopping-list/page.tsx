@@ -110,7 +110,7 @@ function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => vo
           <p className="text-xs text-txt-tertiary font-mono">{data.part_number}</p>
         )}
         <h2 className="text-xl font-semibold text-txt-primary">
-          {data.part_name || `Item ${data.part_number || data.id.slice(0, 8)}`}
+          {data.part_name || `Item ${data.part_number || 'Item'}`}
         </h2>
       </div>
       <div className="flex gap-2">

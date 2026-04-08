@@ -9,6 +9,10 @@ import { VesselProvider } from '@/contexts/VesselContext';
 export const metadata: Metadata = {
   title: 'CelesteOS - Engineering Intelligence for Yachts',
   description: 'Cloud-first AI-driven engineering intelligence system',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
 export default function RootLayout({

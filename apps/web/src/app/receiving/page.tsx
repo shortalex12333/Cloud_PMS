@@ -69,7 +69,7 @@ function ReceivingDetail({ id }: { id: string }) {
           <p className="text-xs text-txt-tertiary font-mono">{data.receiving_number}</p>
         )}
         <h2 className="text-xl font-semibold text-txt-primary">
-          {data.supplier_name || `Receiving ${data.receiving_number || data.id.slice(0, 8)}`}
+          {data.supplier_name || `Receiving ${data.receiving_number || 'Receiving'}`}
         </h2>
       </div>
       <div className="flex gap-2">

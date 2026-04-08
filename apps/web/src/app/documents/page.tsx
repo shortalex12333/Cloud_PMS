@@ -22,14 +22,14 @@ interface Document {
 }
 
 function docAdapter(doc: Document): EntityListResult {
-  const title = doc.filename || doc.id.slice(0, 8);
+  const title = doc.filename || 'Untitled';
   const docType = doc.doc_type?.replace(/_/g, ' ') || 'Document';
   return {
     id: doc.id,
     type: 'doc_metadata',
     title,
     subtitle: `${docType}${doc.oem ? ` \u00b7 ${doc.oem}` : ''}${doc.model ? ` ${doc.model}` : ''}`,
-    entityRef: doc.id.slice(0, 8),
+    entityRef: '',
     status: docType,
     statusVariant: 'open',
     severity: null,
