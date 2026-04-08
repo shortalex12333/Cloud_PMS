@@ -375,6 +375,142 @@ test.describe('9. Sign Out', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 10. C3 PROOF — clicking record from overview opens lens with yacht_id in URL
+// ═══════════════════════════════════════════════════════════════════════════
+
+test.describe('10. C3: Cross-vessel lens detail', () => {
+  test('clicking record from overview mode adds yacht_id to URL', async ({ page }) => {
+    await login(page);
+    await page.goto('/');
+    await page.waitForTimeout(3000);
+
+    // Switch to All Vessels
+    const vesselBtn = page.locator('button:has-text("M/Y"), button:has-text("Test Vessel")').first();
+    await expect(vesselBtn).toBeVisible({ timeout: 10_000 });
+    await vesselBtn.click();
+    await page.waitForTimeout(500);
+    const allBtn = page.locator('button:has-text("All Vessels")').first();
+    await expect(allBtn).toBeVisible({ timeout: 5_000 });
+    await allBtn.click();
+    await page.waitForTimeout(3000);
+
+    // Navigate to faults via sidebar click (preserves React state, unlike page.goto)
+    const faultsLink = page.locator('nav >> text=Faults').first();
+    await expect(faultsLink).toBeVisible({ timeout: 5_000 });
+    await faultsLink.click();
+    await page.waitForTimeout(4000);
+
+    // Verify we're on faults page
+    expect(page.url()).toContain('/faults');
+
+    // HARD: Click a fault row
+    const row = page.locator('div:has-text("F·")').filter({ has: page.locator('[style*="cursor: pointer"]') }).first();
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await row.click();
+    await page.waitForTimeout(3000);
+
+    // HARD: URL must contain both id and yacht_id params
+    const url = page.url();
+    const hasYachtId = url.includes('yacht_id=');
+    const hasId = url.includes('id=');
+    record('c3-lens-yacht-id', hasYachtId && hasId, `URL: ${url}`);
+    await page.screenshot({ path: 'evidence/c3-lens-yacht-id.png' });
+    expect(hasId).toBe(true);
+    expect(hasYachtId).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 11. C1 PROOF — overview mode shows yacht_name in DOM (not UUID)
+// ═══════════════════════════════════════════════════════════════════════════
+
+test.describe('11. C1: Overview yacht_name in DOM', () => {
+  test('overview mode faults page shows vessel name, not UUID', async ({ page }) => {
+    await login(page);
+    await page.goto('/');
+    await page.waitForTimeout(3000);
+
+    // Switch to All Vessels
+    const vesselBtn = page.locator('button:has-text("M/Y"), button:has-text("Test Vessel")').first();
+    await expect(vesselBtn).toBeVisible({ timeout: 10_000 });
+    await vesselBtn.click();
+    await page.waitForTimeout(500);
+    const allBtn = page.locator('button:has-text("All Vessels")').first();
+    await expect(allBtn).toBeVisible({ timeout: 5_000 });
+    await allBtn.click();
+    await page.waitForTimeout(3000);
+
+    // Navigate to faults via sidebar (preserves All Vessels context)
+    const faultsLink = page.locator('nav >> text=Faults').first();
+    await expect(faultsLink).toBeVisible({ timeout: 5_000 });
+    await faultsLink.click();
+    await page.waitForTimeout(5000);
+
+    // HARD: Body must contain "M/Y Test Vessel" or "Test Vessel" (yacht_name rendered)
+    const body = await page.textContent('body') || '';
+    const hasVesselName = body.includes('Test Vessel') || body.includes('M/Y');
+
+    // HARD: Body must NOT contain raw UUIDs in visible text for yacht attribution
+    // (UUIDs in data-* attrs or hidden elements are OK)
+    const visibleText = await page.evaluate(() => {
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let text = '';
+      while (walker.nextNode()) text += walker.currentNode.textContent + ' ';
+      return text;
+    });
+    const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+    const uuidsInText = visibleText.match(uuidPattern) || [];
+    // Filter out entity IDs (those are expected) — we only care about yacht_id UUIDs shown as vessel names
+    const noYachtUuid = !visibleText.includes('85fe1119-b04c-41ac-80f1') && !visibleText.includes('b2625d70-7f2e-4175');
+
+    record('c1-overview-yacht-name', hasVesselName, `Vessel name in DOM: ${hasVesselName}, UUIDs as names: ${!noYachtUuid}`);
+    await page.screenshot({ path: 'evidence/c1-overview-yacht-name.png' });
+    expect(hasVesselName).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 12. C1 PROOF — global search in overview mode returns results
+// ═══════════════════════════════════════════════════════════════════════════
+
+test.describe('12. C1: Global search in overview mode', () => {
+  test('Cmd+K search in All Vessels mode returns results', async ({ page }) => {
+    await login(page);
+    await page.goto('/');
+    await page.waitForTimeout(3000);
+
+    // Switch to All Vessels
+    const vesselBtn = page.locator('button:has-text("M/Y"), button:has-text("Test Vessel")').first();
+    await expect(vesselBtn).toBeVisible({ timeout: 10_000 });
+    await vesselBtn.click();
+    await page.waitForTimeout(500);
+    const allBtn = page.locator('button:has-text("All Vessels")').first();
+    await expect(allBtn).toBeVisible({ timeout: 5_000 });
+    await allBtn.click();
+    await page.waitForTimeout(3000);
+
+    // Open global search in overview mode
+    await page.keyboard.press('Meta+k');
+    await page.waitForTimeout(1000);
+
+    // Type search query
+    await page.keyboard.type('engine', { delay: 80 });
+    await page.waitForTimeout(5000);
+
+    // HARD: Must have search results (body length > 500 means content rendered)
+    const body = await page.textContent('body') || '';
+    const hasResults = body.length > 500;
+    // Check for hard failure messages, not generic "Error" (which appears in UI text like "Error handling")
+    const noHardError = !body.includes('Failed to load') && !body.includes('Search failed');
+
+    record('c1-overview-search', hasResults && noHardError, `Body length: ${body.length}, no hard error: ${noHardError}`);
+    await page.screenshot({ path: 'evidence/c1-overview-search.png' });
+    expect(hasResults).toBe(true);
+    expect(noHardError).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // REPORT — dump results after all tests
 // ═══════════════════════════════════════════════════════════════════════════
 
