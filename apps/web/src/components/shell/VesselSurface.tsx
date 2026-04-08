@@ -103,6 +103,21 @@ export function VesselSurface() {
   const breakpoint = useBreakpoint();
   const gridCols = breakpoint === 'desktop' ? '1fr 1fr 1fr' : (breakpoint === 'laptop' || breakpoint === 'tablet') ? '1fr 1fr' : '1fr';
 
+  const navigateToDomain = React.useCallback(
+    (domain: DomainId) => {
+      const paths: Partial<Record<DomainId, string>> = {
+        'work-orders': '/work-orders',
+        faults: '/faults',
+        'handover-export': '/handover-export',
+        inventory: '/inventory',
+        certificates: '/certificates',
+      };
+      const path = paths[domain];
+      if (path) router.push(path);
+    },
+    [router]
+  );
+
   // Loading state
   if (isLoading) {
     return (
@@ -206,21 +221,6 @@ export function VesselSurface() {
   const faultCount = liveData?.faults?.open_count ?? 0;
   const partsCount = liveData?.parts_below_min?.count ?? 0;
   const certCount = liveData?.certificates_expiring?.count ?? 0;
-
-  const navigateToDomain = React.useCallback(
-    (domain: DomainId) => {
-      const paths: Partial<Record<DomainId, string>> = {
-        'work-orders': '/work-orders',
-        faults: '/faults',
-        'handover-export': '/handover-export',
-        inventory: '/inventory',
-        certificates: '/certificates',
-      };
-      const path = paths[domain];
-      if (path) router.push(path);
-    },
-    [router]
-  );
 
   return (
     <div
