@@ -49,13 +49,15 @@ export function VesselProvider({ children }: { children: React.ReactNode }) {
 
   // Default to primary vessel (user.yachtId), not "All Vessels"
   const [activeVesselId, setActiveVesselId] = React.useState<string | null>(null);
+  // Track whether user has explicitly chosen a vessel (prevents init effect from overriding "All Vessels")
+  const [hasUserSelected, setHasUserSelected] = React.useState(false);
 
-  // Initialise active vessel when user loads
+  // Initialise active vessel when user loads (only on first load, not after user selects "All Vessels")
   React.useEffect(() => {
-    if (user?.yachtId && activeVesselId === null) {
+    if (user?.yachtId && activeVesselId === null && !hasUserSelected) {
       setActiveVesselId(user.yachtId);
     }
-  }, [user?.yachtId, activeVesselId]);
+  }, [user?.yachtId, activeVesselId, hasUserSelected]);
 
   const activeVesselName = React.useMemo(() => {
     if (activeVesselId === null) return 'All Vessels';
@@ -69,10 +71,13 @@ export function VesselProvider({ children }: { children: React.ReactNode }) {
       vesselName: activeVesselName,
       vessels: fleetVessels,
       isFleetUser,
-      isAllVessels: activeVesselId === null,
-      setActiveVessel: setActiveVesselId,
+      isAllVessels: activeVesselId === null && hasUserSelected,
+      setActiveVessel: (id: string | null) => {
+        setHasUserSelected(true);
+        setActiveVesselId(id);
+      },
     }),
-    [activeVesselId, activeVesselName, fleetVessels, isFleetUser]
+    [activeVesselId, activeVesselName, fleetVessels, isFleetUser, hasUserSelected]
   );
 
   return (
