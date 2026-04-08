@@ -364,10 +364,12 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
             return None
 
         # ── Multi-vessel / fleet support ────────────────────────────────────
-        # If fleet_vessel_ids is set, user has access to multiple vessels.
-        # Build vessel_ids array. If NULL, single-vessel mode (backward compatible).
+        # Fleet overview requires BOTH fleet_vessel_ids populated AND an
+        # authorized role. Only manager/owner get fleet access — captains,
+        # engineers, and crew are single-vessel even if fleet_vessel_ids exists.
+        FLEET_ROLES = {'manager', 'owner'}
         raw_fleet_ids = user_account.get('fleet_vessel_ids')
-        if raw_fleet_ids and isinstance(raw_fleet_ids, list) and len(raw_fleet_ids) > 0:
+        if raw_fleet_ids and isinstance(raw_fleet_ids, list) and len(raw_fleet_ids) > 0 and tenant_role in FLEET_ROLES:
             vessel_ids = raw_fleet_ids
             # Ensure primary yacht_id is in the list
             if yacht_id not in vessel_ids:
