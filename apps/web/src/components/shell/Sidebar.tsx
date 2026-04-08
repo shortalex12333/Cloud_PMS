@@ -31,6 +31,7 @@ import {
   Award,
   File,
   Shield,
+  Mail,
 } from 'lucide-react';
 
 export type DomainId =
@@ -40,6 +41,7 @@ export type DomainId =
   | 'equipment'
   | 'handover-export'
   | 'hours-of-rest'
+  | 'email'
   | 'inventory'
   | 'shopping-list'
   | 'purchasing'
@@ -70,6 +72,7 @@ const DOMAIN_GROUPS: DomainGroup[] = [
       { id: 'equipment', label: 'Equipment', icon: Wrench },
       { id: 'handover-export', label: 'Handover', icon: FileSignature },
       { id: 'hours-of-rest', label: 'Hours of Rest', icon: Clock },
+      { id: 'email', label: 'Email', icon: Mail },
     ],
   },
   {

@@ -14,7 +14,7 @@
  */
 
 import * as React from 'react';
-import { Search, X, Menu, LogOut, User, Mail, Settings, LayoutGrid } from 'lucide-react';
+import { Search, X, Menu, LogOut, User, Settings, LayoutGrid } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
@@ -303,29 +303,6 @@ export function Topbar({
                 {roleName} · {vesselName}
               </div>
             </div>
-
-            {/* Email */}
-            <button
-              onClick={() => { setMenuOpen(false); onEmailClick?.(); }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                width: '100%',
-                padding: '10px 12px',
-                fontSize: 12,
-                color: 'var(--txt2)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'background 60ms',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <Mail style={{ width: 13, height: 13 }} />
-              Email
-            </button>
 
             {/* Command Center */}
             <button
