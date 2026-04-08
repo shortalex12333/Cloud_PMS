@@ -42,7 +42,7 @@ import json
 import re
 import hashlib
 import logging
-from workers.shutdown import register_shutdown, is_shutting_down
+from shutdown import register_shutdown, is_shutting_down
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
