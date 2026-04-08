@@ -313,16 +313,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Deduplicate: if bootstrap already succeeded, don't overwrite enriched user with base user
+    if (bootstrapDone.current || bootstrapInFlight.current) {
+      console.log('[AuthContext] Bootstrap skipped — already done or in flight');
+      setLoading(false);
+      return;
+    }
+
     // FAST PATH: Build user from session immediately (no RPC)
     const baseUser = buildUserFromSession(newSession);
     setUser(baseUser);
     setLoading(false);
-
-    // Deduplicate: skip if bootstrap already succeeded or is in progress
-    if (bootstrapDone.current || bootstrapInFlight.current) {
-      console.log('[AuthContext] Bootstrap skipped — already done or in flight');
-      return;
-    }
 
     // BACKGROUND: Fetch bootstrap data (yacht context) via Render API
     bootstrapInFlight.current = true;
