@@ -105,6 +105,17 @@
   --status-success:     var(--green);
   --status-success-bg:  var(--green-bg);
 
+  /* ── Button tokens ── */
+  --btn-primary-bg:         #f2f2f2;
+  --btn-primary-text:       #1e1e1e;
+  --btn-primary-border:     #f2f2f2;
+  --btn-ghost-hover-bg:     #323232;
+  --btn-secondary-border:   #404040;
+  --btn-secondary-hover-bg: #323232;
+  --btn-danger-bg:          var(--red);
+  --btn-danger-hover-bg:    #9B3F2E;
+  --btn-danger-text:        #ffffff;
+
   /* ── Shadow aliases (old names) ── */
   --shadow-sm: var(--shadow-tip);
   --shadow-md: var(--shadow-drop);
@@ -252,6 +263,17 @@
   --status-warning-bg:  var(--amber-bg);
   --status-success:     var(--green);
   --status-success-bg:  var(--green-bg);
+
+  /* ── Button tokens (light overrides) ── */
+  --btn-primary-bg:         #111111;
+  --btn-primary-text:       #ffffff;
+  --btn-primary-border:     #111111;
+  --btn-ghost-hover-bg:     #eeeeee;
+  --btn-secondary-border:   #e7e7e7;
+  --btn-secondary-hover-bg: #eeeeee;
+  --btn-danger-bg:          var(--red);
+  --btn-danger-hover-bg:    #9B3F2E;
+  --btn-danger-text:        #ffffff;
 
   /* ── Shadow aliases (old names) ── */
   --shadow-sm: var(--shadow-tip);
@@ -636,12 +658,7 @@
 }
 
 .btn-ghost:hover {
-  background: #eeeeee;
-}
-
-[data-theme="dark"] .btn-ghost:hover,
-.dark .btn-ghost:hover {
-  background: #323232;
+  background: var(--btn-ghost-hover-bg);
 }
 
 .btn-ghost:active {
@@ -654,15 +671,15 @@
   background: transparent;
 }
 
-/* Primary Button - SPEC: bg-[#111111] dark:bg-[#f2f2f2], 36px height, 10px radius, 500 weight */
+/* Primary Button - SPEC: 36px height, 10px radius, 500 weight */
 .btn-primary {
-  background: #111111;
-  color: #ffffff;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   font-size: var(--font-size-body);
   font-weight: 500;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid #111111;
+  border: 1px solid var(--btn-primary-border);
   height: 36px;
   min-height: 36px;
   cursor: pointer;
@@ -686,14 +703,6 @@
   cursor: not-allowed;
 }
 
-/* Primary Button - Dark Mode */
-[data-theme="dark"] .btn-primary,
-.dark .btn-primary {
-  background: #f2f2f2;
-  color: #1e1e1e;
-  border-color: #f2f2f2;
-}
-
 /* Secondary Button - SPEC: transparent bg, border-default, hover bg-highlight */
 .btn-secondary {
   background: transparent;
@@ -702,7 +711,7 @@
   font-weight: 500;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid #e7e7e7;
+  border: 1px solid var(--btn-secondary-border);
   height: 36px;
   min-height: 36px;
   cursor: pointer;
@@ -714,28 +723,17 @@
 }
 
 .btn-secondary:hover {
-  background: #eeeeee;
+  background: var(--btn-secondary-hover-bg);
 }
 
-/* Secondary Button - Dark Mode */
-[data-theme="dark"] .btn-secondary,
-.dark .btn-secondary {
-  border-color: #404040;
-}
-
-[data-theme="dark"] .btn-secondary:hover,
-.dark .btn-secondary:hover {
-  background: #323232;
-}
-
-/* Danger Button - SPEC: bg #dc2626, text #ffffff, border #dc2626 */
+/* Danger Button */
 .btn-danger {
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--btn-danger-bg);
+  color: var(--btn-danger-text);
   font-size: var(--font-size-action);
   font-weight: 500;
   padding: 0 12px;
-  border: 1px solid #dc2626;
+  border: 1px solid var(--btn-danger-bg);
   border-radius: 10px;
   height: 36px;
   min-height: 36px;
@@ -748,15 +746,15 @@
 }
 
 .btn-danger:hover {
-  background: #b91c1c;
-  border-color: #b91c1c;
+  background: var(--btn-danger-hover-bg);
+  border-color: var(--btn-danger-hover-bg);
 }
 
 /* Danger confirmation state */
 .btn-danger-confirm {
-  background: #dc2626;
-  color: #ffffff;
-  border-color: #dc2626;
+  background: var(--btn-danger-bg);
+  color: var(--btn-danger-text);
+  border-color: var(--btn-danger-bg);
 }
 
 /* Icon-Only Button (close, back, forward, settings) */
