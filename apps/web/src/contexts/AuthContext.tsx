@@ -294,6 +294,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshBootstrapRef.current = refreshBootstrap;
   }, [refreshBootstrap]);
 
+  // Guards to prevent duplicate bootstrap calls from multiple auth events
+  const bootstrapInFlight = useRef(false);
+  const bootstrapDone = useRef(false);
+
   /**
    * Handle session changes - fast path, sets user immediately from session
    * Then triggers background bootstrap for yacht context
@@ -305,6 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setLoading(false);
       setBootstrapping(false);
+      bootstrapDone.current = false; // Reset on logout
       return;
     }
 
@@ -313,16 +318,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(baseUser);
     setLoading(false);
 
+    // Deduplicate: skip if bootstrap already succeeded or is in progress
+    if (bootstrapDone.current || bootstrapInFlight.current) {
+      console.log('[AuthContext] Bootstrap skipped — already done or in flight');
+      return;
+    }
+
     // BACKGROUND: Fetch bootstrap data (yacht context) via Render API
+    bootstrapInFlight.current = true;
     setBootstrapping(true);
     const enrichedUser = await fetchBootstrap(baseUser, newSession.access_token);
     setUser(enrichedUser);
     setBootstrapping(false);
+    bootstrapInFlight.current = false;
+
+    if (enrichedUser.bootstrapStatus === 'active') {
+      bootstrapDone.current = true;
+    }
 
     // Schedule retry if bootstrap failed (using ref to get latest function)
     if (enrichedUser.bootstrapStatus === 'error') {
       bootstrapRetryRef.current = setTimeout(() => {
         console.log('[AuthContext] Retrying bootstrap after error...');
+        bootstrapDone.current = false; // Allow retry
         refreshBootstrapRef.current?.();
       }, 10000);
     }
