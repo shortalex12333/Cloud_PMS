@@ -173,8 +173,11 @@ function SurfaceItem({ active, onClick }: { active: boolean; onClick: () => void
   return (
     <div
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      tabIndex={0}
+      role="button"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -247,8 +250,11 @@ function DomainItem({
   return (
     <div
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      tabIndex={0}
+      role="button"
       style={{
         display: 'flex',
         alignItems: 'center',
