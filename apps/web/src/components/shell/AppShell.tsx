@@ -25,6 +25,8 @@ import { ShellProvider, useShellContext } from './ShellContext';
 import { SearchOverlay } from './SearchOverlay';
 import { useBreakpoint } from './useBreakpoint';
 import SettingsModal from '@/components/SettingsModal';
+import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
+import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -124,6 +126,9 @@ export function AppShell({ children }: AppShellProps) {
   const [searchOpen, setSearchOpen] = React.useState(false);
   // Settings modal state (rendered here, not inside SpotlightSearch)
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  // Create modal state for primary action buttons
+  const [createWOOpen, setCreateWOOpen] = React.useState(false);
+  const [reportFaultOpen, setReportFaultOpen] = React.useState(false);
 
   // Topbar menu handlers
   const handleEmailClick = React.useCallback(() => {
@@ -133,6 +138,22 @@ export function AppShell({ children }: AppShellProps) {
   const handleSettingsClick = React.useCallback(() => {
     setSettingsOpen(true);
   }, []);
+
+  // Primary action handler — opens create modal for domains that have one,
+  // navigates to domain page for others
+  const handlePrimaryAction = React.useCallback(() => {
+    switch (activeDomain) {
+      case 'work-orders':
+        setCreateWOOpen(true);
+        break;
+      case 'faults':
+        setReportFaultOpen(true);
+        break;
+      default:
+        // Domains without a create modal — navigate to domain (already there, but no-op is fine)
+        break;
+    }
+  }, [activeDomain]);
 
   const showSubbar = activeDomain !== 'surface';
 
@@ -149,11 +170,14 @@ export function AppShell({ children }: AppShellProps) {
         onEmailClick={handleEmailClick}
         onCommandCenterClick={() => setSearchOpen(true)}
         onSettingsClick={handleSettingsClick}
+        onPrimaryAction={handlePrimaryAction}
       >
         {children}
       </AppShellInner>
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <CreateWorkOrderModal open={createWOOpen} onOpenChange={setCreateWOOpen} />
+      <ReportFaultModal open={reportFaultOpen} onOpenChange={setReportFaultOpen} />
     </ShellProvider>
   );
 }
@@ -170,6 +194,7 @@ function AppShellInner({
   onEmailClick,
   onCommandCenterClick,
   onSettingsClick,
+  onPrimaryAction,
   children,
 }: {
   activeDomain: DomainId;
@@ -182,6 +207,7 @@ function AppShellInner({
   onEmailClick: () => void;
   onCommandCenterClick: () => void;
   onSettingsClick: () => void;
+  onPrimaryAction: () => void;
   children: React.ReactNode;
 }) {
   const { activeChip, setActiveChip, setSearchQuery, setActiveSort } = useShellContext();
@@ -227,6 +253,7 @@ function AppShellInner({
           onChipClick={setActiveChip}
           onSearch={setSearchQuery}
           onSortChange={setActiveSort}
+          onPrimaryAction={onPrimaryAction}
         />
       )}
 
