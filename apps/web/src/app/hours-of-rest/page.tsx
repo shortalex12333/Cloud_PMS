@@ -27,9 +27,9 @@ function horAdapter(r: HoRRecord): EntityListResult {
   return {
     id: r.id,
     type: 'pms_hours_of_rest',
-    title: r.crew_member_name || r.id.slice(0, 8),
+    title: r.crew_member_name || 'Rest Record',
     subtitle: `${date} · ${r.total_work_hours ?? 0}h work · ${r.total_rest_hours ?? 0}h rest`,
-    entityRef: r.record_date ? new Date(r.record_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : r.id.slice(0, 8),
+    entityRef: r.record_date ? new Date(r.record_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '',
     status,
     statusVariant: r.is_compliant === false ? 'critical' : r.status === 'pending' ? 'pending' : 'signed',
     severity: r.is_compliant === false ? 'critical' : null,

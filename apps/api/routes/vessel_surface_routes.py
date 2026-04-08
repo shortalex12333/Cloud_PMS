@@ -263,7 +263,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
 
     # ── Work Orders: top 3 by urgency ────────────────────────────────────────
     try:
-        wo_select = "id, title, status, priority, assigned_to, equipment_id, due_date, created_at"
+        wo_select = "id, title, wo_number, status, priority, assigned_to, equipment_id, due_date, created_at"
         if is_overview:
             wo_select = "yacht_id, " + wo_select
         wo_q = supabase.table("pms_work_orders").select(wo_select)
@@ -309,6 +309,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
                 {
                     "id": w.get("id"),
                     **({"yacht_id": w.get("yacht_id")} if is_overview else {}),
+                    "ref": w.get("wo_number") or f"WO-{str(w.get('id', ''))[:6]}",
                     "title": w.get("title", ""),
                     "equipment_id": w.get("equipment_id"),
                     "equipment_name": equip_names.get(w.get("equipment_id"), ""),
@@ -330,7 +331,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
 
     # ── Faults: top 3 by severity ────────────────────────────────────────────
     try:
-        f_select = "id, title, status, severity, equipment_id, created_at"
+        f_select = "id, title, fault_code, status, severity, equipment_id, created_at"
         if is_overview:
             f_select = "yacht_id, " + f_select
         f_q = supabase.table("pms_faults").select(f_select)
@@ -353,6 +354,7 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
                 {
                     "id": f.get("id"),
                     **({"yacht_id": f.get("yacht_id")} if is_overview else {}),
+                    "ref": f.get("fault_code") or f"F-{str(f.get('id', ''))[:6]}",
                     "title": f.get("title", ""),
                     "severity": f.get("severity", "normal"),
                     "status": f.get("status", "open"),

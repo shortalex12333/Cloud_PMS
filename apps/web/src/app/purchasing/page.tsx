@@ -26,9 +26,9 @@ function poAdapter(po: PurchaseOrder): EntityListResult {
   return {
     id: po.id,
     type: 'pms_purchase_orders',
-    title: po.po_number ? `PO ${po.po_number}` : `PO ${po.id.slice(0, 8)}`,
+    title: po.po_number ? `PO ${po.po_number}` : 'PO',
     subtitle: status,
-    entityRef: po.po_number || po.id.slice(0, 8),
+    entityRef: po.po_number || 'PO',
     status,
     statusVariant: po.status === 'received' ? 'signed' : po.status === 'cancelled' ? 'cancelled' : po.status === 'ordered' ? 'in_progress' : 'open',
     severity: null,

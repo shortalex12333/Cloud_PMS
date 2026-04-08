@@ -73,6 +73,9 @@ export interface VesselSurfaceResponse {
 export interface SurfaceItem {
   id: string;
   title: string;
+  ref?: string;
+  wo_number?: string;
+  fault_code?: string;
   equipment_id?: string;
   equipment_name?: string;
   assigned_to?: string;
@@ -81,6 +84,8 @@ export interface SurfaceItem {
   age_days?: number;
   due_date?: string;
   severity?: string;
+  yacht_id?: string;
+  yacht_name?: string;
 }
 
 export interface SurfacePartItem {

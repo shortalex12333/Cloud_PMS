@@ -37,7 +37,7 @@ export function faultToListResult(fault: Fault): EntityListResult {
   return {
     id: fault.id,
     type: 'pms_faults',
-    title: fault.title || `Fault ${fault.fault_number || fault.id.slice(0, 8)}`,
+    title: fault.title || `Fault ${fault.fault_number || 'Fault'}`,
     subtitle: `${statusDisplay}${severityDisplay ? ` \u00b7 ${severityDisplay}` : ''}${fault.equipment_name ? ` \u00b7 ${fault.equipment_name}` : ''}`,
     snippet: fault.description,
     metadata: {
@@ -52,8 +52,8 @@ export function faultToListResult(fault: Fault): EntityListResult {
       ? `F\u00b7${fault.fault_code}`
       : fault.fault_number
         ? `F\u00b7${fault.fault_number}`
-        : fault.id.slice(0, 8),
-    equipmentRef: fault.equipment_id ? fault.equipment_id.slice(0, 8) : undefined,
+        : '',
+    equipmentRef: undefined,
     equipmentName: fault.equipment_name || undefined,
     assignedTo: undefined, // reported_by_name not available in table
     status: severityDisplay || statusDisplay,
