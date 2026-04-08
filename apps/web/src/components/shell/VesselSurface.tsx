@@ -148,7 +148,7 @@ export function VesselSurface() {
         status: wo.status as SurfaceWorkOrder['status'],
         age: wo.age_days !== undefined ? `${wo.age_days}d` : '\u2014',
       }))
-    : MOCK_WORK_ORDERS;
+    : [];
 
   const faults = liveData?.faults?.items?.length
     ? liveData.faults.items.map((f) => ({
@@ -159,7 +159,7 @@ export function VesselSurface() {
         severity: (f.severity || f.status || 'open') as SurfaceFault['severity'],
         age: f.age_days !== undefined ? `${f.age_days}d` : '\u2014',
       }))
-    : MOCK_FAULTS;
+    : [];
 
   const handover = liveData?.last_handover
     ? {
@@ -169,7 +169,7 @@ export function VesselSurface() {
         date: new Date(liveData.last_handover.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
         status: (liveData.last_handover.is_draft ? 'draft' : liveData.last_handover.status) as SurfaceHandover['status'],
       }
-    : MOCK_HANDOVER;
+    : null;
 
   const parts = liveData?.parts_below_min?.items?.length
     ? liveData.parts_below_min.items.map((p) => ({
@@ -179,7 +179,7 @@ export function VesselSurface() {
         minStock: p.min_stock,
         location: p.location || '',
       }))
-    : MOCK_PARTS;
+    : [];
 
   const activity = liveData?.recent_activity?.length
     ? liveData.recent_activity.map((a) => ({
@@ -189,7 +189,7 @@ export function VesselSurface() {
         actor: a.actor,
         time: a.time_display || formatTimeAgo(a.timestamp),
       }))
-    : MOCK_ACTIVITY;
+    : [];
 
   const certificates = liveData?.certificates_expiring?.items?.length
     ? liveData.certificates_expiring.items.map((c) => ({
@@ -200,9 +200,9 @@ export function VesselSurface() {
       }))
     : MOCK_CERTIFICATES;
 
-  const woCount = liveData?.work_orders?.open_count ?? MOCK_WORK_ORDERS.length;
-  const faultCount = liveData?.faults?.open_count ?? MOCK_FAULTS.length;
-  const partsCount = liveData?.parts_below_min?.count ?? MOCK_PARTS.length;
+  const woCount = liveData?.work_orders?.open_count ?? 0;
+  const faultCount = liveData?.faults?.open_count ?? 0;
+  const partsCount = liveData?.parts_below_min?.count ?? 0;
   const certCount = liveData?.certificates_expiring?.count ?? MOCK_CERTIFICATES.length;
 
   const navigateToDomain = React.useCallback(
@@ -305,13 +305,17 @@ export function VesselSurface() {
         label="Last Handover"
         onHeaderClick={() => navigateToDomain('handover-export')}
       >
-        <SurfaceRow
-          severity={handover.status === 'signed' ? 'info' : handover.status === 'draft' ? 'warning' : undefined}
-          title={<>{handover.from} → {handover.to}</>}
-          meta={handover.date}
-          pill={{ label: handover.status, variant: handover.status === 'signed' ? 'signed' : handover.status === 'draft' ? 'warn' : 'open' }}
-          onClick={() => router.push(`/handover-export?id=${handover.id}`)}
-        />
+        {handover ? (
+          <SurfaceRow
+            severity={handover.status === 'signed' ? 'info' : handover.status === 'draft' ? 'warning' : undefined}
+            title={<>{handover.from} → {handover.to}</>}
+            meta={handover.date}
+            pill={{ label: handover.status, variant: handover.status === 'signed' ? 'signed' : handover.status === 'draft' ? 'warn' : 'open' }}
+            onClick={() => router.push(`/handover-export?id=${handover.id}`)}
+          />
+        ) : (
+          <div style={{ padding: '12px 0', fontSize: 11, color: 'var(--txt-ghost)' }}>No handover data</div>
+        )}
       </SurfaceCard>
 
       {/* Parts Below Threshold */}
