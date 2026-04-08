@@ -243,7 +243,7 @@ export function Subbar({
         />
       </div>
 
-      {/* Filter chips — horizontal scroll on narrow widths */}
+      {/* Filter chips — horizontal scroll on narrow widths with fade edges */}
       <div
         style={{
           display: 'flex',
@@ -255,6 +255,10 @@ export function Subbar({
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
+          maskImage: 'linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent)',
+          paddingLeft: 4,
+          paddingRight: 4,
         }}
       >
         {config.chips.map((chip) => {
