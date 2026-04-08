@@ -42,7 +42,7 @@ const CENTER_STATE: React.CSSProperties = {
 };
 
 const TOPBAR: React.CSSProperties = {
-  height: '40px',
+  height: '48px',
   flexShrink: 0,
   display: 'flex',
   alignItems: 'center',
@@ -492,10 +492,10 @@ export default function LoginContent() {
         {/* ── Topbar ── */}
         <header style={TOPBAR}>
           <span style={{
-            fontSize: '10px', fontWeight: 600, letterSpacing: '0.16em',
+            fontSize: '9px', fontWeight: 600, letterSpacing: '0.20em',
             textTransform: 'uppercase', color: 'var(--mark)',
           }}>
-            Celeste
+            CELESTE
           </span>
           <div style={{ flex: 1 }} />
           <button
