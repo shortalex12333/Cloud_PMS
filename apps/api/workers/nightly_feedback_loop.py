@@ -38,7 +38,7 @@ import os
 import sys
 import time
 import logging
-from workers.shutdown import register_shutdown, is_shutting_down
+from shutdown import register_shutdown, is_shutting_down
 from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
 from dataclasses import dataclass

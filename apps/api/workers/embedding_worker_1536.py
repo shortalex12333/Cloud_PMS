@@ -41,7 +41,7 @@ import time
 import logging
 import math
 import hashlib
-from workers.shutdown import register_shutdown, is_shutting_down
+from shutdown import register_shutdown, is_shutting_down
 import uuid
 from typing import List, Dict, Any
 
