@@ -255,7 +255,7 @@ export function VesselSurface() {
           />
         ))}
         <SurfaceFooter
-          count={12}
+          count={woCount}
           label="work orders"
           onClick={() => navigateToDomain('work-orders')}
         />
@@ -286,7 +286,7 @@ export function VesselSurface() {
           />
         ))}
         <SurfaceFooter
-          count={5}
+          count={faultCount}
           label="open faults"
           onClick={() => navigateToDomain('faults')}
         />
