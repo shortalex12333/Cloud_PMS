@@ -308,43 +308,22 @@ export default function LoginContent() {
   // Redirect when user is authenticated and fully activated
   useEffect(() => {
     if (justLoggedOut) {
-      console.log('[LoginPage] Just logged out, skipping auto-redirect');
+      // Just logged out, skip auto-redirect
       return;
     }
 
     if (!authLoading && user) {
-      console.log('[LoginPage] User state:', user.bootstrapStatus);
-
-      if (bootstrapping) {
-        console.log('[LoginPage] Waiting for bootstrap...');
-        return;
-      }
+      if (bootstrapping) return;
 
       if (isFullyActivated(user)) {
-        console.log('[LoginPage] User fully activated, redirecting to /');
         router.replace('/');
         return;
       }
 
-      if (user.bootstrapStatus === 'pending') {
-        console.log('[LoginPage] User pending activation');
-        return;
-      }
-
-      if (user.bootstrapStatus === 'inactive') {
-        console.log('[LoginPage] Yacht inactive');
-        return;
-      }
-
-      if (user.bootstrapStatus === 'subscription_required') {
-        console.log('[LoginPage] Subscription required');
-        return;
-      }
-
-      if (user.bootstrapStatus === 'error') {
-        console.log('[LoginPage] Bootstrap error, will retry');
-        return;
-      }
+      if (user.bootstrapStatus === 'pending') return;
+      if (user.bootstrapStatus === 'inactive') return;
+      if (user.bootstrapStatus === 'subscription_required') return;
+      if (user.bootstrapStatus === 'error') return;
     }
   }, [user, authLoading, bootstrapping, router, justLoggedOut]);
 
@@ -354,7 +333,6 @@ export default function LoginContent() {
     setError(null);
 
     try {
-      console.log('[LoginPage] Attempting login:', email);
       await login(email, password);
     } catch (err) {
       console.error('[LoginPage] Login failed:', err);
@@ -595,7 +573,7 @@ export default function LoginContent() {
                     style={FORGOT_LINK}
                     onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-                    onClick={(e) => { e.preventDefault(); }}
+                    onClick={(e) => { e.preventDefault(); alert('Contact your vessel administrator to reset your password.'); }}
                   >
                     Forgot?
                   </a>

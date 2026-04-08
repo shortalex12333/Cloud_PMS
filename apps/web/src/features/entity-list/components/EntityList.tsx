@@ -138,7 +138,7 @@ export function EntityList<T extends { id: string }>({
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-surface-border rounded-full animate-spin" style={{ borderTopColor: 'var(--txt)' }} />
+          <div className="w-8 h-8 border-2 border-surface-border rounded-full animate-spin" style={{ borderTopColor: 'var(--mark)' }} />
           <p className="text-sm text-txt-secondary">Loading...</p>
         </div>
       </div>

@@ -205,6 +205,7 @@ export function VesselSurface() {
         action: a.action,
         actor: a.actor,
         time: a.time_display || formatTimeAgo(a.timestamp),
+        entityType: a.entity_type,
       }))
     : [];
 
@@ -370,6 +371,10 @@ export function VesselSurface() {
         {activity.length > 0 ? activity.map((a) => (
           <div
             key={a.id}
+            onClick={() => {
+              const path = entityTypePath(a.entityType);
+              if (path) router.push(`${path}?id=${a.id}`);
+            }}
             style={{
               display: 'flex',
               alignItems: 'baseline',
@@ -746,6 +751,17 @@ function formatTimeAgo(timestamp: string): string {
   if (diffHr < 24) return `${diffHr}h ago`;
   const diffDay = Math.floor(diffHr / 24);
   return `${diffDay}d ago`;
+}
+
+function entityTypePath(entityType: string): string | null {
+  const map: Record<string, string> = {
+    work_order: '/work-orders', fault: '/faults', equipment: '/equipment',
+    part: '/inventory', inventory: '/inventory', certificate: '/certificates',
+    document: '/documents', warranty: '/warranties', purchase_order: '/purchasing',
+    receiving: '/receiving', shopping_list: '/shopping-list', email: '/email',
+    handover_export: '/handover-export', hours_of_rest: '/hours-of-rest',
+  };
+  return map[entityType] || null;
 }
 
 function statusToVariant(status: string): PillVariant {
