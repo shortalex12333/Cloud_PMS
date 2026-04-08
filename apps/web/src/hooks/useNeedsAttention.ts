@@ -49,6 +49,16 @@ async function fetchAllAttention(
   user: { yachtId?: string; id?: string; department?: string },
   role: CrewRole,
 ): Promise<FetchResult> {
+  // GUARD: These queries use direct Supabase which hits the MASTER DB on production.
+  // PMS tables only exist on the TENANT DB. Until this hook is migrated to use the
+  // Render API, return empty data to prevent 404 spam in the console.
+  // TODO: Migrate to Render API endpoint (e.g. GET /api/vessel/{id}/attention)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const isMasterDb = supabaseUrl.includes('qvzmkaamzaqxpzbewjxe');
+  if (isMasterDb) {
+    return { pointers: [], counts: { ...EMPTY_COUNTS } };
+  }
+
   const items: ScoredPointer[] = [];
   const newCounts: AttentionCounts = { ...EMPTY_COUNTS };
 
