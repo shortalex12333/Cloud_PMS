@@ -3988,6 +3988,54 @@ async def sync_all_folders(
 
 
 # ============================================================================
+# GET /email/unread-count - Lightweight unread email count for sidebar badge
+# ============================================================================
+
+@router.get("/unread-count")
+async def get_unread_count(
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Returns the unread email count from Microsoft Graph inbox.
+    Lightweight endpoint for sidebar badge polling (called every 60s).
+
+    Returns {"unread_count": 0, "status": "not_connected"} gracefully
+    when email is not connected or token is expired — never errors.
+    """
+    import httpx
+
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    try:
+        read_client = create_read_client(supabase, user_id, yacht_id)
+        token = await read_client._get_token()
+
+        async with httpx.AsyncClient() as client:
+            inbox_response = await client.get(
+                "https://graph.microsoft.com/v1.0/me/mailFolders/inbox?$select=unreadItemCount",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=10.0
+            )
+
+            if inbox_response.status_code != 200:
+                return {"unread_count": 0, "status": "graph_error"}
+
+            inbox_data = inbox_response.json()
+            return {
+                "unread_count": inbox_data.get("unreadItemCount", 0),
+                "status": "connected"
+            }
+
+    except (TokenNotFoundError, TokenExpiredError):
+        return {"unread_count": 0, "status": "not_connected"}
+    except Exception as e:
+        logger.warning(f"[email/unread-count] Failed: {e}")
+        return {"unread_count": 0, "status": "error"}
+
+
+# ============================================================================
 # GET /email/debug/graph-me - Get the actual connected Microsoft account
 # ============================================================================
 
