@@ -177,7 +177,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
     badgeLock: {
       fontSize: '9px', fontWeight: 600, letterSpacing: '0.07em',
       textTransform: 'uppercase' as const, color: 'var(--txt-ghost)',
-      background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+      background: 'var(--split-bg)', border: '1px solid var(--border-sub)',
       borderRadius: '2px', padding: '1px 5px', flexShrink: 0,
     } as React.CSSProperties,
     // Buttons: 25px, 3px radius, 11px font
@@ -199,7 +199,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
       whiteSpace: 'nowrap' as const, display: 'inline-flex', alignItems: 'center', gap: '4px',
       fontFamily: 'var(--font-sans)', flexShrink: 0,
       background: 'var(--teal-bg)', color: 'var(--mark)',
-      border: '1px solid rgba(90,171,204,0.28)',
+      border: '1px solid var(--mark-hover)',
       transition: 'background 80ms, color 80ms',
     } as React.CSSProperties,
     btnDanger: {
@@ -387,15 +387,15 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '10px 12px', gap: '12px', minHeight: '40px',
               borderTop: '1px solid var(--red-border)',
-              borderRight: '1px solid rgba(192,80,58,0.12)',
-              borderBottom: '1px solid rgba(192,80,58,0.08)',
-              borderLeft: '1px solid rgba(192,80,58,0.12)',
+              borderRight: '1px solid var(--red-border)',
+              borderBottom: '1px solid var(--red-border)',
+              borderLeft: '1px solid var(--red-border)',
               borderRadius: '5px', background: 'var(--red-bg)',
               marginTop: 'auto',
             }}>
               <div style={s.rowLeft}>
                 <span style={{ fontSize: '12.5px', color: 'var(--red)' }}>Request account deletion</span>
-                <span style={{ fontSize: '11px', color: 'rgba(192,80,58,0.55)', marginTop: '2px' }}>Your data will be removed within 30 days</span>
+                <span style={{ fontSize: '11px', color: 'var(--red)', opacity: 0.55, marginTop: '2px' }}>Your data will be removed within 30 days</span>
               </div>
               <button style={s.btnDanger}>Request</button>
             </div>
@@ -660,21 +660,21 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                   display: 'flex', alignItems: 'center',
                   gap: '8px', height: '32px', padding: '0 9px',
                   borderRadius: '4px', cursor: 'pointer',
-                  fontSize: '12px', color: 'rgba(192,80,58,0.72)',
+                  fontSize: '12px', color: 'var(--red)', opacity: 0.72,
                   borderLeft: '2px solid transparent',
-                  transition: 'background 80ms, color 80ms',
+                  transition: 'background 80ms, color 80ms, opacity 80ms',
                   userSelect: 'none',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(192,80,58,0.09)';
-                  e.currentTarget.style.color = 'rgba(192,80,58,0.90)';
+                  e.currentTarget.style.background = 'var(--red-bg)';
+                  e.currentTarget.style.opacity = '0.90';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'rgba(192,80,58,0.72)';
+                  e.currentTarget.style.opacity = '0.72';
                 }}
               >
-                <span style={{ width: '13px', height: '13px', flexShrink: 0, color: 'rgba(192,80,58,0.52)', display: 'flex' }}>
+                <span style={{ width: '13px', height: '13px', flexShrink: 0, color: 'var(--red)', opacity: 0.52, display: 'flex' }}>
                   {NavIcons.signout}
                 </span>
                 Sign out

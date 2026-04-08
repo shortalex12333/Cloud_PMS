@@ -32,15 +32,15 @@ export default function QueryInterpretation({ query }: QueryInterpretationProps)
     <div style={{ marginTop: 6, marginBottom: 2 }}>
       <div style={{
         display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 2,
-        padding: '5px 10px', borderLeft: '2px solid #3A7C9D', opacity: 0.88,
+        padding: '5px 10px', borderLeft: '2px solid var(--teal)', opacity: 0.88,
       }}>
-        <span style={{ fontSize: 10, fontStyle: 'italic', color: 'rgba(255,255,255,0.70)', marginRight: 6, flexShrink: 0 }}>
+        <span style={{ fontSize: 10, fontStyle: 'italic', color: 'var(--txt3)', marginRight: 6, flexShrink: 0 }}>
           Understood
         </span>
         {terms.map((term, i) => (
           <React.Fragment key={i}>
-            {i > 0 && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.40)', userSelect: 'none', padding: '0 2px' }}>·</span>}
-            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 500, color: '#5AABCC' }}>{term}</span>
+            {i > 0 && <span style={{ fontSize: 10, color: 'var(--txt-ghost)', userSelect: 'none', padding: '0 2px' }}>·</span>}
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 500, color: 'var(--mark)' }}>{term}</span>
           </React.Fragment>
         ))}
       </div>
