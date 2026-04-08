@@ -27,6 +27,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import validate_vessel_id_format
 from integrations.supabase import get_tenant_client
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ def _validate_vessel_access(auth: dict, vessel_id: str):
     """Enforce vessel isolation: requested vessel_id must be in user's vessel_ids.
     Special case: vessel_id='all' is valid for fleet users (overview mode).
     """
+    validate_vessel_id_format(vessel_id)
     vessel_ids = auth.get("vessel_ids", [auth.get("yacht_id")])
     if vessel_id == "all":
         if not auth.get("is_fleet_user"):

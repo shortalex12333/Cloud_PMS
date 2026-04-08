@@ -15,6 +15,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import validate_vessel_id_format
 from integrations.supabase import get_tenant_client
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ router = APIRouter(prefix="/api/vessel", tags=["attention"])
 # ── Vessel access validation (same pattern as vessel_surface_routes) ─────────
 
 def _validate_vessel_access(auth: dict, vessel_id: str):
+    validate_vessel_id_format(vessel_id)
     vessel_ids = auth.get("vessel_ids", [auth.get("yacht_id")])
     if vessel_id == "all":
         if not auth.get("is_fleet_user"):
