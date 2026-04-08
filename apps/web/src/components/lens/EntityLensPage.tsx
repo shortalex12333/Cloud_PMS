@@ -287,7 +287,7 @@ export function EntityLensPage({
           right: '24px',
           bottom: '24px',
           width: '600px',
-          maxWidth: '100vw',
+          maxWidth: 'min(100vw - 32px, 600px)',
           zIndex: 100,
           background: 'var(--surface)',
           borderTop: '1px solid var(--border-top)',
