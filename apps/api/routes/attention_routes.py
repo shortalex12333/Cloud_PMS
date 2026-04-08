@@ -88,6 +88,7 @@ async def get_vessel_attention(vessel_id: str, auth: dict = Depends(get_authenti
     tenant_key = auth["tenant_key_alias"]
     yacht_ids = _resolve_yacht_ids(auth, vessel_id)
     supabase = get_tenant_client(tenant_key)
+    now = datetime.now(timezone.utc)
 
     items: List[Dict[str, Any]] = []
     counts: Dict[str, int] = {
@@ -137,7 +138,6 @@ async def get_vessel_attention(vessel_id: str, auth: dict = Depends(get_authenti
 
         work_orders = wo_r.data or []
         counts["work_orders"] = len(work_orders)
-        now = datetime.now(timezone.utc)
         priority_scores = {"emergency": 95, "critical": 85, "important": 70, "routine": 40}
         for w in work_orders:
             is_overdue = False
