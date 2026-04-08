@@ -76,6 +76,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 
+def _scope_search_query(query, yacht_ids: List[str]):
+    """Apply yacht_id scoping: .eq for single vessel, .in_ for multi-vessel."""
+    if len(yacht_ids) == 1:
+        return query.eq("yacht_id", yacht_ids[0])
+    return query.in_("yacht_id", yacht_ids)
+
+
 # ============================================================================
 # Query Preprocessing (from stress test validation - 86% success rate)
 # ============================================================================
@@ -138,12 +145,13 @@ REDACTED_ROLES = {"crew", "guest"}  # Roles that don't see document snippets
 # Search Implementation
 # ============================================================================
 
-async def search_parts(yacht_id: str, query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
+async def search_parts(yacht_ids: List[str], query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
     """
     Search parts across multiple columns with preprocessing.
 
     Uses hybrid ILIKE + pg_trgm similarity for typo tolerance.
     LAW 20: Universal trigram matching for fuzzy search.
+    Supports multi-vessel: yacht_ids can be a list of one or more vessel UUIDs.
 
     Returns:
         (results, total_count) - List of part dictionaries and total count
@@ -166,9 +174,11 @@ async def search_parts(yacht_id: str, query: str, tenant_key_alias: str) -> tupl
     for column in columns:
         try:
             response = await asyncio.to_thread(
-                lambda col=column: supabase.table('pms_parts')
-                    .select('id, name, part_number, category, manufacturer, location, description')
-                    .eq('yacht_id', yacht_id)
+                lambda col=column: _scope_search_query(
+                    supabase.table('pms_parts')
+                    .select('id, name, part_number, category, manufacturer, location, description'),
+                    yacht_ids
+                )
                     .ilike(col, f'%{clean_query}%')
                     .limit(20)
                     .execute()
@@ -186,37 +196,38 @@ async def search_parts(yacht_id: str, query: str, tenant_key_alias: str) -> tupl
     # Phase 2: pg_trgm fuzzy search (handles misspellings like "mantenance")
     # Only if ILIKE didn't find enough results (< 3 threshold)
     if len(results) < 3:
-        try:
-            # Use RPC to call pg_trgm similarity search
-            # This catches typos: "mantenance" -> "maintenance", "filtre" -> "filter"
-            trigram_response = await asyncio.to_thread(
-                lambda: supabase.rpc('search_parts_fuzzy', {
-                    'p_yacht_id': yacht_id,
-                    'p_query': clean_query,
-                    'p_threshold': 0.3,
-                    'p_limit': 20
-                }).execute()
-            )
+        # RPC takes single yacht_id — fan out per vessel
+        for vid in yacht_ids:
+            try:
+                trigram_response = await asyncio.to_thread(
+                    lambda v=vid: supabase.rpc('search_parts_fuzzy', {
+                        'p_yacht_id': v,
+                        'p_query': clean_query,
+                        'p_threshold': 0.3,
+                        'p_limit': 20
+                    }).execute()
+                )
 
-            if trigram_response.data:
-                for item in trigram_response.data:
-                    if item['id'] not in seen_ids:
-                        seen_ids.add(item['id'])
-                        results.append(item)
-                logger.info(f"[SearchParts] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
+                if trigram_response.data:
+                    for item in trigram_response.data:
+                        if item['id'] not in seen_ids:
+                            seen_ids.add(item['id'])
+                            results.append(item)
+                    logger.info(f"[SearchParts] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
 
-        except Exception as e:
-            logger.warning(f"[SearchParts] Trigram RPC failed: {e}")
+            except Exception as e:
+                logger.warning(f"[SearchParts] Trigram RPC failed: {e}")
 
     return results, len(results)
 
 
-async def search_equipment(yacht_id: str, query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
+async def search_equipment(yacht_ids: List[str], query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
     """
     Search equipment across multiple columns with preprocessing.
 
     Uses hybrid ILIKE + pg_trgm similarity for typo tolerance.
     LAW 20: Universal trigram matching for fuzzy search.
+    Supports multi-vessel: yacht_ids can be a list of one or more vessel UUIDs.
 
     Returns:
         (results, total_count) - List of equipment dictionaries and total count
@@ -235,9 +246,11 @@ async def search_equipment(yacht_id: str, query: str, tenant_key_alias: str) -> 
     for column in columns:
         try:
             response = await asyncio.to_thread(
-                lambda col=column: supabase.table('pms_equipment')
-                    .select('id, name, description, category, manufacturer, location, model, serial_number, status')
-                    .eq('yacht_id', yacht_id)
+                lambda col=column: _scope_search_query(
+                    supabase.table('pms_equipment')
+                    .select('id, name, description, category, manufacturer, location, model, serial_number, status'),
+                    yacht_ids
+                )
                     .ilike(col, f'%{clean_query}%')
                     .limit(20)
                     .execute()
@@ -254,35 +267,37 @@ async def search_equipment(yacht_id: str, query: str, tenant_key_alias: str) -> 
 
     # Phase 2: pg_trgm fuzzy search if ILIKE < 3 results
     if len(results) < 3:
-        try:
-            trigram_response = await asyncio.to_thread(
-                lambda: supabase.rpc('search_equipment_fuzzy', {
-                    'p_yacht_id': yacht_id,
-                    'p_query': clean_query,
-                    'p_threshold': 0.3,
-                    'p_limit': 20
-                }).execute()
-            )
+        for vid in yacht_ids:
+            try:
+                trigram_response = await asyncio.to_thread(
+                    lambda v=vid: supabase.rpc('search_equipment_fuzzy', {
+                        'p_yacht_id': v,
+                        'p_query': clean_query,
+                        'p_threshold': 0.3,
+                        'p_limit': 20
+                    }).execute()
+                )
 
-            if trigram_response.data:
-                for item in trigram_response.data:
-                    if item['id'] not in seen_ids:
-                        seen_ids.add(item['id'])
-                        results.append(item)
-                logger.info(f"[SearchEquipment] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
+                if trigram_response.data:
+                    for item in trigram_response.data:
+                        if item['id'] not in seen_ids:
+                            seen_ids.add(item['id'])
+                            results.append(item)
+                    logger.info(f"[SearchEquipment] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
 
-        except Exception as e:
-            logger.warning(f"[SearchEquipment] Trigram RPC failed: {e}")
+            except Exception as e:
+                logger.warning(f"[SearchEquipment] Trigram RPC failed: {e}")
 
     return results, len(results)
 
 
-async def search_work_orders(yacht_id: str, query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
+async def search_work_orders(yacht_ids: List[str], query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
     """
     Search work orders across multiple columns with preprocessing.
 
     Uses hybrid ILIKE + pg_trgm similarity for typo tolerance.
     LAW 20: Universal trigram matching for fuzzy search.
+    Supports multi-vessel: yacht_ids can be a list of one or more vessel UUIDs.
 
     Returns:
         (results, total_count) - List of work order dictionaries and total count
@@ -301,9 +316,11 @@ async def search_work_orders(yacht_id: str, query: str, tenant_key_alias: str) -
     for column in columns:
         try:
             response = await asyncio.to_thread(
-                lambda col=column: supabase.table('pms_work_orders')
-                    .select('id, title, description, status, priority, category, due_date, assigned_to, notes')
-                    .eq('yacht_id', yacht_id)
+                lambda col=column: _scope_search_query(
+                    supabase.table('pms_work_orders')
+                    .select('id, title, description, status, priority, category, due_date, assigned_to, notes'),
+                    yacht_ids
+                )
                     .ilike(col, f'%{clean_query}%')
                     .limit(20)
                     .execute()
@@ -320,35 +337,37 @@ async def search_work_orders(yacht_id: str, query: str, tenant_key_alias: str) -
 
     # Phase 2: pg_trgm fuzzy search if ILIKE < 3 results
     if len(results) < 3:
-        try:
-            trigram_response = await asyncio.to_thread(
-                lambda: supabase.rpc('search_work_orders_fuzzy', {
-                    'p_yacht_id': yacht_id,
-                    'p_query': clean_query,
-                    'p_threshold': 0.3,
-                    'p_limit': 20
-                }).execute()
-            )
+        for vid in yacht_ids:
+            try:
+                trigram_response = await asyncio.to_thread(
+                    lambda v=vid: supabase.rpc('search_work_orders_fuzzy', {
+                        'p_yacht_id': v,
+                        'p_query': clean_query,
+                        'p_threshold': 0.3,
+                        'p_limit': 20
+                    }).execute()
+                )
 
-            if trigram_response.data:
-                for item in trigram_response.data:
-                    if item['id'] not in seen_ids:
-                        seen_ids.add(item['id'])
-                        results.append(item)
-                logger.info(f"[SearchWorkOrders] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
+                if trigram_response.data:
+                    for item in trigram_response.data:
+                        if item['id'] not in seen_ids:
+                            seen_ids.add(item['id'])
+                            results.append(item)
+                    logger.info(f"[SearchWorkOrders] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
 
-        except Exception as e:
-            logger.warning(f"[SearchWorkOrders] Trigram RPC failed: {e}")
+            except Exception as e:
+                logger.warning(f"[SearchWorkOrders] Trigram RPC failed: {e}")
 
     return results, len(results)
 
 
-async def search_faults(yacht_id: str, query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
+async def search_faults(yacht_ids: List[str], query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
     """
     Search faults across multiple columns with preprocessing.
 
     Uses hybrid ILIKE + pg_trgm similarity for typo tolerance.
     LAW 20: Universal trigram matching for fuzzy search.
+    Supports multi-vessel: yacht_ids can be a list of one or more vessel UUIDs.
 
     Returns:
         (results, total_count) - List of fault dictionaries and total count
@@ -367,9 +386,11 @@ async def search_faults(yacht_id: str, query: str, tenant_key_alias: str) -> tup
     for column in columns:
         try:
             response = await asyncio.to_thread(
-                lambda col=column: supabase.table('pms_faults')
-                    .select('id, title, description, status, severity, category, reported_at, resolved_at, notes, resolution')
-                    .eq('yacht_id', yacht_id)
+                lambda col=column: _scope_search_query(
+                    supabase.table('pms_faults')
+                    .select('id, title, description, status, severity, category, reported_at, resolved_at, notes, resolution'),
+                    yacht_ids
+                )
                     .ilike(col, f'%{clean_query}%')
                     .limit(20)
                     .execute()
@@ -385,39 +406,38 @@ async def search_faults(yacht_id: str, query: str, tenant_key_alias: str) -> tup
             continue
 
     # Phase 2: pg_trgm fuzzy search if ILIKE < 3 results
-    # Note: Using search_work_orders_fuzzy as faults may share similar structure
-    # If a dedicated search_faults_fuzzy RPC exists, it will be used
     if len(results) < 3:
-        try:
-            # Try dedicated faults fuzzy RPC first
-            trigram_response = await asyncio.to_thread(
-                lambda: supabase.rpc('search_faults_fuzzy', {
-                    'p_yacht_id': yacht_id,
-                    'p_query': clean_query,
-                    'p_threshold': 0.3,
-                    'p_limit': 20
-                }).execute()
-            )
+        for vid in yacht_ids:
+            try:
+                trigram_response = await asyncio.to_thread(
+                    lambda v=vid: supabase.rpc('search_faults_fuzzy', {
+                        'p_yacht_id': v,
+                        'p_query': clean_query,
+                        'p_threshold': 0.3,
+                        'p_limit': 20
+                    }).execute()
+                )
 
-            if trigram_response.data:
-                for item in trigram_response.data:
-                    if item['id'] not in seen_ids:
-                        seen_ids.add(item['id'])
-                        results.append(item)
-                logger.info(f"[SearchFaults] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
+                if trigram_response.data:
+                    for item in trigram_response.data:
+                        if item['id'] not in seen_ids:
+                            seen_ids.add(item['id'])
+                            results.append(item)
+                    logger.info(f"[SearchFaults] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
 
-        except Exception as e:
-            logger.warning(f"[SearchFaults] Trigram RPC failed: {e}")
+            except Exception as e:
+                logger.warning(f"[SearchFaults] Trigram RPC failed: {e}")
 
     return results, len(results)
 
 
-async def search_documents(yacht_id: str, query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
+async def search_documents(yacht_ids: List[str], query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
     """
     Search documents across multiple columns with preprocessing.
 
     Uses hybrid ILIKE + pg_trgm similarity for typo tolerance.
     LAW 20: Universal trigram matching for fuzzy search.
+    Supports multi-vessel: yacht_ids can be a list of one or more vessel UUIDs.
 
     Returns:
         (results, total_count) - List of document dictionaries and total count
@@ -436,9 +456,11 @@ async def search_documents(yacht_id: str, query: str, tenant_key_alias: str) -> 
     for column in columns:
         try:
             response = await asyncio.to_thread(
-                lambda col=column: supabase.table('pms_documents')
-                    .select('id, name, description, category, file_type, file_size, tags, created_at, updated_at')
-                    .eq('yacht_id', yacht_id)
+                lambda col=column: _scope_search_query(
+                    supabase.table('pms_documents')
+                    .select('id, name, description, category, file_type, file_size, tags, created_at, updated_at'),
+                    yacht_ids
+                )
                     .ilike(col, f'%{clean_query}%')
                     .limit(20)
                     .execute()
@@ -455,25 +477,26 @@ async def search_documents(yacht_id: str, query: str, tenant_key_alias: str) -> 
 
     # Phase 2: pg_trgm fuzzy search if ILIKE < 3 results
     if len(results) < 3:
-        try:
-            trigram_response = await asyncio.to_thread(
-                lambda: supabase.rpc('search_documents_fuzzy', {
-                    'p_yacht_id': yacht_id,
-                    'p_query': clean_query,
-                    'p_threshold': 0.3,
-                    'p_limit': 20
-                }).execute()
-            )
+        for vid in yacht_ids:
+            try:
+                trigram_response = await asyncio.to_thread(
+                    lambda v=vid: supabase.rpc('search_documents_fuzzy', {
+                        'p_yacht_id': v,
+                        'p_query': clean_query,
+                        'p_threshold': 0.3,
+                        'p_limit': 20
+                    }).execute()
+                )
 
-            if trigram_response.data:
-                for item in trigram_response.data:
-                    if item['id'] not in seen_ids:
-                        seen_ids.add(item['id'])
-                        results.append(item)
-                logger.info(f"[SearchDocuments] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
+                if trigram_response.data:
+                    for item in trigram_response.data:
+                        if item['id'] not in seen_ids:
+                            seen_ids.add(item['id'])
+                            results.append(item)
+                    logger.info(f"[SearchDocuments] Trigram found {len(trigram_response.data)} fuzzy matches for '{clean_query}'")
 
-        except Exception as e:
-            logger.warning(f"[SearchDocuments] Trigram RPC failed: {e}")
+            except Exception as e:
+                logger.warning(f"[SearchDocuments] Trigram RPC failed: {e}")
 
     return results, len(results)
 
@@ -570,6 +593,7 @@ async def stream_search(
     request: Request,
     q: str = Query(..., min_length=1, description="Search query"),
     phase: int = Query(1, ge=1, le=2, description="Phase 1=counts, 2=details"),
+    auth: dict = Depends(get_authenticated_user),
     ctx: ActionContext = Depends(get_streaming_context),
 ):
     """
@@ -658,6 +682,11 @@ async def stream_search(
         f"query_hash={qh[:16]}..."
     )
 
+    # Resolve yacht_ids for multi-vessel support
+    # Fleet users search across all their vessels; single-vessel users search their own
+    auth_vessel_ids = auth.get("vessel_ids") if auth.get("is_fleet_user") else None
+    search_yacht_ids = auth_vessel_ids if auth_vessel_ids else [ctx.yacht_id]
+
     async def event_stream() -> AsyncGenerator[bytes, None]:
         """
         Generate streaming response.
@@ -673,11 +702,11 @@ async def stream_search(
             # Phase 1: Counts only - search all entity types in parallel
             if phase == 1:
                 # Execute all searches in parallel for performance
-                parts_task = search_parts(ctx.yacht_id, nq, ctx.tenant_key_alias)
-                equipment_task = search_equipment(ctx.yacht_id, nq, ctx.tenant_key_alias)
-                work_orders_task = search_work_orders(ctx.yacht_id, nq, ctx.tenant_key_alias)
-                faults_task = search_faults(ctx.yacht_id, nq, ctx.tenant_key_alias)
-                documents_task = search_documents(ctx.yacht_id, nq, ctx.tenant_key_alias)
+                parts_task = search_parts(search_yacht_ids, nq, ctx.tenant_key_alias)
+                equipment_task = search_equipment(search_yacht_ids, nq, ctx.tenant_key_alias)
+                work_orders_task = search_work_orders(search_yacht_ids, nq, ctx.tenant_key_alias)
+                faults_task = search_faults(search_yacht_ids, nq, ctx.tenant_key_alias)
+                documents_task = search_documents(search_yacht_ids, nq, ctx.tenant_key_alias)
 
                 (parts_results, parts_count), \
                 (equipment_results, equipment_count), \
@@ -705,11 +734,11 @@ async def stream_search(
                 return
 
             # Phase 2: Details with role-based redaction - search all entity types in parallel
-            parts_task = search_parts(ctx.yacht_id, nq, ctx.tenant_key_alias)
-            equipment_task = search_equipment(ctx.yacht_id, nq, ctx.tenant_key_alias)
-            work_orders_task = search_work_orders(ctx.yacht_id, nq, ctx.tenant_key_alias)
-            faults_task = search_faults(ctx.yacht_id, nq, ctx.tenant_key_alias)
-            documents_task = search_documents(ctx.yacht_id, nq, ctx.tenant_key_alias)
+            parts_task = search_parts(search_yacht_ids, nq, ctx.tenant_key_alias)
+            equipment_task = search_equipment(search_yacht_ids, nq, ctx.tenant_key_alias)
+            work_orders_task = search_work_orders(search_yacht_ids, nq, ctx.tenant_key_alias)
+            faults_task = search_faults(search_yacht_ids, nq, ctx.tenant_key_alias)
+            documents_task = search_documents(search_yacht_ids, nq, ctx.tenant_key_alias)
 
             (parts_results, parts_count), \
             (equipment_results, equipment_count), \
