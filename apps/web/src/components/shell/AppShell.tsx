@@ -144,6 +144,7 @@ export function AppShell({ children }: AppShellProps) {
         onClearScope={handleClearScope}
         onSearchFocus={() => setSearchOpen(true)}
         onEmailClick={handleEmailClick}
+        onCommandCenterClick={() => setSearchOpen(true)}
         onSettingsClick={handleSettingsClick}
       >
         {children}
@@ -164,6 +165,7 @@ function AppShellInner({
   onClearScope,
   onSearchFocus,
   onEmailClick,
+  onCommandCenterClick,
   onSettingsClick,
   children,
 }: {
@@ -175,6 +177,7 @@ function AppShellInner({
   onClearScope: () => void;
   onSearchFocus: () => void;
   onEmailClick: () => void;
+  onCommandCenterClick: () => void;
   onSettingsClick: () => void;
   children: React.ReactNode;
 }) {
@@ -208,6 +211,7 @@ function AppShellInner({
         onClearScope={onClearScope}
         onSearchFocus={onSearchFocus}
         onEmailClick={onEmailClick}
+        onCommandCenterClick={onCommandCenterClick}
         onSettingsClick={onSettingsClick}
         compact={breakpoint === 'tablet' || breakpoint === 'mobile'}
       />
