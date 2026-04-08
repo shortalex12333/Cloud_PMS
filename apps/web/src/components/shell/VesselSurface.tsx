@@ -32,6 +32,7 @@ import type { DomainId } from './Sidebar';
 import { useVesselSurface } from './hooks';
 import type { VesselSurfaceResponse } from './api';
 import { useBreakpoint } from './useBreakpoint';
+import { useActiveVessel } from '@/contexts/VesselContext';
 
 /* ─────────────────────────────────────────────
    TYPES
@@ -98,6 +99,7 @@ interface SurfaceCertificate {
 export function VesselSurface() {
   const router = useRouter();
   const { data: liveData, isLoading, error, refetch } = useVesselSurface();
+  const { isAllVessels } = useActiveVessel();
   const breakpoint = useBreakpoint();
   const gridCols = breakpoint === 'desktop' ? '1fr 1fr 1fr' : (breakpoint === 'laptop' || breakpoint === 'tablet') ? '1fr 1fr' : '1fr';
 
@@ -142,6 +144,7 @@ export function VesselSurface() {
         status: wo.status as SurfaceWorkOrder['status'],
         age: wo.age_days !== undefined ? `${wo.age_days}d` : '\u2014',
         yacht_id: wo.yacht_id,
+        vesselName: wo.yacht_name,
       }))
     : [];
 
@@ -154,6 +157,7 @@ export function VesselSurface() {
         severity: (f.severity || f.status || 'open') as SurfaceFault['severity'],
         age: f.age_days !== undefined ? `${f.age_days}d` : '\u2014',
         yacht_id: f.yacht_id,
+        vesselName: f.yacht_name,
       }))
     : [];
 
@@ -246,7 +250,7 @@ export function VesselSurface() {
             key={wo.id}
             severity={wo.status === 'overdue' ? 'critical' : wo.status === 'due_soon' ? 'warning' : undefined}
             title={<><span style={{ color: 'var(--mark)', fontSize: 11, fontFamily: 'var(--font-mono, ui-monospace, monospace)' }}>{wo.ref}</span> {wo.title}</>}
-            meta={wo.equipment}
+            meta={isAllVessels && wo.vesselName ? `${wo.vesselName} · ${wo.equipment}` : wo.equipment}
             pill={{ label: wo.status.replace('_', ' '), variant: statusToVariant(wo.status) }}
             time={wo.age}
             onClick={() => router.push(`/work-orders?id=${wo.id}${wo.yacht_id ? `&yacht_id=${wo.yacht_id}` : ''}`)}
@@ -281,7 +285,7 @@ export function VesselSurface() {
             key={f.id}
             severity={f.severity === 'critical' ? 'critical' : f.severity === 'warning' ? 'warning' : undefined}
             title={<><span style={{ color: 'var(--mark)', fontSize: 11, fontFamily: 'var(--font-mono, ui-monospace, monospace)' }}>{f.ref}</span> {f.title}</>}
-            meta={f.equipment}
+            meta={isAllVessels && f.vesselName ? `${f.vesselName} · ${f.equipment}` : f.equipment}
             pill={{ label: f.severity, variant: f.severity === 'critical' ? 'critical' : f.severity === 'warning' ? 'warn' : 'open' }}
             time={f.age}
             onClick={() => router.push(`/faults?id=${f.id}${f.yacht_id ? `&yacht_id=${f.yacht_id}` : ''}`)}
