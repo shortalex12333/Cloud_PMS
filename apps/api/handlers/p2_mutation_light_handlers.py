@@ -694,8 +694,8 @@ class P2MutationLightHandlers:
         """
         try:
             # Validate handover exists
-            ho_result = self.db.table("pms_handover").select(
-                "id, summary_text, category, metadata"
+            ho_result = self.db.table("handover_items").select(
+                "id, summary, category, metadata"
             ).eq("id", handover_id).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not ho_result.data or len(ho_result.data) == 0:
@@ -736,7 +736,7 @@ class P2MutationLightHandlers:
             documents.append(doc_ref)
             existing_metadata["documents"] = documents
 
-            update_result = self.db.table("pms_handover").update({
+            update_result = self.db.table("handover_items").update({
                 "metadata": existing_metadata
             }).eq("id", handover_id).eq("yacht_id", yacht_id).execute()
 
@@ -795,8 +795,8 @@ class P2MutationLightHandlers:
         """
         try:
             # Validate handover exists
-            ho_result = self.db.table("pms_handover").select(
-                "id, summary_text, category, priority"
+            ho_result = self.db.table("handover_items").select(
+                "id, summary, category, priority"
             ).eq("id", handover_id).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not ho_result.data or len(ho_result.data) == 0:
@@ -808,13 +808,13 @@ class P2MutationLightHandlers:
 
             handover = ho_result.data[0]
             old_values = {
-                "summary_text": handover.get("summary_text"),
+                "summary": handover.get("summary"),
                 "category": handover.get("category"),
                 "priority": handover.get("priority")
             }
 
             # Build update data
-            update_data = {"summary_text": summary_text}
+            update_data = {"summary": summary_text}
             if category:
                 valid_categories = ["urgent", "in_progress", "completed", "watch", "fyi"]
                 if category in valid_categories:
@@ -822,7 +822,7 @@ class P2MutationLightHandlers:
             if priority is not None:
                 update_data["priority"] = max(0, min(5, priority))
 
-            update_result = self.db.table("pms_handover").update(
+            update_result = self.db.table("handover_items").update(
                 update_data
             ).eq("id", handover_id).eq("yacht_id", yacht_id).execute()
 
@@ -1205,8 +1205,8 @@ class P2MutationLightHandlers:
         """
         try:
             # Validate handover exists
-            ho_result = self.db.table("pms_handover").select(
-                "id, summary_text, metadata"
+            ho_result = self.db.table("handover_items").select(
+                "id, summary, metadata"
             ).eq("id", handover_id).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not ho_result.data or len(ho_result.data) == 0:
@@ -1237,7 +1237,7 @@ class P2MutationLightHandlers:
             insights.append(new_insight)
             existing_metadata["predictive_insights"] = insights
 
-            self.db.table("pms_handover").update({
+            self.db.table("handover_items").update({
                 "metadata": existing_metadata
             }).eq("id", handover_id).eq("yacht_id", yacht_id).execute()
 
@@ -1300,8 +1300,8 @@ class P2MutationLightHandlers:
         """
         try:
             # Validate handover exists
-            ho_result = self.db.table("pms_handover").select(
-                "id, summary_text, category, entity_type, entity_id"
+            ho_result = self.db.table("handover_items").select(
+                "id, summary, category, entity_type, entity_id"
             ).eq("id", handover_id).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not ho_result.data or len(ho_result.data) == 0:
@@ -1359,9 +1359,9 @@ class P2MutationLightHandlers:
                 new_summary = f"[Auto-generated {now.strftime('%Y-%m-%d %H:%M')}] No significant activity in last {time_range_hours}h"
 
             # Update handover with new summary
-            old_summary = handover.get("summary_text")
-            update_result = self.db.table("pms_handover").update({
-                "summary_text": new_summary,
+            old_summary = handover.get("summary")
+            update_result = self.db.table("handover_items").update({
+                "summary": new_summary,
                 "metadata": {
                     **(handover.get("metadata") or {}),
                     "last_regenerated": now.isoformat(),
