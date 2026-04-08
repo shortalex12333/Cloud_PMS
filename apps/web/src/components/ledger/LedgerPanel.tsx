@@ -135,7 +135,7 @@ const S = {
     position: 'fixed' as const, top: 0, right: 0, bottom: 0,
     width: 480, background: 'var(--surface)',
     borderLeft: '1px solid var(--border-side)',
-    boxShadow: '-20px 0 80px rgba(0,0,0,0.50), -4px 0 20px rgba(0,0,0,0.30)',
+    boxShadow: 'var(--shadow-panel, -20px 0 80px rgba(0,0,0,0.50))',
     display: 'flex', flexDirection: 'column' as const, zIndex: 100, overflow: 'hidden',
   },
   hdr: { display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border-sub)', gap: 10, flexShrink: 0 },
@@ -156,15 +156,15 @@ const S = {
     cursor: 'pointer', fontFamily: 'var(--font-sans)',
     background: active ? 'var(--teal-bg)' : 'none',
     color: active ? 'var(--mark)' : 'var(--txt3)',
-    border: `1px solid ${active ? 'rgba(90,171,204,0.2)' : 'var(--border-sub)'}`,
+    border: `1px solid ${active ? 'var(--mark-hover)' : 'var(--border-sub)'}`,
   }),
   body: { flex: 1, overflowY: 'auto' as const, padding: '8px 12px 16px', background: 'var(--surface-base)' },
   dayCard: {
     background: 'var(--surface)',
-    borderTop: '1px solid rgba(255,255,255,0.09)',
-    borderRight: '1px solid rgba(255,255,255,0.05)',
-    borderBottom: '1px solid rgba(255,255,255,0.03)',
-    borderLeft: '1px solid rgba(255,255,255,0.05)',
+    borderTop: '1px solid var(--border-top)',
+    borderRight: '1px solid var(--border-side)',
+    borderBottom: '1px solid var(--border-bottom)',
+    borderLeft: '1px solid var(--border-side)',
     borderRadius: 4, overflow: 'hidden', marginBottom: 6,
   },
   dayHdr: {
@@ -176,7 +176,7 @@ const S = {
   event: {
     display: 'flex', alignItems: 'center', gap: 10,
     padding: '8px 12px', minHeight: 44, cursor: 'pointer',
-    transition: 'background 60ms', borderTop: '1px solid rgba(255,255,255,0.04)',
+    transition: 'background 60ms', borderTop: '1px solid var(--border-faint)',
   },
 };
 
@@ -324,7 +324,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
                           key={event.id}
                           style={{ ...S.event, ...(idx === 0 ? {} : {}) }}
                           onClick={() => handleItemClick(event)}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'; }}
                           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; }}
                         >
                           {isMut

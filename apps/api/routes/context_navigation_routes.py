@@ -74,6 +74,8 @@ async def create_context(
         context = create_navigation_context(supabase, data)
         return context
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to create context: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -107,6 +109,8 @@ async def update_anchor(
         )
         return context
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to update anchor: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -142,6 +146,8 @@ async def get_related_artifacts(
         response = get_related(supabase, data)
         return response
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to get related artifacts: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -175,6 +181,8 @@ async def add_relation(
         response = add_user_relation(supabase, data)
         return response
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to add relation: {e}")
         # Check if it's a duplicate relation error
@@ -207,6 +215,8 @@ async def end_context(
         result = end_navigation_context(supabase, context_id, yacht_id, user_id)
         return result
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to end context: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -25,6 +25,8 @@ import { ShellProvider, useShellContext } from './ShellContext';
 import { SearchOverlay } from './SearchOverlay';
 import { useBreakpoint } from './useBreakpoint';
 import SettingsModal from '@/components/SettingsModal';
+import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
+import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -124,6 +126,9 @@ export function AppShell({ children }: AppShellProps) {
   const [searchOpen, setSearchOpen] = React.useState(false);
   // Settings modal state (rendered here, not inside SpotlightSearch)
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  // Create modal state for primary action buttons
+  const [createWOOpen, setCreateWOOpen] = React.useState(false);
+  const [reportFaultOpen, setReportFaultOpen] = React.useState(false);
 
   // Topbar menu handlers
   const handleEmailClick = React.useCallback(() => {
@@ -133,6 +138,22 @@ export function AppShell({ children }: AppShellProps) {
   const handleSettingsClick = React.useCallback(() => {
     setSettingsOpen(true);
   }, []);
+
+  // Primary action handler — opens create modal for domains that have one,
+  // navigates to domain page for others
+  const handlePrimaryAction = React.useCallback(() => {
+    switch (activeDomain) {
+      case 'work-orders':
+        setCreateWOOpen(true);
+        break;
+      case 'faults':
+        setReportFaultOpen(true);
+        break;
+      default:
+        // Domains without a create modal — navigate to domain (already there, but no-op is fine)
+        break;
+    }
+  }, [activeDomain]);
 
   const showSubbar = activeDomain !== 'surface';
 
@@ -149,11 +170,14 @@ export function AppShell({ children }: AppShellProps) {
         onEmailClick={handleEmailClick}
         onCommandCenterClick={() => setSearchOpen(true)}
         onSettingsClick={handleSettingsClick}
+        onPrimaryAction={handlePrimaryAction}
       >
         {children}
       </AppShellInner>
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <CreateWorkOrderModal open={createWOOpen} onOpenChange={setCreateWOOpen} />
+      <ReportFaultModal open={reportFaultOpen} onOpenChange={setReportFaultOpen} />
     </ShellProvider>
   );
 }
@@ -170,6 +194,7 @@ function AppShellInner({
   onEmailClick,
   onCommandCenterClick,
   onSettingsClick,
+  onPrimaryAction,
   children,
 }: {
   activeDomain: DomainId;
@@ -182,12 +207,36 @@ function AppShellInner({
   onEmailClick: () => void;
   onCommandCenterClick: () => void;
   onSettingsClick: () => void;
+  onPrimaryAction: () => void;
   children: React.ReactNode;
 }) {
   const { activeChip, setActiveChip, setSearchQuery, setActiveSort } = useShellContext();
   const breakpoint = useBreakpoint();
   const sidebarWidth = breakpoint === 'mobile' ? 0 : breakpoint === 'tablet' ? 48 : 192;
   const showSidebar = breakpoint !== 'mobile';
+  const isMobile = breakpoint === 'mobile';
+
+  // Mobile nav drawer state
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const mobileNavRef = React.useRef<HTMLDivElement>(null);
+
+  // Close mobile nav on outside click
+  React.useEffect(() => {
+    if (!mobileNavOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (mobileNavRef.current && !mobileNavRef.current.contains(e.target as Node)) {
+        setMobileNavOpen(false);
+      }
+    };
+    window.addEventListener('mousedown', handler);
+    return () => window.removeEventListener('mousedown', handler);
+  }, [mobileNavOpen]);
+
+  // Close mobile nav on domain selection
+  const handleMobileDomainSelect = React.useCallback((domain: Parameters<typeof onSelectDomain>[0]) => {
+    onSelectDomain(domain);
+    setMobileNavOpen(false);
+  }, [onSelectDomain]);
 
   return (
     <div
@@ -217,6 +266,8 @@ function AppShellInner({
         onCommandCenterClick={onCommandCenterClick}
         onSettingsClick={onSettingsClick}
         compact={breakpoint === 'tablet' || breakpoint === 'mobile'}
+        showNavToggle={isMobile}
+        onNavToggle={() => setMobileNavOpen((v) => !v)}
       />
 
       {/* Row 2: Subbar (hidden on Vessel Surface) */}
@@ -227,6 +278,7 @@ function AppShellInner({
           onChipClick={setActiveChip}
           onSearch={setSearchQuery}
           onSortChange={setActiveSort}
+          onPrimaryAction={onPrimaryAction}
         />
       )}
 
@@ -259,6 +311,48 @@ function AppShellInner({
           {children}
         </main>
       </div>
+
+      {/* Mobile nav drawer — slide-over sidebar */}
+      {isMobile && (
+        <>
+          {/* Backdrop */}
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.50)',
+              zIndex: 150,
+              opacity: mobileNavOpen ? 1 : 0,
+              visibility: mobileNavOpen ? 'visible' : 'hidden',
+              transition: 'opacity 200ms ease',
+            }}
+          />
+          {/* Drawer */}
+          <div
+            ref={mobileNavRef}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: 220,
+              background: 'var(--surface-base)',
+              borderRight: '1px solid var(--border-sub)',
+              zIndex: 160,
+              transform: mobileNavOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 200ms ease',
+              overflowY: 'auto',
+              paddingTop: 48,
+            }}
+          >
+            <Sidebar
+              activeDomain={activeDomain}
+              onSelectDomain={handleMobileDomainSelect}
+              counts={sidebarCounts}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

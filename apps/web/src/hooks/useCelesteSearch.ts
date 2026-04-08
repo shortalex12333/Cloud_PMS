@@ -412,6 +412,9 @@ async function buildSearchPayload(query: string, streamId: string, yachtId: stri
   // Use yacht_id from AuthContext, not from user_metadata (which is never set)
   const yachtSignature = await getYachtSignature(yachtId);
 
+  // Role from user_metadata is a pre-bootstrap fallback. Falls back to
+  // 'crew' (least privilege) if not set. This async function cannot use
+  // AuthContext hooks — role here may differ from the bootstrapped role.
   const rawRole = session?.user?.user_metadata?.role as string || 'crew';
 
   return {

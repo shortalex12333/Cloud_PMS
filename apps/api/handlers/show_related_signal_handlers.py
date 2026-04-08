@@ -411,16 +411,18 @@ def _sb_manual(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
 
 
 def _sb_handover(entity_id: str, supabase, yacht_id: str) -> Optional[str]:
-    r = supabase.table("pms_handovers").select(
-        "title, content"
+    r = supabase.table("handover_items").select(
+        "summary, category"
     ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
     if not r.data:
         return None
     row = r.data
-    parts = [row["title"]] if row.get("title") else []
-    if row.get("content"):
-        parts.append(row["content"][:300])
-    return "; ".join(parts) if parts else None
+    parts = []
+    if row.get("category"):
+        parts.append(f"[{row['category']}]")
+    if row.get("summary"):
+        parts.append(row["summary"][:300])
+    return " ".join(parts) if parts else None
 
 
 def _sb_handover_export(entity_id: str, supabase, yacht_id: str) -> Optional[str]:

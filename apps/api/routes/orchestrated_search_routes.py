@@ -10,7 +10,7 @@ Endpoints:
     POST /v2/search/plan - Get plan only (no execution)
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 import logging
@@ -18,6 +18,7 @@ import time
 
 # Auth middleware
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 
 # Centralized Supabase client factory
 from integrations.supabase import get_tenant_client
@@ -141,6 +142,7 @@ def get_orchestrator() -> SearchOrchestrator:
 @router.post("/search", response_model=OrchestatedSearchResponse)
 async def orchestrated_search(
     request: OrchestatedSearchRequest,
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user),
 ):
     """
@@ -156,7 +158,7 @@ async def orchestrated_search(
     """
     start_time = time.time()
 
-    yacht_id = auth['yacht_id']
+    yacht_id = resolve_yacht_id(auth, yacht_id)
     user_id = auth['user_id']
     tenant_key_alias = auth['tenant_key_alias']
 
@@ -270,6 +272,7 @@ async def orchestrated_search(
 @router.post("/search/plan", response_model=PlanOnlyResponse)
 async def get_search_plan(
     request: OrchestatedSearchRequest,
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user),
 ):
     """
@@ -282,7 +285,7 @@ async def get_search_plan(
 
     Returns the RetrievalPlan that WOULD be executed.
     """
-    yacht_id = auth['yacht_id']
+    yacht_id = resolve_yacht_id(auth, yacht_id)
     user_id = auth['user_id']
 
     try:

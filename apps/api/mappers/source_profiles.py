@@ -75,7 +75,7 @@ IDEA_YACHT = {
         "ROB_QTY": ("quantity_on_hand", 1.0),
         "LOCATION": ("location", 1.0),
         "MAKER": ("manufacturer", 1.0),
-        "DRAWING_REF": (None, 0.0),
+        "DRAWING_REF": ("_file_ref:DRAWING_REF", 0.0),  # routed to file reference resolver
     },
     "certificates": {
         "CERT_ID": ("source_id", 1.0),
@@ -210,6 +210,50 @@ PROFILES = {
 }
 
 
+# =============================================================================
+# FILE REFERENCE COLUMNS — columns in source exports that reference documents
+# by filename or path. These get routed to the FileReferenceResolver instead
+# of being mapped to entity columns.
+#
+# Structure: source → domain → column_name → resolution metadata
+# =============================================================================
+
+FILE_REFERENCE_COLUMNS = {
+    "idea_yacht": {
+        "parts": {
+            "DRAWING_REF": {
+                "link_table": "pms_equipment_documents",
+                "document_type_hint": "drawing",
+                "entity_type": "equipment",
+            },
+        },
+        # Add more domains as real exports reveal file reference columns
+    },
+    "seahub": {},       # populated when we get real Seahub exports
+    "sealogical": {},   # populated when we get real Sealogical exports
+}
+
+
+# =============================================================================
+# Generic file reference column name hints — used when source profile doesn't
+# have an explicit mapping. Matched case-insensitively against source columns.
+# =============================================================================
+
+FILE_REF_COLUMN_HINTS = {
+    "ATTACHMENT", "ATTACHMENTS", "DOCUMENT_PATH", "DOCUMENT_REF",
+    "DOC_PATH", "DOC_REF", "FILE_PATH", "FILE_REF", "FILEPATH",
+    "FILENAME", "FILE_NAME", "FILE_LOCATION", "PHOTO", "PHOTO_PATH",
+    "IMAGE", "IMAGE_PATH", "EVIDENCE", "DRAWING_REF", "REPORT_FILE",
+    "CERTIFICATE_FILE", "ATTACHED_FILE", "DOCUMENT", "ATTACHMENT_PATH",
+    # snake_case variants
+    "attachment", "document_path", "document_ref", "file_path",
+    "file_ref", "photo_path", "image_path",
+    # Title Case variants
+    "Document", "Attachment", "Photo", "FilePath", "File Path",
+    "Document Path", "Image",
+}
+
+
 def get_profile_mapping(source: str, domain: str) -> Optional[dict]:
     """
     Get known column mapping for a source + domain.
@@ -219,3 +263,12 @@ def get_profile_mapping(source: str, domain: str) -> Optional[dict]:
     if not profile:
         return None
     return profile.get(domain)
+
+
+def get_file_reference_columns(source: str, domain: str) -> dict:
+    """
+    Get file reference column definitions for a source + domain.
+    Returns dict of {column_name: resolution_metadata} or empty dict.
+    """
+    source_refs = FILE_REFERENCE_COLUMNS.get(source, {})
+    return source_refs.get(domain, {})

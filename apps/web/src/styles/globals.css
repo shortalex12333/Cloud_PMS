@@ -6,6 +6,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Focus-visible outlines for keyboard navigation ── */
+header button:focus-visible,
+nav button:focus-visible,
+[data-testid="sidebar"] [tabindex]:focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
 /**
  * CelesteOS Global Styles
  * Source: BRANDING_V3 - Maritime authority through restraint

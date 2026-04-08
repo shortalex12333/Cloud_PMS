@@ -12,7 +12,7 @@ Policy Sources:
 Returns ActionDecision[] with confidence, reasons, and breakdown.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional
 import logging
@@ -24,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 from services.decision_engine import evaluate_decisions, get_decision_engine
 from services.decision_audit_service import get_decision_audit_service
 
@@ -120,6 +121,7 @@ router = APIRouter(prefix="/v1/decisions", tags=["decisions"])
 @router.post("/", response_model=DecisionResponse)
 async def get_decisions(
     request: DecisionRequest,
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user)
 ):
     """
@@ -135,7 +137,7 @@ async def get_decisions(
     """
     start_time = time.time()
 
-    yacht_id = auth['yacht_id']
+    yacht_id = resolve_yacht_id(auth, yacht_id)
     user_id = auth['user_id']
     user_role = auth.get('role', 'member')
 

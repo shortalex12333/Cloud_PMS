@@ -138,7 +138,7 @@ export function EntityList<T extends { id: string }>({
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-surface-border rounded-full animate-spin" style={{ borderTopColor: 'var(--txt)' }} />
+          <div className="w-8 h-8 border-2 border-surface-border rounded-full animate-spin" style={{ borderTopColor: 'var(--mark)' }} />
           <p className="text-sm text-txt-secondary">Loading...</p>
         </div>
       </div>
@@ -148,8 +148,17 @@ export function EntityList<T extends { id: string }>({
   // Error state
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-red-400">Failed to load items</p>
+      <div className="flex flex-col items-center justify-center h-full text-center px-6 gap-3">
+        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--txt)' }}>Failed to load items</p>
+        <p style={{ fontSize: 12, color: 'var(--txt2)', maxWidth: 320 }}>
+          {error instanceof Error ? error.message : 'An error occurred'}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{ padding: '8px 16px', background: 'var(--split-bg)', borderRadius: 6, fontSize: 12, color: 'var(--txt)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+        >
+          Try Again
+        </button>
       </div>
     );
   }

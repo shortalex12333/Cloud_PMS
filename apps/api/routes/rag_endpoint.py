@@ -48,12 +48,13 @@ from typing import Optional
 from datetime import datetime
 from contextlib import contextmanager
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 # Auth dependency
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 
 # Database connection
 READ_DSN = os.getenv("READ_DB_DSN") or os.getenv("DATABASE_URL")
@@ -164,19 +165,20 @@ async def rag_answer(
     request: RAGRequest,
     req: Request,
     auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
 ):
     """
     Generate an answer from retrieved context.
 
     Security:
-    - yacht_id from JWT (not payload)
+    - yacht_id from JWT (not payload), or query param for fleet users
     - Role from auth context
     - Read-only operation
     """
     start_time = time.time()
 
-    # Get auth context from dependency (yacht_id, role from JWT)
-    yacht_id = auth['yacht_id']
+    # Get auth context from dependency (yacht_id, role from JWT or fleet param)
+    yacht_id = resolve_yacht_id(auth, yacht_id)
     role = auth.get('role', 'crew')
 
     # Compute query hash (for logging without raw text)

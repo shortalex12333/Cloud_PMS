@@ -39,6 +39,10 @@ interface TopbarProps {
   onSettingsClick?: () => void;
   /** Compact mode: hide vessel name, separators, role badge */
   compact?: boolean;
+  /** Called when mobile nav hamburger is tapped (mobile only) */
+  onNavToggle?: () => void;
+  /** Whether to show the nav hamburger (mobile only) */
+  showNavToggle?: boolean;
 }
 
 export function Topbar({
@@ -51,6 +55,8 @@ export function Topbar({
   onCommandCenterClick,
   onSettingsClick,
   compact,
+  onNavToggle,
+  showNavToggle,
 }: TopbarProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -58,14 +64,21 @@ export function Topbar({
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click
+  // Close menu on outside click or Escape
   React.useEffect(() => {
     if (!menuOpen) return;
-    const handler = (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
-    window.addEventListener('mousedown', handler);
-    return () => window.removeEventListener('mousedown', handler);
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('mousedown', handleClick);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handleClick);
+      window.removeEventListener('keydown', handleKey);
+    };
   }, [menuOpen]);
 
   const handleSignOut = React.useCallback(async () => {
@@ -108,6 +121,32 @@ export function Topbar({
         zIndex: 100,
       }}
     >
+      {/* Mobile nav toggle */}
+      {showNavToggle && (
+        <button
+          onClick={onNavToggle}
+          aria-label="Open navigation"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--txt3)',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            flexShrink: 0,
+            transition: 'background 80ms',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          <LayoutGrid style={{ width: 14, height: 14 }} />
+        </button>
+      )}
+
       {/* Brand */}
       <div
         style={{
@@ -387,11 +426,18 @@ function VesselDropdown({ vessel }: { vessel: ReturnType<typeof useActiveVessel>
 
   React.useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    window.addEventListener('mousedown', handler);
-    return () => window.removeEventListener('mousedown', handler);
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('mousedown', handleClick);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handleClick);
+      window.removeEventListener('keydown', handleKey);
+    };
   }, [open]);
 
   return (

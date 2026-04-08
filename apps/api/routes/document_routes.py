@@ -14,7 +14,7 @@ SOC-2 Compliance:
 - Idempotent operations
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
@@ -22,6 +22,7 @@ import logging
 import os
 
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 from supabase import create_client
 
 logger = logging.getLogger(__name__)
@@ -136,6 +137,7 @@ async def audit_document_action(
 async def link_document(
     request: DocumentLinkRequest,
     auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
 ):
     """
     Link a document to an object (work order, equipment, handover, etc.).
@@ -146,7 +148,7 @@ async def link_document(
     - Idempotent (duplicate links return success)
     - Audit logged
     """
-    yacht_id = auth['yacht_id']
+    yacht_id = resolve_yacht_id(auth, yacht_id)
     user_id = auth['user_id']
     user_role = auth.get('role', '')
     supabase = _get_tenant_client(auth['tenant_key_alias'])
@@ -267,6 +269,7 @@ async def link_document(
 async def unlink_document(
     request: DocumentUnlinkRequest,
     auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
 ):
     """
     Unlink a document from an object (soft delete).
@@ -277,7 +280,7 @@ async def unlink_document(
     - Idempotent (already unlinked returns success)
     - Audit logged
     """
-    yacht_id = auth['yacht_id']
+    yacht_id = resolve_yacht_id(auth, yacht_id)
     user_id = auth['user_id']
     user_role = auth.get('role', '')
     supabase = _get_tenant_client(auth['tenant_key_alias'])
@@ -371,13 +374,14 @@ async def unlink_document(
 async def get_document_links(
     document_id: str,
     auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
 ):
     """
     Get all active links for a document.
 
     Returns the list of objects (work orders, equipment, etc.) that this document is linked to.
     """
-    yacht_id = auth['yacht_id']
+    yacht_id = resolve_yacht_id(auth, yacht_id)
     supabase = _get_tenant_client(auth['tenant_key_alias'])
 
     try:
@@ -423,13 +427,14 @@ async def get_documents_for_object(
     object_type: str,
     object_id: str,
     auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
 ):
     """
     Get all documents linked to a specific object.
 
     Use this to show attached documents on a work order, equipment, etc.
     """
-    yacht_id = auth['yacht_id']
+    yacht_id = resolve_yacht_id(auth, yacht_id)
     supabase = _get_tenant_client(auth['tenant_key_alias'])
 
     # Validate object_type

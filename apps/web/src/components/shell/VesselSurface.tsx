@@ -32,6 +32,7 @@ import type { DomainId } from './Sidebar';
 import { useVesselSurface } from './hooks';
 import type { VesselSurfaceResponse } from './api';
 import { useBreakpoint } from './useBreakpoint';
+import { useActiveVessel } from '@/contexts/VesselContext';
 
 /* ─────────────────────────────────────────────
    TYPES
@@ -97,9 +98,55 @@ interface SurfaceCertificate {
 
 export function VesselSurface() {
   const router = useRouter();
-  const { data: liveData } = useVesselSurface();
+  const { data: liveData, isLoading, error, refetch } = useVesselSurface();
+  const { isAllVessels } = useActiveVessel();
   const breakpoint = useBreakpoint();
   const gridCols = breakpoint === 'desktop' ? '1fr 1fr 1fr' : (breakpoint === 'laptop' || breakpoint === 'tablet') ? '1fr 1fr' : '1fr';
+
+  const navigateToDomain = React.useCallback(
+    (domain: DomainId) => {
+      const paths: Partial<Record<DomainId, string>> = {
+        'work-orders': '/work-orders',
+        faults: '/faults',
+        'handover-export': '/handover-export',
+        inventory: '/inventory',
+        certificates: '/certificates',
+      };
+      const path = paths[domain];
+      if (path) router.push(path);
+    },
+    [router]
+  );
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 32, height: 32, border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <p style={{ fontSize: 12, color: 'var(--txt2)' }}>Loading vessel data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center', maxWidth: 320 }}>
+          <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--txt)' }}>Failed to load vessel data</p>
+          <p style={{ fontSize: 12, color: 'var(--txt2)' }}>{error instanceof Error ? error.message : 'An error occurred'}</p>
+          <button
+            onClick={() => refetch()}
+            style={{ padding: '8px 16px', background: 'var(--split-bg)', borderRadius: 6, fontSize: 12, color: 'var(--txt)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Derive display data from live endpoint, fall back to static mock
   const workOrders = liveData?.work_orders?.items?.length
@@ -112,6 +159,7 @@ export function VesselSurface() {
         status: wo.status as SurfaceWorkOrder['status'],
         age: wo.age_days !== undefined ? `${wo.age_days}d` : '\u2014',
         yacht_id: wo.yacht_id,
+        vesselName: wo.yacht_name,
       }))
     : [];
 
@@ -124,6 +172,7 @@ export function VesselSurface() {
         severity: (f.severity || f.status || 'open') as SurfaceFault['severity'],
         age: f.age_days !== undefined ? `${f.age_days}d` : '\u2014',
         yacht_id: f.yacht_id,
+        vesselName: f.yacht_name,
       }))
     : [];
 
@@ -156,6 +205,7 @@ export function VesselSurface() {
         action: a.action,
         actor: a.actor,
         time: a.time_display || formatTimeAgo(a.timestamp),
+        entityType: a.entity_type,
       }))
     : [];
 
@@ -172,21 +222,6 @@ export function VesselSurface() {
   const faultCount = liveData?.faults?.open_count ?? 0;
   const partsCount = liveData?.parts_below_min?.count ?? 0;
   const certCount = liveData?.certificates_expiring?.count ?? 0;
-
-  const navigateToDomain = React.useCallback(
-    (domain: DomainId) => {
-      const paths: Partial<Record<DomainId, string>> = {
-        'work-orders': '/work-orders',
-        faults: '/faults',
-        'handover-export': '/handover-export',
-        inventory: '/inventory',
-        certificates: '/certificates',
-      };
-      const path = paths[domain];
-      if (path) router.push(path);
-    },
-    [router]
-  );
 
   return (
     <div
@@ -211,22 +246,26 @@ export function VesselSurface() {
         countSeverity={workOrders.some(w => w.status === 'overdue') ? 'warning' : undefined}
         onHeaderClick={() => navigateToDomain('work-orders')}
       >
-        {workOrders.map((wo) => (
+        {workOrders.length > 0 ? workOrders.map((wo) => (
           <SurfaceRow
             key={wo.id}
             severity={wo.status === 'overdue' ? 'critical' : wo.status === 'due_soon' ? 'warning' : undefined}
             title={<><span style={{ color: 'var(--mark)', fontSize: 11, fontFamily: 'var(--font-mono, ui-monospace, monospace)' }}>{wo.ref}</span> {wo.title}</>}
-            meta={wo.equipment}
+            meta={isAllVessels && wo.vesselName ? `${wo.vesselName} · ${wo.equipment}` : wo.equipment}
             pill={{ label: wo.status.replace('_', ' '), variant: statusToVariant(wo.status) }}
             time={wo.age}
             onClick={() => router.push(`/work-orders?id=${wo.id}${wo.yacht_id ? `&yacht_id=${wo.yacht_id}` : ''}`)}
           />
-        ))}
-        <SurfaceFooter
-          count={woCount}
-          label="work orders"
-          onClick={() => navigateToDomain('work-orders')}
-        />
+        )) : (
+          <SurfaceEmpty message="No open work orders" />
+        )}
+        {woCount > 0 && (
+          <SurfaceFooter
+            count={woCount}
+            label="work orders"
+            onClick={() => navigateToDomain('work-orders')}
+          />
+        )}
         <QuickActions
           actions={[
             { label: 'Create Work Order', onClick: () => router.push('/work-orders') },
@@ -242,22 +281,26 @@ export function VesselSurface() {
         countSeverity={faults.some(f => f.severity === 'critical') ? 'critical' : undefined}
         onHeaderClick={() => navigateToDomain('faults')}
       >
-        {faults.map((f) => (
+        {faults.length > 0 ? faults.map((f) => (
           <SurfaceRow
             key={f.id}
             severity={f.severity === 'critical' ? 'critical' : f.severity === 'warning' ? 'warning' : undefined}
             title={<><span style={{ color: 'var(--mark)', fontSize: 11, fontFamily: 'var(--font-mono, ui-monospace, monospace)' }}>{f.ref}</span> {f.title}</>}
-            meta={f.equipment}
+            meta={isAllVessels && f.vesselName ? `${f.vesselName} · ${f.equipment}` : f.equipment}
             pill={{ label: f.severity, variant: f.severity === 'critical' ? 'critical' : f.severity === 'warning' ? 'warn' : 'open' }}
             time={f.age}
             onClick={() => router.push(`/faults?id=${f.id}${f.yacht_id ? `&yacht_id=${f.yacht_id}` : ''}`)}
           />
-        ))}
-        <SurfaceFooter
-          count={faultCount}
-          label="open faults"
-          onClick={() => navigateToDomain('faults')}
-        />
+        )) : (
+          <SurfaceEmpty message="No open faults" />
+        )}
+        {faultCount > 0 && (
+          <SurfaceFooter
+            count={faultCount}
+            label="open faults"
+            onClick={() => navigateToDomain('faults')}
+          />
+        )}
         <QuickActions
           actions={[
             { label: 'Log Fault', onClick: () => router.push('/faults') },
@@ -294,7 +337,7 @@ export function VesselSurface() {
         countSeverity={parts.some(p => p.stock === 0) ? 'critical' : 'warning'}
         onHeaderClick={() => navigateToDomain('inventory')}
       >
-        {parts.map((p) => (
+        {parts.length > 0 ? parts.map((p) => (
           <SurfaceRow
             key={p.id}
             severity={p.stock === 0 ? 'critical' : 'warning'}
@@ -303,12 +346,16 @@ export function VesselSurface() {
             stockBar={{ current: p.stock, min: p.minStock }}
             onClick={() => router.push(`/inventory?id=${p.id}${p.yacht_id ? `&yacht_id=${p.yacht_id}` : ''}`)}
           />
-        ))}
-        <SurfaceFooter
-          count={partsCount}
-          label="below threshold"
-          onClick={() => navigateToDomain('inventory')}
-        />
+        )) : (
+          <SurfaceEmpty message="All parts above minimum" />
+        )}
+        {partsCount > 0 && (
+          <SurfaceFooter
+            count={partsCount}
+            label="below threshold"
+            onClick={() => navigateToDomain('inventory')}
+          />
+        )}
         <QuickActions
           actions={[
             { label: 'Add to Shopping List', onClick: () => router.push('/shopping-list') },
@@ -321,9 +368,13 @@ export function VesselSurface() {
         icon={Activity}
         label="Recent Activity"
       >
-        {activity.map((a) => (
+        {activity.length > 0 ? activity.map((a) => (
           <div
             key={a.id}
+            onClick={() => {
+              const path = entityTypePath(a.entityType);
+              if (path) router.push(`${path}?id=${a.id}`);
+            }}
             style={{
               display: 'flex',
               alignItems: 'baseline',
@@ -346,7 +397,9 @@ export function VesselSurface() {
               {a.time}
             </span>
           </div>
-        ))}
+        )) : (
+          <SurfaceEmpty message="No recent activity" />
+        )}
       </SurfaceCard>
 
       {/* Certificates Expiring */}
@@ -357,7 +410,7 @@ export function VesselSurface() {
         countSeverity={certificates.some(c => c.daysRemaining < 30) ? 'warning' : undefined}
         onHeaderClick={() => navigateToDomain('certificates')}
       >
-        {certificates.map((c) => (
+        {certificates.length > 0 ? certificates.map((c) => (
           <SurfaceRow
             key={c.id}
             severity={c.daysRemaining < 30 ? 'warning' : undefined}
@@ -367,7 +420,9 @@ export function VesselSurface() {
             time={`${c.daysRemaining}d`}
             onClick={() => router.push(`/certificates?id=${c.id}${(c as any).yacht_id ? `&yacht_id=${(c as any).yacht_id}` : ''}`)}
           />
-        ))}
+        )) : (
+          <SurfaceEmpty message="No certificates expiring" />
+        )}
       </SurfaceCard>
     </div>
   );
@@ -597,6 +652,18 @@ function StatusPill({ label, variant }: { label: string; variant: PillVariant })
 }
 
 /* ─────────────────────────────────────────────
+   SURFACE EMPTY — gentle message for empty cards
+   ───────────────────────────────────────────── */
+
+function SurfaceEmpty({ message }: { message: string }) {
+  return (
+    <div style={{ padding: '14px 12px', borderTop: '1px solid var(--border-faint)', fontSize: 11, color: 'var(--txt-ghost)', textAlign: 'center' }}>
+      {message}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    SURFACE FOOTER — "View all N records" link
    ───────────────────────────────────────────── */
 
@@ -684,6 +751,17 @@ function formatTimeAgo(timestamp: string): string {
   if (diffHr < 24) return `${diffHr}h ago`;
   const diffDay = Math.floor(diffHr / 24);
   return `${diffDay}d ago`;
+}
+
+function entityTypePath(entityType: string): string | null {
+  const map: Record<string, string> = {
+    work_order: '/work-orders', fault: '/faults', equipment: '/equipment',
+    part: '/inventory', inventory: '/inventory', certificate: '/certificates',
+    document: '/documents', warranty: '/warranties', purchase_order: '/purchasing',
+    receiving: '/receiving', shopping_list: '/shopping-list', email: '/email',
+    handover_export: '/handover-export', hours_of_rest: '/hours-of-rest',
+  };
+  return map[entityType] || null;
 }
 
 function statusToVariant(status: string): PillVariant {

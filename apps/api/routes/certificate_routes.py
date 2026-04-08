@@ -25,6 +25,7 @@ from supabase import Client
 
 # Auth middleware
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 
 # Centralized Supabase client factory
 from integrations.supabase import get_supabase_client, get_tenant_client
@@ -110,6 +111,7 @@ async def list_vessel_certificates(
     limit: int = Query(default=50, ge=1, le=100),
     status: Optional[str] = Query(default=None),
     certificate_type: Optional[str] = Query(default=None),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user)
 ):
     """
@@ -126,7 +128,7 @@ async def list_vessel_certificates(
 
         result = await handlers["list_vessel_certificates"](
             entity_id="",
-            yacht_id=auth["yacht_id"],
+            yacht_id=resolve_yacht_id(auth, yacht_id),
             params={
                 "offset": offset,
                 "limit": limit,
@@ -147,6 +149,7 @@ async def list_crew_certificates(
     limit: int = Query(default=50, ge=1, le=100),
     person_name: Optional[str] = Query(default=None),
     certificate_type: Optional[str] = Query(default=None),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user)
 ):
     """
@@ -163,7 +166,7 @@ async def list_crew_certificates(
 
         result = await handlers["list_crew_certificates"](
             entity_id="",
-            yacht_id=auth["yacht_id"],
+            yacht_id=resolve_yacht_id(auth, yacht_id),
             params={
                 "offset": offset,
                 "limit": limit,
@@ -182,6 +185,7 @@ async def list_crew_certificates(
 async def find_expiring_certificates(
     days_ahead: int = Query(default=90, ge=1, le=365),
     domain: Literal["vessel", "crew", "all"] = Query(default="all"),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user)
 ):
     """
@@ -198,7 +202,7 @@ async def find_expiring_certificates(
 
         result = await handlers["find_expiring_certificates"](
             entity_id="",
-            yacht_id=auth["yacht_id"],
+            yacht_id=resolve_yacht_id(auth, yacht_id),
             params={
                 "days_ahead": days_ahead,
                 "domain": domain,
@@ -215,6 +219,7 @@ async def find_expiring_certificates(
 async def get_certificate_details(
     certificate_id: UUID,
     domain: Literal["vessel", "crew"] = Query(default="vessel"),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user)
 ):
     """
@@ -233,7 +238,7 @@ async def get_certificate_details(
 
         result = await handlers["get_certificate_details"](
             entity_id=str(certificate_id),
-            yacht_id=auth["yacht_id"],
+            yacht_id=resolve_yacht_id(auth, yacht_id),
             params={"domain": domain}
         )
         return result
@@ -249,6 +254,7 @@ async def view_certificate_history(
     domain: Literal["vessel", "crew"] = Query(default="vessel"),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user)
 ):
     """
@@ -266,7 +272,7 @@ async def view_certificate_history(
 
         result = await handlers["view_certificate_history"](
             entity_id=str(certificate_id),
-            yacht_id=auth["yacht_id"],
+            yacht_id=resolve_yacht_id(auth, yacht_id),
             params={
                 "domain": domain,
                 "offset": offset,
@@ -287,6 +293,7 @@ async def view_certificate_history(
 @router.post("/debug/pipeline-test", response_model=CertificatePipelineTestResponse)
 async def debug_certificate_pipeline(
     request: CertificatePipelineTestRequest,
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user)
 ):
     """
@@ -320,8 +327,8 @@ async def debug_certificate_pipeline(
     logger.info(f"[CertDebug] Debug access: user={auth['user_id'][:8]}..., env={env}")
 
     query = request.query
-    # SECURITY: yacht_id ONLY from auth context - invariant #1
-    yacht_id = auth["yacht_id"]
+    # SECURITY: yacht_id from auth context, with fleet override via resolve_yacht_id
+    yacht_id = resolve_yacht_id(auth, yacht_id)
 
     debug_info = {
         "feature_flag": "FEATURE_CERTIFICATES=true",

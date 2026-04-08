@@ -42,7 +42,7 @@ const CENTER_STATE: React.CSSProperties = {
 };
 
 const TOPBAR: React.CSSProperties = {
-  height: '40px',
+  height: '48px',
   flexShrink: 0,
   display: 'flex',
   alignItems: 'center',
@@ -184,10 +184,83 @@ function SunIcon() {
   );
 }
 
+/** Bootstrap loading state with elapsed timer, retry button after 15s */
+function BootstrapSpinner({ onRetry, onLogout, isError }: { onRetry: () => Promise<void>; onLogout: () => void; isError?: boolean }) {
+  const [elapsed, setElapsed] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+
+  useEffect(() => {
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const showSlowMessage = elapsed >= 15 || isError;
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    setElapsed(0);
+    try {
+      await onRetry();
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  return (
+    <div style={CENTER_STATE}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', maxWidth: '320px', textAlign: 'center' }}>
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--mark)' }} />
+        <p style={{ fontSize: '13px', color: 'var(--txt2)' }}>
+          {isError ? 'Connection failed' : retrying ? 'Retrying...' : 'Loading your account...'}
+        </p>
+        {showSlowMessage && !retrying && (
+          <>
+            <p style={{ fontSize: '11px', color: 'var(--txt3)' }}>
+              {isError
+                ? 'Could not reach the server. It may be starting up.'
+                : 'This is taking longer than usual. The server may be waking up.'}
+            </p>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+              <button
+                onClick={handleRetry}
+                style={{
+                  padding: '8px 20px', borderRadius: '6px',
+                  background: 'var(--teal-bg)', border: '1px solid var(--mark-hover)',
+                  color: 'var(--mark)', fontSize: '12px', fontWeight: 500,
+                  cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  transition: 'background 80ms',
+                }}
+              >
+                Retry now
+              </button>
+              <button
+                onClick={onLogout}
+                style={{
+                  padding: '8px 20px', borderRadius: '6px',
+                  border: '1px solid var(--border-sub)', background: 'var(--surface-base)',
+                  color: 'var(--txt2)', fontSize: '12px',
+                  cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          </>
+        )}
+        {!showSlowMessage && (
+          <p style={{ fontSize: '10px', color: 'var(--txt-ghost)', fontFamily: 'var(--font-mono)' }}>
+            {elapsed}s
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, login, logout, loading: authLoading, bootstrapping, error: authError } = useAuth();
+  const { user, login, logout, loading: authLoading, bootstrapping, error: authError, refreshBootstrap } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -235,43 +308,22 @@ export default function LoginContent() {
   // Redirect when user is authenticated and fully activated
   useEffect(() => {
     if (justLoggedOut) {
-      console.log('[LoginPage] Just logged out, skipping auto-redirect');
+      // Just logged out, skip auto-redirect
       return;
     }
 
     if (!authLoading && user) {
-      console.log('[LoginPage] User state:', user.bootstrapStatus);
-
-      if (bootstrapping) {
-        console.log('[LoginPage] Waiting for bootstrap...');
-        return;
-      }
+      if (bootstrapping) return;
 
       if (isFullyActivated(user)) {
-        console.log('[LoginPage] User fully activated, redirecting to /');
         router.replace('/');
         return;
       }
 
-      if (user.bootstrapStatus === 'pending') {
-        console.log('[LoginPage] User pending activation');
-        return;
-      }
-
-      if (user.bootstrapStatus === 'inactive') {
-        console.log('[LoginPage] Yacht inactive');
-        return;
-      }
-
-      if (user.bootstrapStatus === 'subscription_required') {
-        console.log('[LoginPage] Subscription required');
-        return;
-      }
-
-      if (user.bootstrapStatus === 'error') {
-        console.log('[LoginPage] Bootstrap error, will retry');
-        return;
-      }
+      if (user.bootstrapStatus === 'pending') return;
+      if (user.bootstrapStatus === 'inactive') return;
+      if (user.bootstrapStatus === 'subscription_required') return;
+      if (user.bootstrapStatus === 'error') return;
     }
   }, [user, authLoading, bootstrapping, router, justLoggedOut]);
 
@@ -281,7 +333,6 @@ export default function LoginContent() {
     setError(null);
 
     try {
-      console.log('[LoginPage] Attempting login:', email);
       await login(email, password);
     } catch (err) {
       console.error('[LoginPage] Login failed:', err);
@@ -309,7 +360,7 @@ export default function LoginContent() {
 
   // Bootstrapping
   if (user && bootstrapping && !justLoggedOut) {
-    return renderSpinnerState('Loading your account...');
+    return <BootstrapSpinner onRetry={refreshBootstrap} onLogout={logout} />;
   }
 
   // Redirecting
@@ -414,7 +465,7 @@ export default function LoginContent() {
 
   // Bootstrap error
   if (user && user.bootstrapStatus === 'error') {
-    return renderSpinnerState('Connecting to server...', 'Retrying...');
+    return <BootstrapSpinner onRetry={refreshBootstrap} onLogout={logout} isError />;
   }
 
   // Display error from auth context or local error
@@ -441,10 +492,10 @@ export default function LoginContent() {
         {/* ── Topbar ── */}
         <header style={TOPBAR}>
           <span style={{
-            fontSize: '10px', fontWeight: 600, letterSpacing: '0.16em',
+            fontSize: '9px', fontWeight: 600, letterSpacing: '0.20em',
             textTransform: 'uppercase', color: 'var(--mark)',
           }}>
-            Celeste
+            CELESTE
           </span>
           <div style={{ flex: 1 }} />
           <button
@@ -522,7 +573,7 @@ export default function LoginContent() {
                     style={FORGOT_LINK}
                     onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-                    onClick={(e) => { e.preventDefault(); }}
+                    onClick={(e) => { e.preventDefault(); alert('Contact your vessel administrator to reset your password.'); }}
                   >
                     Forgot?
                   </a>

@@ -1100,12 +1100,12 @@ class P3ReadOnlyHandlers:
             cutoff = (datetime.now(timezone.utc) - timedelta(hours=date_range_hours)).isoformat()
 
             # Get handover items
-            handover_result = self.db.table("pms_handover").select(
-                "id, summary_text, category, priority, entity_type, entity_id, "
-                "added_by, added_at, metadata"
-            ).gte("added_at", cutoff).order(
+            handover_result = self.db.table("handover_items").select(
+                "id, summary, category, priority, entity_type, entity_id, "
+                "added_by, created_at, metadata"
+            ).gte("created_at", cutoff).order(
                 "priority", desc=True
-            ).order("added_at", desc=True).execute()
+            ).order("created_at", desc=True).execute()
 
             handover_items = handover_result.data if handover_result.data else []
 

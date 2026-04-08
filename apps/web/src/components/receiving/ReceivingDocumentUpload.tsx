@@ -11,9 +11,10 @@ import { useState, useRef, useCallback } from 'react';
 import { Camera, Upload, FileText, CheckCircle, XCircle, AlertCircle, Loader2, RefreshCw, Save, Plus } from 'lucide-react';
 import { receivingApi, CelesteApiError } from '@/lib/apiClient';
 import { saveExtractedData, autoPopulateLineItems, updateReceivingHeader } from '@/lib/receiving/saveExtractedData';
-import { supabase } from '@/lib/supabaseClient';
 import { executeAction } from '@/lib/actionClient';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { useActiveVessel } from '@/contexts/VesselContext';
 
 interface ReceivingDocumentUploadProps {
   /**
@@ -50,6 +51,9 @@ export function ReceivingDocumentUpload({
   // Track the receiving ID - either from props or created during upload
   const [effectiveReceivingId, setEffectiveReceivingId] = useState<string | null>(initialReceivingId || null);
   const isNewReceiving = !initialReceivingId;
+
+  const { user } = useAuth();
+  const { vesselId: activeVesselId } = useActiveVessel();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -142,12 +146,8 @@ export function ReceivingDocumentUpload({
       return effectiveReceivingId;
     }
 
-    // Get yacht_id from current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-    const yachtId = user.user_metadata?.yacht_id;
+    // Get yacht_id from active vessel context (falls back to primary vessel)
+    const yachtId = activeVesselId || user?.yachtId;
     if (!yachtId) {
       throw new Error('Yacht ID not found');
     }
@@ -232,13 +232,8 @@ export function ReceivingDocumentUpload({
     setError(null);
 
     try {
-      // Get yacht_id from current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const yachtId = user.user_metadata?.yacht_id;
+      // Get yacht_id from active vessel context (falls back to primary vessel)
+      const yachtId = activeVesselId || user?.yachtId;
       if (!yachtId) {
         throw new Error('Yacht ID not found');
       }
