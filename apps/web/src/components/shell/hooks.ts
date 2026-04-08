@@ -10,6 +10,7 @@ import { useActiveVessel } from '@/contexts/VesselContext';
 import {
   fetchVesselSurface,
   fetchDomainRecords,
+  fetchEmailUnreadCount,
   DOMAIN_TO_API,
   type VesselSurfaceResponse,
   type DomainRecordsResponse,
@@ -65,6 +66,15 @@ export function useDomainRecords(
 export function useSidebarCounts() {
   const { data } = useVesselSurface();
 
+  // Email unread count — polled every 60s, independent of vessel surface
+  const { data: emailUnread = 0 } = useQuery<number>({
+    queryKey: ['email-unread-count'],
+    queryFn: fetchEmailUnreadCount,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+
   if (!data?.domain_counts) return undefined;
 
   const counts = data.domain_counts;
@@ -101,6 +111,11 @@ export function useSidebarCounts() {
       count: counts.certificates_expiring,
       severity: counts.certificates_expiring > 0 ? 'warning' : null,
     };
+  }
+
+  // Email unread count — merged from separate endpoint
+  if (emailUnread > 0) {
+    result['email'] = { count: emailUnread, severity: null };
   }
 
   return result;

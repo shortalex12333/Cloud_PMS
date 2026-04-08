@@ -173,6 +173,16 @@ export function fetchDomainRecords(
    Frontend routes use hyphens, API uses underscores.
    ───────────────────────────────────────────── */
 
+/** Fetch unread email count */
+export async function fetchEmailUnreadCount(): Promise<number> {
+  try {
+    const data = await apiFetch<{ unread_count: number }>('/email/unread-count');
+    return data.unread_count ?? 0;
+  } catch {
+    return 0; // Email not connected or token expired — no badge
+  }
+}
+
 /** Map frontend route domain IDs to API domain params */
 export const DOMAIN_TO_API: Record<string, string> = {
   'work-orders': 'work_orders',
