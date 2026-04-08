@@ -194,7 +194,10 @@ async function getFullAuthContext(): Promise<{
     // Get yacht signature
     const yachtSignature = await getYachtSignature(yachtId);
 
-    // Get role from user metadata and map to valid role
+    // Role from user_metadata is a pre-bootstrap fallback (may not match
+    // the authoritative role from bootstrap API). Falls back to 'crew'
+    // (least privilege) if not set. This is an async utility function
+    // outside React — cannot access AuthContext hooks.
     const rawRole = (session.user.user_metadata?.role as string) || 'crew';
     const role = mapToValidRole(rawRole);
 
