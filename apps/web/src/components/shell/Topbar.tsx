@@ -14,7 +14,7 @@
  */
 
 import * as React from 'react';
-import { Search, X, Menu, LogOut, User, Mail, Settings } from 'lucide-react';
+import { Search, X, Menu, LogOut, User, Mail, Settings, LayoutGrid } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
@@ -33,6 +33,8 @@ interface TopbarProps {
   onMenuClick?: () => void;
   /** Called when Email is selected from the menu */
   onEmailClick?: () => void;
+  /** Called when Command Center is selected from the menu */
+  onCommandCenterClick?: () => void;
   /** Called when Settings is selected from the menu */
   onSettingsClick?: () => void;
   /** Compact mode: hide vessel name, separators, role badge */
@@ -46,6 +48,7 @@ export function Topbar({
   onSearchFocus,
   onMenuClick,
   onEmailClick,
+  onCommandCenterClick,
   onSettingsClick,
   compact,
 }: TopbarProps) {
@@ -322,6 +325,29 @@ export function Topbar({
             >
               <Mail style={{ width: 13, height: 13 }} />
               Email
+            </button>
+
+            {/* Command Center */}
+            <button
+              onClick={() => { setMenuOpen(false); onCommandCenterClick?.(); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: 12,
+                color: 'var(--txt2)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background 60ms',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <LayoutGrid style={{ width: 13, height: 13 }} />
+              Command Center
             </button>
 
             {/* Settings */}
