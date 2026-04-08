@@ -88,46 +88,6 @@ interface SurfaceCertificate {
 }
 
 /* ─────────────────────────────────────────────
-   STATIC MOCK DATA
-   Replace with live data from ENGINEER01's
-   GET /api/vessel/{id}/surface endpoint
-   ───────────────────────────────────────────── */
-
-const MOCK_WORK_ORDERS: SurfaceWorkOrder[] = [
-  { id: 'WO-1042', ref: 'WO\u00b71042', title: 'Main Engine Inspection', equipment: 'E-007 Main Engine', assigned: 'J. Morrison', status: 'overdue', age: '5d' },
-  { id: 'WO-1038', ref: 'WO\u00b71038', title: 'Generator Service — 500hr', equipment: 'E-012 Stbd Generator', assigned: 'R. Costa', status: 'due_soon', age: '2d' },
-  { id: 'WO-1035', ref: 'WO\u00b71035', title: 'Watermaker Membrane Replace', equipment: 'E-022 Watermaker', assigned: 'Unassigned', status: 'open', age: '8d' },
-];
-
-const MOCK_FAULTS: SurfaceFault[] = [
-  { id: 'F-088', ref: 'F\u00b7088', title: 'Port Engine Abnormal Vibration', equipment: 'E-007 Main Engine', severity: 'critical', age: '2d' },
-  { id: 'F-085', ref: 'F\u00b7085', title: 'AC Unit 3 — Low Refrigerant', equipment: 'E-041 AC Unit 3', severity: 'warning', age: '4d' },
-];
-
-const MOCK_HANDOVER: SurfaceHandover = {
-  id: 'HO-019', from: 'J. Morrison', to: 'R. Costa', date: '22 Mar 2026', status: 'signed',
-};
-
-const MOCK_PARTS: SurfacePart[] = [
-  { id: 'P-0441', name: 'Oil Filter 20W-50', stock: 1, minStock: 3, location: 'Engine Room' },
-  { id: 'P-0312', name: 'Impeller — Jabsco 17937', stock: 0, minStock: 2, location: 'Engine Room' },
-  { id: 'P-0587', name: 'Zinc Anode M8', stock: 2, minStock: 4, location: 'Lazarette' },
-];
-
-const MOCK_ACTIVITY: SurfaceActivityItem[] = [
-  { id: '1', ref: 'F\u00b7088', action: 'escalated to critical', actor: 'R. Costa', time: '2h ago' },
-  { id: '2', ref: 'WO\u00b71042', action: 'comment added', actor: 'J. Morrison', time: '4h ago' },
-  { id: '3', ref: 'P\u00b70312', action: 'stock updated to 0', actor: 'System', time: '6h ago' },
-  { id: '4', ref: 'HO\u00b7019', action: 'signed', actor: 'J. Morrison', time: '1d ago' },
-  { id: '5', ref: 'WO\u00b71038', action: 'assigned to R. Costa', actor: 'Captain', time: '1d ago' },
-];
-
-const MOCK_CERTIFICATES: SurfaceCertificate[] = [
-  { id: 'C-004', name: 'Safety Equipment Certificate', daysRemaining: 12, status: 'expiring' },
-  { id: 'C-009', name: 'ISM Document of Compliance', daysRemaining: 38, status: 'expiring' },
-];
-
-/* ─────────────────────────────────────────────
    MAIN COMPONENT
    ───────────────────────────────────────────── */
 
@@ -198,12 +158,12 @@ export function VesselSurface() {
         daysRemaining: c.days_remaining,
         status: (c.days_remaining <= 0 ? 'expired' : c.days_remaining <= 45 ? 'expiring' : 'valid') as SurfaceCertificate['status'],
       }))
-    : MOCK_CERTIFICATES;
+    : [];
 
   const woCount = liveData?.work_orders?.open_count ?? 0;
   const faultCount = liveData?.faults?.open_count ?? 0;
   const partsCount = liveData?.parts_below_min?.count ?? 0;
-  const certCount = liveData?.certificates_expiring?.count ?? MOCK_CERTIFICATES.length;
+  const certCount = liveData?.certificates_expiring?.count ?? 0;
 
   const navigateToDomain = React.useCallback(
     (domain: DomainId) => {
