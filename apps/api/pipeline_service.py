@@ -479,6 +479,14 @@ except Exception as e:
     logger.error(f"❌ Failed to register Vessel Surface routes: {e}")
     logger.error("Vessel Surface endpoints will not be available")
 
+try:
+    from routes.attention_routes import router as attention_router
+    app.include_router(attention_router)
+    logger.info("✅ Attention routes registered at /api/vessel/*/attention")
+except Exception as e:
+    logger.error(f"❌ Failed to register Attention routes: {e}")
+    logger.error("Attention endpoints will not be available")
+
 # ============================================================================
 # IMPORT PIPELINE ROUTES
 # ============================================================================
