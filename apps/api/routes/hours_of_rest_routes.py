@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from middleware.auth import get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 
 # Centralized Supabase client factory
 from integrations.supabase import get_supabase_client, get_tenant_client
@@ -201,16 +202,8 @@ async def get_hours_of_rest_route(
     user_id_from_jwt = auth["user_id"]
     tenant_key_alias = auth["tenant_key_alias"]
 
-    # Validate yacht isolation against authoritative JWT context
-    if yacht_id != auth["yacht_id"]:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "FORBIDDEN",
-                "error_code": "YACHT_ISOLATION_VIOLATION",
-                "message": "Yacht isolation validation failed"
-            }
-        )
+    # Validate yacht isolation — fleet-aware (validates against vessel_ids, not just primary yacht_id)
+    yacht_id = resolve_yacht_id(auth, yacht_id)
 
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
@@ -393,8 +386,8 @@ async def list_monthly_signoffs_route(
     user_id_from_jwt = auth["user_id"]
     tenant_key_alias = auth["tenant_key_alias"]
 
-    if yacht_id != auth["yacht_id"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": "Yacht isolation validation failed"})
+    # Validate yacht isolation — fleet-aware (validates against vessel_ids, not just primary yacht_id)
+    yacht_id = resolve_yacht_id(auth, yacht_id)
 
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
@@ -426,8 +419,8 @@ async def get_monthly_signoff_route(
     user_id_from_jwt = auth["user_id"]
     tenant_key_alias = auth["tenant_key_alias"]
 
-    if yacht_id != auth["yacht_id"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": "Yacht isolation validation failed"})
+    # Validate yacht isolation — fleet-aware (validates against vessel_ids, not just primary yacht_id)
+    yacht_id = resolve_yacht_id(auth, yacht_id)
 
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
@@ -537,8 +530,8 @@ async def list_crew_templates_route(
     user_id_from_jwt = auth["user_id"]
     tenant_key_alias = auth["tenant_key_alias"]
 
-    if yacht_id != auth["yacht_id"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": "Yacht isolation validation failed"})
+    # Validate yacht isolation — fleet-aware (validates against vessel_ids, not just primary yacht_id)
+    yacht_id = resolve_yacht_id(auth, yacht_id)
 
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
@@ -646,8 +639,8 @@ async def list_crew_warnings_route(
     user_id_from_jwt = auth["user_id"]
     tenant_key_alias = auth["tenant_key_alias"]
 
-    if yacht_id != auth["yacht_id"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": "Yacht isolation validation failed"})
+    # Validate yacht isolation — fleet-aware (validates against vessel_ids, not just primary yacht_id)
+    yacht_id = resolve_yacht_id(auth, yacht_id)
 
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
