@@ -37,6 +37,8 @@ CELESTE_VOCABULARY = {
     "parts": {"mappable": ["name","description","part_number","category","manufacturer","unit","quantity_on_hand","minimum_quantity","location"], "auto_set": ["id","yacht_id","created_at","updated_at","source","source_id","import_session_id","imported_at"]},
     "vessel_certificates": {"mappable": ["certificate_type","certificate_name","certificate_number","issuing_authority","issue_date","expiry_date","last_survey_date","next_survey_due","status"], "auto_set": ["id","yacht_id","created_at","source","source_id","import_session_id","imported_at"]},
     "crew_certificates": {"mappable": ["person_name","certificate_type","certificate_number","issuing_authority","issue_date","expiry_date"], "auto_set": ["id","yacht_id","created_at","source","source_id","import_session_id","imported_at"]},
+    "certificates": {"mappable": ["certificate_type","certificate_name","certificate_number","issuing_authority","issue_date","expiry_date","last_survey_date","next_survey_due","status"], "auto_set": ["id","yacht_id","created_at","source","source_id","import_session_id","imported_at"], "required": ["certificate_type","certificate_name","issuing_authority"]},
+    "crew": {"mappable": ["person_name","certificate_type","certificate_number","issuing_authority","issue_date","expiry_date"], "auto_set": ["id","yacht_id","created_at","source","source_id","import_session_id","imported_at"], "required": ["person_name","certificate_type"]},
 }
 
 

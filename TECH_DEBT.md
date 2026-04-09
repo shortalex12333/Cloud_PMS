@@ -81,3 +81,24 @@ The unified service has timeout issues. Current staging runs on Docker locally.
 **Decision needed:** Which directory is authoritative? Consolidate into one system.
 
 **Added:** 2026-04-08
+
+---
+
+## TD-006: Retire lens/ folder — migrate AddNoteModal and HistorySection to lens-v2
+
+**Files:** `apps/web/src/components/lens/actions/AddNoteModal.tsx`, `apps/web/src/components/lens/sections/HistorySection.tsx`
+**Impact:** Frontend component organisation
+**Risk:** LOW (mechanical move, no logic change)
+
+**Problem:** The `lens/` folder was the original entity lens system, superseded by `lens-v2/`. Dead code removal (2026-04-09) eliminated 18 files. Two remain:
+- `lens/actions/AddNoteModal.tsx` — imported by `lens-v2/entity/WorkOrderContent.tsx`. Cross-namespace dependency. AddNoteModal belongs in `lens-v2/` alongside the component that uses it.
+- `lens/sections/HistorySection.tsx` — imported by `lens/EntityLensPage.tsx`. Once moved to `lens-v2/sections/`, the `lens/sections/` folder can be deleted entirely.
+
+Once both are migrated: `lens/actions/`, `lens/sections/`, and both index.ts stubs can be deleted, leaving only `EntityLensPage.tsx`, `RelatedDrawer.tsx`, and their test in `lens/`.
+
+**Fix:**
+1. Move `AddNoteModal.tsx` → `lens-v2/actions/AddNoteModal.tsx`, update import in WorkOrderContent
+2. Move `HistorySection.tsx` → `lens-v2/sections/HistorySection.tsx`, update export in `lens-v2/sections/index.ts`, update import in EntityLensPage
+3. Delete `lens/actions/` and `lens/sections/` folders
+
+**Added:** 2026-04-09

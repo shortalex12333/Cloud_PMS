@@ -296,7 +296,7 @@ async def close_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
     supabase = get_supabase_client()
 
     # Update work order status
-    result = supabase.table("work_orders").update({
+    result = supabase.table("pms_work_orders").update({
         "status": "completed",
         "completed_at": datetime.utcnow().isoformat(),
         "completed_by": params["user_id"],

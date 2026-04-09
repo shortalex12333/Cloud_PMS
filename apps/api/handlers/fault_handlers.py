@@ -504,7 +504,7 @@ class FaultHandlers:
     async def _get_related_work_orders_count(self, fault_id: str) -> int:
         """Get count of work orders related to fault"""
         try:
-            result = self.db.table("work_orders").select(
+            result = self.db.table("pms_work_orders").select(
                 "id", count="exact"
             ).eq("fault_id", fault_id).execute()
             return result.count or 0

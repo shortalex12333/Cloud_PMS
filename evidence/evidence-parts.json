@@ -1,0 +1,43 @@
+{
+    "domain": "parts",
+    "total_count": 250,
+    "filtered_count": 3,
+    "records": [
+        {
+            "id": "e051e97a-0159-4ea9-8ea1-6c1cde4d4907",
+            "updated_at": "2025-12-19T20:33:31.663574+00:00",
+            "age_display": "3mo",
+            "ref": "HVC-0109-813",
+            "title": "AC Air Filter 20x20",
+            "stock_level": 5,
+            "min_stock": 2,
+            "stock_status": "ok",
+            "location": null,
+            "meta": "Stock: 5/2 \u00b7 None"
+        },
+        {
+            "id": "7aeb5167-5080-4ed3-a7fc-c3f056d61fbb",
+            "updated_at": "2025-12-19T20:33:31.663574+00:00",
+            "age_display": "3mo",
+            "ref": "HVC-0114-495",
+            "title": "AC Blower Motor",
+            "stock_level": 4,
+            "min_stock": 1,
+            "stock_status": "ok",
+            "location": null,
+            "meta": "Stock: 4/1 \u00b7 None"
+        },
+        {
+            "id": "ce8e9180-3708-4371-9ce5-42a21fd2fdb1",
+            "updated_at": "2025-12-19T20:33:31.871093+00:00",
+            "age_display": "3mo",
+            "ref": "HVC-0194-864",
+            "title": "AC Blower Motor",
+            "stock_level": 2,
+            "min_stock": 1,
+            "stock_status": "ok",
+            "location": null,
+            "meta": "Stock: 2/1 \u00b7 None"
+        }
+    ]
+}
