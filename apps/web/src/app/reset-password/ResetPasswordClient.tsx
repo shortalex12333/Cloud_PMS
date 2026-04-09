@@ -6,11 +6,17 @@ import { useRouter } from 'next/navigation';
 /**
  * ResetPasswordClient
  *
- * Handles the Supabase password-reset redirect flow:
- * 1. Supabase sends user here via resetPasswordForEmail({ redirectTo: .../reset-password })
- * 2. Supabase appends #access_token=...&type=recovery to the URL hash
- * 3. We set the session from the hash tokens, then let the user enter a new password
- * 4. Call supabase.auth.updateUser({ password }) — redirect to /login on success
+ * Handles the Supabase password-reset redirect flow with PKCE.
+ *
+ * Flow (supabase-js v2, flowType: 'pkce'):
+ * 1. resetPasswordForEmail() sends a link with ?code= query param (not hash tokens)
+ * 2. detectSessionInUrl: true auto-exchanges the code on page load
+ * 3. onAuthStateChange fires with event 'PASSWORD_RECOVERY'
+ * 4. User enters new password → supabase.auth.updateUser({ password })
+ * 5. Redirect to /login
+ *
+ * Do NOT parse window.location.hash for tokens — that was the legacy implicit flow.
+ * PKCE uses ?code= in the query string, handled automatically by the Supabase client.
  */
 
 export default function ResetPasswordClient() {
@@ -19,43 +25,53 @@ export default function ResetPasswordClient() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [ready, setReady] = useState(false); // session set from hash
+  const [ready, setReady] = useState(false);
   const [done, setDone] = useState(false);
 
-  // On mount: read hash tokens and set session so updateUser works
   useEffect(() => {
+    let mounted = true;
+
     async function initSession() {
       const { supabase } = await import('@/lib/supabaseClient');
 
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      const type = params.get('type');
-
-      if (type === 'recovery' && accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (sessionError) {
-          setError('Reset link is invalid or has expired. Request a new one.');
-        } else {
-          // Clear the hash so tokens aren't in browser history
+      // Subscribe before anything else so we don't miss the event.
+      // With PKCE + detectSessionInUrl: true, Supabase exchanges the ?code=
+      // param automatically and fires PASSWORD_RECOVERY here.
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!mounted) return;
+        if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
+          setReady(true);
+          // Remove the code from the URL so it can't be replayed
           window.history.replaceState(null, '', window.location.pathname);
-          setReady(true);
         }
-      } else {
-        // No recovery hash — check if already authenticated (e.g. page reload)
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setReady(true);
-        } else {
-          setError('Reset link is invalid or has expired. Request a new one from the login page.');
-        }
+      });
+
+      // Also check session immediately — covers the race where detectSessionInUrl
+      // processed the code before our listener was registered.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (mounted && session) {
+        setReady(true);
+        return subscription;
       }
+
+      // If no ?code= in the URL and no active session, the link is invalid.
+      // Don't wait for an event that will never come.
+      const hasCode = new URLSearchParams(window.location.search).has('code');
+      if (mounted && !hasCode) {
+        setError('Reset link is invalid or has expired. Request a new one from the login page.');
+      }
+      // If hasCode is present but session not yet set: wait for onAuthStateChange above.
+
+      return subscription;
     }
-    initSession();
+
+    let sub: Awaited<ReturnType<typeof initSession>>;
+    initSession().then(s => { sub = s; });
+
+    return () => {
+      mounted = false;
+      sub?.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -151,7 +167,10 @@ export default function ResetPasswordClient() {
   if (!ready && !error) {
     return (
       <div style={cardStyle}>
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid var(--teal)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+        <div
+          className="animate-spin"
+          style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid var(--teal)', borderTopColor: 'transparent' }}
+        />
       </div>
     );
   }
@@ -172,7 +191,10 @@ export default function ResetPasswordClient() {
     <div style={cardStyle}>
       <div style={boxStyle}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--mark)', marginBottom: '4px' }}>
+          <div style={{
+            fontSize: '9px', fontWeight: 600, letterSpacing: '0.16em',
+            textTransform: 'uppercase', color: 'var(--mark)', marginBottom: '4px',
+          }}>
             Celeste
           </div>
           <h1 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>Set new password</h1>
