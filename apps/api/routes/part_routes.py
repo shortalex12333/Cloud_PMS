@@ -16,7 +16,7 @@ Stock computation rule:
 All routes require JWT authentication and yacht isolation validation.
 """
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Query, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
 import logging
@@ -37,8 +37,7 @@ from action_router.registry import (
     get_field_metadata,
     FieldClassification,
 )
-from action_router.validators import validate_jwt, validate_yacht_isolation
-from middleware.auth import lookup_tenant_for_user
+from middleware.auth import get_authenticated_user
 
 logger = logging.getLogger(__name__)
 
@@ -255,7 +254,7 @@ def compute_urgency(on_hand: int, min_level: int) -> str:
 @router.get("/suggestions")
 async def get_part_suggestions(
     part_id: str = Query(..., description="Part UUID"),
-    authorization: str = Header(..., description="Bearer token"),
+    auth: dict = Depends(get_authenticated_user),
 ) -> PartSuggestionsResponse:
     """
     Get context-valid actions for a part with prefill data.
@@ -277,18 +276,10 @@ async def get_part_suggestions(
 
     Note: yacht_id, user_id, and role are from JWT auth context (invariant #1).
     """
-    # SECURITY: Validate JWT and get auth context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message if jwt_result.error else "Invalid token")
-
     # SECURITY: yacht_id, user_id, role ONLY from auth context - invariant #1
-    yacht_id = jwt_result.context.get("yacht_id")
-    user_id = jwt_result.context.get("user_id")
-    role = jwt_result.context.get("role")
-
-    if not yacht_id:
-        raise HTTPException(status_code=403, detail="No yacht context in token")
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
+    role = auth.get("role", "crew")
 
     db = get_default_supabase_client()
     if not db:
@@ -474,7 +465,7 @@ async def get_part_suggestions(
 @router.post("/shopping-list/prefill")
 async def prefill_add_to_shopping_list(
     part_id: str = Query(...),
-    authorization: str = Header(..., description="Bearer token"),
+    auth: dict = Depends(get_authenticated_user),
 ) -> PrefillResponse:
     """
     Prefill values for add_to_shopping_list action.
@@ -485,15 +476,8 @@ async def prefill_add_to_shopping_list(
 
     Note: yacht_id is from JWT auth context (invariant #1).
     """
-    # SECURITY: Validate JWT and get auth context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message if jwt_result.error else "Invalid token")
-
     # SECURITY: yacht_id ONLY from auth context - invariant #1
-    yacht_id = jwt_result.context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=403, detail="No yacht context in token")
+    yacht_id = auth["yacht_id"]
 
     db = get_default_supabase_client()
     if not db:
@@ -561,7 +545,7 @@ async def prefill_add_to_shopping_list(
 @router.post("/adjust-stock/prefill")
 async def prefill_adjust_stock(
     part_id: str = Query(...),
-    authorization: str = Header(..., description="Bearer token"),
+    auth: dict = Depends(get_authenticated_user),
 ) -> PrefillResponse:
     """
     Prefill values for adjust_stock_quantity action.
@@ -571,15 +555,8 @@ async def prefill_adjust_stock(
 
     Note: yacht_id is from JWT auth context (invariant #1).
     """
-    # SECURITY: Validate JWT and get auth context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message if jwt_result.error else "Invalid token")
-
     # SECURITY: yacht_id ONLY from auth context - invariant #1
-    yacht_id = jwt_result.context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=403, detail="No yacht context in token")
+    yacht_id = auth["yacht_id"]
 
     db = get_default_supabase_client()
     if not db:
@@ -655,7 +632,7 @@ async def get_low_stock(
     threshold_percent: float = Query(None, description="Filter by % of min_level"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    authorization: str = Header(..., description="Bearer token"),
+    auth: dict = Depends(get_authenticated_user),
 ) -> LowStockResponse:
     """
     View parts below minimum stock level.
@@ -669,15 +646,8 @@ async def get_low_stock(
 
     Note: yacht_id is from JWT auth context (invariant #1).
     """
-    # SECURITY: Validate JWT and get auth context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message if jwt_result.error else "Invalid token")
-
     # SECURITY: yacht_id ONLY from auth context - invariant #1
-    yacht_id = jwt_result.context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=403, detail="No yacht context in token")
+    yacht_id = auth["yacht_id"]
 
     db = get_default_supabase_client()
     if not db:
@@ -771,7 +741,7 @@ async def upload_part_image(
     part_id: str = Form(...),
     description: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
-    authorization: str = Header(...),
+    auth: dict = Depends(get_authenticated_user),
 ) -> UploadImageResponse:
     """
     Upload part image directly to Supabase Storage.
@@ -779,31 +749,9 @@ async def upload_part_image(
     Accepts multipart/form-data with actual file upload.
     """
     try:
-        # Validate JWT and extract user_id
-        jwt_result = validate_jwt(authorization)
-
-        if not jwt_result.valid:
-            raise HTTPException(
-                status_code=401,
-                detail=jwt_result.error.message if jwt_result.error else "Invalid JWT"
-            )
-
-        user_id = jwt_result.context.get("user_id") if jwt_result.context else None
-
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid or missing JWT")
-
-        # SECURITY: yacht_id ONLY from auth context - never trust request body
-        yacht_id = jwt_result.context.get("yacht_id") if jwt_result.context else None
-        if not yacht_id:
-            raise HTTPException(status_code=401, detail="Missing yacht_id in JWT context")
-
-        # Validate yacht isolation
-        tenant_info = lookup_tenant_for_user(user_id)
-        tenant_key_alias = tenant_info.get("tenant_key_alias") if tenant_info else None
-        yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, jwt_result.context if jwt_result.context else {})
-        if not yacht_validation.valid:
-            raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
+        user_id = auth["user_id"]
+        yacht_id = auth["yacht_id"]
+        tenant_key_alias = auth["tenant_key_alias"]
 
         # Get tenant-specific Supabase client
         db = get_tenant_supabase_client(tenant_key_alias) if tenant_key_alias else get_default_supabase_client()
@@ -848,7 +796,7 @@ async def upload_part_image(
 @router.post("/update-image", response_model=UpdateImageResponse)
 async def update_part_image(
     request: UpdateImageRequest,
-    authorization: str = Header(...),
+    auth: dict = Depends(get_authenticated_user),
 ) -> UpdateImageResponse:
     """
     Update part image metadata (description).
@@ -856,31 +804,9 @@ async def update_part_image(
     For MVP, only the description field can be updated.
     """
     try:
-        # Validate JWT and extract user_id
-        jwt_result = validate_jwt(authorization)
-
-        if not jwt_result.valid:
-            raise HTTPException(
-                status_code=401,
-                detail=jwt_result.error.message if jwt_result.error else "Invalid JWT"
-            )
-
-        user_id = jwt_result.context.get("user_id") if jwt_result.context else None
-
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid or missing JWT")
-
-        # Get yacht_id from JWT context (security: never trust request body)
-        yacht_id = jwt_result.context.get("yacht_id") if jwt_result.context else None
-        if not yacht_id:
-            raise HTTPException(status_code=401, detail="Missing yacht_id in JWT context")
-
-        # Validate yacht isolation
-        tenant_info = lookup_tenant_for_user(user_id)
-        tenant_key_alias = tenant_info.get("tenant_key_alias") if tenant_info else None
-        yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, jwt_result.context if jwt_result.context else {})
-        if not yacht_validation.valid:
-            raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
+        user_id = auth["user_id"]
+        yacht_id = auth["yacht_id"]
+        tenant_key_alias = auth["tenant_key_alias"]
 
         # Get tenant-specific Supabase client
         db = get_tenant_supabase_client(tenant_key_alias) if tenant_key_alias else get_default_supabase_client()
@@ -916,7 +842,7 @@ async def update_part_image(
 @router.post("/delete-image", response_model=DeleteImageResponse)
 async def delete_part_image(
     request: DeleteImageRequest,
-    authorization: str = Header(...),
+    auth: dict = Depends(get_authenticated_user),
 ) -> DeleteImageResponse:
     """
     Delete part image (SIGNED action - requires PIN+TOTP signature).
@@ -924,31 +850,9 @@ async def delete_part_image(
     Captain/Manager role only.
     """
     try:
-        # Validate JWT and extract user_id
-        jwt_result = validate_jwt(authorization)
-
-        if not jwt_result.valid:
-            raise HTTPException(
-                status_code=401,
-                detail=jwt_result.error.message if jwt_result.error else "Invalid JWT"
-            )
-
-        user_id = jwt_result.context.get("user_id") if jwt_result.context else None
-
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid or missing JWT")
-
-        # Get yacht_id from JWT context (security: never trust request body)
-        yacht_id = jwt_result.context.get("yacht_id") if jwt_result.context else None
-        if not yacht_id:
-            raise HTTPException(status_code=401, detail="Missing yacht_id in JWT context")
-
-        # Validate yacht isolation
-        tenant_info = lookup_tenant_for_user(user_id)
-        tenant_key_alias = tenant_info.get("tenant_key_alias") if tenant_info else None
-        yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, jwt_result.context if jwt_result.context else {})
-        if not yacht_validation.valid:
-            raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
+        user_id = auth["user_id"]
+        yacht_id = auth["yacht_id"]
+        tenant_key_alias = auth["tenant_key_alias"]
 
         # Get tenant-specific Supabase client
         db = get_tenant_supabase_client(tenant_key_alias) if tenant_key_alias else get_default_supabase_client()
