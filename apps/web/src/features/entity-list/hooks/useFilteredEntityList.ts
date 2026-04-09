@@ -6,7 +6,7 @@
  *
  * Architecture: Frontend → Render API → Tenant Supabase
  * Frontend does NOT query tenant DB directly.
- * See: docs/Explanations/DB_architecture.md
+ * See: docs/explanations/DB_architecture.md
  */
 
 import { useInfiniteQuery } from '@tanstack/react-query';
