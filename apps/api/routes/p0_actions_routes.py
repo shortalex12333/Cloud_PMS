@@ -1734,16 +1734,16 @@ async def get_handover_items(
         # Note: Removed users:added_by join as it requires explicit FK relationship
         # User names can be resolved separately if needed
         query = db_client.table("handover_items").select(
-            "id, yacht_id, entity_type, entity_id, summary_text, category, priority, "
-            "added_at, added_by"
+            "id, yacht_id, entity_type, entity_id, summary, category, priority, "
+            "created_at, added_by"
         ).eq("yacht_id", yacht_id)
 
         # Apply category filter if provided
         if category:
             query = query.eq("category", category)
 
-        # Order by priority (desc) and added_at (desc)
-        query = query.order("priority", desc=True).order("added_at", desc=True)
+        # Order by priority (desc) and created_at (desc)
+        query = query.order("priority", desc=True).order("created_at", desc=True)
 
         # Apply limit
         query = query.limit(limit)
@@ -1767,12 +1767,12 @@ async def get_handover_items(
                 "entity_type": item["entity_type"],
                 "entity_id": item["entity_id"],
                 "title": None,  # TODO: Could be fetched from entity if needed
-                "summary_text": item["summary_text"],
+                "summary_text": item["summary"],
                 "category": item["category"],
                 "priority": item["priority"],
                 "added_by": item["added_by"],
                 "added_by_name": user_info.get("full_name", "Unknown") if user_info else "Unknown",
-                "added_at": item["added_at"]
+                "added_at": item["created_at"]
             })
 
         return {
