@@ -1733,7 +1733,7 @@ async def get_handover_items(
         # Build query
         # Note: Removed users:added_by join as it requires explicit FK relationship
         # User names can be resolved separately if needed
-        query = db_client.table("handover").select(
+        query = db_client.table("handover_items").select(
             "id, yacht_id, entity_type, entity_id, summary_text, category, priority, "
             "added_at, added_by"
         ).eq("yacht_id", yacht_id)
