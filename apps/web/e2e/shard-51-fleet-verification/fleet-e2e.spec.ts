@@ -4,8 +4,9 @@
  * Hard evidence tests for multi-vessel fleet management.
  * No guessing — every assertion checks real DOM content or API responses.
  *
- * Test user: x@alex-short.com / Password2!
- * Vessels: M/Y Test Vessel + M/Y Artemis
+ * Test user (single-vessel): x@alex-short.com / Password2!
+ * Test user (fleet): fleet-test-1775570624@celeste7.ai / Password2!
+ * Fleet vessels: M/Y Test Vessel + M/Y VESSEL_NAME
  *
  * Covers:
  *   1. Auth — login, bootstrap returns fleet_vessels
@@ -26,6 +27,11 @@ const CREDS = {
   password: 'Password2!',
 };
 
+const FLEET_CREDS = {
+  email: 'fleet-test-1775570624@celeste7.ai',
+  password: 'Password2!',
+};
+
 const RESULTS: { name: string; pass: boolean; detail: string }[] = [];
 
 function record(name: string, pass: boolean, detail: string) {
@@ -33,7 +39,7 @@ function record(name: string, pass: boolean, detail: string) {
 }
 
 /** Login via the login page */
-async function login(page: Page) {
+async function login(page: Page, creds = CREDS) {
   await page.goto('/login');
   await page.waitForTimeout(2000);
 
@@ -45,14 +51,19 @@ async function login(page: Page) {
   const submitBtn = page.locator('button[type="submit"], button:has-text("Sign in"), button:has-text("Log in")').first();
 
   await expect(emailInput).toBeVisible({ timeout: 15_000 });
-  await emailInput.fill(CREDS.email);
-  await passInput.fill(CREDS.password);
+  await emailInput.fill(creds.email);
+  await passInput.fill(creds.password);
   await submitBtn.click();
 
   // Wait for redirect away from login
   await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 25_000 });
   // Wait for bootstrap to complete
   await page.waitForTimeout(5000);
+}
+
+/** Login with fleet manager account (multi-vessel access) */
+async function fleetLogin(page: Page) {
+  return login(page, FLEET_CREDS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -83,7 +94,7 @@ test.describe('1. Auth', () => {
 
 test.describe('2. Vessel Switching', () => {
   test('vessel dropdown is visible for fleet user', async ({ page }) => {
-    await login(page);
+    await fleetLogin(page);
     await page.goto('/');
     await page.waitForTimeout(3000);
 
@@ -96,7 +107,7 @@ test.describe('2. Vessel Switching', () => {
   });
 
   test('dropdown shows both vessels + All Vessels', async ({ page }) => {
-    await login(page);
+    await fleetLogin(page);
     await page.goto('/');
     await page.waitForTimeout(3000);
 
@@ -108,18 +119,18 @@ test.describe('2. Vessel Switching', () => {
 
     const body = await page.textContent('body') || '';
     const hasAllVessels = body.includes('All Vessels');
-    const hasArtemis = body.includes('Artemis');
+    const hasVesselName = body.includes('VESSEL_NAME');
     const hasTestVessel = body.includes('Test Vessel');
 
-    record('vessel-dropdown-options', hasAllVessels && hasTestVessel && hasArtemis, `All Vessels: ${hasAllVessels}, Artemis: ${hasArtemis}, Test Vessel: ${hasTestVessel}`);
+    record('vessel-dropdown-options', hasAllVessels && hasTestVessel && hasVesselName, `All Vessels: ${hasAllVessels}, VESSEL_NAME: ${hasVesselName}, Test Vessel: ${hasTestVessel}`);
     await page.screenshot({ path: 'evidence/vessel-dropdown-open.png' });
     expect(hasTestVessel).toBe(true);
     expect(hasAllVessels).toBe(true);
-    expect(hasArtemis).toBe(true);
+    expect(hasVesselName).toBe(true);
   });
 
-  test('switching to Artemis changes context', async ({ page }) => {
-    await login(page);
+  test('switching to VESSEL_NAME changes context', async ({ page }) => {
+    await fleetLogin(page);
     await page.goto('/');
     await page.waitForTimeout(3000);
 
@@ -129,17 +140,17 @@ test.describe('2. Vessel Switching', () => {
     await vesselBtn.click();
     await page.waitForTimeout(500);
 
-    // HARD: Artemis option MUST appear in dropdown
-    const artemisBtn = page.locator('button:has-text("Artemis")').first();
-    await expect(artemisBtn).toBeVisible({ timeout: 5_000 });
-    await artemisBtn.click();
+    // HARD: VESSEL_NAME option MUST appear in dropdown
+    const secondVesselBtn = page.locator('button:has-text("VESSEL_NAME")').first();
+    await expect(secondVesselBtn).toBeVisible({ timeout: 5_000 });
+    await secondVesselBtn.click();
     await page.waitForTimeout(3000);
 
-    // HARD: Topbar MUST show Artemis after switch
+    // HARD: Topbar MUST show VESSEL_NAME after switch
     const body = await page.textContent('body') || '';
-    const switched = body.includes('Artemis');
-    record('vessel-switch-artemis', switched, switched ? 'Switched to Artemis' : 'Switch failed — Artemis not in body');
-    await page.screenshot({ path: 'evidence/vessel-switched-artemis.png' });
+    const switched = body.includes('VESSEL_NAME');
+    record('vessel-switch', switched, switched ? 'Switched to VESSEL_NAME' : 'Switch failed — VESSEL_NAME not in body');
+    await page.screenshot({ path: 'evidence/vessel-switched.png' });
     expect(switched).toBe(true);
   });
 });
@@ -274,7 +285,7 @@ test.describe('6. Show Related', () => {
 
 test.describe('7. Overview Mode', () => {
   test('All Vessels mode loads data on faults page', async ({ page }) => {
-    await login(page);
+    await fleetLogin(page);
     await page.goto('/');
     await page.waitForTimeout(3000);
 
@@ -380,7 +391,7 @@ test.describe('9. Sign Out', () => {
 
 test.describe('10. C3: Cross-vessel lens detail', () => {
   test('clicking record from overview mode adds yacht_id to URL', async ({ page }) => {
-    await login(page);
+    await fleetLogin(page);
     await page.goto('/');
     await page.waitForTimeout(3000);
 
@@ -446,7 +457,7 @@ test.describe('10. C3: Cross-vessel lens detail', () => {
 
 test.describe('11. C1: Overview yacht_name in DOM', () => {
   test('overview mode faults page shows vessel name, not UUID', async ({ page }) => {
-    await login(page);
+    await fleetLogin(page);
     await page.goto('/');
     await page.waitForTimeout(3000);
 
@@ -481,7 +492,7 @@ test.describe('11. C1: Overview yacht_name in DOM', () => {
     const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
     const uuidsInText = visibleText.match(uuidPattern) || [];
     // Filter out entity IDs (those are expected) — we only care about yacht_id UUIDs shown as vessel names
-    const noYachtUuid = !visibleText.includes('85fe1119-b04c-41ac-80f1') && !visibleText.includes('b2625d70-7f2e-4175');
+    const noYachtUuid = !visibleText.includes('85fe1119') && !visibleText.includes('73b36cab');
 
     record('c1-overview-yacht-name', hasVesselName, `Vessel name in DOM: ${hasVesselName}, UUIDs as names: ${!noYachtUuid}`);
     await page.screenshot({ path: 'evidence/c1-overview-yacht-name.png' });
@@ -495,7 +506,7 @@ test.describe('11. C1: Overview yacht_name in DOM', () => {
 
 test.describe('12. C1: Global search in overview mode', () => {
   test('Cmd+K search in All Vessels mode returns results', async ({ page }) => {
-    await login(page);
+    await fleetLogin(page);
     await page.goto('/');
     await page.waitForTimeout(3000);
 
