@@ -46,7 +46,8 @@ from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from action_router.validators import validate_jwt, validate_yacht_isolation, validate_payload_entities
 from action_router.middleware import validate_action_payload, InputValidationError, validate_state_transition, InvalidStateTransitionError
 from action_router.registry import get_action
-from middleware.auth import lookup_tenant_for_user
+from middleware.auth import lookup_tenant_for_user, get_authenticated_user
+from middleware.vessel_access import resolve_yacht_id
 
 logger = logging.getLogger(__name__)
 
@@ -256,7 +257,7 @@ class ActionExecuteRequest(BaseModel):
 @router.get("/create_work_order_from_fault/prefill")
 async def create_work_order_from_fault_prefill(
     fault_id: str,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Pre-fill work order form from fault data.
@@ -265,27 +266,15 @@ async def create_work_order_from_fault_prefill(
     - Pre-filled form data (title, equipment, location, description, priority)
     - Duplicate check (existing WO for this fault)
     """
-    # Validate JWT
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": "UNAUTHORIZED",
-                "message": jwt_result.error.message
-            }
-        )
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
 
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-
-    # Call handler
-    if not wo_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _wo_handlers = handlers.get("wo_handlers")
+    if not _wo_handlers:
         raise HTTPException(status_code=500, detail="Work order handlers not initialized")
 
-    result = await wo_handlers.create_work_order_from_fault_prefill(fault_id, yacht_id, user_id)
+    result = await _wo_handlers.create_work_order_from_fault_prefill(fault_id, yacht_id, user_id)
 
     if result["status"] == "error":
         raise HTTPException(
@@ -299,20 +288,17 @@ async def create_work_order_from_fault_prefill(
 @router.get("/add_note_to_work_order/prefill")
 async def add_note_to_work_order_prefill(
     work_order_id: str,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Pre-fill data for add note to work order."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+    yacht_id = auth["yacht_id"]
 
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-
-    if not wo_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _wo_handlers = handlers.get("wo_handlers")
+    if not _wo_handlers:
         raise HTTPException(status_code=500, detail="Work order handlers not initialized")
 
-    result = await wo_handlers.add_note_to_work_order_prefill(work_order_id, yacht_id)
+    result = await _wo_handlers.add_note_to_work_order_prefill(work_order_id, yacht_id)
 
     if result["status"] == "error":
         raise HTTPException(status_code=400, detail=result["message"])
@@ -324,20 +310,17 @@ async def add_note_to_work_order_prefill(
 async def add_part_to_work_order_prefill(
     work_order_id: str,
     part_id: str,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Pre-fill data for add part to work order."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+    yacht_id = auth["yacht_id"]
 
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-
-    if not wo_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _wo_handlers = handlers.get("wo_handlers")
+    if not _wo_handlers:
         raise HTTPException(status_code=500, detail="Work order handlers not initialized")
 
-    result = await wo_handlers.add_part_to_work_order_prefill(work_order_id, part_id, yacht_id)
+    result = await _wo_handlers.add_part_to_work_order_prefill(work_order_id, part_id, yacht_id)
 
     if result["status"] == "error":
         raise HTTPException(status_code=400, detail=result["message"])
@@ -348,21 +331,18 @@ async def add_part_to_work_order_prefill(
 @router.get("/mark_work_order_complete/prefill")
 async def mark_work_order_complete_prefill(
     work_order_id: str,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Pre-fill data for mark work order complete."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
 
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-
-    if not wo_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _wo_handlers = handlers.get("wo_handlers")
+    if not _wo_handlers:
         raise HTTPException(status_code=500, detail="Work order handlers not initialized")
 
-    result = await wo_handlers.mark_work_order_complete_prefill(work_order_id, yacht_id, user_id)
+    result = await _wo_handlers.mark_work_order_complete_prefill(work_order_id, yacht_id, user_id)
 
     if result["status"] == "error":
         raise HTTPException(status_code=400, detail=result["message"])
@@ -2289,21 +2269,18 @@ __all__ = ["router"]
 async def log_part_usage_prefill(
     part_id: str,
     work_order_id: Optional[str] = None,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Pre-fill data for log part usage."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
 
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-
-    if not inventory_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _inventory_handlers = handlers.get("inventory_handlers")
+    if not _inventory_handlers:
         raise HTTPException(status_code=500, detail="Inventory handlers not initialized")
 
-    result = await inventory_handlers.log_part_usage_prefill(
+    result = await _inventory_handlers.log_part_usage_prefill(
         part_id, yacht_id, user_id, work_order_id
     )
 
@@ -2317,21 +2294,18 @@ async def log_part_usage_prefill(
 async def add_to_handover_prefill(
     entity_type: str,
     entity_id: str,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Pre-fill data for add to handover."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
 
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-
-    if not handover_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _handover_handlers = handlers.get("handover_handlers")
+    if not _handover_handlers:
         raise HTTPException(status_code=500, detail="Handover handlers not initialized")
 
-    result = await handover_handlers.add_to_handover_prefill(
+    result = await _handover_handlers.add_to_handover_prefill(
         entity_type, entity_id, yacht_id, user_id
     )
 
@@ -2348,21 +2322,18 @@ async def add_to_handover_prefill(
 @router.post("/handover/{draft_id}/validate")
 async def validate_handover_draft_route(
     draft_id: str,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Validate handover draft for finalization."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
 
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-
-    if not handover_workflow_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _handover_wf = handlers.get("handover_workflow_handlers")
+    if not _handover_wf:
         raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
 
-    result = await handover_workflow_handlers.validate_draft(
+    result = await _handover_wf.validate_draft(
         yacht_id=yacht_id,
         user_id=user_id
     )
@@ -2373,27 +2344,24 @@ async def validate_handover_draft_route(
 @router.post("/handover/{draft_id}/finalize")
 async def finalize_handover_draft_route(
     draft_id: str,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Finalize draft: lock content and generate content_hash."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
-
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-    user_role = user_context.get("role")
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
+    user_role = auth.get("role")
 
     # Require officer+ role
     officer_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
     if user_role not in officer_roles:
         raise HTTPException(status_code=403, detail=f"Requires officer+ role. Your role: {user_role}")
 
-    if not handover_workflow_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _handover_wf = handlers.get("handover_workflow_handlers")
+    if not _handover_wf:
         raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
 
-    result = await handover_workflow_handlers.finalize_draft(
+    result = await _handover_wf.finalize_draft(
         yacht_id=yacht_id,
         user_id=user_id
     )
@@ -2410,27 +2378,24 @@ async def export_handover_route(
     export_type: str = "html",
     department: Optional[str] = None,
     shift_date: Optional[str] = None,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Generate handover export with document_hash."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
-
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-    user_role = user_context.get("role")
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
+    user_role = auth.get("role")
 
     # Require officer+ role
     officer_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
     if user_role not in officer_roles:
         raise HTTPException(status_code=403, detail=f"Requires officer+ role. Your role: {user_role}")
 
-    if not handover_workflow_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _handover_wf = handlers.get("handover_workflow_handlers")
+    if not _handover_wf:
         raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
 
-    result = await handover_workflow_handlers.export_handover(
+    result = await _handover_wf.export_handover(
         yacht_id=yacht_id,
         user_id=user_id,
         export_type=export_type,
@@ -2469,27 +2434,24 @@ async def sign_outgoing_route(
     export_id: str,
     note: Optional[str] = None,
     method: str = "typed",
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Outgoing user signs the export."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
-
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-    user_role = user_context.get("role")
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
+    user_role = auth.get("role")
 
     # Require officer+ role
     officer_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
     if user_role not in officer_roles:
         raise HTTPException(status_code=403, detail=f"Requires officer+ role. Your role: {user_role}")
 
-    if not handover_workflow_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _handover_wf = handlers.get("handover_workflow_handlers")
+    if not _handover_wf:
         raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
 
-    result = await handover_workflow_handlers.sign_outgoing(
+    result = await _handover_wf.sign_outgoing(
         export_id=export_id,
         yacht_id=yacht_id,
         user_id=user_id,
@@ -2515,27 +2477,24 @@ async def sign_incoming_route(
     acknowledge_critical: bool,
     note: Optional[str] = None,
     method: str = "typed",
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Incoming user countersigns the export."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
-
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-    user_role = user_context.get("role")
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
+    user_role = auth.get("role")
 
     # Require officer+ role
     officer_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
     if user_role not in officer_roles:
         raise HTTPException(status_code=403, detail=f"Requires officer+ role. Your role: {user_role}")
 
-    if not handover_workflow_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _handover_wf = handlers.get("handover_workflow_handlers")
+    if not _handover_wf:
         raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
 
-    result = await handover_workflow_handlers.sign_incoming(
+    result = await _handover_wf.sign_incoming(
         export_id=export_id,
         yacht_id=yacht_id,
         user_id=user_id,
@@ -2559,21 +2518,18 @@ async def sign_incoming_route(
 @router.get("/handover/pending")
 async def get_pending_handovers_route(
     role_filter: Optional[str] = None,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Get handovers pending signature."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
 
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-    user_id = user_context["user_id"]
-
-    if not handover_workflow_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _handover_wf = handlers.get("handover_workflow_handlers")
+    if not _handover_wf:
         raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
 
-    result = await handover_workflow_handlers.get_pending_handovers(
+    result = await _handover_wf.get_pending_handovers(
         yacht_id=yacht_id,
         user_id=user_id,
         role_filter=role_filter
@@ -2585,20 +2541,17 @@ async def get_pending_handovers_route(
 @router.get("/handover/{export_id}/verify")
 async def verify_export_route(
     export_id: str,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Get verification data for an export."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+    yacht_id = auth["yacht_id"]
 
-    user_context = jwt_result.context
-    yacht_id = user_context["yacht_id"]
-
-    if not handover_workflow_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _handover_wf = handlers.get("handover_workflow_handlers")
+    if not _handover_wf:
         raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
 
-    result = await handover_workflow_handlers.verify_export(
+    result = await _handover_wf.verify_export(
         export_id=export_id,
         yacht_id=yacht_id
     )
