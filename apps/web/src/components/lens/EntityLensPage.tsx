@@ -16,7 +16,7 @@ import { getActionDisplay } from '@/types/actions';
 import { ActionPopup } from '@/components/lens-v2/ActionPopup';
 import type { ActionPopupField } from '@/components/lens-v2/ActionPopup';
 import { useEntityLedger } from '@/hooks/useEntityLedger';
-import { HistorySection } from './sections/HistorySection';
+import { LedgerHistorySection } from '@/components/lens-v2/sections/LedgerHistorySection';
 
 // Fields handled automatically — never require user input in the form
 const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
@@ -81,7 +81,7 @@ function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack:
 function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
   const { data: ledgerHistory = [] } = useEntityLedger(entityType, entityId);
   if (ledgerHistory.length === 0) return null;
-  return <HistorySection history={ledgerHistory} />;
+  return <LedgerHistorySection history={ledgerHistory} />;
 }
 
 export interface EntityLensPageProps {

@@ -21,7 +21,7 @@ export interface AuditLogEntry {
   navigation_url?: string;
 }
 
-export interface HistorySectionProps {
+export interface LedgerHistorySectionProps {
   history: AuditLogEntry[];
   /** Number of entries to show before "Load more" (default: 20) */
   pageSize?: number;
@@ -201,25 +201,27 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
 }
 
 // ============================================================================
-// HISTORY SECTION
+// LEDGER HISTORY SECTION
 // ============================================================================
 
 /**
- * HistorySection - Read-only ledger of audit log entries for a work order.
+ * LedgerHistorySection - Read-only ledger of audit log entries for an entity.
+ *
+ * Shows who did what, when — user actions (created, edited, closed, etc.).
+ * Distinct from lens-v2/sections/HistorySection (prior service periods).
  *
  * - No action button (read-only by design)
- * - No empty state (work orders always have at least a creation entry)
  * - Most recent first (caller is responsible for sort order)
  * - Shows pageSize entries, with "Load more" for additional entries
  * - Each entry: action label, actor, timestamp, collapsible details
  *
  * Uses SectionContainer for sticky header behavior via IntersectionObserver.
  */
-export function HistorySection({
+export function LedgerHistorySection({
   history,
   pageSize = DEFAULT_PAGE_SIZE,
   stickyTop,
-}: HistorySectionProps) {
+}: LedgerHistorySectionProps) {
   const [visibleCount, setVisibleCount] = React.useState(pageSize);
 
   // Reset pagination when history changes (e.g. after new action)
@@ -232,11 +234,8 @@ export function HistorySection({
   const remainingCount = history.length - visibleCount;
 
   return (
-    // No action prop: HistorySection is read-only, no adjacent button
     <SectionContainer title="History" stickyTop={stickyTop}>
       {history.length === 0 ? (
-        // Defensive empty state — should not normally render per spec
-        // (work orders always have creation entry), but handle gracefully
         <div className="py-6 text-center">
           <p className="text-body text-txt-secondary">
             No history entries found.
@@ -250,7 +249,6 @@ export function HistorySection({
             ))}
           </div>
 
-          {/* Load more — only shown when more entries exist */}
           {hasMore && (
             <div className="pt-3 pb-1 text-center">
               <GhostButton
@@ -266,4 +264,3 @@ export function HistorySection({
     </SectionContainer>
   );
 }
-
