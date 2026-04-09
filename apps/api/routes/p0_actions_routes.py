@@ -495,30 +495,20 @@ async def commit_create_work_order(
 @router.post("/mark_work_order_complete/preview")
 async def mark_work_order_complete_preview(
     request: PreviewRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user),
 ):
     """Preview work order completion."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
-
-    user_context = jwt_result.context
-
-    # Validate yacht isolation
-    yacht_result = validate_yacht_isolation(request.context, user_context)
-    if not yacht_result.valid:
-        raise HTTPException(status_code=403, detail=yacht_result.error.message)
-
-    # Extract parameters
+    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
     yacht_id = request.context["yacht_id"]
-    user_id = user_context["user_id"]
+    user_id = auth["user_id"]
     payload = request.payload
 
-    # Call handler
-    if not wo_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _wo_handlers = handlers.get("wo_handlers")
+    if not _wo_handlers:
         raise HTTPException(status_code=500, detail="Work order handlers not initialized")
 
-    result = await wo_handlers.mark_work_order_complete_preview(
+    result = await _wo_handlers.mark_work_order_complete_preview(
         work_order_id=payload["work_order_id"],
         completion_notes=payload["completion_notes"],
         parts_used=payload.get("parts_used", []),
@@ -536,30 +526,20 @@ async def mark_work_order_complete_preview(
 @router.post("/add_part_to_work_order/preview")
 async def add_part_to_work_order_preview(
     request: PreviewRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user),
 ):
     """Preview adding part to work order."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
-
-    user_context = jwt_result.context
-
-    # Validate yacht isolation
-    yacht_result = validate_yacht_isolation(request.context, user_context)
-    if not yacht_result.valid:
-        raise HTTPException(status_code=403, detail=yacht_result.error.message)
-
-    # Extract parameters
+    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
     yacht_id = request.context["yacht_id"]
-    user_id = user_context["user_id"]
+    user_id = auth["user_id"]
     payload = request.payload
 
-    # Call handler
-    if not wo_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _wo_handlers = handlers.get("wo_handlers")
+    if not _wo_handlers:
         raise HTTPException(status_code=500, detail="Work order handlers not initialized")
 
-    result = await wo_handlers.add_part_to_work_order_preview(
+    result = await _wo_handlers.add_part_to_work_order_preview(
         work_order_id=payload["work_order_id"],
         part_id=payload["part_id"],
         quantity=payload["quantity"],
@@ -577,7 +557,7 @@ async def add_part_to_work_order_preview(
 @router.post("/create_work_order_from_fault/preview")
 async def create_work_order_from_fault_preview(
     request: PreviewRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     Preview work order creation.
@@ -587,35 +567,17 @@ async def create_work_order_from_fault_preview(
     - All side effects
     - Warnings (if any)
     """
-    # Validate JWT
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": "UNAUTHORIZED",
-                "message": jwt_result.error.message
-            }
-        )
-
-    user_context = jwt_result.context
-
-    # Validate yacht isolation
-    yacht_result = validate_yacht_isolation(request.context, user_context)
-    if not yacht_result.valid:
-        raise HTTPException(status_code=403, detail=yacht_result.error.message)
-
-    # Extract parameters
+    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
     yacht_id = request.context["yacht_id"]
-    user_id = user_context["user_id"]
+    user_id = auth["user_id"]
     payload = request.payload
 
-    # Call handler
-    if not wo_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _wo_handlers = handlers.get("wo_handlers")
+    if not _wo_handlers:
         raise HTTPException(status_code=500, detail="Work order handlers not initialized")
 
-    result = await wo_handlers.create_work_order_from_fault_preview(
+    result = await _wo_handlers.create_work_order_from_fault_preview(
         fault_id=payload["fault_id"],
         title=payload["title"],
         equipment_id=payload.get("equipment_id"),
@@ -2424,28 +2386,20 @@ async def verify_export_route(
 @router.post("/log_part_usage/preview")
 async def log_part_usage_preview(
     request: PreviewRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user),
 ):
     """Preview part usage logging."""
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
-
-    user_context = jwt_result.context
-
-    # Validate yacht isolation
-    yacht_result = validate_yacht_isolation(request.context, user_context)
-    if not yacht_result.valid:
-        raise HTTPException(status_code=403, detail=yacht_result.error.message)
-
+    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
     yacht_id = request.context["yacht_id"]
-    user_id = user_context["user_id"]
+    user_id = auth["user_id"]
     payload = request.payload
 
-    if not inventory_handlers:
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _inventory_handlers = handlers.get("inventory_handlers")
+    if not _inventory_handlers:
         raise HTTPException(status_code=500, detail="Inventory handlers not initialized")
 
-    result = await inventory_handlers.log_part_usage_preview(
+    result = await _inventory_handlers.log_part_usage_preview(
         part_id=payload["part_id"],
         quantity=payload["quantity"],
         yacht_id=yacht_id,
