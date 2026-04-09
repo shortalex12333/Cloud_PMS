@@ -1591,7 +1591,7 @@ async def execute_action(
 async def list_my_work_orders_endpoint(
     group_key: Optional[str] = None,
     assigned_to: Optional[str] = None,
-    authorization: str = Header(None),
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     List My Work Orders with deterministic grouping and sorting.
@@ -1610,35 +1610,11 @@ async def list_my_work_orders_endpoint(
     """
     from handlers.list_handlers import ListHandlers
 
-    # Validate JWT and extract user context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": jwt_result.error.error_code,
-                "message": jwt_result.error.message,
-            },
-        )
-
-    user_context = jwt_result.context
-    user_id = user_context.get("user_id")
-
-    # Lookup tenant if yacht_id not in JWT
-    if not user_context.get("yacht_id") and lookup_tenant_for_user:
-        tenant_info = lookup_tenant_for_user(user_id)
-        if tenant_info:
-            user_context["yacht_id"] = tenant_info.get("yacht_id")
-            user_context["role"] = tenant_info.get("role", user_context.get("role"))
-            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
-
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=400, detail="yacht_id is required")
+    yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
 
     # Role gating: crew, chief_engineer, chief_officer, captain, manager
-    user_role = user_context.get("role", "")
+    user_role = auth.get("role", "")
     allowed_roles = ["crew", "chief_engineer", "chief_officer", "captain", "manager"]
     if user_role not in allowed_roles:
         raise HTTPException(
@@ -1647,8 +1623,7 @@ async def list_my_work_orders_endpoint(
         )
 
     # Get tenant DB client
-    tenant_alias = user_context.get("tenant_key_alias", "")
-    db_client = get_tenant_supabase_client(tenant_alias)
+    db_client = get_tenant_supabase_client(auth["tenant_key_alias"])
 
     # Create handler and execute
     handlers = ListHandlers(db_client)
@@ -1672,7 +1647,7 @@ async def list_work_orders_endpoint(
     limit: int = 50,
     status: Optional[str] = None,
     priority: Optional[str] = None,
-    authorization: str = Header(None),
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     List work orders with pagination and optional filters.
@@ -1688,35 +1663,10 @@ async def list_work_orders_endpoint(
     """
     from handlers.list_handlers import ListHandlers
 
-    # Validate JWT and extract user context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": jwt_result.error.error_code,
-                "message": jwt_result.error.message,
-            },
-        )
-
-    user_context = jwt_result.context
-    user_id = user_context.get("user_id")
-
-    # Lookup tenant if yacht_id not in JWT
-    if not user_context.get("yacht_id") and lookup_tenant_for_user:
-        tenant_info = lookup_tenant_for_user(user_id)
-        if tenant_info:
-            user_context["yacht_id"] = tenant_info.get("yacht_id")
-            user_context["role"] = tenant_info.get("role", user_context.get("role"))
-            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
-
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=400, detail="yacht_id is required")
+    yacht_id = auth["yacht_id"]
 
     # Role gating: crew and above can view work orders
-    user_role = user_context.get("role", "")
+    user_role = auth.get("role", "")
     allowed_roles = ["crew", "chief_engineer", "chief_officer", "captain", "manager", "admin"]
     if user_role not in allowed_roles:
         raise HTTPException(
@@ -1735,8 +1685,7 @@ async def list_work_orders_endpoint(
         filters["priority"] = {"value": priority}
 
     # Get tenant DB client
-    tenant_alias = user_context.get("tenant_key_alias", "")
-    db_client = get_tenant_supabase_client(tenant_alias)
+    db_client = get_tenant_supabase_client(auth["tenant_key_alias"])
 
     # Create handler and execute
     handlers = ListHandlers(db_client)
@@ -1763,7 +1712,7 @@ async def list_faults_endpoint(
     limit: int = 50,
     severity: Optional[str] = None,
     resolved: Optional[bool] = None,
-    authorization: str = Header(None),
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     List faults with pagination and optional filters.
@@ -1779,35 +1728,10 @@ async def list_faults_endpoint(
     """
     from handlers.list_handlers import ListHandlers
 
-    # Validate JWT and extract user context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": jwt_result.error.error_code,
-                "message": jwt_result.error.message,
-            },
-        )
-
-    user_context = jwt_result.context
-    user_id = user_context.get("user_id")
-
-    # Lookup tenant if yacht_id not in JWT
-    if not user_context.get("yacht_id") and lookup_tenant_for_user:
-        tenant_info = lookup_tenant_for_user(user_id)
-        if tenant_info:
-            user_context["yacht_id"] = tenant_info.get("yacht_id")
-            user_context["role"] = tenant_info.get("role", user_context.get("role"))
-            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
-
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=400, detail="yacht_id is required")
+    yacht_id = auth["yacht_id"]
 
     # Role gating
-    user_role = user_context.get("role", "")
+    user_role = auth.get("role", "")
     allowed_roles = ["crew", "chief_engineer", "chief_officer", "captain", "manager", "admin"]
     if user_role not in allowed_roles:
         raise HTTPException(
@@ -1829,8 +1753,7 @@ async def list_faults_endpoint(
             filters["resolved_at"] = {"op": "is_null"}
 
     # Get tenant DB client
-    tenant_alias = user_context.get("tenant_key_alias", "")
-    db_client = get_tenant_supabase_client(tenant_alias)
+    db_client = get_tenant_supabase_client(auth["tenant_key_alias"])
 
     # Create handler and execute
     handlers = ListHandlers(db_client)
@@ -1857,7 +1780,7 @@ async def list_inventory_endpoint(
     limit: int = 50,
     category: Optional[str] = None,
     location: Optional[str] = None,
-    authorization: str = Header(None),
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     List inventory/parts with pagination and optional filters.
@@ -1873,35 +1796,10 @@ async def list_inventory_endpoint(
     """
     from handlers.list_handlers import ListHandlers
 
-    # Validate JWT and extract user context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": jwt_result.error.error_code,
-                "message": jwt_result.error.message,
-            },
-        )
-
-    user_context = jwt_result.context
-    user_id = user_context.get("user_id")
-
-    # Lookup tenant if yacht_id not in JWT
-    if not user_context.get("yacht_id") and lookup_tenant_for_user:
-        tenant_info = lookup_tenant_for_user(user_id)
-        if tenant_info:
-            user_context["yacht_id"] = tenant_info.get("yacht_id")
-            user_context["role"] = tenant_info.get("role", user_context.get("role"))
-            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
-
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=400, detail="yacht_id is required")
+    yacht_id = auth["yacht_id"]
 
     # Role gating
-    user_role = user_context.get("role", "")
+    user_role = auth.get("role", "")
     allowed_roles = ["crew", "chief_engineer", "chief_officer", "captain", "manager", "admin"]
     if user_role not in allowed_roles:
         raise HTTPException(
@@ -1920,8 +1818,7 @@ async def list_inventory_endpoint(
         filters["location"] = {"value": location}
 
     # Get tenant DB client
-    tenant_alias = user_context.get("tenant_key_alias", "")
-    db_client = get_tenant_supabase_client(tenant_alias)
+    db_client = get_tenant_supabase_client(auth["tenant_key_alias"])
 
     # Create handler and execute
     handlers = ListHandlers(db_client)
@@ -2050,7 +1947,7 @@ async def list_actions_endpoint(
     q: str = None,
     domain: str = None,
     entity_id: str = None,
-    authorization: str = Header(None),
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     List available actions with role-gating and search.
@@ -2065,29 +1962,8 @@ async def list_actions_endpoint(
     """
     from action_router.registry import search_actions, get_storage_options
 
-    # Validate JWT and extract user context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": jwt_result.error.error_code,
-                "message": jwt_result.error.message,
-            },
-        )
-
-    user_context = jwt_result.context
-
-    # Lookup tenant if yacht_id not in JWT
-    if not user_context.get("yacht_id") and lookup_tenant_for_user:
-        tenant_info = lookup_tenant_for_user(user_context["user_id"])
-        if tenant_info:
-            user_context["yacht_id"] = tenant_info.get("yacht_id")
-            user_context["role"] = tenant_info.get("role", user_context.get("role"))
-
-    user_role = user_context.get("role")
-    yacht_id = user_context.get("yacht_id")
+    user_role = auth.get("role")
+    yacht_id = auth["yacht_id"]
 
     # Search actions with role-gating
     actions = search_actions(query=q, role=user_role, domain=domain)
@@ -2113,7 +1989,7 @@ async def list_actions_endpoint(
 @router.post("/suggestions")
 async def suggest_actions_endpoint(
     request: Dict[str, Any],
-    authorization: str = Header(None),
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     Suggest actions based on context with ambiguity detection (Phase 8).
@@ -2144,29 +2020,8 @@ async def suggest_actions_endpoint(
     """
     from action_router.registry import search_actions, get_storage_options, ACTION_REGISTRY
 
-    # Validate JWT and extract user context
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": jwt_result.error.error_code,
-                "message": jwt_result.error.message,
-            },
-        )
-
-    user_context = jwt_result.context
-
-    # Lookup tenant if yacht_id not in JWT
-    if not user_context.get("yacht_id") and lookup_tenant_for_user:
-        tenant_info = lookup_tenant_for_user(user_context["user_id"])
-        if tenant_info:
-            user_context["yacht_id"] = tenant_info.get("yacht_id")
-            user_context["role"] = tenant_info.get("role", user_context.get("role"))
-
-    user_role = user_context.get("role")
-    yacht_id = user_context.get("yacht_id")
+    user_role = auth.get("role")
+    yacht_id = auth["yacht_id"]
 
     # Extract request parameters
     query = request.get("q")
