@@ -31,7 +31,7 @@ Compliance Warnings:
 All routes require JWT authentication and yacht isolation validation.
 """
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
@@ -46,7 +46,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
-from action_router.validators import validate_jwt, validate_yacht_isolation
+from middleware.auth import get_authenticated_user
 
 # Centralized Supabase client factory
 from integrations.supabase import get_supabase_client, get_tenant_client
@@ -186,7 +186,7 @@ async def get_hours_of_rest_route(
     user_id: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     View Hours of Rest records for a user within date range.
@@ -198,37 +198,20 @@ async def get_hours_of_rest_route(
 
     Returns daily HOR records with compliance indicators.
     """
-    # Validate JWT first to get tenant_key_alias
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "error": "UNAUTHORIZED",
-                "error_code": "UNAUTHORIZED",
-                "message": jwt_result.error.message if jwt_result.error else "Invalid or missing JWT"
-            }
-        )
+    user_id_from_jwt = auth["user_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-
-    # Validate yacht isolation
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
+    # Validate yacht isolation against authoritative JWT context
+    if yacht_id != auth["yacht_id"]:
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "FORBIDDEN",
                 "error_code": "YACHT_ISOLATION_VIOLATION",
-                "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation validation failed"
+                "message": "Yacht isolation validation failed"
             }
         )
 
-    # Get handlers with tenant-specific client
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     # Call handler
@@ -262,7 +245,7 @@ async def get_hours_of_rest_route(
 @router.post("/upsert")
 async def upsert_hours_of_rest_route(
     request: UpdateHoursRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Upsert Hours of Rest record (MUTATE action).
@@ -274,42 +257,10 @@ async def upsert_hours_of_rest_route(
 
     Creates or updates a daily HOR record.
     """
-    # Validate JWT first to get tenant_key_alias
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "error": "UNAUTHORIZED",
-                "error_code": "UNAUTHORIZED",
-                "message": jwt_result.error.message if jwt_result.error else "Invalid or missing JWT"
-            }
-        )
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-
-    # Get yacht_id from JWT context (security: never trust request body)
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
-
-    # Validate yacht isolation
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "FORBIDDEN",
-                "error_code": "YACHT_ISOLATION_VIOLATION",
-                "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation validation failed"
-            }
-        )
-
-    # Get handlers with tenant-specific client
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     # NOTE: Registry shows this as MUTATE not SIGNED, so signature is optional
@@ -350,7 +301,7 @@ async def upsert_hours_of_rest_route(
 @router.post("/export")
 async def export_hours_of_rest(
     request: ExportHoursRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Export Hours of Rest data in specified format.
@@ -361,37 +312,9 @@ async def export_hours_of_rest(
 
     Returns HOR data as JSON, PDF, or CSV.
     """
-    # Validate JWT first to get tenant_key_alias
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "error": "UNAUTHORIZED",
-                "error_code": "UNAUTHORIZED",
-                "message": jwt_result.error.message if jwt_result.error else "Invalid or missing JWT"
-            }
-        )
-
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-
-    # Get yacht_id from JWT context (security: never trust request body)
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
-
-    # Validate yacht isolation
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "FORBIDDEN",
-                "error_code": "YACHT_ISOLATION_VIOLATION",
-                "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation validation failed"
-            }
-        )
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
     # For now, return JSON format (PDF export can be added later)
     if request.format and request.format not in ["json", "pdf", "csv"]:
@@ -403,10 +326,6 @@ async def export_hours_of_rest(
             }
         )
 
-    # Get handlers with tenant-specific client
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     # Call handler (reuse get_hours_of_rest for JSON export)
@@ -462,7 +381,7 @@ async def list_monthly_signoffs_route(
     status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     List monthly sign-offs for user or department.
@@ -471,19 +390,12 @@ async def list_monthly_signoffs_route(
     **Variant**: READ
     **Endpoint**: GET /v1/hours-of-rest/signoffs
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
+    user_id_from_jwt = auth["user_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
+    if yacht_id != auth["yacht_id"]:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": "Yacht isolation validation failed"})
 
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
@@ -502,7 +414,7 @@ async def list_monthly_signoffs_route(
 async def get_monthly_signoff_route(
     yacht_id: str,
     signoff_id: str,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Get monthly sign-off details.
@@ -511,19 +423,12 @@ async def get_monthly_signoff_route(
     **Variant**: READ
     **Endpoint**: GET /v1/hours-of-rest/signoffs/details
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
+    user_id_from_jwt = auth["user_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
+    if yacht_id != auth["yacht_id"]:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": "Yacht isolation validation failed"})
 
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
@@ -541,7 +446,7 @@ async def get_monthly_signoff_route(
 @router.post("/signoffs/create")
 async def create_monthly_signoff_route(
     request: CreateMonthlySignoffRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Create monthly sign-off (starts as draft).
@@ -550,25 +455,10 @@ async def create_monthly_signoff_route(
     **Variant**: MUTATE
     **Endpoint**: POST /v1/hours-of-rest/signoffs/create
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-
-    # Get yacht_id from JWT context (security: never trust request body)
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
-
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
-
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
@@ -590,7 +480,7 @@ async def create_monthly_signoff_route(
 @router.post("/signoffs/sign")
 async def sign_monthly_signoff_route(
     request: SignMonthlySignoffRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Add signature to monthly sign-off (crew/HOD/captain).
@@ -599,25 +489,10 @@ async def sign_monthly_signoff_route(
     **Variant**: MUTATE
     **Endpoint**: POST /v1/hours-of-rest/signoffs/sign
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-
-    # Get yacht_id from JWT context (security: never trust request body)
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
-
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
-
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
@@ -650,7 +525,7 @@ async def list_crew_templates_route(
     yacht_id: str,
     user_id: Optional[str] = None,
     is_active: bool = True,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     List schedule templates for user.
@@ -659,19 +534,12 @@ async def list_crew_templates_route(
     **Variant**: READ
     **Endpoint**: GET /v1/hours-of-rest/templates
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
+    user_id_from_jwt = auth["user_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
+    if yacht_id != auth["yacht_id"]:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": "Yacht isolation validation failed"})
 
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
@@ -689,7 +557,7 @@ async def list_crew_templates_route(
 @router.post("/templates/create")
 async def create_crew_template_route(
     request: CreateCrewTemplateRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Create schedule template.
@@ -698,25 +566,10 @@ async def create_crew_template_route(
     **Variant**: MUTATE
     **Endpoint**: POST /v1/hours-of-rest/templates/create
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-
-    # Get yacht_id from JWT context (security: never trust request body)
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
-
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
-
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
@@ -741,7 +594,7 @@ async def create_crew_template_route(
 @router.post("/templates/apply")
 async def apply_crew_template_route(
     request: ApplyCrewTemplateRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Apply template to week of dates.
@@ -750,25 +603,10 @@ async def apply_crew_template_route(
     **Variant**: MUTATE
     **Endpoint**: POST /v1/hours-of-rest/templates/apply
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-
-    # Get yacht_id from JWT context (security: never trust request body)
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
-
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
-
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
@@ -796,7 +634,7 @@ async def list_crew_warnings_route(
     warning_type: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     List compliance warnings for user.
@@ -805,19 +643,12 @@ async def list_crew_warnings_route(
     **Variant**: READ
     **Endpoint**: GET /v1/hours-of-rest/warnings
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
+    user_id_from_jwt = auth["user_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
+    if yacht_id != auth["yacht_id"]:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": "Yacht isolation validation failed"})
 
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
@@ -835,7 +666,7 @@ async def list_crew_warnings_route(
 @router.post("/warnings/acknowledge")
 async def acknowledge_warning_route(
     request: AcknowledgeWarningRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Crew acknowledges warning (cannot dismiss).
@@ -844,25 +675,10 @@ async def acknowledge_warning_route(
     **Variant**: MUTATE
     **Endpoint**: POST /v1/hours-of-rest/warnings/acknowledge
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
 
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-
-    # Get yacht_id from JWT context (security: never trust request body)
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
-
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
-
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
@@ -884,7 +700,7 @@ async def acknowledge_warning_route(
 @router.post("/warnings/dismiss")
 async def dismiss_warning_route(
     request: DismissWarningRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     HOD/Captain dismisses warning (requires justification).
@@ -894,31 +710,16 @@ async def dismiss_warning_route(
     **Allowed Roles**: HOD+ only (chief_engineer, chief_officer, captain, manager)
     **Endpoint**: POST /v1/hours-of-rest/warnings/dismiss
     """
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
-
-    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
-    user_context = jwt_result.context or {}
-    user_role = jwt_result.context.get("role", "crew") if jwt_result.context else "crew"
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+    user_role = auth.get("role", "crew")
 
     # Role check - HOD+ only
     hod_plus_roles = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"]
     if user_role.lower() not in hod_plus_roles:
         raise HTTPException(status_code=403, detail={"error": "FORBIDDEN", "message": f"Role '{user_role}' cannot dismiss warnings. HOD+ required."})
 
-    # Get yacht_id from JWT context (security: never trust request body)
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
-
-    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
-    if not yacht_validation.valid:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
-
-    tenant_key_alias = user_context.get("tenant_key_alias")
-    if not tenant_key_alias:
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": "No tenant key found"})
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
     try:
