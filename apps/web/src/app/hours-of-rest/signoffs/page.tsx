@@ -41,7 +41,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
 import { isHOD } from '@/contexts/AuthContext';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { EntityLensPage } from '@/components/lens/EntityLensPage';
+import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
 import { HoRSignoffContent } from '@/components/lens-v2/entity';
 import lensStyles from '@/components/lens-v2/lens.module.css';
 
