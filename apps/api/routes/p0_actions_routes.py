@@ -12,7 +12,7 @@ Endpoints:
 All routes require JWT authentication and yacht isolation validation.
 """
 
-from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
@@ -43,10 +43,10 @@ from handlers.manual_handlers import ManualHandlers
 from handlers.part_handlers import PartHandlers
 from handlers.shopping_list_handlers import ShoppingListHandlers
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
-from action_router.validators import validate_jwt, validate_yacht_isolation, validate_payload_entities
+from action_router.validators import validate_payload_entities
 from action_router.middleware import validate_action_payload, InputValidationError, validate_state_transition, InvalidStateTransitionError
 from action_router.registry import get_action
-from middleware.auth import lookup_tenant_for_user, get_authenticated_user
+from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
 
 logger = logging.getLogger(__name__)
@@ -682,7 +682,7 @@ def resolve_entity_context(action: str, context: dict) -> dict:
 @router.post("/execute")
 async def execute_action(
     request: ActionExecuteRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     Execute an action.
@@ -690,72 +690,10 @@ async def execute_action(
     This is the unified endpoint for all P0 actions.
     Routes to appropriate handler based on action name.
     """
-    # Validate JWT
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": "UNAUTHORIZED",
-                "message": jwt_result.error.message
-            }
-        )
-
-    user_context = jwt_result.context
-
-    # Resolve tenant from MASTER DB if yacht_id not in JWT
-    if not user_context.get("yacht_id") and lookup_tenant_for_user:
-        tenant_info = lookup_tenant_for_user(user_context["user_id"])
-        if tenant_info:
-            user_context["yacht_id"] = tenant_info["yacht_id"]
-            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
-            # SECURITY: ONLY use tenant-scoped role from auth_users_roles
-            # NEVER fall back to JWT/MASTER role - deny-by-default
-            if not tenant_info.get("role"):
-                raise HTTPException(
-                    status_code=403,
-                    detail={
-                        "status": "error",
-                        "error_code": "RLS_DENIED",
-                        "message": "User has no active role on yacht"
-                    }
-                )
-            user_context["role"] = tenant_info["role"]
-            user_context["department"] = tenant_info.get("department", "")
-        else:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "status": "error",
-                    "error_code": "RLS_DENIED",
-                    "message": "User is not assigned to any yacht/tenant"
-                }
-            )
-
-    # Enrich department from tenant lookup (validate_jwt already resolved yacht_id
-    # via a cached lookup, so this call is a cache hit — <1ms)
-    if not user_context.get("department") and lookup_tenant_for_user:
-        _dept_tenant = lookup_tenant_for_user(user_context.get("user_id", ""))
-        if _dept_tenant:
-            user_context["department"] = _dept_tenant.get("department", "")
-
-    # Populate context.yacht_id from server-resolved user_context (invariant #1)
-    # SECURITY: Client cannot send yacht_id - always use server-resolved value
-    if not request.context.get("yacht_id") and user_context.get("yacht_id"):
-        request.context["yacht_id"] = user_context["yacht_id"]
-
-    # Validate yacht isolation
-    yacht_result = validate_yacht_isolation(request.context, user_context)
-    if not yacht_result.valid:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "status": "error",
-                "error_code": "RLS_DENIED",
-                "message": yacht_result.error.message
-            }
-        )
+    # Fleet-aware auth: provides yacht_id, role, department, tenant_key_alias, vessel_ids
+    user_context = auth
+    # Validate and resolve yacht_id from request context (fleet-aware)
+    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
 
     action = request.action
     yacht_id = request.context["yacht_id"]
@@ -1773,7 +1711,7 @@ async def list_inventory_endpoint(
 async def get_handover_items(
     limit: int = 20,
     category: Optional[str] = None,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     Get handover items for a yacht, sorted by priority and recency.
@@ -1788,30 +1726,14 @@ async def get_handover_items(
 
     Note: yacht_id is always from JWT auth context (invariant #1).
     """
-    # Validate JWT
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "error_code": "UNAUTHORIZED",
-                "message": jwt_result.error.message
-            }
-        )
-
-    user_context = jwt_result.context
-
-    # SECURITY: yacht_id ONLY from auth context - invariant #1
-    yacht_id = user_context.get("yacht_id")
-    if not yacht_id:
-        raise HTTPException(status_code=403, detail="No yacht context in token")
+    yacht_id = auth["yacht_id"]
+    db_client = get_tenant_supabase_client(auth["tenant_key_alias"])
 
     try:
         # Build query
         # Note: Removed users:added_by join as it requires explicit FK relationship
         # User names can be resolved separately if needed
-        query = supabase.table("handover").select(
+        query = db_client.table("handover").select(
             "id, yacht_id, entity_type, entity_id, summary_text, category, priority, "
             "added_at, added_by"
         ).eq("yacht_id", yacht_id)
