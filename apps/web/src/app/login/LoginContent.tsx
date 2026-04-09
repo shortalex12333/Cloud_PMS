@@ -269,6 +269,11 @@ export default function LoginContent() {
   const [isDark, setIsDark] = useState(true);
   const [btnHover, setBtnHover] = useState(false);
   const [btnActive, setBtnActive] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
   const styleInjected = useRef(false);
 
   // Inject CSS for placeholder + mobile responsive
@@ -338,6 +343,29 @@ export default function LoginContent() {
       console.error('[LoginPage] Login failed:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);
+    }
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    setForgotError(null);
+    try {
+      const { supabase } = await import('@/lib/supabaseClient');
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        forgotEmail.trim().toLowerCase(),
+        { redirectTo: `${window.location.origin}/reset-password` },
+      );
+      if (resetError) {
+        setForgotError(resetError.message);
+      } else {
+        setForgotSent(true);
+      }
+    } catch {
+      setForgotError('Network error. Try again.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -517,6 +545,62 @@ export default function LoginContent() {
         <div style={STAGE}>
           {/* Auth card */}
           <div className="login-auth-card" style={CARD}>
+            {/* ── Forgot password overlay ── */}
+            {showForgot && (
+              <div style={{ padding: '32px' }}>
+                {forgotSent ? (
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--txt)', marginBottom: '8px' }}>Check your email</p>
+                    <p style={{ fontSize: '13px', color: 'var(--txt2)', marginBottom: '24px', lineHeight: 1.5 }}>
+                      A password reset link has been sent to <span style={{ color: 'var(--mark)' }}>{forgotEmail}</span>.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { setShowForgot(false); setForgotSent(false); }}
+                      style={{ fontSize: '13px', color: 'var(--txt-ghost)', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      Back to sign in
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgot}>
+                    <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--txt)', marginBottom: '4px' }}>Reset password</p>
+                    <p style={{ fontSize: '13px', color: 'var(--txt2)', marginBottom: '20px', lineHeight: 1.5 }}>
+                      Enter your email and we&apos;ll send a reset link.
+                    </p>
+                    <input
+                      type="email"
+                      className="login-field-input"
+                      value={forgotEmail}
+                      onChange={(e) => { setForgotEmail(e.target.value); setForgotError(null); }}
+                      placeholder="you@vessel.com"
+                      required
+                      autoComplete="email"
+                      style={{ ...INPUT_BASE, marginBottom: '12px' }}
+                    />
+                    {forgotError && (
+                      <p style={{ fontSize: '12px', color: 'var(--red, #C0503A)', marginBottom: '8px' }}>{forgotError}</p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      style={{ ...SUBMIT_BTN, opacity: forgotLoading ? 0.5 : 1, cursor: forgotLoading ? 'not-allowed' : 'pointer', marginBottom: '12px' }}
+                    >
+                      {forgotLoading ? 'Sending...' : 'Send reset link'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgot(false)}
+                      style={{ display: 'block', width: '100%', fontSize: '13px', color: 'var(--txt-ghost)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center' }}
+                    >
+                      Back to sign in
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+            {/* ── Main login form (hidden while forgot is open) ── */}
+            {!showForgot && (<>
             {/* Card header */}
             <div className="login-auth-header" style={{ padding: '32px 32px 0', textAlign: 'center' }}>
               <div style={{
@@ -573,7 +657,7 @@ export default function LoginContent() {
                     style={FORGOT_LINK}
                     onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-                    onClick={(e) => { e.preventDefault(); alert('Contact your vessel administrator to reset your password.'); }}
+                    onClick={(e) => { e.preventDefault(); setForgotEmail(email); setForgotSent(false); setForgotError(null); setShowForgot(true); }}
                   >
                     Forgot?
                   </a>
@@ -638,6 +722,7 @@ export default function LoginContent() {
                 Secure crew access only
               </p>
             </form>
+            </>)}
           </div>
         </div>
       </div>
