@@ -24,7 +24,7 @@ import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActio
 import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
 // Sections

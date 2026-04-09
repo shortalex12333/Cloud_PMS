@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 import type { ScoredPointer, AttentionCounts, EntitySource, CrewRole } from '@/lib/attention/types';
 import {
   isSourceVisible,

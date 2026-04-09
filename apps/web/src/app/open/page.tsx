@@ -17,7 +17,7 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { resolveOpenToken, ResolveError } from '@/lib/handoverExportClient';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 import { Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 
 function OpenTokenResolver() {

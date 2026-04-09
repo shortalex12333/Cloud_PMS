@@ -10,7 +10,7 @@ import { useReadBeacon } from '@/hooks/useReadBeacon';
 import { useSignalRelated } from '@/hooks/useSignalRelated';
 // ShowRelatedButton removed — inlined into glass header
 import { RelatedDrawer } from './RelatedDrawer';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
 import { getActionDisplay } from '@/types/actions';
 import { ActionPopup } from '@/components/lens-v2/ActionPopup';

@@ -49,7 +49,7 @@ import {
   type DomainGroup,
   DOMAIN_ICONS,
 } from '@/lib/spotlightGrouping';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 
 // Domain icon component mapping
 const DomainIconMap: Record<string, LucideIcon> = {

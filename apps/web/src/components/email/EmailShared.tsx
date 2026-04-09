@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { LinkEmailModal } from '@/components/email/LinkEmailModal';
 import { supabase } from '@/lib/supabaseClient';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 import {
   useThread, useMessageContent, useThreadLinks, useMarkThreadRead, useRemoveLink,
   fetchAttachmentBlob,

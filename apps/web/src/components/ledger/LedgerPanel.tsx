@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { X, BookOpen, Edit3, Eye, ChevronDown, ChevronRight, Plus, Trash2, CheckSquare } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 

@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { ReceivingDocumentUpload } from '@/components/receiving/ReceivingDocumentUpload';
 import { useAuth } from '@/hooks/useAuth';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 import { toast } from 'sonner';
 
 export default function NewReceivingPage() {
