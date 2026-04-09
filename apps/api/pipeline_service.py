@@ -114,6 +114,7 @@ app.add_middleware(
         "Content-Type",
         "X-Request-Id",
         "X-Yacht-Signature",
+        "X-Import-Dev-Token",   # Import pipeline dev-mode auth bypass
     ],
     expose_headers=["X-Request-Id"],  # Allow client to read request ID
     max_age=3600,  # Cache preflight for 1 hour

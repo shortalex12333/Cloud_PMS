@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import type { AuditLogEntry } from '@/components/lens/sections/HistorySection';
+import type { AuditLogEntry } from '@/components/lens-v2/sections/LedgerHistorySection';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 

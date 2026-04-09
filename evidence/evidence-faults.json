@@ -1,0 +1,43 @@
+{
+    "domain": "faults",
+    "total_count": 8,
+    "filtered_count": 3,
+    "records": [
+        {
+            "id": "13fcb9e8-c104-44fe-9291-1c1310c0d929",
+            "updated_at": "2026-03-29T19:08:21.526431+00:00",
+            "age_display": "3mo",
+            "ref": "F-13fcb9",
+            "title": "Smoke Detected",
+            "status": "open",
+            "severity": "medium",
+            "assigned_to": "",
+            "linked_equipment_id": "e1000001-0001-4001-8001-000000000013",
+            "meta": "MEDIUM \u00b7 OPEN"
+        },
+        {
+            "id": "6be34442-4074-443d-a87e-bf8c349410ec",
+            "updated_at": "2026-03-29T19:08:21.526431+00:00",
+            "age_display": "3mo",
+            "ref": "F-6be344",
+            "title": "Transmission Fault",
+            "status": "closed",
+            "severity": "medium",
+            "assigned_to": "",
+            "linked_equipment_id": "2775babe-c138-4fbb-9680-9b9d751b3fc0",
+            "meta": "MEDIUM \u00b7 CLOSED"
+        },
+        {
+            "id": "93db6cc5-acd5-429a-a193-469c83261b6d",
+            "updated_at": "2026-03-29T19:08:21.526431+00:00",
+            "age_display": "3mo",
+            "ref": "F-93db6c",
+            "title": "Generator Overload",
+            "status": "closed",
+            "severity": "medium",
+            "assigned_to": "",
+            "linked_equipment_id": "cca3d329-fb9f-4dd1-9529-3a7c2935d12c",
+            "meta": "MEDIUM \u00b7 CLOSED"
+        }
+    ]
+}

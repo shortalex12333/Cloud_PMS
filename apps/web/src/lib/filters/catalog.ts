@@ -4,7 +4,6 @@
  * Each filter is a predefined, deterministic query that maps to a list route.
  * Filters do NOT invent data - they use existing schema columns only.
  *
- * @see docs/CELESTE_GSD_WORKER_CONTRACT.md for execution rules
  */
 
 export interface QuickFilter {

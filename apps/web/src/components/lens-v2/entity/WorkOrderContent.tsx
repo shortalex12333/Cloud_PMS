@@ -23,8 +23,8 @@ import { IdentityStrip, type PillDef, type DetailLine } from '../IdentityStrip';
 import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
-import { getEntityRoute } from '@/lib/featureFlags';
-import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
+import { getEntityRoute } from '@/lib/entityRoutes';
+import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
 
 // Sections
 import {

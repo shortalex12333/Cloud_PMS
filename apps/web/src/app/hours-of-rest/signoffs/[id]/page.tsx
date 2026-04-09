@@ -21,7 +21,7 @@
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import { EntityLensPage } from '@/components/lens/EntityLensPage';
+import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
 import { HoRSignoffContent } from '@/components/lens-v2/entity';
 import lensStyles from '@/components/lens-v2/lens.module.css';
 

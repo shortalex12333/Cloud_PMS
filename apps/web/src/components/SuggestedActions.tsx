@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { PenLine } from 'lucide-react';
 import { executeAction, type ActionSuggestion } from '@/lib/actionClient';
 import { ActionPopup, type ActionPopupField } from '@/components/lens-v2/ActionPopup';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 import { toast } from 'sonner';
 
 // Fields handled automatically — never shown in the form

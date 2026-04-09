@@ -1,0 +1,43 @@
+{
+    "domain": "work_orders",
+    "total_count": 15,
+    "filtered_count": 3,
+    "records": [
+        {
+            "id": "800c4295-12a9-4912-8204-9c68c77ab8b8",
+            "updated_at": "2026-03-29T21:16:39.937059+00:00",
+            "age_display": "2mo",
+            "ref": "WO-800c42",
+            "title": "Rudder bearing inspection",
+            "status": "in_progress",
+            "priority": "critical",
+            "assigned_to": null,
+            "linked_equipment_id": null,
+            "meta": "CRITICAL \u00b7 IN_PROGRESS"
+        },
+        {
+            "id": "b0971ee3-0631-425d-af81-38da6faa83bf",
+            "updated_at": "2026-03-29T21:16:39.937059+00:00",
+            "age_display": "2mo",
+            "ref": "WO-b0971e",
+            "title": "Stabilizer fin inspection",
+            "status": "completed",
+            "priority": "critical",
+            "assigned_to": null,
+            "linked_equipment_id": "2c3f52bb-37ea-4cb2-bad0-98d37f4b3ae6",
+            "meta": "CRITICAL \u00b7 COMPLETED"
+        },
+        {
+            "id": "26aebd52-f447-4225-86be-5e54ac36920b",
+            "updated_at": "2026-03-29T21:16:39.937059+00:00",
+            "age_display": "2mo",
+            "ref": "WO-26aebd",
+            "title": "Anchor windlass service",
+            "status": "in_progress",
+            "priority": "routine",
+            "assigned_to": null,
+            "linked_equipment_id": "e1000001-0001-4001-8001-000000000013",
+            "meta": "ROUTINE \u00b7 IN_PROGRESS"
+        }
+    ]
+}

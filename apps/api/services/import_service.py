@@ -30,6 +30,7 @@ DOMAIN_TO_OBJECT_TYPE = {
     "vessel_certificates": "certificate",
     "crew_certificates": "crew_certificate",
     "certificates": "certificate",
+    "crew": "crew_certificate",
 }
 
 # Domain → physical table name
@@ -41,6 +42,7 @@ DOMAIN_TO_TABLE = {
     "vessel_certificates": "pms_vessel_certificates",
     "crew_certificates": "pms_crew_certificates",
     "certificates": "pms_vessel_certificates",
+    "crew": "pms_crew_certificates",
 }
 
 # Date-type columns per domain (for date normalization)
@@ -52,6 +54,7 @@ DATE_COLUMNS = {
     "vessel_certificates": ["issue_date", "expiry_date", "last_survey_date", "next_survey_due"],
     "crew_certificates": ["issue_date", "expiry_date"],
     "certificates": ["issue_date", "expiry_date", "last_survey_date", "next_survey_due"],
+    "crew": ["issue_date", "expiry_date"],
 }
 
 # Status columns per domain

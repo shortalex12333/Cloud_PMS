@@ -1,5 +1,7 @@
 # =============================================================================
+# EXPERIMENTAL — NOT FOR PRODUCTION
 # Combined Service — Single Container for Render Free Tier Testing
+# Production config: docker-compose.yml
 # =============================================================================
 # Runs API + all 5 workers + nightly scheduler in one process.
 # Memory capped at 512MB to simulate Render free tier.

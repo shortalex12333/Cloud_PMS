@@ -8,9 +8,6 @@
  * Phase 3: Atomic swap — git mv lens lens-deprecated, git mv lens-v2 lens.
  */
 
-// Shell
-export { LensShell, type LensShellProps } from './LensShell';
-
 // Core components
 export { LensGlassHeader, type LensGlassHeaderProps } from './LensGlassHeader';
 export { IdentityStrip, type IdentityStripProps, type DetailLine, type PillDef } from './IdentityStrip';

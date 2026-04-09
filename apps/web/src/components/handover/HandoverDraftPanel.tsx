@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
-import { getEntityRoute } from '@/lib/featureFlags';
+import { getEntityRoute } from '@/lib/entityRoutes';
 import { toast } from 'sonner';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';

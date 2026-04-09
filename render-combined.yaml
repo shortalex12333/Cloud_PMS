@@ -1,5 +1,7 @@
 # =============================================================================
+# EXPERIMENTAL — NOT FOR PRODUCTION
 # Render Blueprint — Combined Service (Free Tier)
+# Production config: render.yaml
 # =============================================================================
 # Replaces: render.yaml (7 separate services @ $56/mo)
 # This runs everything in 1 free web service @ $0/mo.

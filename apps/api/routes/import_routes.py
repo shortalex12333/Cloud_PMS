@@ -206,6 +206,34 @@ CELESTE_VOCABULARY = {
         "required": ["person_name", "certificate_type"],
         "enums": {},
     },
+    # Domain aliases — parser detection returns these short names,
+    # but the canonical vocabulary uses the full table-aligned names above.
+    # These aliases ensure the mapping dropdown is populated correctly.
+    "certificates": {
+        "mappable": [
+            "certificate_type", "certificate_name", "certificate_number",
+            "issuing_authority", "issue_date", "expiry_date",
+            "last_survey_date", "next_survey_due", "status",
+        ],
+        "auto_set": [
+            "id", "yacht_id", "created_at",
+            "source", "source_id", "import_session_id", "imported_at",
+        ],
+        "required": ["certificate_type", "certificate_name", "issuing_authority"],
+        "enums": {},
+    },
+    "crew": {
+        "mappable": [
+            "person_name", "certificate_type", "certificate_number",
+            "issuing_authority", "issue_date", "expiry_date",
+        ],
+        "auto_set": [
+            "id", "yacht_id", "created_at",
+            "source", "source_id", "import_session_id", "imported_at",
+        ],
+        "required": ["person_name", "certificate_type"],
+        "enums": {},
+    },
 }
 
 
@@ -538,18 +566,9 @@ async def dry_run(
                 for col in file_info.get("columns", [])
             ]
 
-        # Re-parse the file to get row data
-        rows = []
+        # Re-parse the file to get row data (handles both direct CSV and ZIP)
         file_paths = sess.get("file_paths", [])
-        matching_path = next((p for p in file_paths if filename in p), None)
-
-        if matching_path:
-            try:
-                file_data = sb.storage.from_("vessel-imports").download(matching_path)
-                parse_result = parse_csv(file_data, filename)
-                rows = parse_result.rows
-            except Exception as e:
-                logger.warning(f"[Import] Could not re-parse {filename}: {e}")
+        rows = _reparse_rows_for_domain(filename, file_paths, sb)
 
         # Run dry-run
         if rows:
@@ -693,19 +712,9 @@ async def commit_import(
                 for col in file_info.get("columns", [])
             ]
 
-        # Re-parse file
-        rows = []
+        # Re-parse file (handles both direct CSV and ZIP)
         file_paths = sess.get("file_paths", [])
-        matching_path = next((p for p in file_paths if filename in p), None)
-
-        if matching_path:
-            try:
-                file_data = sb.storage.from_("vessel-imports").download(matching_path)
-                parse_result = parse_csv(file_data, filename)
-                rows = parse_result.rows
-            except Exception as e:
-                logger.error(f"[Import] Could not re-parse {filename} for commit: {e}")
-                continue
+        rows = _reparse_rows_for_domain(filename, file_paths, sb)
 
         if rows:
             try:
@@ -854,6 +863,42 @@ async def get_unresolved_refs(
 # =============================================================================
 # HELPERS
 # =============================================================================
+
+def _reparse_rows_for_domain(filename: str, file_paths: list, sb) -> list[dict]:
+    """
+    Re-parse rows for a given filename from stored files.
+    Handles both direct CSV paths and ZIP archives (where individual CSVs
+    are extracted in memory but only the ZIP is stored).
+    """
+    # First try: direct match in file_paths
+    matching_path = next((p for p in file_paths if filename in p), None)
+    if matching_path:
+        try:
+            file_data = sb.storage.from_("vessel-imports").download(matching_path)
+            ext = os.path.splitext(matching_path)[1].lower()
+            if ext == ".csv":
+                return parse_csv(file_data, filename).rows
+            elif ext == ".xlsx":
+                return parse_xlsx(file_data, filename).rows
+            elif ext == ".xls":
+                return parse_xls(file_data, filename).rows
+        except Exception as e:
+            logger.warning(f"[Import] Could not re-parse {filename} from {matching_path}: {e}")
+
+    # Second try: look for a ZIP in file_paths and extract the CSV from it
+    zip_path = next((p for p in file_paths if p.endswith(".zip")), None)
+    if zip_path:
+        try:
+            zip_data = sb.storage.from_("vessel-imports").download(zip_path)
+            zip_result = parse_zip(zip_data, os.path.basename(zip_path))
+            for pr in zip_result["parse_results"]:
+                if pr.filename == filename:
+                    return pr.rows
+            logger.warning(f"[Import] File '{filename}' not found inside ZIP")
+        except Exception as e:
+            logger.warning(f"[Import] Could not extract {filename} from ZIP: {e}")
+
+    return []
 
 def _parse_result_to_dict(result: ParseResult, source: str = "generic") -> dict:
     """Convert ParseResult to JSON-serializable dict for detection_result.

@@ -1,0 +1,43 @@
+{
+    "domain": "faults",
+    "total_count": 3,
+    "filtered_count": 3,
+    "records": [
+        {
+            "id": "91ddba29-f3ae-4d66-ab62-3ef2fb4676c4",
+            "updated_at": "2026-04-07T13:49:23.353399+00:00",
+            "age_display": "<1h",
+            "ref": "F-91ddba",
+            "title": "Starboard engine high temp alarm",
+            "status": "open",
+            "severity": "high",
+            "assigned_to": "",
+            "linked_equipment_id": "0a9a702c-4037-43ae-a72f-de4f1845f2b0",
+            "meta": "HIGH \u00b7 OPEN"
+        },
+        {
+            "id": "f013a6f4-b834-4519-9260-121a37476903",
+            "updated_at": "2026-04-07T13:49:23.353399+00:00",
+            "age_display": "<1h",
+            "ref": "F-f013a6",
+            "title": "Generator exhaust smoke",
+            "status": "investigating",
+            "severity": "medium",
+            "assigned_to": "",
+            "linked_equipment_id": "0a9a702c-4037-43ae-a72f-de4f1845f2b0",
+            "meta": "MEDIUM \u00b7 INVESTIGATING"
+        },
+        {
+            "id": "e7b07b53-3b03-4fe9-907b-0f513804a416",
+            "updated_at": "2026-04-07T13:49:23.353399+00:00",
+            "age_display": "<1h",
+            "ref": "F-e7b07b",
+            "title": "Bow thruster vibration",
+            "status": "open",
+            "severity": "low",
+            "assigned_to": "",
+            "linked_equipment_id": "0a9a702c-4037-43ae-a72f-de4f1845f2b0",
+            "meta": "LOW \u00b7 OPEN"
+        }
+    ]
+}

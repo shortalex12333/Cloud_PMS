@@ -259,7 +259,61 @@ else:
 
 _tenant_cache_stats = {"hits": 0, "misses": 0, "errors": 0}
 
-def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
+def _bootstrap_tenant_user(
+    user_id: str,
+    email: str,
+    name: str,
+    rank: str,
+    yacht_id: str,
+    tenant_client,
+) -> bool:
+    """
+    First-login bootstrap for invited crew members.
+
+    Called when auth_users_roles is empty for a user who was invited via the
+    registration portal. Their user_metadata (stored in JWT) carries the yacht
+    context set at invite time. We create the two required tenant rows so all
+    subsequent lookups succeed normally.
+
+    Returns True if bootstrap succeeded, False on any error.
+    """
+    try:
+        # Upsert auth_users_profiles — idempotent if re-triggered
+        tenant_client.table('auth_users_profiles').upsert(
+            {
+                'id': user_id,
+                'yacht_id': yacht_id,   # Supabase client handles str→uuid cast
+                'email': email,
+                'name': name,
+                'is_active': True,
+            },
+            on_conflict='id',
+        ).execute()
+
+        # Insert auth_users_roles — department auto-derived by trigger, do not set
+        # Unique constraint: UNIQUE(user_id, yacht_id, role)
+        tenant_client.table('auth_users_roles').upsert(
+            {
+                'user_id': user_id,
+                'yacht_id': yacht_id,
+                'role': rank,
+                'is_active': True,
+                'assigned_by': user_id,  # self-assigned via invite link
+            },
+            on_conflict='user_id,yacht_id,role',
+        ).execute()
+
+        logger.info(
+            "[Auth] Bootstrap complete for invited user %s on yacht %s (rank=%s)",
+            user_id[:8], yacht_id, rank,
+        )
+        return True
+    except Exception as exc:
+        logger.error("[Auth] Bootstrap failed for user %s: %s", user_id[:8], exc)
+        return False
+
+
+def lookup_tenant_for_user(user_id: str, user_metadata: Optional[Dict] = None, email: Optional[str] = None) -> Optional[Dict]:
     """
     Look up tenant info from MASTER DB for a user, then get yacht-specific role from TENANT DB.
 
@@ -356,8 +410,41 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
                 tenant_dept = sorted_roles[0].get('department') or ''
                 logger.info(f"[Auth] Found yacht-specific role: {tenant_role} (dept: {tenant_dept}) for user {user_id[:8]}... on yacht {yacht_id}")
             else:
-                logger.error(f"[Auth] SECURITY: No active role in auth_users_roles for user {user_id[:8]}... on yacht {yacht_id}")
-                return None
+                # No role found — attempt first-login bootstrap if this is an
+                # invited user (JWT user_metadata carries yacht_id + rank).
+                invite_rank = (user_metadata or {}).get('rank')
+                invite_name = (user_metadata or {}).get('name') or email or user_id
+                invite_yacht = (user_metadata or {}).get('yacht_id')
+
+                if invite_rank and invite_yacht and invite_yacht == yacht_id:
+                    logger.info(
+                        "[Auth] No tenant role found — attempting invite bootstrap for %s", user_id[:8]
+                    )
+                    bootstrapped = _bootstrap_tenant_user(
+                        user_id=user_id,
+                        email=email or '',
+                        name=invite_name,
+                        rank=invite_rank,
+                        yacht_id=yacht_id,
+                        tenant_client=tenant_client,
+                    )
+                    if bootstrapped:
+                        # Re-query to get the row we just wrote
+                        role_result = tenant_client.table('auth_users_roles').select(
+                            'role, department, valid_from, valid_until'
+                        ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq('is_active', True).execute()
+
+                        if role_result.data:
+                            tenant_role = role_result.data[0]['role']
+                            tenant_dept = role_result.data[0].get('department') or ''
+                        else:
+                            logger.error("[Auth] Bootstrap succeeded but re-query returned empty for %s", user_id[:8])
+                            return None
+                    else:
+                        return None
+                else:
+                    logger.error(f"[Auth] SECURITY: No active role in auth_users_roles for user {user_id[:8]}... on yacht {yacht_id}")
+                    return None
 
         except Exception as role_err:
             logger.error(f"[Auth] SECURITY: Failed to query tenant DB for role: {role_err}")
@@ -586,7 +673,8 @@ async def get_authenticated_user(
         raise HTTPException(status_code=401, detail='Invalid token: no user_id')
 
     # Look up tenant from MASTER DB
-    tenant = lookup_tenant_for_user(user_id)
+    user_metadata = payload.get('user_metadata') or {}
+    tenant = lookup_tenant_for_user(user_id, user_metadata=user_metadata, email=payload.get('email'))
 
     if not tenant:
         raise HTTPException(
