@@ -24,7 +24,7 @@ import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
-import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
+import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
 
 // Sections
 import {
