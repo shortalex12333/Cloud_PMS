@@ -353,7 +353,7 @@ async def mark_work_order_complete_prefill(
 @router.post("/work_order/create/prepare")
 async def prepare_create_work_order(
     request: PreviewRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     Phase 1: Generate mutation preview for work order creation.
@@ -367,30 +367,12 @@ async def prepare_create_work_order(
     - warnings: List of ambiguities (equipment not found, etc.)
     - validation_status: "ready" | "incomplete"
     """
-    # Validate JWT
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
-
-    user_context = jwt_result.context
-
-    # Validate yacht isolation
-    yacht_result = validate_yacht_isolation(request.context, user_context)
-    if not yacht_result.valid:
-        raise HTTPException(status_code=403, detail=yacht_result.error.message)
-
+    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
     yacht_id = request.context["yacht_id"]
-    user_id = user_context["user_id"]
-
-    # Get tenant key for handler lookup
-    tenant_info = lookup_tenant_for_user(user_id)
-    if not tenant_info:
-        raise HTTPException(status_code=400, detail="Unable to determine tenant for user")
-
-    tenant_key_alias = tenant_info.get("tenant_key_alias")
+    user_id = auth["user_id"]
 
     # Get handlers for tenant
-    handlers = get_handlers_for_tenant(tenant_key_alias)
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
     wo_handlers = handlers.get("wo_handlers")
     if not wo_handlers:
         raise HTTPException(status_code=500, detail="Work order handlers not initialized")
@@ -415,7 +397,7 @@ async def prepare_create_work_order(
 @router.post("/work_order/create/commit")
 async def commit_create_work_order(
     request: PreviewRequest,
-    authorization: str = Header(None)
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     Phase 2: Execute work order creation after user confirms preview.
@@ -431,30 +413,12 @@ async def commit_create_work_order(
     Required fields: title, priority, type
     Optional fields: equipment_id, description, assigned_to, due_date
     """
-    # Validate JWT
-    jwt_result = validate_jwt(authorization)
-    if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
-
-    user_context = jwt_result.context
-
-    # Validate yacht isolation
-    yacht_result = validate_yacht_isolation(request.context, user_context)
-    if not yacht_result.valid:
-        raise HTTPException(status_code=403, detail=yacht_result.error.message)
-
+    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
     yacht_id = request.context["yacht_id"]
-    user_id = user_context["user_id"]
-
-    # Get tenant key for handler lookup
-    tenant_info = lookup_tenant_for_user(user_id)
-    if not tenant_info:
-        raise HTTPException(status_code=400, detail="Unable to determine tenant for user")
-
-    tenant_key_alias = tenant_info.get("tenant_key_alias")
+    user_id = auth["user_id"]
 
     # Get handlers for tenant
-    handlers = get_handlers_for_tenant(tenant_key_alias)
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
     wo_handlers = handlers.get("wo_handlers")
     if not wo_handlers:
         raise HTTPException(status_code=500, detail="Work order handlers not initialized")
