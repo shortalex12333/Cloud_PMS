@@ -710,7 +710,7 @@ async def add_fault_note(
 
     current = (
         db_client.table("pms_faults")
-        .select("id, metadata")
+        .select("id, metadata, severity")
         .eq("id", fault_id)
         .eq("yacht_id", yacht_id)
         .single()
@@ -720,6 +720,7 @@ async def add_fault_note(
         raise HTTPException(status_code=404, detail="Fault not found")
 
     metadata = current.data.get("metadata", {}) or {}
+    current_severity = current.data.get("severity") or "medium"
     notes = metadata.get("notes", []) or []
     notes.append({
         "text": note_text,
@@ -730,9 +731,8 @@ async def add_fault_note(
 
     note_result = db_client.table("pms_faults").update({
         "metadata": metadata,
-        # DB invariant: pms_faults check constraint requires a non-null severity on every UPDATE.
-        # "medium" is the safe sentinel — this does not reflect a business-logic change.
-        "severity": "medium",
+        # Preserve original severity — NOT NULL constraint requires it on every UPDATE.
+        "severity": current_severity,
         "updated_by": user_id,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }).eq("id", fault_id).eq("yacht_id", yacht_id).execute()

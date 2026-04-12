@@ -781,7 +781,7 @@ async def execute_action(
         "add_worklist_task": ["task_description"],
         "check_stock_level": ["part_id"],
         "log_part_usage": ["part_id", "quantity", "usage_reason"],
-        "add_to_handover": ["title"],
+        "add_to_handover": ["summary"],
         "show_manual_section": ["equipment_id"],
         "update_equipment_status": ["equipment_id", "new_status"],
         # Document Lens v2 Actions
@@ -799,7 +799,7 @@ async def execute_action(
         "add_wo_note": ["work_order_id", "note_text"],
         # Tier 1 - Fault/WO History
         "view_fault_history": ["equipment_id"],
-        "add_fault_note": ["fault_id", "note_text"],
+        "add_fault_note": ["note_text"],
         "view_work_order_history": ["equipment_id"],
         "suggest_parts": ["fault_id"],
         # Tier 2 - Equipment Views

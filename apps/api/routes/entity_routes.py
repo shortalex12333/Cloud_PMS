@@ -684,6 +684,7 @@ async def get_fault_entity(fault_id: str, auth: dict = Depends(get_authenticated
         except Exception:
             pass
 
+        fault_metadata = data.get('metadata', {}) or {}
         _entity_response = {
             "id": data.get('id'),
             "title": data.get('title') or data.get('fault_code', 'Unknown Fault'),
@@ -700,6 +701,7 @@ async def get_fault_entity(fault_id: str, auth: dict = Depends(get_authenticated
             "updated_at": data.get('updated_at'),
             "attachments": attachments,
             "related_entities": nav,
+            "notes": fault_metadata.get("notes", []),
         }
         _entity_response["available_actions"] = get_available_actions(
             "fault", _entity_response, auth.get("role", "crew")
