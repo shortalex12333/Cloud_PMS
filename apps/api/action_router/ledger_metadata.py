@@ -104,6 +104,9 @@ ACTION_METADATA: dict = {
     "delete_list":                       {"event_type": "delete",        "entity_type": "shopping_list", "entity_id_field": "list_id"},
     "submit_list":                       {"event_type": "update",        "entity_type": "shopping_list", "entity_id_field": "list_id"},
 
+    # ── Hours of Rest ────────────────────────────────────────────────────────
+    "upsert_hours_of_rest":              {"event_type": "update",        "entity_type": "hours_of_rest", "entity_id_field": "user_id"},
+
     # ── Misc ─────────────────────────────────────────────────────────────────
     "add_note":                          {"event_type": "update",        "entity_type": "entity",        "entity_id_field": "entity_id"},
     "apply_template":                    {"event_type": "update",        "entity_type": "entity",        "entity_id_field": "entity_id"},
