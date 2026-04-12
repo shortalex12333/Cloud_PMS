@@ -224,7 +224,7 @@ export interface HandoverQueueResponse {
 
 /** Fetch items auto-detected as relevant for next handover */
 export function fetchHandoverQueue(vesselId: string): Promise<HandoverQueueResponse> {
-  return apiFetch(`/v1/handover/queue?vessel_id=${encodeURIComponent(vesselId)}`);
+  return apiFetch(`/v1/actions/handover/queue?vessel_id=${encodeURIComponent(vesselId)}`);
 }
 
 /* ─────────────────────────────────────────────
