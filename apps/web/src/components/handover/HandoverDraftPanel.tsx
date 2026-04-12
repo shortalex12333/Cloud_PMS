@@ -61,6 +61,11 @@ interface DayGroup {
 interface HandoverDraftPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  /** 'drawer' (default) = fixed right-side drawer with backdrop.
+   *  'page' = inline content block, no backdrop, no fixed positioning.
+   *  When variant='page', isOpen controls whether data is loaded but the
+   *  component always renders (caller controls visibility via tab switching). */
+  variant?: 'drawer' | 'page';
 }
 
 type PopupMode = null | { type: 'edit'; item: HandoverItem } | { type: 'add' } | { type: 'delete'; item: HandoverItem };
@@ -489,7 +494,7 @@ function ItemPopup({
 // MAIN COMPONENT
 // ============================================================================
 
-export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps) {
+export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: HandoverDraftPanelProps) {
   const { user } = useAuth();
   const { vesselId: activeVesselId } = useActiveVessel();
   const router = useRouter();
@@ -638,19 +643,19 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     });
   }, []);
 
-  if (!isOpen) return null;
+  // In drawer mode, don't render when closed.
+  // In page mode, always render (tab visibility handled by parent).
+  if (variant === 'drawer' && !isOpen) return null;
 
   const grouped = groupItemsByDay(items);
   const criticalCount = items.filter(i => i.category === 'critical' || i.is_critical).length;
   const actionCount = items.filter(i => i.requires_action || i.status === 'requires_parts').length;
 
-  return (
-    <>
-      {/* Backdrop */}
-      <div style={{ ...S.backdrop, opacity: 1, pointerEvents: 'auto' }} onClick={onClose} />
-
-      {/* Drawer */}
-      <div style={{ ...S.drawer, transform: 'translateX(0)', opacity: 1 }}>
+  const content = (
+    <div style={variant === 'page'
+      ? { display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }
+      : { ...S.drawer, transform: 'translateX(0)', opacity: 1 }
+    }>
 
         {/* Header */}
         <div style={S.drawerHdr}>
@@ -811,8 +816,31 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
             </div>
           )}
         </div>
-      </div>
+    </div>
+  );
 
+  if (variant === 'page') {
+    return (
+      <>
+        {content}
+        {popup && (
+          <ItemPopup
+            mode={popup}
+            onClose={() => setPopup(null)}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onSwitchToDelete={(item) => setPopup({ type: 'delete', item })}
+          />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div style={{ ...S.backdrop, opacity: 1, pointerEvents: 'auto' }} onClick={onClose} />
+      {content}
       {/* Popup */}
       {popup && (
         <ItemPopup
