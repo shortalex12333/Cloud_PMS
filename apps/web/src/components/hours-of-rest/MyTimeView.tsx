@@ -63,8 +63,28 @@ const MOCK_MY_WEEK = {
 };
 
 const DAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** API returns null for days with no submitted record — replace with an empty unsubmitted slot */
+function normalizeDays(days: any[], weekStart: string): any[] {
+  return days.map((d, i) => {
+    if (d != null) return d;
+    const date = new Date(weekStart);
+    date.setDate(date.getDate() + i);
+    return {
+      date: date.toISOString().slice(0, 10),
+      label: DAY_LABELS[i],
+      rest_periods: [],
+      total_rest_hours: 0,
+      total_work_hours: 0,
+      is_compliant: null,
+      submitted: false,
+      warnings: [],
+    };
+  });
+}
 
 async function getAuthHeader(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -181,6 +201,10 @@ export function MyTimeView() {
       });
       if (resp.ok) {
         const json = await resp.json();
+        // Normalize: null day slots → default unsubmitted day objects
+        if (Array.isArray(json.days)) {
+          json.days = normalizeDays(json.days, json.week_start ?? '');
+        }
         // Normalize: backend uses signoff_id, component uses id
         if (json.pending_signoff?.signoff_id && !json.pending_signoff.id) {
           json.pending_signoff.id = json.pending_signoff.signoff_id;
@@ -249,7 +273,7 @@ export function MyTimeView() {
     try {
       // Optimistic: populate draft periods from template
       const newDrafts: Record<string, RestPeriod[]> = {};
-      data.days.forEach((day, idx) => {
+      data.days.filter(Boolean).forEach((day, idx) => {
         if (!day.submitted) {
           const dayName = DAY_NAMES[idx];
           const tplDay = (tpl.schedule_template as Record<string, RestPeriod[]>)[dayName];
@@ -321,8 +345,8 @@ export function MyTimeView() {
 
   const comp = data.compliance;
   const signoff = data.pending_signoff;
-  const allSubmitted = data.days.every(d => d.submitted);
-  const anyUnsubmitted = data.days.some(d => !d.submitted && (draftPeriods[d.date]?.length ?? 0) > 0);
+  const allSubmitted = data.days.filter(Boolean).every(d => d.submitted);
+  const anyUnsubmitted = data.days.filter(Boolean).some(d => !d.submitted && (draftPeriods[d.date]?.length ?? 0) > 0);
 
   return (
     <div style={{ maxWidth: 680 }}>
@@ -380,7 +404,7 @@ export function MyTimeView() {
         />
 
         <div style={{ padding: '4px 0' }}>
-          {data.days.map((day, idx) => {
+          {data.days.filter(Boolean).map((day, idx) => {
             const hasWarning = day.warnings?.length > 0;
             const draft = draftPeriods[day.date];
             const isSubmitting = submitting[day.date];
