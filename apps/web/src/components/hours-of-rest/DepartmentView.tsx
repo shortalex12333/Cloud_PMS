@@ -168,7 +168,6 @@ function statusDot(status: CrewDay['status']): string {
 // Maps real API response shapes to component types.
 // Real API uses: crew[].daily[], pending_signoffs{awaiting_hod,signoff_ids}, compliance.missing_today[]
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeDepStatus(raw: any, ws: string): DepartmentStatus {
   const comp = raw.compliance ?? {};
   const ps = raw.pending_signoffs ?? {};
@@ -223,28 +222,30 @@ export function DepartmentView() {
   const [weekStart, setWeekStart] = React.useState(getCurrentWeekStart);
   const [data, setData] = React.useState<DepartmentStatus | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
   const [signingId, setSigningId] = React.useState<string | null>(null);
 
   // ── Load ──
 
   async function loadData(ws: string) {
     setLoading(true);
+    setError(null);
     try {
       const token = session?.access_token;
-      if (!token) throw new Error('no token');
+      if (!token) throw new Error('Not authenticated');
       const res = await fetch(`/api/v1/hours-of-rest/department-status?week_start=${ws}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('not ready');
+      if (!res.ok) throw new Error(`Failed to load department status (${res.status})`);
       const json = await res.json();
       const raw = json.success ? json.data : json;
       if (raw) {
         setData(normalizeDepStatus(raw, ws));
         return;
       }
-      throw new Error('unexpected shape');
-    } catch {
-      setData(buildMockDepartmentStatus(ws));
+      throw new Error('Unexpected response shape from department-status endpoint');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load department data');
     } finally {
       setLoading(false);
     }
@@ -277,10 +278,18 @@ export function DepartmentView() {
     setWeekStart(d.toISOString().slice(0, 10));
   }
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div style={{ padding: 32, color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         Loading department data…
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div style={{ padding: 32, color: 'rgba(239,68,68,0.7)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+        {error ?? 'No department data available.'}
       </div>
     );
   }
