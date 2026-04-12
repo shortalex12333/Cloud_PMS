@@ -26,6 +26,7 @@ import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
+import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
 
 // Sections
 import {
@@ -189,8 +190,9 @@ export function PurchaseOrderContent() {
   const primaryDisabledReason = primaryAction?.disabled_reason;
 
   const handlePrimary = React.useCallback(async () => {
+    if (!primaryAction) return;
     await executeAction(primaryActionKey, {});
-  }, [primaryActionKey, executeAction]);
+  }, [primaryAction, primaryActionKey, executeAction]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
   const DANGER_ACTIONS = new Set(['cancel_po', 'delete_po']);
@@ -321,7 +323,16 @@ export function PurchaseOrderContent() {
     summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
-  const handleAddNote = React.useCallback(() => {}, []);
+  const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const handleNoteSubmit = React.useCallback(
+    async (noteText: string) => {
+      const result = await executeAction('add_po_note', { note_text: noteText });
+      const isSuccess = result.success === true ||
+        (result as unknown as { status?: string }).status === 'success';
+      return { success: isSuccess, error: result.error ?? result.message };
+    },
+    [executeAction]
+  );
 
   return (
     <>
@@ -407,8 +418,8 @@ export function PurchaseOrderContent() {
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
-          onAddNote={handleAddNote}
-          canAddNote
+          onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
+          canAddNote={!!addNoteAction}
         />
       </ScrollReveal>
 
@@ -416,7 +427,7 @@ export function PurchaseOrderContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
+          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
           canAddFile
         />
       </ScrollReveal>
@@ -440,6 +451,12 @@ export function PurchaseOrderContent() {
           onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
           onClose={() => setActionPopupConfig(null)} />
       )}
+      <AddNoteModal
+        open={addNoteOpen}
+        onClose={() => setAddNoteOpen(false)}
+        onSubmit={handleNoteSubmit}
+        isLoading={isLoading}
+      />
     </>
   );
 }

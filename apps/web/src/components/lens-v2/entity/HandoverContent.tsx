@@ -576,7 +576,7 @@ export function HandoverContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
+          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
           canAddFile
         />
       </ScrollReveal>

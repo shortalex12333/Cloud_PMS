@@ -92,10 +92,9 @@ export function ReceivingContent() {
   const linked_entities = ((entity?.linked_entities ?? payload.linked_entities ?? entity?.related_entities ?? payload.related_entities) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // -- Action gates --
-  const acceptAction = getAction('accept_delivery');
+  const acceptAction = getAction('accept_receiving');
   const flagAction = getAction('flag_discrepancy');
   const confirmAction = getAction('confirm_receiving');
-  const barcodeAction = getAction('generate_barcode');
 
   const isConfirmable = ['pending', 'in_progress'].includes(status);
 
@@ -269,8 +268,6 @@ export function ReceivingContent() {
       : undefined,
   }));
 
-  const handleAddNote = React.useCallback(() => {}, []);
-
   return (
     <>
       {/* Identity Strip */}
@@ -300,26 +297,6 @@ export function ReceivingContent() {
         />
       </ScrollReveal>
 
-      {/* Print Barcodes button */}
-      {barcodeAction !== null && (
-        <ScrollReveal>
-          <div style={{ padding: '0 0 8px' }}>
-            <button
-              className={styles.printBtn}
-              onClick={() => executeAction('generate_barcode', {})}
-              disabled={barcodeAction.disabled ?? false}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polyline points="6 9 6 2 18 2 18 9" />
-                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
-                <rect x="6" y="14" width="12" height="8" />
-              </svg>
-              Print Labels
-            </button>
-          </div>
-        </ScrollReveal>
-      )}
-
       {/* Related Work (linked entities) */}
       {docItems.length > 0 && (
         <ScrollReveal>
@@ -331,8 +308,8 @@ export function ReceivingContent() {
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
-          onAddNote={handleAddNote}
-          canAddNote
+          onAddNote={undefined}
+          canAddNote={false}
         />
       </ScrollReveal>
 
@@ -340,7 +317,7 @@ export function ReceivingContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
+          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
           canAddFile
         />
       </ScrollReveal>

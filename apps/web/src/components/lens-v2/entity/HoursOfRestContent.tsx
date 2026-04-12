@@ -104,7 +104,7 @@ export function HoursOfRestContent() {
   const verified_at = (entity?.verified_at ?? payload.verified_at) as string | undefined;
 
   // -- Action gates --
-  const submitAction = getAction('submit_hours');
+  const submitAction = getAction('upsert_hours_of_rest');
   const templateAction = getAction('apply_template');
   // flag_violation removed — holds no value per user directive
 
@@ -173,12 +173,12 @@ export function HoursOfRestContent() {
   const primaryDisabledReason = canSubmit ? submitAction?.disabled_reason : undefined;
 
   const handlePrimary = React.useCallback(async () => {
-    await executeAction('submit_hours', {});
+    await executeAction('upsert_hours_of_rest', {});
   }, [executeAction]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
   const DANGER_ACTIONS = new Set<string>();
-  const primaryActionId = 'submit_hours';
+  const primaryActionId = 'upsert_hours_of_rest';
 
   const dropdownItems: DropdownItem[] = availableActions
     .filter((a) => a.action_id !== primaryActionId)
@@ -438,8 +438,8 @@ export function HoursOfRestContent() {
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
-          onAddNote={() => {}}
-          canAddNote
+          onAddNote={undefined}
+          canAddNote={false}
         />
       </ScrollReveal>
 
@@ -447,7 +447,7 @@ export function HoursOfRestContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
+          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
           canAddFile
         />
       </ScrollReveal>
