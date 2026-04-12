@@ -7,10 +7,7 @@
  *   Open Faults / Overdue Work Orders / Low Stock Parts / Pending Orders
  *
  * Each row has an "Add to draft" button. Items already in handover_items
- * (already_queued) show a checkmark instead.
- *
- * The endpoint is mocked while ENGINEER02 ships it. The component handles
- * 404 gracefully with an "endpoint not yet available" empty state.
+ * (already_queued[].entity_id) show a checkmark instead.
  */
 
 import * as React from 'react';
@@ -35,6 +32,10 @@ interface SectionConfig {
   accentVar: string;
   bgVar: string;
   entityType: string;
+  /** Returns the primary display label for an item in this section */
+  getLabel: (item: HandoverQueueItem) => string;
+  /** Returns secondary meta text, or null to hide the meta row */
+  getMeta: (item: HandoverQueueItem) => string | null;
 }
 
 const SECTIONS: SectionConfig[] = [
@@ -45,6 +46,8 @@ const SECTIONS: SectionConfig[] = [
     accentVar: 'var(--red)',
     bgVar: 'var(--red-bg)',
     entityType: 'fault',
+    getLabel: (item) => item.title || 'Untitled fault',
+    getMeta: (item) => [item.severity, item.equipment_name].filter(Boolean).join(' · ') || null,
   },
   {
     key: 'overdue_work_orders',
@@ -53,6 +56,13 @@ const SECTIONS: SectionConfig[] = [
     accentVar: 'var(--amber)',
     bgVar: 'var(--amber-bg)',
     entityType: 'work_order',
+    getLabel: (item) => item.title || 'Untitled work order',
+    getMeta: (item) => {
+      const parts: string[] = [];
+      if (item.priority) parts.push(item.priority.replace(/_/g, ' '));
+      if (item.due_at) parts.push(`due ${new Date(item.due_at).toLocaleDateString()}`);
+      return parts.join(' · ') || null;
+    },
   },
   {
     key: 'low_stock_parts',
@@ -61,6 +71,10 @@ const SECTIONS: SectionConfig[] = [
     accentVar: 'var(--mark)',
     bgVar: 'var(--teal-bg)',
     entityType: 'part',
+    getLabel: (item) => item.name || 'Unnamed part',
+    getMeta: (item) => item.current_qty !== undefined
+      ? `${item.current_qty} on hand · min ${item.reorder_threshold ?? 0}`
+      : null,
   },
   {
     key: 'pending_orders',
@@ -69,6 +83,8 @@ const SECTIONS: SectionConfig[] = [
     accentVar: 'var(--txt2)',
     bgVar: 'var(--neutral-bg)',
     entityType: 'purchase_order',
+    getLabel: (item) => item.title || 'Untitled order',
+    getMeta: (item) => item.status?.replace(/_/g, ' ') || null,
   },
 ];
 
@@ -106,11 +122,11 @@ function QueueSection({
   items: HandoverQueueItem[];
   alreadyQueued: Set<string>;
   loading: boolean;
-  onAdd: (item: HandoverQueueItem, entityType: string) => Promise<void>;
+  onAdd: (item: HandoverQueueItem, entityType: string, label: string) => Promise<void>;
   addingId: string | null;
 }) {
   const [expanded, setExpanded] = React.useState(true);
-  const { Icon, label, accentVar, bgVar, key } = config;
+  const { Icon, label, accentVar, bgVar } = config;
   const count = items.length;
 
   return (
@@ -172,12 +188,14 @@ function QueueSection({
               No items in this category
             </div>
           ) : (
-            items.map((item, idx) => {
-              const queued = alreadyQueued.has(item.entity_id);
-              const adding = addingId === item.entity_id;
+            items.map((item) => {
+              const queued = alreadyQueued.has(item.id);
+              const adding = addingId === item.id;
+              const itemLabel = config.getLabel(item);
+              const itemMeta = config.getMeta(item);
               return (
                 <div
-                  key={item.entity_id}
+                  key={item.id}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '10px 14px',
@@ -194,36 +212,22 @@ function QueueSection({
                       fontSize: 13, fontWeight: 500, color: 'var(--txt)',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>
-                      {item.ref && (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt3)', marginRight: 6 }}>
-                          {item.ref}
-                        </span>
-                      )}
-                      {item.title}
+                      {itemLabel}
                     </div>
-                    <div style={{
-                      marginTop: 2, display: 'flex', alignItems: 'center', gap: 8,
-                      fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--txt3)',
-                    }}>
-                      {item.status && (
-                        <span style={{
-                          padding: '1px 6px', borderRadius: 3,
-                          background: 'var(--neutral-bg)', color: 'var(--txt3)',
-                          border: '1px solid var(--border-sub)',
-                          fontSize: 9, fontWeight: 600, letterSpacing: '0.04em',
-                          textTransform: 'uppercase',
-                        }}>
-                          {item.status.replace(/_/g, ' ')}
-                        </span>
-                      )}
-                      {item.age_display && <span>{item.age_display}</span>}
-                    </div>
+                    {itemMeta && (
+                      <div style={{
+                        marginTop: 2, fontSize: 10, fontFamily: 'var(--font-mono)',
+                        color: 'var(--txt3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {itemMeta}
+                      </div>
+                    )}
                   </div>
 
                   {/* Add button */}
                   <button
                     disabled={queued || adding}
-                    onClick={() => onAdd(item, config.entityType)}
+                    onClick={() => onAdd(item, config.entityType, itemLabel)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
                       padding: '5px 10px', borderRadius: 5,
@@ -279,15 +283,11 @@ export function HandoverQueueView() {
     try {
       const result = await fetchHandoverQueue(vesselId);
       setData(result);
-      setAlreadyQueued(new Set(result.already_queued));
+      // Build set of entity_ids already in the handover draft
+      setAlreadyQueued(new Set(result.already_queued.map(q => q.entity_id)));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load queue';
-      // 404 means endpoint not yet deployed — show graceful message
-      if (msg.includes('404') || msg.includes('not found')) {
-        setError('endpoint_pending');
-      } else {
-        setError(msg);
-      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -295,9 +295,9 @@ export function HandoverQueueView() {
 
   React.useEffect(() => { load(); }, [load]);
 
-  const handleAdd = React.useCallback(async (item: HandoverQueueItem, entityType: string) => {
+  const handleAdd = React.useCallback(async (item: HandoverQueueItem, entityType: string, entityLabel: string) => {
     if (!user?.id || !vesselId) return;
-    setAddingId(item.entity_id);
+    setAddingId(item.id);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
@@ -310,9 +310,9 @@ export function HandoverQueueView() {
           action: 'add_to_handover',
           context: { yacht_id: vesselId },
           payload: {
-            entity_id: item.entity_id,
+            entity_id: item.id,
             entity_type: entityType,
-            summary: item.title,
+            summary: entityLabel,
             category: 'standard',
           },
         }),
@@ -322,7 +322,7 @@ export function HandoverQueueView() {
         throw new Error(errBody?.message || `Failed (${res.status})`);
       }
       // Optimistic update
-      setAlreadyQueued(prev => new Set([...prev, item.entity_id]));
+      setAlreadyQueued(prev => new Set([...prev, item.id]));
       toast.success('Added to handover draft');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add to draft');
@@ -330,21 +330,6 @@ export function HandoverQueueView() {
       setAddingId(null);
     }
   }, [user?.id, vesselId]);
-
-  if (error === 'endpoint_pending') {
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '60px 24px', textAlign: 'center', gap: 8,
-      }}>
-        <Loader2 size={28} style={{ color: 'var(--txt-ghost)', marginBottom: 4 }} />
-        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--txt2)' }}>Queue endpoint deploying</div>
-        <div style={{ fontSize: 12, color: 'var(--txt-ghost)', maxWidth: 320 }}>
-          The handover queue endpoint is being deployed. Once available, this view will automatically populate with open faults, overdue work orders, and more.
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
