@@ -443,6 +443,13 @@ except Exception as e:
     logger.error(f"❌ Failed to register Hours of Rest routes: {e}")
     logger.error("Hours of Rest endpoints will not be available")
 
+try:
+    from routes.hor_compliance_routes import router as hor_compliance_router
+    app.include_router(hor_compliance_router)
+    logger.info("✅ HoR compliance routes registered at /v1/hours-of-rest/my-week|department-status|vessel-compliance")
+except Exception as e:
+    logger.error(f"❌ Failed to register HoR compliance routes: {e}")
+
 # ============================================================================
 # HANDOVER EXPORT ROUTES (Phase 14 - Editable Workflow)
 # ============================================================================
