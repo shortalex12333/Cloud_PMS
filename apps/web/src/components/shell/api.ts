@@ -168,11 +168,6 @@ export function fetchDomainRecords(
   return apiFetch(`/api/vessel/${vesselId}/domain/${domain}/records${qs ? `?${qs}` : ''}`);
 }
 
-/* ─────────────────────────────────────────────
-   DOMAIN ID MAPPING
-   Frontend routes use hyphens, API uses underscores.
-   ───────────────────────────────────────────── */
-
 /** Fetch unread email count */
 export async function fetchEmailUnreadCount(): Promise<number> {
   try {
@@ -182,6 +177,48 @@ export async function fetchEmailUnreadCount(): Promise<number> {
     return 0; // Email not connected or token expired — no badge
   }
 }
+
+/* ─────────────────────────────────────────────
+   HANDOVER QUEUE
+   ───────────────────────────────────────────── */
+
+export interface HandoverQueueItem {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  title: string;
+  ref?: string;
+  status: string;
+  priority?: string;
+  age_display?: string;
+  meta?: string;
+}
+
+export interface HandoverQueueResponse {
+  open_faults: HandoverQueueItem[];
+  overdue_work_orders: HandoverQueueItem[];
+  low_stock_parts: HandoverQueueItem[];
+  pending_orders: HandoverQueueItem[];
+  /** entity_ids already added to handover_items (not yet exported) */
+  already_queued: string[];
+  counts: {
+    open_faults: number;
+    overdue_work_orders: number;
+    low_stock_parts: number;
+    pending_orders: number;
+    total: number;
+  };
+}
+
+/** Fetch items auto-detected as relevant for next handover */
+export function fetchHandoverQueue(vesselId: string): Promise<HandoverQueueResponse> {
+  return apiFetch(`/v1/handover/queue?vessel_id=${encodeURIComponent(vesselId)}`);
+}
+
+/* ─────────────────────────────────────────────
+   DOMAIN ID MAPPING
+   Frontend routes use hyphens, API uses underscores.
+   ───────────────────────────────────────────── */
 
 /** Map frontend route domain IDs to API domain params */
 export const DOMAIN_TO_API: Record<string, string> = {
