@@ -182,16 +182,29 @@ export async function fetchEmailUnreadCount(): Promise<number> {
    HANDOVER QUEUE
    ───────────────────────────────────────────── */
 
+/** Single item in a queue section. Fields vary by section type. */
 export interface HandoverQueueItem {
+  id: string;
+  title?: string;           // faults, work_orders, pending_orders
+  name?: string;            // low_stock_parts
+  severity?: string;        // faults
+  equipment_name?: string;  // faults
+  created_at?: string;      // faults, pending_orders
+  priority?: string;        // work_orders
+  due_at?: string;          // work_orders
+  assigned_to?: string;     // work_orders
+  current_qty?: number;     // low_stock_parts
+  reorder_threshold?: number; // low_stock_parts
+  status?: string;          // pending_orders
+}
+
+/** An entity already added to the active handover draft */
+export interface HandoverQueuedItem {
   id: string;
   entity_type: string;
   entity_id: string;
-  title: string;
-  ref?: string;
-  status: string;
+  summary: string;
   priority?: string;
-  age_display?: string;
-  meta?: string;
 }
 
 export interface HandoverQueueResponse {
@@ -199,14 +212,13 @@ export interface HandoverQueueResponse {
   overdue_work_orders: HandoverQueueItem[];
   low_stock_parts: HandoverQueueItem[];
   pending_orders: HandoverQueueItem[];
-  /** entity_ids already added to handover_items (not yet exported) */
-  already_queued: string[];
+  already_queued: HandoverQueuedItem[];
   counts: {
-    open_faults: number;
-    overdue_work_orders: number;
-    low_stock_parts: number;
-    pending_orders: number;
-    total: number;
+    faults: number;
+    work_orders: number;
+    parts: number;
+    orders: number;
+    already_queued: number;
   };
 }
 

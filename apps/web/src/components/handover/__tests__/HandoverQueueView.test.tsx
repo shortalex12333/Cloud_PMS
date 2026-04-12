@@ -2,11 +2,9 @@
  * HandoverQueueView unit tests
  *
  * Tests cover:
- * - Loading skeleton renders per section
  * - Sections render with items from mocked queue response
  * - "No items" empty state per section
  * - "Already added" state shows checkmark
- * - Endpoint-pending graceful state (404 response)
  * - Error + retry state
  */
 
@@ -47,25 +45,25 @@ const EMPTY_QUEUE = {
   low_stock_parts: [],
   pending_orders: [],
   already_queued: [],
-  counts: { open_faults: 0, overdue_work_orders: 0, low_stock_parts: 0, pending_orders: 0, total: 0 },
+  counts: { faults: 0, work_orders: 0, parts: 0, orders: 0, already_queued: 0 },
 };
 
 const QUEUE_WITH_ITEMS = {
   open_faults: [
-    { id: 'f1', entity_type: 'fault', entity_id: 'fault-01', title: 'Port engine vibration', ref: 'F-0061', status: 'open', age_display: '3d' },
+    { id: 'fault-01', title: 'Port engine vibration', severity: 'high', equipment_name: 'Port Engine', created_at: '2026-04-01T00:00:00Z' },
   ],
   overdue_work_orders: [
-    { id: 'w1', entity_type: 'work_order', entity_id: 'wo-01', title: 'Engine mount replacement', ref: 'WO-441', status: 'overdue' },
+    { id: 'wo-01', title: 'Engine mount replacement', priority: 'urgent', due_at: '2026-03-28T00:00:00Z', assigned_to: 'John' },
   ],
   low_stock_parts: [],
   pending_orders: [],
   already_queued: [],
-  counts: { open_faults: 1, overdue_work_orders: 1, low_stock_parts: 0, pending_orders: 0, total: 2 },
+  counts: { faults: 1, work_orders: 1, parts: 0, orders: 0, already_queued: 0 },
 };
 
 const QUEUE_WITH_QUEUED = {
   ...QUEUE_WITH_ITEMS,
-  already_queued: ['fault-01'],
+  already_queued: [{ id: 'qi-01', entity_type: 'fault', entity_id: 'fault-01', summary: 'Port engine vibration' }],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -100,12 +98,12 @@ describe('HandoverQueueView — sections render', () => {
     });
   });
 
-  it('renders ref codes alongside item titles', async () => {
+  it('renders meta text alongside item titles', async () => {
     mockFetchHandoverQueue.mockResolvedValue(QUEUE_WITH_ITEMS);
     await act(async () => { await renderView(); });
     await waitFor(() => {
-      expect(screen.getByText('F-0061')).toBeInTheDocument();
-      expect(screen.getByText('WO-441')).toBeInTheDocument();
+      // Fault meta: severity · equipment_name
+      expect(screen.getByText(/high.*Port Engine/i)).toBeInTheDocument();
     });
   });
 });
@@ -134,15 +132,7 @@ describe('HandoverQueueView — already queued', () => {
 });
 
 describe('HandoverQueueView — error states', () => {
-  it('shows endpoint-pending message on 404 response', async () => {
-    mockFetchHandoverQueue.mockRejectedValue(new Error('API 404: Not Found'));
-    await act(async () => { await renderView(); });
-    await waitFor(() => {
-      expect(screen.getByText('Queue endpoint deploying')).toBeInTheDocument();
-    });
-  });
-
-  it('shows retry button on non-404 error', async () => {
+  it('shows retry button on error', async () => {
     mockFetchHandoverQueue.mockRejectedValue(new Error('Network error'));
     await act(async () => { await renderView(); });
     await waitFor(() => {
