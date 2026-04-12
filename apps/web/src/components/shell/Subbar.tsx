@@ -53,13 +53,8 @@ const SUBBAR_CONFIGS: Partial<Record<DomainId, DomainSubbarConfig>> = {
     chips: ['All', 'Draft', 'Pending', 'Signed'],
     primaryAction: 'Create Handover',
   },
-  'hours-of-rest': {
-    label: 'Hours of Rest',
-    icon: () => null,
-    searchPlaceholder: 'Search rest records\u2026 crew name or date',
-    chips: ['All', 'Today', 'Non-Compliant', 'Pending Sign-off'],
-    primaryAction: 'Log Hours',
-  },
+  // 'hours-of-rest' intentionally omitted — new HoR page has its own
+  // role-aware header and domain nav. No Subbar needed.
   inventory: {
     label: 'Parts / Inventory',
     icon: () => null,

@@ -126,17 +126,26 @@ async def get_my_week(
             })
 
         # ------------------------------------------------------------------
-        # 3. Build 7-slot days array
+        # 3. Build 7-slot days array — always 7 non-null objects
         # ------------------------------------------------------------------
-        days: List[Optional[dict]] = []
+        days: List[dict] = []
         for i in range(7):
             d = week_monday + timedelta(days=i)
             dstr = d.isoformat()
             rec = daily_by_date.get(dstr)
             if rec is None:
-                days.append(None)
+                days.append({
+                    "record_date":          dstr,
+                    "rest_periods":         [],
+                    "total_rest_hours":     0,
+                    "total_work_hours":     0,
+                    "is_daily_compliant":   None,
+                    "submitted":            False,
+                    "warnings":             [],
+                })
             else:
                 rec = dict(rec)
+                rec["submitted"] = True
                 rec["warnings"] = warnings_by_date.get(dstr, [])
                 days.append(rec)
 
