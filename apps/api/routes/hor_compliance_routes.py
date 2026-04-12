@@ -163,9 +163,10 @@ async def get_my_week(
         ).eq("yacht_id", yacht_id).eq("user_id", user_id).gte(
             "record_date", rolling_start.isoformat()
         ).lte("record_date", today.isoformat()).execute()
+        rolling_data = rolling_r.data or []
         rolling_7day = sum(
-            (r.get("total_rest_hours") or 0) for r in (rolling_r.data or [])
-        ) or None
+            (r.get("total_rest_hours") or 0) for r in rolling_data
+        ) if rolling_data else None
 
         summary_data = summary_r.data if summary_r else None
         compliance = {
@@ -404,10 +405,11 @@ async def get_department_status(
             "signoff_ids":  [r["id"] for r in pending_rows],
         }
 
+        dept_label = department if user_role.lower() not in _CAPTAIN_ROLES else "all"
         return JSONResponse(content={
             "status":          "success",
             "week_start":      week_monday.isoformat(),
-            "department":      department,
+            "department":      dept_label,
             "total_crew":      len(crew_user_ids),
             "submitted_count": submitted_count,
             "compliant_count": compliant_count,
