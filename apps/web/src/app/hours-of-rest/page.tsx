@@ -1,97 +1,134 @@
 'use client';
 
+/**
+ * Hours of Rest — role-aware operational dashboard
+ *
+ * Crew (all roles):             My Time tab only
+ * HOD (chief_engineer, eto):    My Time | Department View
+ * Captain / Manager:            My Time | All Departments
+ *
+ * No DomainListView. No EntityLensPage. Inline time input only.
+ */
+
 import * as React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
-import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
-import { HoursOfRestContent } from '@/components/lens-v2/entity';
-import lensStyles from '@/components/lens-v2/lens.module.css';
-import type { EntityListResult } from '@/features/entity-list/types';
+import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
+import { MyTimeView } from '@/components/hours-of-rest/MyTimeView';
+import { DepartmentView } from '@/components/hours-of-rest/DepartmentView';
+import { VesselComplianceView } from '@/components/hours-of-rest/VesselComplianceView';
 
-interface HoRRecord {
-  id: string;
-  crew_member_name?: string;
-  record_date?: string;
-  total_rest_hours?: number;
-  total_work_hours?: number;
-  is_compliant?: boolean;
-  status?: string;
-  created_at: string;
-  updated_at?: string;
+type Tab = 'my-time' | 'department' | 'vessel';
+
+function isCaptainOrManager(role: string | undefined): boolean {
+  return role === 'captain' || role === 'manager';
 }
 
-function horAdapter(r: HoRRecord): EntityListResult {
-  const status = r.is_compliant === false ? 'Non-Compliant' : r.status?.replace(/_/g, ' ') || 'Compliant';
-  const date = r.record_date ? new Date(r.record_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-  return {
-    id: r.id,
-    type: 'pms_hours_of_rest',
-    title: r.crew_member_name || 'Rest Record',
-    subtitle: `${date} · ${r.total_work_hours ?? 0}h work · ${r.total_rest_hours ?? 0}h rest`,
-    entityRef: r.record_date ? new Date(r.record_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '',
-    status,
-    statusVariant: r.is_compliant === false ? 'critical' : r.status === 'pending' ? 'pending' : 'signed',
-    severity: r.is_compliant === false ? 'critical' : null,
-    age: r.record_date ? formatAge(r.record_date) : '\u2014',
-  };
+function isHODOnly(role: string | undefined): boolean {
+  return role === 'chief_engineer' || role === 'eto';
 }
 
-function formatAge(d: string): string {
-  const days = Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000);
-  if (days < 1) return 'Today';
-  if (days === 1) return '1d';
-  if (days < 7) return `${days}d`;
-  const date = new Date(d);
-  return `${date.getDate()} ${date.toLocaleDateString('en-GB', { month: 'short' })}`;
-}
+function HoursOfRestContent() {
+  const { user } = useAuth();
+  const role = user?.role;
 
-function LensContent() {
-  return <div className={lensStyles.root}><HoursOfRestContent /></div>;
-}
+  const showDept = isHOD(user);
+  const showVessel = isCaptainOrManager(role);
 
-function HoRPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedId = searchParams.get('id');
+  const [tab, setTab] = React.useState<Tab>('my-time');
 
-  const handleSelect = React.useCallback(
-    (id: string, yachtId?: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('id', id);
-      if (yachtId) params.set('yacht_id', yachtId);
-      router.push(`/hours-of-rest?${params.toString()}`, { scroll: false });
-    },
-    [router, searchParams]
-  );
+  React.useEffect(() => {
+    if (tab === 'vessel' && !showVessel) setTab('my-time');
+    if (tab === 'department' && !showDept) setTab('my-time');
+  }, [tab, showDept, showVessel]);
 
-  const handleCloseDetail = React.useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('id');
-    const qs = params.toString();
-    router.push(`/hours-of-rest${qs ? `?${qs}` : ''}`, { scroll: false });
-  }, [router, searchParams]);
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'my-time', label: 'My Time' },
+    ...(isHODOnly(role) ? [{ id: 'department' as Tab, label: 'Department' }] : []),
+    ...(showVessel ? [{ id: 'department' as Tab, label: 'Department' }, { id: 'vessel' as Tab, label: 'All Departments' }] : []),
+  ];
+
+  const dedupedTabs = tabs.filter((t, i, arr) => arr.findIndex(x => x.id === t.id) === i);
 
   return (
-    <div className="h-full bg-surface-base">
-      <FilteredEntityList<HoRRecord>
-        domain="hours-of-rest"
-        queryKey={['hours-of-rest']}
-        table="v_hours_of_rest_enriched"
-        columns="*"
-        adapter={horAdapter}
-        filterConfig={[]}
-        selectedId={selectedId}
-        onSelect={handleSelect}
-        emptyMessage="No rest records"
-        sortBy="record_date"
-      />
+    <div style={{
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--surface-base, #0e0c09)',
+      overflow: 'hidden',
+    }}>
+      {/* ── Domain header ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '12px 20px',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.7)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.10em',
+          }}>Hours of Rest</span>
+          {user?.role && (
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 9,
+              color: 'rgba(255,255,255,0.25)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+            }}>{user.role.replace(/_/g, ' ')}</span>
+          )}
+        </div>
 
-      <EntityDetailOverlay isOpen={!!selectedId} onClose={handleCloseDetail}>
-        {selectedId && (
-          <EntityLensPage entityType="hours_of_rest" entityId={selectedId} content={LensContent} />
+        {dedupedTabs.length > 1 && (
+          <div style={{
+            display: 'flex',
+            gap: 2,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 6,
+            padding: 2,
+          }}>
+            {dedupedTabs.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  color: tab === t.id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+                  background: tab === t.id ? 'rgba(255,255,255,0.10)' : 'transparent',
+                  border: 'none',
+                  borderRadius: 4,
+                  padding: '5px 12px',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, color 0.15s',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  whiteSpace: 'nowrap',
+                }}
+              >{t.label}</button>
+            ))}
+          </div>
         )}
-      </EntityDetailOverlay>
+      </div>
+
+      {/* ── Tab content ── */}
+      <div style={{
+        flex: 1,
+        overflow: 'auto',
+        padding: '20px',
+      }}>
+        {tab === 'my-time' && <MyTimeView />}
+        {tab === 'department' && showDept && <DepartmentView />}
+        {tab === 'vessel' && showVessel && <VesselComplianceView />}
+      </div>
     </div>
   );
 }
@@ -100,12 +137,25 @@ export default function HoursOfRestPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="h-full flex items-center justify-center bg-surface-base">
-          <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
+        <div style={{
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--surface-base, #0e0c09)',
+        }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            border: '2px solid rgba(255,255,255,0.08)',
+            borderTopColor: 'var(--mark, rgba(90,171,204,0.8))',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
         </div>
       }
     >
-      <HoRPageContent />
+      <HoursOfRestContent />
     </React.Suspense>
   );
 }
