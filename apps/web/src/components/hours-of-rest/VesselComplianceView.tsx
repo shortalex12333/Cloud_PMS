@@ -43,7 +43,7 @@ interface DepartmentCard {
   crew_count: number;
   compliance_pct: number;
   violations: number;
-  avg_rest_hours: number;
+  avg_work_hours: number;
   submitted_today: number;
   total_today: number;
   crew: DeptCrewMember[];
@@ -57,7 +57,7 @@ interface VesselCompliance {
   vessel_analytics: {
     overall_compliance_pct: number;
     total_violations: number;
-    avg_rest_hours: number;
+    avg_work_hours: number;
     total_crew: number;
     fully_compliant_departments: number;
   };
@@ -93,7 +93,7 @@ function buildMockVesselCompliance(weekStart: string): VesselCompliance {
         crew_count: 5,
         compliance_pct: 96,
         violations: 1,
-        avg_rest_hours: 8.1,
+        avg_work_hours: 8.1,
         submitted_today: 4,
         total_today: 5,
         crew: [
@@ -109,7 +109,7 @@ function buildMockVesselCompliance(weekStart: string): VesselCompliance {
         crew_count: 4,
         compliance_pct: 75,
         violations: 3,
-        avg_rest_hours: 7.2,
+        avg_work_hours: 7.2,
         submitted_today: 2,
         total_today: 4,
         crew: [
@@ -124,7 +124,7 @@ function buildMockVesselCompliance(weekStart: string): VesselCompliance {
         crew_count: 3,
         compliance_pct: 100,
         violations: 0,
-        avg_rest_hours: 8.6,
+        avg_work_hours: 8.6,
         submitted_today: 3,
         total_today: 3,
         crew: [
@@ -140,7 +140,7 @@ function buildMockVesselCompliance(weekStart: string): VesselCompliance {
     vessel_analytics: {
       overall_compliance_pct: 91,
       total_violations: 4,
-      avg_rest_hours: 8.0,
+      avg_work_hours: 8.0,
       total_crew: 12,
       fully_compliant_departments: 2,
     },
@@ -209,7 +209,7 @@ function normalizeVesselCompliance(raw: any, ws: string): VesselCompliance {
       crew_count: d.crew_count ?? d.crew_total ?? crewSource.length,
       compliance_pct: d.compliance_pct ?? d.compliance_rate ?? 0,
       violations: d.violations ?? 0,
-      avg_rest_hours: d.avg_rest_hours ?? 0,
+      avg_work_hours: d.avg_work_hours ?? 0,
       submitted_today: d.submitted_today ?? 0,
       total_today: d.total_today ?? d.crew_count ?? 0,
       crew: crewSource.map((m: any) => ({
@@ -240,7 +240,7 @@ function normalizeVesselCompliance(raw: any, ws: string): VesselCompliance {
       // real: compliance_rate (0-100 pct), violations_this_quarter, avg_work_hours
       overall_compliance_pct: a.overall_compliance_pct ?? a.compliance_rate ?? 0,
       total_violations: a.total_violations ?? a.violations_this_quarter ?? 0,
-      avg_rest_hours: a.avg_rest_hours ?? a.avg_work_hours ?? 0,
+      avg_work_hours: a.avg_work_hours ?? 0,
       total_crew: a.total_crew ?? allCrewFlat.length ?? 0,
       fully_compliant_departments: a.fully_compliant_departments ?? 0,
     },
@@ -340,7 +340,7 @@ export function VesselComplianceView() {
           {[
             { label: 'Compliance', value: `${va.overall_compliance_pct}%`, color: complianceColor(va.overall_compliance_pct) },
             { label: 'Violations', value: String(va.total_violations), color: va.total_violations > 0 ? 'rgba(239,68,68,0.9)' : 'rgba(34,197,94,0.9)' },
-            { label: 'Avg Rest', value: `${va.avg_rest_hours.toFixed(1)}h`, color: 'rgba(90,171,204,0.9)' },
+            { label: 'Avg Work', value: `${va.avg_work_hours.toFixed(1)}h`, color: 'rgba(90,171,204,0.9)' },
             { label: 'Total Crew', value: String(va.total_crew), color: 'rgba(255,255,255,0.7)' },
             { label: 'Dept OK', value: `${va.fully_compliant_departments}/${data.departments.length}`, color: 'rgba(34,197,94,0.9)' },
           ].map(({ label, value, color }) => (
@@ -424,7 +424,7 @@ export function VesselComplianceView() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 <Stat label="Today" value={`${dept.submitted_today}/${dept.total_today}`} color="rgba(255,255,255,0.6)" />
-                <Stat label="Avg Rest" value={`${dept.avg_rest_hours.toFixed(1)}h`} color="rgba(90,171,204,0.8)" />
+                <Stat label="Avg Work" value={`${dept.avg_work_hours.toFixed(1)}h`} color="rgba(90,171,204,0.8)" />
                 <Stat label="Crew" value={String(dept.crew_count)} color="rgba(255,255,255,0.4)" />
                 <Stat label="Violations" value={String(dept.violations)} color={dept.violations > 0 ? 'rgba(239,68,68,0.8)' : 'rgba(34,197,94,0.7)'} />
               </div>
