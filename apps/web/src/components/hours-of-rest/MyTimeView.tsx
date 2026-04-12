@@ -187,10 +187,11 @@ export function MyTimeView() {
         }
         setData(json);
       } else {
-        setData(MOCK_MY_WEEK);
+        const text = await resp.text().catch(() => '');
+        setError(`Failed to load hours of rest (${resp.status})${text ? `: ${text.slice(0, 120)}` : ''}`);
       }
-    } catch {
-      setData(MOCK_MY_WEEK);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load hours of rest');
     } finally {
       setLoading(false);
     }

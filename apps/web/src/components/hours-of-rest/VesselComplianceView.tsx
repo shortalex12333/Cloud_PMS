@@ -186,14 +186,11 @@ const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // Real API: all_crew[] (flat, has .department field), analytics{} (not vessel_analytics{})
 // Real analytics fields: compliance_rate, violations_this_quarter, avg_work_hours
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeVesselCompliance(raw: any, ws: string): VesselCompliance {
   const a = raw.analytics ?? raw.vessel_analytics ?? {};
 
   // Build departments — may have nested crew[] OR we join from all_crew[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allCrewFlat: any[] = Array.isArray(raw.all_crew) ? raw.all_crew : [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawDepts: any[] = Array.isArray(raw.departments) ? raw.departments : [];
 
   const departments: DepartmentCard[] = rawDepts.map((d: any) => {
@@ -255,6 +252,7 @@ export function VesselComplianceView() {
   const [weekStart, setWeekStart] = React.useState(getCurrentWeekStart);
   const [data, setData] = React.useState<VesselCompliance | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
   const [expandedDept, setExpandedDept] = React.useState<string | null>(null);
   const [signingId, setSigningId] = React.useState<string | null>(null);
 
@@ -262,19 +260,20 @@ export function VesselComplianceView() {
 
   async function loadData(ws: string) {
     setLoading(true);
+    setError(null);
     try {
       const token = session?.access_token;
-      if (!token) throw new Error('no token');
+      if (!token) throw new Error('Not authenticated');
       const res = await fetch(`/api/v1/hours-of-rest/vessel-compliance?week_start=${ws}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('not ready');
+      if (!res.ok) throw new Error(`Failed to load vessel compliance (${res.status})`);
       const json = await res.json();
       const raw = json.success ? json.data : json;
       if (raw) { setData(normalizeVesselCompliance(raw, ws)); return; }
-      throw new Error('unexpected shape');
-    } catch {
-      setData(buildMockVesselCompliance(ws));
+      throw new Error('Unexpected response shape from vessel-compliance endpoint');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load vessel compliance data');
     } finally {
       setLoading(false);
     }
@@ -305,10 +304,18 @@ export function VesselComplianceView() {
     setWeekStart(d.toISOString().slice(0, 10));
   }
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div style={{ padding: 32, color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         Loading vessel compliance…
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div style={{ padding: 32, color: 'rgba(239,68,68,0.7)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+        {error ?? 'No vessel compliance data available.'}
       </div>
     );
   }
