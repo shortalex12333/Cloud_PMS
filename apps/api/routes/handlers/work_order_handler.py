@@ -114,6 +114,21 @@ async def close_work_order(
 
     wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
     if wo_result.data:
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="status_change",
+                entity_type="work_order",
+                entity_id=work_order_id,
+                action="close_work_order",
+                user_role=user_context.get("role"),
+                change_summary="Work order closed",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record close_work_order: {ledger_err}")
         return {"status": "success", "message": "Work order closed"}
     else:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close work order"}
@@ -145,6 +160,21 @@ async def add_wo_hours(
     }
     note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
     if note_result.data:
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="update",
+                entity_type="work_order",
+                entity_id=work_order_id,
+                action="add_wo_hours",
+                user_role=user_context.get("role"),
+                change_summary=f"Logged {hours} hours",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record add_wo_hours: {ledger_err}")
         return {"status": "success", "message": f"Logged {hours} hours"}
     else:
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to log hours"}
@@ -191,6 +221,21 @@ async def add_wo_part(
     }
     part_result = db_client.table("pms_work_order_parts").upsert(part_data, on_conflict="work_order_id,part_id").execute()
     if part_result.data:
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="update",
+                entity_type="work_order",
+                entity_id=work_order_id,
+                action="add_wo_part",
+                user_role=user_context.get("role"),
+                change_summary=f"Part added: part_id={part_id}, qty={quantity}",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record add_wo_part: {ledger_err}")
         return {"status": "success", "message": "Part added to work order"}
     else:
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to add part"}
