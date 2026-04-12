@@ -181,9 +181,12 @@ export function MyTimeView() {
       });
       if (resp.ok) {
         const json = await resp.json();
+        // Normalize: backend uses signoff_id, component uses id
+        if (json.pending_signoff?.signoff_id && !json.pending_signoff.id) {
+          json.pending_signoff.id = json.pending_signoff.signoff_id;
+        }
         setData(json);
       } else {
-        // Fall back to mock data while backend not yet available
         setData(MOCK_MY_WEEK);
       }
     } catch {
@@ -507,18 +510,24 @@ export function MyTimeView() {
         <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-              24h rolling — {comp.rolling_24h_rest}h rest
+              24h rolling — {comp.rolling_24h_rest != null ? `${comp.rolling_24h_rest}h rest` : '—'}
             </span>
-            <StatusBadge ok={comp.rolling_24h_rest >= comp.min_24h} label={comp.rolling_24h_rest >= comp.min_24h ? `✓ min ${comp.min_24h}h` : `⚠ min ${comp.min_24h}h`} />
+            {comp.rolling_24h_rest != null
+              ? <StatusBadge ok={comp.rolling_24h_rest >= comp.min_24h} label={comp.rolling_24h_rest >= comp.min_24h ? `✓ min ${comp.min_24h}h` : `⚠ min ${comp.min_24h}h`} />
+              : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>No data today</span>
+            }
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-              7-day rolling — {comp.rolling_7d_rest}h rest
+              7-day rolling — {comp.rolling_7d_rest != null ? `${comp.rolling_7d_rest}h rest` : '—'}
             </span>
-            <StatusBadge ok={comp.rolling_7d_rest >= comp.min_7d} label={comp.rolling_7d_rest >= comp.min_7d ? `✓ min ${comp.min_7d}h` : `⚠ min ${comp.min_7d}h`} />
+            {comp.rolling_7d_rest != null
+              ? <StatusBadge ok={comp.rolling_7d_rest >= comp.min_7d} label={comp.rolling_7d_rest >= comp.min_7d ? `✓ min ${comp.min_7d}h` : `⚠ min ${comp.min_7d}h`} />
+              : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>No data</span>
+            }
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>This week — {comp.rolling_7d_work}h worked</span>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>This week — {comp.rolling_7d_work != null ? `${comp.rolling_7d_work}h worked` : '—'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>MLC 2006 Status</span>
