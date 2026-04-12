@@ -1117,6 +1117,33 @@ async def execute_action(
                     status_code=400,
                     detail=result,
                 )
+            # ── Phase B ledger safety net ─────────────────────────────────
+            # If the handler did not already write a ledger entry, write a
+            # generic one now using ACTION_METADATA.  Fire-and-forget: a
+            # failure here NEVER fails the mutation response.
+            if isinstance(result, dict) and not result.get("_ledger_written"):
+                from action_router.ledger_metadata import ACTION_METADATA
+                meta = ACTION_METADATA.get(action)
+                if meta:
+                    try:
+                        from routes.handlers.ledger_utils import build_ledger_event
+                        entity_id = payload.get(meta["entity_id_field"]) or yacht_id
+                        ledger_event = build_ledger_event(
+                            yacht_id=yacht_id,
+                            user_id=user_id,
+                            event_type=meta["event_type"],
+                            entity_type=meta["entity_type"],
+                            entity_id=entity_id,
+                            action=action,
+                            user_role=user_context.get("role"),
+                        )
+                        db_client.table("ledger_events").insert(ledger_event).execute()
+                    except Exception as _ledger_err:
+                        if "204" not in str(_ledger_err):
+                            logger.warning(
+                                f"[Ledger safety net] {action}: {_ledger_err}"
+                            )
+            # ─────────────────────────────────────────────────────────────
             return result
         except HTTPException:
             raise

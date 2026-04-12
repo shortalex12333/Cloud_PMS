@@ -172,6 +172,7 @@ async def upload_document(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record upload_document: {ledger_err}")
+        result["_ledger_written"] = True
     return result
 
 
@@ -206,6 +207,7 @@ async def delete_document(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record delete_document: {ledger_err}")
+        result["_ledger_written"] = True
     return result
 
 

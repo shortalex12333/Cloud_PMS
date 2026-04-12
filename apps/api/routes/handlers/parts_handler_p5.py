@@ -361,6 +361,7 @@ async def write_off_part(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record write_off_part: {ledger_err}")
+        handler_result["_ledger_written"] = True
         return handler_result
     return {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
