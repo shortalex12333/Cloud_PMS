@@ -36,10 +36,12 @@ function HoursOfRestContent() {
 
   const [tab, setTab] = React.useState<Tab>('my-time');
 
-  React.useEffect(() => {
-    if (tab === 'vessel' && !showVessel) setTab('my-time');
-    if (tab === 'department' && !showDept) setTab('my-time');
-  }, [tab, showDept, showVessel]);
+  // Constrain the active tab to what the current role permits.
+  // Computed inline — no useEffect, no setTab call, no re-render loop.
+  const activeTab: Tab =
+    (tab === 'vessel' && !showVessel) ? 'my-time' :
+    (tab === 'department' && !showDept) ? 'my-time' :
+    tab;
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'my-time', label: 'My Time' },
@@ -102,8 +104,8 @@ function HoursOfRestContent() {
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 10,
-                  color: tab === t.id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
-                  background: tab === t.id ? 'rgba(255,255,255,0.10)' : 'transparent',
+                  color: activeTab === t.id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+                  background: activeTab === t.id ? 'rgba(255,255,255,0.10)' : 'transparent',
                   border: 'none',
                   borderRadius: 4,
                   padding: '5px 12px',
@@ -125,9 +127,9 @@ function HoursOfRestContent() {
         overflow: 'auto',
         padding: '20px',
       }}>
-        {tab === 'my-time' && <MyTimeView />}
-        {tab === 'department' && showDept && <DepartmentView />}
-        {tab === 'vessel' && showVessel && <VesselComplianceView />}
+        {activeTab === 'my-time' && <MyTimeView />}
+        {activeTab === 'department' && showDept && <DepartmentView />}
+        {activeTab === 'vessel' && showVessel && <VesselComplianceView />}
       </div>
     </div>
   );
