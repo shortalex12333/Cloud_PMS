@@ -166,6 +166,7 @@ async def add_to_handover(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record add_to_handover: {ledger_err}")
+        result["_ledger_written"] = True
         return result
 
     except HTTPException:

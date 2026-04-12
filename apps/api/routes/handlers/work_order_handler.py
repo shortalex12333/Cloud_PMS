@@ -129,7 +129,7 @@ async def close_work_order(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record close_work_order: {ledger_err}")
-        return {"status": "success", "message": "Work order closed"}
+        return {"status": "success", "message": "Work order closed", "_ledger_written": True}
     else:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close work order"}
 
@@ -175,7 +175,7 @@ async def add_wo_hours(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record add_wo_hours: {ledger_err}")
-        return {"status": "success", "message": f"Logged {hours} hours"}
+        return {"status": "success", "message": f"Logged {hours} hours", "_ledger_written": True}
     else:
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to log hours"}
 
@@ -236,7 +236,7 @@ async def add_wo_part(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record add_wo_part: {ledger_err}")
-        return {"status": "success", "message": "Part added to work order"}
+        return {"status": "success", "message": "Part added to work order", "_ledger_written": True}
     else:
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to add part"}
 

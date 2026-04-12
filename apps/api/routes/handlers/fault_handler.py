@@ -228,7 +228,7 @@ async def resolve_fault(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record resolve_fault: {ledger_err}")
-        return {"status": "success", "message": "Fault resolved"}
+        return {"status": "success", "message": "Fault resolved", "_ledger_written": True}
     return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to resolve fault"}
 
 
