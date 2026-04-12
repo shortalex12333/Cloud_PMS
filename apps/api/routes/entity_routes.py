@@ -748,8 +748,6 @@ async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_aut
 
         response = supabase.table('pms_work_orders').select('*').eq('id', work_order_id).eq('yacht_id', yacht_id).maybe_single().execute()
         if not response or not response.data:
-            response = supabase.table('pms_work_orders').select('*').eq('work_order_id', work_order_id).eq('yacht_id', yacht_id).maybe_single().execute()
-        if not response or not response.data:
             raise HTTPException(status_code=404, detail="Work order not found")
 
         data = response.data

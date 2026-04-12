@@ -1201,6 +1201,7 @@ async def diagnose_fault(params: Dict[str, Any]) -> Dict[str, Any]:
     fault = fault_result.data[0]
 
     return {
+        "status": "success",
         "fault_id": params["fault_id"],
         "fault": fault,
         "diagnosis": {
