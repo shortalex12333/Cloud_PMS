@@ -220,6 +220,16 @@ async def add_note(params: Dict[str, Any]) -> Dict[str, Any]:
         note_data["fault_id"] = params["fault_id"]
     if params.get("work_order_id"):
         note_data["work_order_id"] = params["work_order_id"]
+    if params.get("document_id"):
+        note_data["document_id"] = params["document_id"]
+    if params.get("part_id"):
+        note_data["part_id"] = params["part_id"]
+    if params.get("purchase_order_id"):
+        note_data["purchase_order_id"] = params["purchase_order_id"]
+    if params.get("warranty_id"):
+        note_data["warranty_id"] = params["warranty_id"]
+    if params.get("certificate_id"):
+        note_data["certificate_id"] = params["certificate_id"]
 
     result = supabase.table("pms_notes").insert(note_data).execute()
 
