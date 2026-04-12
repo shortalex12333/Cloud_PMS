@@ -772,7 +772,10 @@ async def create_work_order_for_equipment(
     equipment_id = payload.get("equipment_id") or context.get("equipment_id")
     title = payload.get("title", "Work Order")
     description = payload.get("description", "")
-    priority = payload.get("priority", "routine")
+    priority = payload.get("priority", "medium")
+    # DB enum only has medium/high/critical — map legacy "low" and "routine" to "medium"
+    if priority in ("low", "routine"):
+        priority = "medium"
     wo_type = payload.get("type", "corrective")
     if not equipment_id:
         raise HTTPException(status_code=400, detail="equipment_id is required")

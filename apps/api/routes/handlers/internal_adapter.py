@@ -12,6 +12,29 @@ from typing import Any, Dict, Callable
 # It causes a circular import: internal_dispatcher → handlers → routes/handlers/__init__ → this file.
 # Instead, import lazily inside each adapter call.
 
+# Soft-delete actions require entity_type in params (for universal_handlers.soft_delete_entity).
+# The adapter must inject it since resolve_entity_context only maps entity_id → domain key.
+_SOFT_DELETE_ENTITY_TYPES: Dict[str, str] = {
+    "archive_fault": "fault",
+    "delete_fault": "fault",
+    "cancel_po": "purchase_order",
+    "delete_po": "purchase_order",
+    "archive_part": "part",
+    "delete_part": "part",
+    "archive_certificate": "certificate",
+    "suspend_certificate": "certificate",
+    "revoke_certificate": "certificate",
+    "archive_document": "document",
+    "archive_warranty": "warranty",
+    "void_warranty": "warranty",
+    "archive_list": "shopping_list",
+    "delete_list": "shopping_list",
+    "archive_handover": "handover",
+    "delete_handover": "handover",
+    "delete_work_order": "work_order",
+    "archive_equipment": "equipment",
+}
+
 
 def _make_adapter(action_id: str) -> Callable:
     """
@@ -40,6 +63,9 @@ def _make_adapter(action_id: str) -> Callable:
             **context,
             **payload,
         }
+        # Inject entity_type for soft-delete actions (soft_delete_entity requires it)
+        if action_id in _SOFT_DELETE_ENTITY_TYPES:
+            params.setdefault("entity_type", _SOFT_DELETE_ENTITY_TYPES[action_id])
         return await handler_fn(params)
 
     _adapted.__name__ = f"adapted_{action_id}"

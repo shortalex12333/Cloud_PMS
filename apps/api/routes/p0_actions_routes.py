@@ -2268,32 +2268,10 @@ async def get_pending_handovers_route(
     return result
 
 
-@router.get("/handover/{export_id}/verify")
-async def verify_export_route(
-    export_id: str,
-    auth: dict = Depends(get_authenticated_user)
-):
-    """Get verification data for an export."""
-    yacht_id = auth["yacht_id"]
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _handover_wf = handlers.get("handover_workflow_handlers")
-    if not _handover_wf:
-        raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
-
-    result = await _handover_wf.verify_export(
-        export_id=export_id,
-        yacht_id=yacht_id
-    )
-
-    if result.get("status") == "error":
-        raise HTTPException(status_code=404, detail=result.get("message"))
-
-    return result
-
-
 # ============================================================================
 # GET /v1/handover/queue — aggregated candidates for next handover draft
+# NOTE: MUST be declared before /{export_id}/verify — static routes must
+# precede dynamic routes in FastAPI or the dynamic pattern matches "queue".
 # ============================================================================
 
 @router.get("/handover/queue")
@@ -2412,6 +2390,30 @@ async def get_handover_queue(
             "already_queued": len(already_queued),
         },
     }
+
+
+@router.get("/handover/{export_id}/verify")
+async def verify_export_route(
+    export_id: str,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """Get verification data for an export."""
+    yacht_id = auth["yacht_id"]
+
+    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
+    _handover_wf = handlers.get("handover_workflow_handlers")
+    if not _handover_wf:
+        raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
+
+    result = await _handover_wf.verify_export(
+        export_id=export_id,
+        yacht_id=yacht_id
+    )
+
+    if result.get("status") == "error":
+        raise HTTPException(status_code=404, detail=result.get("message"))
+
+    return result
 
 
 # ============================================================================
