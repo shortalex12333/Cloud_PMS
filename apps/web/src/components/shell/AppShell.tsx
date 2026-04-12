@@ -27,6 +27,7 @@ import { useBreakpoint } from './useBreakpoint';
 import SettingsModal from '@/components/SettingsModal';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
+import { LedgerPanel } from '@/components/ledger';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -126,6 +127,8 @@ export function AppShell({ children }: AppShellProps) {
   const [searchOpen, setSearchOpen] = React.useState(false);
   // Settings modal state (rendered here, not inside SpotlightSearch)
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  // Ledger panel state
+  const [ledgerOpen, setLedgerOpen] = React.useState(false);
   // Create modal state for primary action buttons
   const [createWOOpen, setCreateWOOpen] = React.useState(false);
   const [reportFaultOpen, setReportFaultOpen] = React.useState(false);
@@ -168,7 +171,7 @@ export function AppShell({ children }: AppShellProps) {
         onClearScope={handleClearScope}
         onSearchFocus={() => setSearchOpen(true)}
         onEmailClick={handleEmailClick}
-        onCommandCenterClick={() => setSearchOpen(true)}
+        onLedgerClick={() => setLedgerOpen(true)}
         onSettingsClick={handleSettingsClick}
         onPrimaryAction={handlePrimaryAction}
       >
@@ -176,6 +179,7 @@ export function AppShell({ children }: AppShellProps) {
       </AppShellInner>
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <LedgerPanel isOpen={ledgerOpen} onClose={() => setLedgerOpen(false)} />
       <CreateWorkOrderModal open={createWOOpen} onOpenChange={setCreateWOOpen} />
       <ReportFaultModal open={reportFaultOpen} onOpenChange={setReportFaultOpen} />
     </ShellProvider>
@@ -192,7 +196,7 @@ function AppShellInner({
   onClearScope,
   onSearchFocus,
   onEmailClick,
-  onCommandCenterClick,
+  onLedgerClick,
   onSettingsClick,
   onPrimaryAction,
   children,
@@ -205,7 +209,7 @@ function AppShellInner({
   onClearScope: () => void;
   onSearchFocus: () => void;
   onEmailClick: () => void;
-  onCommandCenterClick: () => void;
+  onLedgerClick: () => void;
   onSettingsClick: () => void;
   onPrimaryAction: () => void;
   children: React.ReactNode;
@@ -263,7 +267,7 @@ function AppShellInner({
         onClearScope={onClearScope}
         onSearchFocus={onSearchFocus}
         onEmailClick={onEmailClick}
-        onCommandCenterClick={onCommandCenterClick}
+        onLedgerClick={onLedgerClick}
         onSettingsClick={onSettingsClick}
         compact={breakpoint === 'tablet' || breakpoint === 'mobile'}
         showNavToggle={isMobile}

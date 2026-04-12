@@ -14,7 +14,7 @@
  */
 
 import * as React from 'react';
-import { Search, X, Menu, LogOut, User, Settings, LayoutGrid } from 'lucide-react';
+import { Search, X, Menu, LogOut, User, Settings, ScrollText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
@@ -33,8 +33,8 @@ interface TopbarProps {
   onMenuClick?: () => void;
   /** Called when Email is selected from the menu */
   onEmailClick?: () => void;
-  /** Called when Command Center is selected from the menu */
-  onCommandCenterClick?: () => void;
+  /** Called when Activity Log (Ledger) is selected from the menu */
+  onLedgerClick?: () => void;
   /** Called when Settings is selected from the menu */
   onSettingsClick?: () => void;
   /** Compact mode: hide vessel name, separators, role badge */
@@ -52,7 +52,7 @@ export function Topbar({
   onSearchFocus,
   onMenuClick,
   onEmailClick,
-  onCommandCenterClick,
+  onLedgerClick,
   onSettingsClick,
   compact,
   onNavToggle,
@@ -143,7 +143,7 @@ export function Topbar({
           onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
         >
-          <LayoutGrid style={{ width: 14, height: 14 }} />
+          <Menu style={{ width: 14, height: 14 }} />
         </button>
       )}
 
@@ -343,9 +343,9 @@ export function Topbar({
               </div>
             </div>
 
-            {/* Command Center */}
+            {/* Activity Log */}
             <button
-              onClick={() => { setMenuOpen(false); onCommandCenterClick?.(); }}
+              onClick={() => { setMenuOpen(false); onLedgerClick?.(); }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -362,8 +362,8 @@ export function Topbar({
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
-              <LayoutGrid style={{ width: 13, height: 13 }} />
-              Command Center
+              <ScrollText style={{ width: 13, height: 13 }} />
+              Activity Log
             </button>
 
             {/* Settings */}
