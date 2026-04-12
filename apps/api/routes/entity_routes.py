@@ -846,6 +846,14 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
 
         attachments = _get_attachments(supabase, "equipment", equipment_id, yacht_id)
 
+        try:
+            notes_r = supabase.table('pms_notes').select(
+                'id, text, note_type, created_by, created_at'
+            ).eq('equipment_id', equipment_id).eq('yacht_id', yacht_id).order('created_at', desc=True).execute()
+            equipment_notes = notes_r.data or []
+        except Exception:
+            equipment_notes = []
+
         # Find linked work orders and faults
         nav = []
         try:
@@ -889,6 +897,7 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
             "updated_at": data.get('updated_at'),
             "attachments": attachments,
             "related_entities": nav,
+            "notes": equipment_notes,
         }
         _entity_response["available_actions"] = get_available_actions(
             "equipment", _entity_response, auth.get("role", "crew")
@@ -925,6 +934,14 @@ async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_u
 
         attachments = _get_attachments(supabase, "part", part_id, yacht_id)
 
+        try:
+            notes_r = supabase.table('pms_notes').select(
+                'id, text, note_type, created_by, created_at'
+            ).eq('part_id', part_id).eq('yacht_id', yacht_id).order('created_at', desc=True).execute()
+            part_notes = notes_r.data or []
+        except Exception:
+            part_notes = []
+
         _entity_response = {
             "id": data.get('id'),
             "name": data.get('name') or 'Unknown Part',
@@ -945,6 +962,7 @@ async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_u
             "image_url": image_url,
             "attachments": attachments,
             "related_entities": [],
+            "notes": part_notes,
         }
         _entity_response["available_actions"] = get_available_actions(
             "part", _entity_response, auth.get("role", "crew")
