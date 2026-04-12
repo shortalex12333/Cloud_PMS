@@ -41,6 +41,7 @@ import {
   type HistoryPeriod,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
+import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
 
 // ─── Colour mapping helpers ───
 
@@ -117,12 +118,21 @@ export function DocumentContent() {
   const auditTrail = ((entity?.audit_trail ?? payload.audit_trail ?? entity?.audit_history ?? payload.audit_history) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
-  const createRevisionAction = getAction('create_revision');
-  const acknowledgeAction = getAction('acknowledge_document');
   const archiveAction = getAction('archive_document');
   const addNoteAction = getAction('add_document_note');
 
   // BACKEND_AUTO moved to mapActionFields.ts
+  const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const handleNoteSubmit = React.useCallback(
+    async (noteText: string) => {
+      const result = await executeAction('add_document_note', { note_text: noteText });
+      const isSuccess = result.success === true ||
+        (result as unknown as { status?: string }).status === 'success';
+      return { success: isSuccess, error: result.error ?? result.message };
+    },
+    [executeAction]
+  );
+
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
     actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
   } | null>(null);
@@ -433,8 +443,8 @@ export function DocumentContent() {
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
-          onAddNote={addNoteAction !== null ? () => {} : undefined}
-          canAddNote
+          onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
+          canAddNote={!!addNoteAction}
         />
       </ScrollReveal>
 
@@ -442,7 +452,7 @@ export function DocumentContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
+          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
           canAddFile
         />
       </ScrollReveal>
@@ -464,6 +474,12 @@ export function DocumentContent() {
           onClose={() => setActionPopupConfig(null)}
         />
       )}
+      <AddNoteModal
+        open={addNoteOpen}
+        onClose={() => setAddNoteOpen(false)}
+        onSubmit={handleNoteSubmit}
+        isLoading={isLoading}
+      />
     </>
   );
 }

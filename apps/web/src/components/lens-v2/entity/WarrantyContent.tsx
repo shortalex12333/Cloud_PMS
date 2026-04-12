@@ -42,6 +42,7 @@ import {
   type HistoryPeriod,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
+import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
 
 // ─── Colour mapping helpers ───
 
@@ -113,7 +114,6 @@ export function WarrantyContent() {
 
   // ── Action gates ──
   const fileClaimAction = getAction('file_warranty_claim');
-  const extendAction = getAction('extend_warranty');
   const archiveAction = getAction('archive_warranty');
   const addNoteAction = getAction('add_warranty_note');
   const uploadDocAction = getAction('add_warranty_attachment');
@@ -307,7 +307,16 @@ export function WarrantyContent() {
     kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
   }));
 
-  const handleAddNote = React.useCallback(() => {}, []);
+  const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const handleNoteSubmit = React.useCallback(
+    async (noteText: string) => {
+      const result = await executeAction('add_warranty_note', { note_text: noteText });
+      const isSuccess = result.success === true ||
+        (result as unknown as { status?: string }).status === 'success';
+      return { success: isSuccess, error: result.error ?? result.message };
+    },
+    [executeAction]
+  );
 
   return (
     <>
@@ -390,8 +399,8 @@ export function WarrantyContent() {
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
-          onAddNote={handleAddNote}
-          canAddNote
+          onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
+          canAddNote={!!addNoteAction}
         />
       </ScrollReveal>
 
@@ -399,7 +408,7 @@ export function WarrantyContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
+          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
           canAddFile
         />
       </ScrollReveal>
@@ -410,6 +419,12 @@ export function WarrantyContent() {
           onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
           onClose={() => setActionPopupConfig(null)} />
       )}
+      <AddNoteModal
+        open={addNoteOpen}
+        onClose={() => setAddNoteOpen(false)}
+        onSubmit={handleNoteSubmit}
+        isLoading={isLoading}
+      />
     </>
   );
 }

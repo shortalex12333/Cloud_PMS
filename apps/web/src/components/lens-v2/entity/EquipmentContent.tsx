@@ -44,6 +44,7 @@ import {
   type PartItem,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
+import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
 
 // ─── Helpers ───
 
@@ -95,6 +96,16 @@ export function EquipmentContent() {
   const decommissionAction = getAction('decommission_equipment');
 
   // BACKEND_AUTO moved to mapActionFields.ts
+  const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const handleNoteSubmit = React.useCallback(
+    async (noteText: string) => {
+      const result = await executeAction('add_equipment_note', { note_text: noteText });
+      const isSuccess = result.success === true ||
+        (result as unknown as { status?: string }).status === 'success';
+      return { success: isSuccess, error: result.error ?? result.message };
+    },
+    [executeAction]
+  );
 
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
     actionId: string; title: string; subtitle?: string;
@@ -423,8 +434,8 @@ export function EquipmentContent() {
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
-          onAddNote={() => {}}
-          canAddNote
+          onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
+          canAddNote={!!addNoteAction}
         />
       </ScrollReveal>
 
@@ -442,7 +453,7 @@ export function EquipmentContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
+          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
           canAddFile
         />
       </ScrollReveal>
@@ -461,6 +472,12 @@ export function EquipmentContent() {
           onClose={() => setActionPopupConfig(null)}
         />
       )}
+      <AddNoteModal
+        open={addNoteOpen}
+        onClose={() => setAddNoteOpen(false)}
+        onSubmit={handleNoteSubmit}
+        isLoading={isLoading}
+      />
     </>
   );
 }

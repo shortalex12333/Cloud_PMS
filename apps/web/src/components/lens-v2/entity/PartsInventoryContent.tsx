@@ -42,6 +42,7 @@ import {
   type HistoryPeriod,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
+import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
 
 // ─── Status colour mapping ───
 
@@ -103,7 +104,6 @@ export function PartsInventoryContent() {
   const auditTrail = ((entity?.audit_trail ?? payload.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
-  const takeStockAction = getAction('take_stock');
   const reorderAction = getAction('reorder_part');
   const updateAction = getAction('update_part_details');
   const archiveAction = getAction('archive_part');
@@ -288,7 +288,16 @@ export function PartsInventoryContent() {
     kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
   }));
 
-  const handleAddNote = React.useCallback(() => {}, []);
+  const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const handleNoteSubmit = React.useCallback(
+    async (noteText: string) => {
+      const result = await executeAction('add_part_note', { note_text: noteText });
+      const isSuccess = result.success === true ||
+        (result as unknown as { status?: string }).status === 'success';
+      return { success: isSuccess, error: result.error ?? result.message };
+    },
+    [executeAction]
+  );
 
   return (
     <>
@@ -426,8 +435,8 @@ export function PartsInventoryContent() {
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
-          onAddNote={handleAddNote}
-          canAddNote
+          onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
+          canAddNote={!!addNoteAction}
         />
       </ScrollReveal>
 
@@ -435,7 +444,7 @@ export function PartsInventoryContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
+          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
           canAddFile
         />
       </ScrollReveal>
@@ -446,6 +455,12 @@ export function PartsInventoryContent() {
           onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
           onClose={() => setActionPopupConfig(null)} />
       )}
+      <AddNoteModal
+        open={addNoteOpen}
+        onClose={() => setAddNoteOpen(false)}
+        onSubmit={handleNoteSubmit}
+        isLoading={isLoading}
+      />
     </>
   );
 }

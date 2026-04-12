@@ -289,10 +289,6 @@ export function ShoppingListContent() {
     summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
-  const handleAddNote = React.useCallback(
-    () => {},
-    []
-  );
 
   const handleAddPart = React.useCallback(
     () => {},
@@ -407,8 +403,8 @@ export function ShoppingListContent() {
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
-          onAddNote={handleAddNote}
-          canAddNote
+          onAddNote={undefined}
+          canAddNote={false}
         />
       </ScrollReveal>
 
@@ -424,7 +420,7 @@ export function ShoppingListContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {}}
+          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
           canAddFile
         />
       </ScrollReveal>
