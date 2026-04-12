@@ -37,7 +37,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date
 from supabase import Client
 
 # Import handlers
