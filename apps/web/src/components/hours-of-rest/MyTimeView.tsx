@@ -86,6 +86,68 @@ function normalizeDays(days: any[], weekStart: string): any[] {
   });
 }
 
+/**
+ * Normalises the real API response shape to what the component expects.
+ * Real API deviations:
+ *  - compliance is flat: {rolling_24h_rest, rolling_7day_rest} — missing mlc_status, min_*, violations_this_month, rolling_7d_work
+ *  - prior_weeks may be absent
+ *  - templates[].name instead of schedule_name
+ *  - days[].record_date instead of date; no label field
+ */
+function normalizeMyWeekResponse(json: any): void {
+  // 1. Derive day.date + day.label from record_date / week_start index
+  if (Array.isArray(json.days)) {
+    const weekStart = json.week_start ?? '';
+    json.days = json.days.map((d: any, i: number) => {
+      if (d == null) return d; // normalizeDays handles null slots
+      const date = d.date ?? d.record_date ?? (() => {
+        const dt = new Date(weekStart);
+        dt.setDate(dt.getDate() + i);
+        return dt.toISOString().slice(0, 10);
+      })();
+      const label = d.label ?? DAY_LABELS[i];
+      return { ...d, date, label };
+    });
+  }
+
+  // 2. Normalise compliance — add missing fields with safe defaults
+  const c: any = json.compliance ?? {};
+  const rolling24 = c.rolling_24h_rest ?? null;
+  // API may return rolling_7day_rest (typo in spec) or rolling_7d_rest
+  const rolling7d = c.rolling_7d_rest ?? c.rolling_7day_rest ?? null;
+  const min24 = c.min_24h ?? 10;
+  const min7d = c.min_7d ?? 77;
+  const mlcStatus: string | null = c.mlc_status ?? (
+    rolling24 != null && rolling7d != null
+      ? (rolling24 >= min24 && rolling7d >= min7d ? 'COMPLIANT' : 'NON-COMPLIANT')
+      : null
+  );
+  json.compliance = {
+    rolling_24h_rest: rolling24,
+    rolling_7d_rest: rolling7d,
+    rolling_7d_work: c.rolling_7d_work ?? null,
+    min_24h: min24,
+    min_7d: min7d,
+    violations_this_month: c.violations_this_month ?? 0,
+    mlc_status: mlcStatus,
+  };
+
+  // 3. Default prior_weeks to empty array if absent
+  if (!Array.isArray(json.prior_weeks)) {
+    json.prior_weeks = [];
+  }
+
+  // 4. Normalise templates: real API uses name, component uses schedule_name
+  if (Array.isArray(json.templates)) {
+    json.templates = json.templates.map((t: any) => ({
+      ...t,
+      schedule_name: t.schedule_name ?? t.name ?? '',
+    }));
+  } else {
+    json.templates = [];
+  }
+}
+
 async function getAuthHeader(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
   return session ? `Bearer ${session.access_token}` : '';
@@ -201,11 +263,13 @@ export function MyTimeView() {
       });
       if (resp.ok) {
         const json = await resp.json();
-        // Normalize: null day slots → default unsubmitted day objects
+        // Normalise real API shape → component-expected shape
+        normalizeMyWeekResponse(json);
+        // Normalise: null day slots → default unsubmitted day objects
         if (Array.isArray(json.days)) {
           json.days = normalizeDays(json.days, json.week_start ?? '');
         }
-        // Normalize: backend uses signoff_id, component uses id
+        // Normalise: backend uses signoff_id, component uses id
         if (json.pending_signoff?.signoff_id && !json.pending_signoff.id) {
           json.pending_signoff.id = json.pending_signoff.signoff_id;
         }
