@@ -12,15 +12,15 @@ Endpoints:
 All routes require JWT authentication and yacht isolation validation.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 import logging
 import os
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -2263,6 +2263,128 @@ async def verify_export_route(
         raise HTTPException(status_code=404, detail=result.get("message"))
 
     return result
+
+
+# ============================================================================
+# GET /v1/handover/queue — aggregated candidates for next handover draft
+# ============================================================================
+
+@router.get("/handover/queue")
+async def get_handover_queue(
+    auth: dict = Depends(get_authenticated_user),
+    yacht_id_param: Optional[str] = Query(None, alias="yacht_id"),
+    include: Optional[List[str]] = Query(None),
+):
+    """
+    Return open items that are candidates for inclusion in the next handover.
+    Sections: open_faults, overdue_work_orders, low_stock_parts, pending_orders, already_queued.
+    Pass ?include[]=faults&include[]=work_orders to filter sections (default: all).
+    Read-only — no ledger writes.
+    """
+    yacht_id = resolve_yacht_id(auth, yacht_id_param)
+    db_client = get_tenant_supabase_client(auth["tenant_key_alias"])
+
+    # Determine which sections to return
+    all_sections = {"faults", "work_orders", "parts", "orders", "queued"}
+    requested = set(include) if include else all_sections
+
+    open_faults = []
+    overdue_work_orders = []
+    low_stock_parts = []
+    pending_orders = []
+    already_queued = []
+
+    # ── open faults ──────────────────────────────────────────────────────────
+    if "faults" in requested:
+        try:
+            result = db_client.table("pms_faults").select(
+                "id, title, severity, equipment_name, created_at"
+            ).eq("yacht_id", yacht_id).neq(
+                "status", "resolved"
+            ).order("created_at", desc=True).limit(20).execute()
+            open_faults = result.data or []
+        except Exception as e:
+            logger.warning(f"[handover/queue] faults query failed: {e}")
+
+    # ── overdue work orders ───────────────────────────────────────────────────
+    if "work_orders" in requested:
+        try:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            result = db_client.table("pms_work_orders").select(
+                "id, title, priority, due_at, assigned_to"
+            ).eq("yacht_id", yacht_id).not_.in_(
+                "status", ["completed", "cancelled", "closed"]
+            ).lt("due_at", now_iso).order("due_at").limit(20).execute()
+            overdue_work_orders = result.data or []
+        except Exception as e:
+            logger.warning(f"[handover/queue] work_orders query failed: {e}")
+
+    # ── low stock parts ───────────────────────────────────────────────────────
+    if "parts" in requested:
+        try:
+            result = db_client.table("pms_parts").select(
+                "id, name, quantity_on_hand, minimum_quantity"
+            ).eq("yacht_id", yacht_id).execute()
+            raw = result.data or []
+            low_stock_parts = [
+                {
+                    "id": p["id"],
+                    "name": p.get("name", ""),
+                    "current_qty": p.get("quantity_on_hand", 0),
+                    "reorder_threshold": p.get("minimum_quantity", 0),
+                }
+                for p in raw
+                if (p.get("quantity_on_hand") or 0) <= (p.get("minimum_quantity") or 0)
+            ][:20]
+        except Exception as e:
+            logger.warning(f"[handover/queue] parts query failed: {e}")
+
+    # ── pending purchase orders ───────────────────────────────────────────────
+    if "orders" in requested:
+        try:
+            result = db_client.table("pms_purchase_orders").select(
+                "id, po_number, status, created_at"
+            ).eq("yacht_id", yacht_id).in_(
+                "status", ["draft", "pending", "submitted", "pending_approval"]
+            ).order("created_at", desc=True).limit(20).execute()
+            pending_orders = [
+                {
+                    "id": p["id"],
+                    "title": p.get("po_number") or f"PO {p['id'][:8]}",
+                    "status": p.get("status", ""),
+                    "created_at": p.get("created_at", ""),
+                }
+                for p in (result.data or [])
+            ]
+        except Exception as e:
+            logger.warning(f"[handover/queue] orders query failed: {e}")
+
+    # ── already queued handover items ─────────────────────────────────────────
+    if "queued" in requested:
+        try:
+            result = db_client.table("handover_items").select(
+                "id, entity_type, entity_id, summary, priority"
+            ).eq("yacht_id", yacht_id).eq(
+                "status", "pending"
+            ).order("priority", desc=True).limit(50).execute()
+            already_queued = result.data or []
+        except Exception as e:
+            logger.warning(f"[handover/queue] handover_items query failed: {e}")
+
+    return {
+        "open_faults": open_faults,
+        "overdue_work_orders": overdue_work_orders,
+        "low_stock_parts": low_stock_parts,
+        "pending_orders": pending_orders,
+        "already_queued": already_queued,
+        "counts": {
+            "faults": len(open_faults),
+            "work_orders": len(overdue_work_orders),
+            "parts": len(low_stock_parts),
+            "orders": len(pending_orders),
+            "already_queued": len(already_queued),
+        },
+    }
 
 
 # ============================================================================
