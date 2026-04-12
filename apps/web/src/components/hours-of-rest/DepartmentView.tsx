@@ -164,6 +164,57 @@ function statusDot(status: CrewDay['status']): string {
   }
 }
 
+// ── Response normalizer ───────────────────────────────────────────────────────
+// Maps real API response shapes to component types.
+// Real API uses: crew[].daily[], pending_signoffs{awaiting_hod,signoff_ids}, compliance.missing_today[]
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeDepStatus(raw: any, ws: string): DepartmentStatus {
+  const comp = raw.compliance ?? {};
+  const ps = raw.pending_signoffs ?? {};
+
+  const pending_counter_signs: PendingSignoff[] = [];
+  const signoffIds: string[] = Array.isArray(ps.signoff_ids) ? ps.signoff_ids : [];
+  const crewNames: string[] = Array.isArray(ps.crew_names) ? ps.crew_names : [];
+  signoffIds.forEach((id: string, i: number) => {
+    pending_counter_signs.push({
+      signoff_id: id,
+      crew_name: crewNames[i] ?? `Crew member ${i + 1}`,
+      week_label: formatWeekLabel(ws),
+      submitted_at: new Date().toISOString(),
+    });
+  });
+
+  const crew: CrewMember[] = (raw.crew ?? []).map((m: any) => ({
+    user_id: m.user_id ?? m.id ?? String(Math.random()),
+    name: m.name ?? '—',
+    role: m.role ?? '',
+    // real: daily[], mock: days[]
+    days: (m.daily ?? m.days ?? []).map((d: any) => ({
+      date: d.date,
+      rest_hours: d.rest_hours ?? d.total_rest_hours ?? null,
+      status: (d.status ?? 'missing') as CrewDay['status'],
+    })),
+  }));
+
+  return {
+    week_start: raw.week_start ?? ws,
+    department: raw.department ?? '',
+    today_submitted: comp.today_submitted ?? raw.today_submitted ?? 0,
+    today_total: comp.today_total ?? raw.today_total ?? 0,
+    // real: compliance.missing_today[], mock: top-level today_missing[]
+    today_missing: comp.missing_today ?? raw.today_missing ?? [],
+    pending_counter_signs,
+    crew,
+    compliance: {
+      compliant_days: comp.compliant_days ?? 0,
+      total_days: comp.total_days ?? 0,
+      violations: comp.violations ?? 0,
+      avg_rest_hours: comp.avg_rest_hours ?? 0,
+    },
+  };
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function DepartmentView() {
@@ -186,13 +237,13 @@ export function DepartmentView() {
       });
       if (!res.ok) throw new Error('not ready');
       const json = await res.json();
-      if (json.success && json.data) {
-        setData(json.data);
+      const raw = json.success ? json.data : json;
+      if (raw) {
+        setData(normalizeDepStatus(raw, ws));
         return;
       }
       throw new Error('unexpected shape');
     } catch {
-      // endpoint not live yet — use mock
       setData(buildMockDepartmentStatus(ws));
     } finally {
       setLoading(false);

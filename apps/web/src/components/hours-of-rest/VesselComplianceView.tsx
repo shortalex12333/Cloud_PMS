@@ -181,6 +181,72 @@ function restHoursColor(hours: number | null): string {
 
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+// ── Response normalizer ───────────────────────────────────────────────────────
+// Maps real API response to component types.
+// Real API: all_crew[] (flat, has .department field), analytics{} (not vessel_analytics{})
+// Real analytics fields: compliance_rate, violations_this_quarter, avg_work_hours
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeVesselCompliance(raw: any, ws: string): VesselCompliance {
+  const a = raw.analytics ?? raw.vessel_analytics ?? {};
+
+  // Build departments — may have nested crew[] OR we join from all_crew[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allCrewFlat: any[] = Array.isArray(raw.all_crew) ? raw.all_crew : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawDepts: any[] = Array.isArray(raw.departments) ? raw.departments : [];
+
+  const departments: DepartmentCard[] = rawDepts.map((d: any) => {
+    // Nested crew in dept, or join from flat all_crew by department name
+    const nestedCrew: any[] = Array.isArray(d.crew) ? d.crew : [];
+    const flatCrew: any[] = allCrewFlat.filter((c: any) =>
+      (c.department ?? '').toLowerCase() === (d.name ?? '').toLowerCase()
+    );
+    const crewSource = nestedCrew.length > 0 ? nestedCrew : flatCrew;
+
+    return {
+      name: d.name ?? d.department ?? '—',
+      crew_count: d.crew_count ?? d.crew_total ?? crewSource.length,
+      compliance_pct: d.compliance_pct ?? d.compliance_rate ?? 0,
+      violations: d.violations ?? 0,
+      avg_rest_hours: d.avg_rest_hours ?? 0,
+      submitted_today: d.submitted_today ?? 0,
+      total_today: d.total_today ?? d.crew_count ?? 0,
+      crew: crewSource.map((m: any) => ({
+        user_id: m.user_id ?? m.id ?? String(Math.random()),
+        name: m.name ?? '—',
+        role: m.role ?? '',
+        days: (m.daily ?? m.days ?? []).map((day: any) => ({
+          date: day.date,
+          rest_hours: day.rest_hours ?? day.total_rest_hours ?? null,
+          status: (day.status ?? 'missing') as DeptDay['status'],
+        })),
+      })),
+    };
+  });
+
+  return {
+    week_start: raw.week_start ?? ws,
+    vessel_name: raw.vessel_name ?? raw.yacht_name ?? '—',
+    departments,
+    pending_final_signs: (raw.pending_final_signs ?? []).map((ps: any) => ({
+      signoff_id: ps.signoff_id ?? ps.id,
+      department: ps.department ?? '—',
+      week_label: ps.week_label ?? formatWeekLabel(ws),
+      hod_name: ps.hod_name ?? '—',
+      signed_at: ps.signed_at ?? new Date().toISOString(),
+    })),
+    vessel_analytics: {
+      // real: compliance_rate (0-100 pct), violations_this_quarter, avg_work_hours
+      overall_compliance_pct: a.overall_compliance_pct ?? a.compliance_rate ?? 0,
+      total_violations: a.total_violations ?? a.violations_this_quarter ?? 0,
+      avg_rest_hours: a.avg_rest_hours ?? a.avg_work_hours ?? 0,
+      total_crew: a.total_crew ?? allCrewFlat.length ?? 0,
+      fully_compliant_departments: a.fully_compliant_departments ?? 0,
+    },
+  };
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function VesselComplianceView() {
@@ -204,7 +270,8 @@ export function VesselComplianceView() {
       });
       if (!res.ok) throw new Error('not ready');
       const json = await res.json();
-      if (json.success && json.data) { setData(json.data); return; }
+      const raw = json.success ? json.data : json;
+      if (raw) { setData(normalizeVesselCompliance(raw, ws)); return; }
       throw new Error('unexpected shape');
     } catch {
       setData(buildMockVesselCompliance(ws));
