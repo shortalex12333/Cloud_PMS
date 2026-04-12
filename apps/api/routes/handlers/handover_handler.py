@@ -150,6 +150,22 @@ async def add_to_handover(
                     "message": result.get("message")
                 }
             )
+        try:
+            from routes.handlers.ledger_utils import build_ledger_event
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="create",
+                entity_type="handover_item",
+                entity_id=result.get("item_id", entity_id or yacht_id),
+                action="add_to_handover",
+                user_role=user_context.get("role"),
+                change_summary=f"Added to handover: {summary[:80]}",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record add_to_handover: {ledger_err}")
         return result
 
     except HTTPException:

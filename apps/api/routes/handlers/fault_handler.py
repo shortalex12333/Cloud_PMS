@@ -213,6 +213,21 @@ async def resolve_fault(
         .execute()
     )
     if fault_result.data:
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="status_change",
+                entity_type="fault",
+                entity_id=fault_id,
+                action="resolve_fault",
+                user_role=user_context.get("role"),
+                change_summary="Fault resolved",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record resolve_fault: {ledger_err}")
         return {"status": "success", "message": "Fault resolved"}
     return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to resolve fault"}
 

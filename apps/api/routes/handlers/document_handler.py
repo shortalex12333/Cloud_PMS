@@ -14,6 +14,7 @@ import logging
 
 from fastapi import HTTPException
 from supabase import Client
+from routes.handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,24 @@ async def upload_document(
     user_context: dict, db_client: Client,
 ) -> dict:
     _enforce_doc_rbac("upload_document", user_context)
-    return await _delegate_to_doc_handler("upload_document", db_client, yacht_id, user_id, payload)
+    result = await _delegate_to_doc_handler("upload_document", db_client, yacht_id, user_id, payload)
+    if isinstance(result, dict) and result.get("status") != "error":
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="create",
+                entity_type="document",
+                entity_id=result.get("document_id") or result.get("id") or yacht_id,
+                action="upload_document",
+                user_role=user_context.get("role"),
+                change_summary=f"Document uploaded: {payload.get('file_name', '')}",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record upload_document: {ledger_err}")
+    return result
 
 
 async def update_document(
@@ -170,7 +188,25 @@ async def delete_document(
     user_context: dict, db_client: Client,
 ) -> dict:
     _enforce_doc_rbac("delete_document", user_context)
-    return await _delegate_to_doc_handler("delete_document", db_client, yacht_id, user_id, payload)
+    document_id = payload.get("document_id")
+    result = await _delegate_to_doc_handler("delete_document", db_client, yacht_id, user_id, payload)
+    if isinstance(result, dict) and result.get("status") != "error":
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="delete",
+                entity_type="document",
+                entity_id=document_id or yacht_id,
+                action="delete_document",
+                user_role=user_context.get("role"),
+                change_summary=f"Document deleted: reason={payload.get('reason', '')}",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record delete_document: {ledger_err}")
+    return result
 
 
 async def add_document_tags(
