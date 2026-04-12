@@ -1303,7 +1303,7 @@ async def add_fault_note(params: Dict[str, Any]) -> Dict[str, Any]:
     yacht_id = params["yacht_id"]
     fault_id = params["fault_id"]
     user_id = params["user_id"]
-    text = params.get("text") or params.get("note")  # Support both param names
+    text = params.get("note_text") or params.get("text") or params.get("note")  # note_text is canonical
     note_type = params.get("note_type", "observation")
 
     if not text:
