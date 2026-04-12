@@ -346,6 +346,21 @@ async def write_off_part(
     )
 
     if handler_result.get("status") == "success":
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="delete",
+                entity_type="part",
+                entity_id=part_id,
+                action="write_off_part",
+                user_role=user_context.get("role"),
+                change_summary=f"Part written off: qty={quantity}, reason={reason}",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record write_off_part: {ledger_err}")
         return handler_result
     return {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
