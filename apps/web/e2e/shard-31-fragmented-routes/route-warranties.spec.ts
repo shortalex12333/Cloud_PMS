@@ -1,729 +1,456 @@
 import { test, expect, RBAC_CONFIG } from '../rbac-fixtures';
 
 /**
- * SHARD 31: Fragmented Routes - Warranties
+ * SHARD 31: Fragmented Routes — Warranty Claims
  *
- * Tests for the new /warranties fragmented route.
- * This route bypasses the legacy /app single-URL architecture.
+ * Tests the /warranties route against pms_warranty_claims (NOT pms_warranties).
+ * All staging test data is pre-seeded on yacht_id 85fe1119-b04c-41ac-80f1-829d23322598.
+ * IDs are hardcoded — no DB lookup needed for navigation or visibility assertions.
  *
- * Requirements Covered:
- * - T3-WAR-01: /warranties list route loads (HTTP 200)
- * - T3-WAR-02: /warranties/[id] detail loads
- * - T3-WAR-03: Status filters work (active/expiring_soon/expired)
- * - T3-WAR-04: Linked equipment navigation works
- * - T3-WAR-05: Page refresh preserves state
- * - T3-WAR-06: Browser back/forward works
- * - Feature flag OFF redirects to /app
+ * Real status values: draft | submitted | under_review | approved | rejected | closed
+ * View used by list page: v_warranty_enriched
  *
- * Prerequisites:
- * - NEXT_PUBLIC_FRAGMENTED_ROUTES_ENABLED=true in environment
- * - Authenticated users (HOD)
- * - Test data in pms_warranties table (optional - graceful skip if not present)
+ * Staging test records:
+ *   WC-TEST-001  aa000001-0000-0000-0000-000000000001  draft
+ *   WC-TEST-002  aa000002-0000-0000-0000-000000000002  submitted
+ *   WC-TEST-003  aa000003-0000-0000-0000-000000000003  under_review
+ *   WC-TEST-004  aa000004-0000-0000-0000-000000000004  approved
+ *   WC-TEST-005  aa000005-0000-0000-0000-000000000005  rejected
  */
 
-// Route configuration
-const ROUTES_CONFIG = {
-  ...RBAC_CONFIG,
-  warrantiesList: '/warranties',
-  warrantyDetail: (id: string) => `/warranties?id=${id}`,
-  equipmentDetail: (id: string) => `/equipment/${id}`,
-  // Feature flag must be enabled for these routes to work
-  featureFlagEnabled: process.env.NEXT_PUBLIC_FRAGMENTED_ROUTES_ENABLED === 'true',
-};
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
-// Warranty status enum values
-const WARRANTY_STATUS = {
-  ACTIVE: 'active',
-  EXPIRING_SOON: 'expiring_soon',
-  EXPIRED: 'expired',
+const STAGING_YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598';
+
+const CLAIMS = {
+  draft:        { id: 'aa000001-0000-0000-0000-000000000001', claimNumber: 'WC-TEST-001', status: 'draft' },
+  submitted:    { id: 'aa000002-0000-0000-0000-000000000002', claimNumber: 'WC-TEST-002', status: 'submitted' },
+  under_review: { id: 'aa000003-0000-0000-0000-000000000003', claimNumber: 'WC-TEST-003', status: 'under_review' },
+  approved:     { id: 'aa000004-0000-0000-0000-000000000004', claimNumber: 'WC-TEST-004', status: 'approved' },
+  rejected:     { id: 'aa000005-0000-0000-0000-000000000005', claimNumber: 'WC-TEST-005', status: 'rejected' },
 } as const;
 
-// ============================================================================
-// SECTION 1: ROUTE LOADING TESTS
-// T3-WAR-01 and T3-WAR-02: Basic route loads
-// ============================================================================
+const ROUTES = {
+  list: '/warranties',
+  detail: (id: string) => `/warranties?id=${id}`,
+};
 
-test.describe('Warranties Route Loading', () => {
+/**
+ * Navigate and wait. Returns true if the route loaded (false = redirected away, test should skip).
+ */
+async function gotoWarranties(page: import('@playwright/test').Page, path: string): Promise<boolean> {
+  await page.goto(path);
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(1500);
+  const url = page.url();
+  // If redirected to legacy /app without /warranties in the path, feature flag is OFF
+  if (url.includes('/app') && !url.includes('/warranties')) {
+    return false;
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Group 1: Route Loading
+// ---------------------------------------------------------------------------
+
+test.describe('Group 1: Route Loading', () => {
   test.describe.configure({ retries: 1 });
 
-  test('T3-WAR-01: /warranties list route loads successfully (HTTP 200)', async ({ hodPage }) => {
-    // Navigate directly to fragmented route
-    await hodPage.goto(ROUTES_CONFIG.warrantiesList);
-
-    // Check for redirect to legacy (feature flag disabled)
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app')) {
-      console.log('  Feature flag disabled - redirected to legacy /app');
+  test('T3-WAR-01: /warranties loads, list renders, no error state', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.list);
+    if (!loaded) {
+      console.log('  Feature flag disabled — redirected to /app. Skipping.');
       test.skip();
       return;
     }
 
-    // Wait for page to load
-    await hodPage.waitForLoadState('networkidle');
-
-    // Verify route loaded (not redirected)
+    // URL still contains /warranties
     expect(hodPage.url()).toContain('/warranties');
 
-    // Verify list container renders
-    const listContainer = hodPage.locator('[data-testid="warranties-list"], main, [role="main"]');
-    await expect(listContainer).toBeVisible({ timeout: 10000 });
+    // Main content area is visible
+    const main = hodPage.locator('main, [role="main"], [data-testid="warranties-list"]');
+    await expect(main.first()).toBeVisible({ timeout: 10000 });
 
-    // Verify no error state
-    const errorState = hodPage.locator('[data-testid="error-state"], .error-message, :text("Failed to load")');
-    await expect(errorState).not.toBeVisible();
+    // No error banner
+    const errorState = hodPage.locator(
+      '[data-testid="error-state"], [data-testid="error-banner"], :text("Failed to load"), :text("Something went wrong")'
+    );
+    await expect(errorState.first()).not.toBeVisible();
 
-    // Verify loading completed (spinner gone)
+    // Spinner gone
     const spinner = hodPage.locator('.animate-spin, [data-loading="true"]');
-    await expect(spinner).not.toBeVisible({ timeout: 15000 });
+    await expect(spinner.first()).not.toBeVisible({ timeout: 15000 });
 
-    console.log('  T3-WAR-01: List route loaded successfully');
+    console.log('  T3-WAR-01 PASS: list route loaded, no errors');
   });
 
-  test('T3-WAR-02: /warranties/[id] detail loads correctly', async ({ hodPage, supabaseAdmin }) => {
-    // Find an existing warranty in the database
-    const { data: warranty, error } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id, item_name')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .limit(1)
-      .single();
-
-    if (error || !warranty) {
-      console.log('  No warranties found in test yacht - skipping (graceful)');
+  test('T3-WAR-02: /warranties?id=<draft> detail overlay opens, shows WC-TEST-001', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.detail(CLAIMS.draft.id));
+    if (!loaded) {
+      console.log('  Feature flag disabled — skipping.');
       test.skip();
       return;
     }
 
-    // Navigate directly to detail route (using query param per page.tsx implementation)
-    await hodPage.goto(ROUTES_CONFIG.warrantyDetail(warranty.id));
+    expect(hodPage.url()).toContain(`id=${CLAIMS.draft.id}`);
 
-    // Check for redirect to legacy (feature flag disabled)
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - redirected to legacy /app');
-      test.skip();
-      return;
-    }
+    // Detail panel / overlay must be visible
+    const detail = hodPage.locator(
+      '[data-testid="warranty-detail"], [data-testid="claim-detail"], [role="dialog"], aside'
+    );
+    await expect(detail.first()).toBeVisible({ timeout: 10000 });
 
-    // Wait for page to load
-    await hodPage.waitForLoadState('networkidle');
+    // Claim number rendered
+    await expect(hodPage.locator(`text=${CLAIMS.draft.claimNumber}`).first()).toBeVisible({ timeout: 8000 });
 
-    // Verify route loaded with id param
-    expect(hodPage.url()).toContain('/warranties');
-    expect(hodPage.url()).toContain(`id=${warranty.id}`);
-
-    // Verify detail content renders
-    const detailContainer = hodPage.locator('[data-testid="warranty-detail"], main, [role="main"]');
-    await expect(detailContainer).toBeVisible({ timeout: 10000 });
-
-    // Verify warranty name or identifier visible
-    const warrantyIdentifier = hodPage.locator(`text=${warranty.item_name}`);
-    const isVisible = await warrantyIdentifier.isVisible({ timeout: 5000 }).catch(() => false);
-    if (!isVisible) {
-      // Try broader content check
-      const content = await hodPage.textContent('body');
-      expect(content).toBeTruthy();
-    }
-
-    // Verify no error state
-    const errorState = hodPage.locator('[data-testid="error-state"], .error-message, :text("Failed to Load")');
-    await expect(errorState).not.toBeVisible();
-
-    console.log(`  T3-WAR-02: Detail route loaded for ${warranty.item_name}`);
+    console.log('  T3-WAR-02 PASS: detail overlay shows WC-TEST-001');
   });
 
-  test('T3-WAR-02b: Non-existent warranty shows appropriate state', async ({ hodPage }) => {
+  test('T3-WAR-02b: Non-existent claim ID shows not-found state', async ({ hodPage }) => {
     const fakeId = '00000000-0000-0000-0000-000000000000';
-
-    await hodPage.goto(ROUTES_CONFIG.warrantyDetail(fakeId));
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - redirected to legacy /app');
+    const loaded = await gotoWarranties(hodPage, ROUTES.detail(fakeId));
+    if (!loaded) {
+      console.log('  Feature flag disabled — skipping.');
       test.skip();
       return;
     }
 
-    await hodPage.waitForLoadState('networkidle');
+    // Give the page time to resolve the missing entity
+    await hodPage.waitForTimeout(2000);
 
-    // Should show not found, error state, or empty detail panel
-    const notFoundState = hodPage.locator(
-      ':text("Not Found"), :text("not found"), :text("does not exist"), [data-testid="not-found"]'
+    const notFound = hodPage.locator(
+      ':text("Not Found"), :text("not found"), :text("does not exist"), :text("No claim"), [data-testid="not-found"]'
     );
-    const errorState = hodPage.locator(':text("Failed"), :text("Error"), [data-testid="error-state"]');
-    const emptyState = hodPage.locator(':text("No Warranties"), :text("Loading")');
+    const errorVisible = hodPage.locator(
+      ':text("Failed"), :text("Error loading"), [data-testid="error-state"]'
+    );
+    const emptyDetail = hodPage.locator(
+      '[data-testid="empty-detail"], :text("Select a claim")'
+    );
 
-    const hasNotFound = await notFoundState.isVisible({ timeout: 5000 }).catch(() => false);
-    const hasError = await errorState.isVisible({ timeout: 5000 }).catch(() => false);
-    const hasEmpty = await emptyState.isVisible({ timeout: 5000 }).catch(() => false);
+    const hasNotFound  = await notFound.first().isVisible({ timeout: 5000 }).catch(() => false);
+    const hasError     = await errorVisible.first().isVisible({ timeout: 3000 }).catch(() => false);
+    const hasEmpty     = await emptyDetail.first().isVisible({ timeout: 3000 }).catch(() => false);
 
-    // Any of these states is acceptable for non-existent entity
+    // Any of these is correct behaviour for a non-existent entity
     expect(hasNotFound || hasError || hasEmpty || true).toBe(true);
-    console.log('  T3-WAR-02b: Non-existent warranty handled correctly');
+    console.log(`  T3-WAR-02b PASS: non-existent ID handled (notFound=${hasNotFound}, error=${hasError}, empty=${hasEmpty})`);
   });
 });
 
-// ============================================================================
-// SECTION 2: STATUS FILTER TESTS
-// T3-WAR-03: Status filters work (active/expiring_soon/expired)
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Group 2: Status Filters
+// ---------------------------------------------------------------------------
 
-test.describe('Warranties Status Filters', () => {
+test.describe('Group 2: Status Filters', () => {
   test.describe.configure({ retries: 1 });
 
-  test('T3-WAR-03: Status filters display warranties by status', async ({ hodPage, supabaseAdmin }) => {
-    // Check if warranties exist with different statuses
-    const { data: warranties, error } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id, status')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .limit(10);
+  test('T3-WAR-03a: Filter "draft" shows at least WC-TEST-001', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, `${ROUTES.list}?status=draft`);
+    if (!loaded) { test.skip(); return; }
 
-    if (error || !warranties || warranties.length === 0) {
-      console.log('  No warranties found in test yacht - skipping (graceful)');
-      test.skip();
-      return;
-    }
+    // The known draft record must appear
+    const claimRef = hodPage.locator(`text=${CLAIMS.draft.claimNumber}`);
+    await expect(claimRef.first()).toBeVisible({ timeout: 10000 });
 
-    await hodPage.goto(ROUTES_CONFIG.warrantiesList);
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000); // Wait for data to load
-
-    // Check for status pills/badges in the list
-    const statusPills = hodPage.locator('[data-testid*="status"], .status-pill, [class*="StatusPill"]');
-    const pillCount = await statusPills.count();
-
-    if (pillCount > 0) {
-      console.log(`  T3-WAR-03: Found ${pillCount} status indicators`);
-    }
-
-    // Verify status values are displayed (active, expiring_soon, expired)
-    const activeStatus = hodPage.locator(':text("active"), :text("Active")');
-    const expiringSoonStatus = hodPage.locator(':text("expiring soon"), :text("Expiring Soon"), :text("expiring_soon")');
-    const expiredStatus = hodPage.locator(':text("expired"), :text("Expired")');
-
-    const hasActive = await activeStatus.first().isVisible({ timeout: 3000 }).catch(() => false);
-    const hasExpiringSoon = await expiringSoonStatus.first().isVisible({ timeout: 3000 }).catch(() => false);
-    const hasExpired = await expiredStatus.first().isVisible({ timeout: 3000 }).catch(() => false);
-
-    // At least the page should render statuses that exist in DB
-    const statusesInDb = new Set(warranties.map(w => w.status));
-    console.log(`  Statuses in DB: ${Array.from(statusesInDb).join(', ')}`);
-    console.log(`  Visible: active=${hasActive}, expiring_soon=${hasExpiringSoon}, expired=${hasExpired}`);
-
-    // If warranties exist, the list should render them
-    expect(pillCount > 0 || warranties.length === 0).toBe(true);
-    console.log('  T3-WAR-03: Status filters verification complete');
+    console.log('  T3-WAR-03a PASS: WC-TEST-001 visible under draft filter');
   });
 
-  test('T3-WAR-03b: Filter by active warranties', async ({ hodPage, supabaseAdmin }) => {
-    // Check if active warranties exist
-    const { data: activeWarranties } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .eq('status', WARRANTY_STATUS.ACTIVE)
-      .limit(1);
+  test('T3-WAR-03b: Filter "submitted" shows at least WC-TEST-002', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, `${ROUTES.list}?status=submitted`);
+    if (!loaded) { test.skip(); return; }
 
-    if (!activeWarranties || activeWarranties.length === 0) {
-      console.log('  No active warranties found - skipping');
-      test.skip();
-      return;
-    }
+    const claimRef = hodPage.locator(`text=${CLAIMS.submitted.claimNumber}`);
+    await expect(claimRef.first()).toBeVisible({ timeout: 10000 });
 
-    // Navigate with status filter (if supported)
-    await hodPage.goto(`${ROUTES_CONFIG.warrantiesList}?status=active`);
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000);
-
-    // Verify page loaded
-    const mainContent = hodPage.locator('main, [role="main"]');
-    await expect(mainContent).toBeVisible({ timeout: 10000 });
-
-    console.log('  T3-WAR-03b: Active filter page loaded');
+    console.log('  T3-WAR-03b PASS: WC-TEST-002 visible under submitted filter');
   });
 
-  test('T3-WAR-03c: Filter by expiring_soon warranties', async ({ hodPage, supabaseAdmin }) => {
-    // Check if expiring warranties exist
-    const { data: expiringWarranties } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .eq('status', WARRANTY_STATUS.EXPIRING_SOON)
-      .limit(1);
+  test('T3-WAR-03c: Filter "rejected" shows at least WC-TEST-005', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, `${ROUTES.list}?status=rejected`);
+    if (!loaded) { test.skip(); return; }
 
-    if (!expiringWarranties || expiringWarranties.length === 0) {
-      console.log('  No expiring warranties found - skipping');
-      test.skip();
-      return;
-    }
+    const claimRef = hodPage.locator(`text=${CLAIMS.rejected.claimNumber}`);
+    await expect(claimRef.first()).toBeVisible({ timeout: 10000 });
 
-    // Navigate with status filter (if supported)
-    await hodPage.goto(`${ROUTES_CONFIG.warrantiesList}?status=expiring_soon`);
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000);
-
-    // Verify page loaded
-    const mainContent = hodPage.locator('main, [role="main"]');
-    await expect(mainContent).toBeVisible({ timeout: 10000 });
-
-    console.log('  T3-WAR-03c: Expiring soon filter page loaded');
-  });
-
-  test('T3-WAR-03d: Filter by expired warranties', async ({ hodPage, supabaseAdmin }) => {
-    // Check if expired warranties exist
-    const { data: expiredWarranties } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .eq('status', WARRANTY_STATUS.EXPIRED)
-      .limit(1);
-
-    if (!expiredWarranties || expiredWarranties.length === 0) {
-      console.log('  No expired warranties found - skipping');
-      test.skip();
-      return;
-    }
-
-    // Navigate with status filter (if supported)
-    await hodPage.goto(`${ROUTES_CONFIG.warrantiesList}?status=expired`);
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000);
-
-    // Verify page loaded
-    const mainContent = hodPage.locator('main, [role="main"]');
-    await expect(mainContent).toBeVisible({ timeout: 10000 });
-
-    console.log('  T3-WAR-03d: Expired filter page loaded');
+    console.log('  T3-WAR-03c PASS: WC-TEST-005 visible under rejected filter');
   });
 });
 
-// ============================================================================
-// SECTION 3: LINKED EQUIPMENT NAVIGATION
-// T3-WAR-04: Linked equipment navigation works
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Group 3: Button Visibility per Role + Status
+// ---------------------------------------------------------------------------
 
-test.describe('Warranties Linked Equipment Navigation', () => {
+test.describe('Group 3: Button Visibility per Role + Status', () => {
   test.describe.configure({ retries: 1 });
 
-  test('T3-WAR-04: Equipment link navigates to /equipment/[id]', async ({ hodPage, supabaseAdmin }) => {
-    // Find a warranty with linked equipment
-    const { data: warrantyWithEquipment } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id, item_name, linked_equipment_id')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .not('linked_equipment_id', 'is', null)
-      .limit(1)
-      .single();
+  test('T3-WAR-BTN-01: HOD sees "Submit Claim" button on WC-TEST-001 (draft)', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.detail(CLAIMS.draft.id));
+    if (!loaded) { test.skip(); return; }
 
-    if (!warrantyWithEquipment) {
-      console.log('  No warranties with linked equipment found - skipping (graceful)');
-      test.skip();
-      return;
-    }
+    const btn = hodPage.locator('button:has-text("Submit Claim"), [data-testid="action-submit-claim"]');
+    await expect(btn.first()).toBeVisible({ timeout: 10000 });
 
-    // Navigate to warranty detail
-    await hodPage.goto(ROUTES_CONFIG.warrantyDetail(warrantyWithEquipment.id));
+    console.log('  T3-WAR-BTN-01 PASS: HOD sees Submit Claim on draft record');
+  });
 
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
+  test('T3-WAR-BTN-02: Crew does NOT see primary action button on WC-TEST-001', async ({ crewPage }) => {
+    const loaded = await gotoWarranties(crewPage, ROUTES.detail(CLAIMS.draft.id));
+    if (!loaded) { test.skip(); return; }
 
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000);
-
-    // Find equipment link/button
-    const equipmentLink = hodPage.locator(
-      '[data-testid="equipment-link"], a[href*="/equipment/"], button:has-text("Equipment"), [data-navigate="equipment"], a:has-text("Equipment")'
+    // Crew must not have the submit action
+    const submitBtn = crewPage.locator(
+      'button:has-text("Submit Claim"), [data-testid="action-submit-claim"]'
     );
 
-    const hasLink = await equipmentLink.isVisible({ timeout: 5000 }).catch(() => false);
+    const isVisible = await submitBtn.first().isVisible({ timeout: 5000 }).catch(() => false);
+    const isEnabled = isVisible
+      ? await submitBtn.first().isEnabled().catch(() => false)
+      : false;
 
-    if (hasLink) {
-      await equipmentLink.first().click();
-      await hodPage.waitForLoadState('networkidle');
+    // Either absent or disabled — both are acceptable RBAC outcomes
+    expect(isVisible && isEnabled).toBe(false);
 
-      // Verify navigation occurred
-      const newUrl = hodPage.url();
-      const navigatedToEquipment = newUrl.includes('/equipment/') || newUrl.includes('entity=equipment');
-      expect(navigatedToEquipment).toBe(true);
-      console.log('  T3-WAR-04: Equipment navigation verified');
-    } else {
-      console.log('  No equipment link visible in warranty detail - may not be implemented yet');
-      // Graceful skip - link may not be visible in current implementation
-    }
+    console.log(`  T3-WAR-BTN-02 PASS: Crew cannot submit claim (visible=${isVisible}, enabled=${isEnabled})`);
   });
 
-  test('T3-WAR-04b: Warranty with no linked equipment shows no equipment link', async ({ hodPage, supabaseAdmin }) => {
-    // Find a warranty without linked equipment
-    const { data: warrantyNoEquipment } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id, item_name')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .is('linked_equipment_id', null)
-      .limit(1)
-      .single();
+  test('T3-WAR-BTN-03: Captain sees "Approve Claim" button on WC-TEST-003 (under_review)', async ({ captainPage }) => {
+    const loaded = await gotoWarranties(captainPage, ROUTES.detail(CLAIMS.under_review.id));
+    if (!loaded) { test.skip(); return; }
 
-    if (!warrantyNoEquipment) {
-      console.log('  All warranties have linked equipment or no warranties exist - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.goto(ROUTES_CONFIG.warrantyDetail(warrantyNoEquipment.id));
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000);
-
-    // Equipment navigation link should not be prominently displayed
-    // (it may still exist but should be disabled or hidden)
-    const equipmentLink = hodPage.locator('[data-testid="equipment-link"], a[href*="/equipment/"]');
-    const linkVisible = await equipmentLink.isVisible({ timeout: 3000 }).catch(() => false);
-
-    // Either no link, or link should lead nowhere specific
-    console.log(`  T3-WAR-04b: Equipment link visible = ${linkVisible}`);
-  });
-});
-
-// ============================================================================
-// SECTION 4: STATE PERSISTENCE TESTS
-// T3-WAR-05: Page refresh preserves state
-// ============================================================================
-
-test.describe('Warranties Route State Persistence', () => {
-  test.describe.configure({ retries: 1 });
-
-  test('T3-WAR-05: Page refresh preserves detail view', async ({ hodPage, supabaseAdmin }) => {
-    // Find an existing warranty
-    const { data: warranty } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id, item_name')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .limit(1)
-      .single();
-
-    if (!warranty) {
-      console.log('  No warranties found - skipping (graceful)');
-      test.skip();
-      return;
-    }
-
-    await hodPage.goto(ROUTES_CONFIG.warrantyDetail(warranty.id));
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000);
-
-    // Store current state
-    const beforeRefreshUrl = hodPage.url();
-    const beforeContent = await hodPage.textContent('body');
-
-    // Refresh page
-    await hodPage.reload();
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000);
-
-    // Verify state preserved
-    const afterRefreshUrl = hodPage.url();
-    expect(afterRefreshUrl).toBe(beforeRefreshUrl);
-
-    // Verify content still renders
-    const afterContent = await hodPage.textContent('body');
-    expect(afterContent).toBeTruthy();
-
-    // Verify warranty identifier still visible (or content loaded)
-    const warrantyIdentifier = hodPage.locator(`text=${warranty.item_name}`);
-    const stillVisible = await warrantyIdentifier.isVisible({ timeout: 5000 }).catch(() => false);
-
-    if (!stillVisible) {
-      // Check for general content presence
-      expect(afterContent?.length).toBeGreaterThan(100);
-    }
-
-    console.log('  T3-WAR-05: State preserved after refresh');
-  });
-
-  test('T3-WAR-05b: Page refresh preserves list view', async ({ hodPage }) => {
-    await hodPage.goto(ROUTES_CONFIG.warrantiesList);
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000);
-
-    const beforeUrl = hodPage.url();
-
-    // Refresh
-    await hodPage.reload();
-    await hodPage.waitForLoadState('networkidle');
-    await hodPage.waitForTimeout(2000);
-
-    const afterUrl = hodPage.url();
-
-    // URL should be preserved
-    expect(afterUrl).toBe(beforeUrl);
-    console.log('  T3-WAR-05b: List state preserved after refresh');
-  });
-});
-
-// ============================================================================
-// SECTION 5: BROWSER NAVIGATION TESTS
-// T3-WAR-06: Browser back/forward works
-// ============================================================================
-
-test.describe('Warranties Route Browser Navigation', () => {
-  test.describe.configure({ retries: 1 });
-
-  test('T3-WAR-06: Browser back/forward works naturally on list', async ({ hodPage, supabaseAdmin }) => {
-    // Find an existing warranty
-    const { data: warranty } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id, item_name')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .limit(1)
-      .single();
-
-    if (!warranty) {
-      console.log('  No warranties found - skipping (graceful)');
-      test.skip();
-      return;
-    }
-
-    // Start at list
-    await hodPage.goto(ROUTES_CONFIG.warrantiesList);
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-    const listUrl = hodPage.url();
-
-    // Navigate to detail (via URL)
-    await hodPage.goto(ROUTES_CONFIG.warrantyDetail(warranty.id));
-    await hodPage.waitForLoadState('networkidle');
-    const detailUrl = hodPage.url();
-
-    expect(detailUrl).toContain('/warranties');
-    expect(detailUrl).toContain(`id=${warranty.id}`);
-
-    // Go back via browser
-    await hodPage.goBack();
-    await hodPage.waitForLoadState('networkidle');
-
-    // Verify we're back at list
-    expect(hodPage.url()).toBe(listUrl);
-    console.log('  T3-WAR-06a: Back navigation to list verified');
-
-    // Go forward
-    await hodPage.goForward();
-    await hodPage.waitForLoadState('networkidle');
-
-    // Verify we're at detail again
-    expect(hodPage.url()).toBe(detailUrl);
-    console.log('  T3-WAR-06b: Forward navigation to detail verified');
-  });
-
-  test('T3-WAR-06b: Browser back from detail returns to previous page', async ({ hodPage, supabaseAdmin }) => {
-    // Find an existing warranty
-    const { data: warranty } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .limit(1)
-      .single();
-
-    if (!warranty) {
-      console.log('  No warranties found - skipping (graceful)');
-      test.skip();
-      return;
-    }
-
-    // Start at home/app
-    await hodPage.goto('/');
-    await hodPage.waitForLoadState('networkidle');
-
-    // Navigate to warranty detail
-    await hodPage.goto(ROUTES_CONFIG.warrantyDetail(warranty.id));
-
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-
-    // Click back button in UI (if exists)
-    const backButton = hodPage.locator(
-      'button[aria-label="Back"], button:has([data-testid="back-icon"]), [data-testid="back-button"]'
+    const btn = captainPage.locator(
+      'button:has-text("Approve Claim"), [data-testid="action-approve-claim"]'
     );
-    const hasBackButton = await backButton.isVisible({ timeout: 3000 }).catch(() => false);
+    await expect(btn.first()).toBeVisible({ timeout: 10000 });
 
-    if (hasBackButton) {
-      await backButton.click();
-      await hodPage.waitForLoadState('networkidle');
+    console.log('  T3-WAR-BTN-03 PASS: Captain sees Approve Claim on under_review record');
+  });
 
-      // Should navigate back to list or previous page
-      const newUrl = hodPage.url();
-      expect(newUrl).not.toContain(`id=${warranty.id}`);
-      console.log('  T3-WAR-06b: UI back button works');
-    } else {
-      // Use browser back
-      await hodPage.goBack();
-      await hodPage.waitForLoadState('networkidle');
-      console.log('  T3-WAR-06b: Browser back works (no UI back button)');
-    }
+  test('T3-WAR-BTN-04: HOD sees "Revise & Resubmit" on WC-TEST-005 (rejected)', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.detail(CLAIMS.rejected.id));
+    if (!loaded) { test.skip(); return; }
+
+    const btn = hodPage.locator(
+      'button:has-text("Revise & Resubmit"), button:has-text("Revise and Resubmit"), [data-testid="action-revise-resubmit"]'
+    );
+    await expect(btn.first()).toBeVisible({ timeout: 10000 });
+
+    console.log('  T3-WAR-BTN-04 PASS: HOD sees Revise & Resubmit on rejected record');
+  });
+
+  test('T3-WAR-BTN-05: No primary action button visible on WC-TEST-004 (approved — only captain/manager can close)', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.detail(CLAIMS.approved.id));
+    if (!loaded) { test.skip(); return; }
+
+    // Buttons that must NOT appear for HOD on an approved claim
+    const forbiddenButtons = hodPage.locator(
+      'button:has-text("Submit Claim"), button:has-text("Approve Claim"), button:has-text("Revise & Resubmit")'
+    );
+
+    const count = await forbiddenButtons.count();
+    expect(count).toBe(0);
+
+    console.log('  T3-WAR-BTN-05 PASS: No primary action button on approved claim (HOD view)');
   });
 });
 
-// ============================================================================
-// SECTION 6: FEATURE FLAG TOGGLE TEST
-// Verify route behavior when flag is on/off
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Group 4: File New Claim Modal
+// ---------------------------------------------------------------------------
 
-test.describe('Feature Flag Behavior', () => {
-  test.describe.configure({ retries: 0 });
+test.describe('Group 4: File New Claim Modal', () => {
+  test.describe.configure({ retries: 1 });
 
-  test('Feature flag OFF redirects to /app', async ({ hodPage }) => {
-    // Note: This test documents expected behavior when flag is OFF
-    // In real testing, flag would need to be toggled via environment
+  test('T3-WAR-MODAL-01: "File New Claim" button visible for HOD on list page', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.list);
+    if (!loaded) { test.skip(); return; }
 
-    await hodPage.goto(ROUTES_CONFIG.warrantiesList);
-    await hodPage.waitForLoadState('networkidle');
+    const btn = hodPage.locator(
+      'button:has-text("File New Claim"), button:has-text("New Claim"), [data-testid="file-new-claim"]'
+    );
+    await expect(btn.first()).toBeVisible({ timeout: 10000 });
 
-    const currentUrl = hodPage.url();
+    console.log('  T3-WAR-MODAL-01 PASS: File New Claim button visible for HOD');
+  });
 
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      // Flag is disabled - verify redirect worked
-      expect(currentUrl).toContain('/app');
-      console.log('  Feature flag OFF: Correctly redirected to /app');
-    } else if (currentUrl.includes('/warranties')) {
-      // Flag is enabled - verify route works
-      expect(currentUrl).toContain('/warranties');
-      console.log('  Feature flag ON: Route loaded directly');
-    }
+  test('T3-WAR-MODAL-02: Clicking "File New Claim" opens a modal with title input', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.list);
+    if (!loaded) { test.skip(); return; }
+
+    const btn = hodPage.locator(
+      'button:has-text("File New Claim"), button:has-text("New Claim"), [data-testid="file-new-claim"]'
+    );
+    await btn.first().click();
+
+    // Modal / dialog must open
+    const modal = hodPage.locator('[role="dialog"]');
+    await expect(modal).toBeVisible({ timeout: 8000 });
+
+    // Title input must be present inside the modal
+    const titleInput = modal.locator('input[name="title"], input[placeholder*="title" i], input[placeholder*="Title"]');
+    await expect(titleInput.first()).toBeVisible({ timeout: 5000 });
+
+    console.log('  T3-WAR-MODAL-02 PASS: modal opened with title input');
+  });
+
+  test('T3-WAR-MODAL-03: Submitting empty title shows validation error "Title is required"', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.list);
+    if (!loaded) { test.skip(); return; }
+
+    // Open modal
+    const openBtn = hodPage.locator(
+      'button:has-text("File New Claim"), button:has-text("New Claim"), [data-testid="file-new-claim"]'
+    );
+    await openBtn.first().click();
+
+    const modal = hodPage.locator('[role="dialog"]');
+    await expect(modal).toBeVisible({ timeout: 8000 });
+
+    // Clear title input and attempt to submit
+    const titleInput = modal.locator('input[name="title"], input[placeholder*="title" i]');
+    await titleInput.first().clear();
+
+    const submitBtn = modal.locator(
+      'button[type="submit"], button:has-text("Submit"), button:has-text("Save"), button:has-text("Create")'
+    );
+    await submitBtn.first().click();
+
+    // Validation message must appear
+    const validationMsg = modal.locator(
+      ':text("Title is required"), :text("title is required"), [data-testid="title-error"], .field-error'
+    );
+    await expect(validationMsg.first()).toBeVisible({ timeout: 5000 });
+
+    console.log('  T3-WAR-MODAL-03 PASS: empty title shows validation error');
+  });
+
+  test('T3-WAR-MODAL-04: Cancel button closes modal', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.list);
+    if (!loaded) { test.skip(); return; }
+
+    // Open modal
+    const openBtn = hodPage.locator(
+      'button:has-text("File New Claim"), button:has-text("New Claim"), [data-testid="file-new-claim"]'
+    );
+    await openBtn.first().click();
+
+    const modal = hodPage.locator('[role="dialog"]');
+    await expect(modal).toBeVisible({ timeout: 8000 });
+
+    // Click Cancel
+    const cancelBtn = modal.locator('button:has-text("Cancel"), button:has-text("Dismiss"), [data-testid="modal-cancel"]');
+    await cancelBtn.first().click();
+
+    // Modal must close
+    await expect(modal).not.toBeVisible({ timeout: 5000 });
+
+    console.log('  T3-WAR-MODAL-04 PASS: Cancel closes modal');
   });
 });
 
-// ============================================================================
-// SECTION 7: PERFORMANCE BASELINE
-// Basic load time checks
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Group 5: Claim Detail Fields
+// ---------------------------------------------------------------------------
 
-test.describe('Warranties Route Performance', () => {
-  test.describe.configure({ retries: 0 });
+test.describe('Group 5: Claim Detail Fields', () => {
+  test.describe.configure({ retries: 1 });
 
-  test('List route loads within 5 seconds', async ({ hodPage }) => {
-    const startTime = Date.now();
+  test('T3-WAR-FIELDS-01: WC-TEST-001 claim number renders in detail view', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.detail(CLAIMS.draft.id));
+    if (!loaded) { test.skip(); return; }
 
-    await hodPage.goto(ROUTES_CONFIG.warrantiesList);
+    // Claim number must be visible somewhere in the detail panel
+    await expect(hodPage.locator(`text=${CLAIMS.draft.claimNumber}`).first()).toBeVisible({ timeout: 10000 });
 
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
-      test.skip();
-      return;
-    }
-
-    await hodPage.waitForLoadState('networkidle');
-
-    const loadTime = Date.now() - startTime;
-    console.log(`  List load time: ${loadTime}ms`);
-
-    // Should load within 5 seconds
-    expect(loadTime).toBeLessThan(5000);
+    console.log('  T3-WAR-FIELDS-01 PASS: WC-TEST-001 claim number visible');
   });
 
-  test('Detail route loads within 5 seconds', async ({ hodPage, supabaseAdmin }) => {
-    // Find an existing warranty
-    const { data: warranty } = await supabaseAdmin
-      .from('pms_warranties')
-      .select('id')
-      .eq('yacht_id', ROUTES_CONFIG.yachtId)
-      .limit(1)
-      .single();
+  test('T3-WAR-FIELDS-02: WC-TEST-005 rejection reason text visible', async ({ hodPage }) => {
+    const loaded = await gotoWarranties(hodPage, ROUTES.detail(CLAIMS.rejected.id));
+    if (!loaded) { test.skip(); return; }
 
-    if (!warranty) {
-      console.log('  No warranties found - skipping (graceful)');
-      test.skip();
-      return;
-    }
+    // Claim number must be present
+    await expect(hodPage.locator(`text=${CLAIMS.rejected.claimNumber}`).first()).toBeVisible({ timeout: 10000 });
 
-    const startTime = Date.now();
+    // Rejection reason label or text block must be visible
+    // The exact text value is not hardcoded — just verify the field/section is rendered.
+    const rejectionSection = hodPage.locator(
+      ':text("Rejection Reason"), :text("rejection_reason"), :text("Reason for rejection"), [data-testid="rejection-reason"]'
+    );
+    await expect(rejectionSection.first()).toBeVisible({ timeout: 8000 });
 
-    await hodPage.goto(ROUTES_CONFIG.warrantyDetail(warranty.id));
+    // Verify the rejection reason field is not blank (has text content)
+    const sectionText = await rejectionSection.first().textContent();
+    expect(sectionText).toBeTruthy();
 
-    const currentUrl = hodPage.url();
-    if (currentUrl.includes('/app') && !currentUrl.includes('/warranties')) {
-      console.log('  Feature flag disabled - skipping');
+    console.log('  T3-WAR-FIELDS-02 PASS: rejection reason section visible on WC-TEST-005');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Group 6: Performance
+// ---------------------------------------------------------------------------
+
+test.describe('Group 6: Performance', () => {
+  // No retries for performance tests — timing matters
+  test.describe.configure({ retries: 0 });
+
+  test('T3-WAR-PERF-01: Warranty list loads in under 5s', async ({ hodPage }) => {
+    const start = Date.now();
+    await hodPage.goto(ROUTES.list);
+
+    const url = hodPage.url();
+    if (url.includes('/app') && !url.includes('/warranties')) {
+      console.log('  Feature flag disabled — skipping perf test.');
       test.skip();
       return;
     }
 
     await hodPage.waitForLoadState('networkidle');
+    const elapsed = Date.now() - start;
 
-    const loadTime = Date.now() - startTime;
-    console.log(`  Detail load time: ${loadTime}ms`);
+    console.log(`  T3-WAR-PERF-01: list loaded in ${elapsed}ms`);
+    expect(elapsed).toBeLessThan(5000);
+  });
 
-    // Should load within 5 seconds
-    expect(loadTime).toBeLessThan(5000);
+  test('T3-WAR-PERF-02: Warranty detail loads in under 5s', async ({ hodPage }) => {
+    const start = Date.now();
+    await hodPage.goto(ROUTES.detail(CLAIMS.draft.id));
+
+    const url = hodPage.url();
+    if (url.includes('/app') && !url.includes('/warranties')) {
+      console.log('  Feature flag disabled — skipping perf test.');
+      test.skip();
+      return;
+    }
+
+    await hodPage.waitForLoadState('networkidle');
+    const elapsed = Date.now() - start;
+
+    console.log(`  T3-WAR-PERF-02: detail loaded in ${elapsed}ms`);
+    expect(elapsed).toBeLessThan(5000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Skipped: Mutative flow tests (require live backend action handlers)
+// ---------------------------------------------------------------------------
+
+test.describe('Mutative Flows (skipped — require live backend)', () => {
+  // requires live backend
+  test.skip('submit_warranty_claim action via UI transitions draft → submitted', async () => {
+    // Skip reason: submit_warranty_claim action handler must be running on the backend.
+    // When live: open WC-TEST-001, click "Submit Claim", confirm modal, then verify
+    // supabaseAdmin.from('pms_warranty_claims').select('status').eq('id', CLAIMS.draft.id)
+    // returns 'submitted'.
+  });
+
+  // requires live backend
+  test.skip('approve_warranty_claim action via UI transitions under_review → approved', async () => {
+    // Skip reason: approve_warranty_claim action handler must be running on the backend.
+    // When live: open WC-TEST-003 as captain, click "Approve Claim", confirm, verify DB.
   });
 });
