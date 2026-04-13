@@ -36,6 +36,9 @@ beautifulsoup4>=4.12.0
 # AI/NLP for extraction pipeline
 openai==1.59.5
 PyMuPDF>=1.24.0
+pikepdf>=9.0.0          # PDF/A-3 conformance metadata (Stage 1 sealing)
+pyhanko>=0.24.0         # PAdES-B-LT signing + RFC 3161 timestamp (Stage 2 sealing)
+pyhanko-certvalidator>=0.26.0  # pyHanko dependency — cert chain validation
 # spacy is optional - code gracefully degrades without it
 
 # Import Pipeline (PMS onboarding)

@@ -72,6 +72,15 @@ services:
       - AZURE_WRITE_CLIENT_SECRET=${AZURE_WRITE_CLIENT_SECRET}
       - HANDOVER_EXPORT_SERVICE_URL=http://host.docker.internal:10000
       - HANDOVER_USE_MICROSERVICE=true
+      - EXPORT_HMAC_SECRET=${EXPORT_HMAC_SECRET}
+      - LEDGER_EXPORT_SEAL=${LEDGER_EXPORT_SEAL:-false}
+      - CELESTE_SIGNING_CERT_PATH=/app/certs/celesteos-evidence-signing.crt
+      - CELESTE_SIGNING_KEY_PATH=${CELESTE_SIGNING_KEY_PATH:-}
+      - CELESTE_SIGNING_KEY_VERSION=${CELESTE_SIGNING_KEY_VERSION:-v1}
+      - CELESTE_TSA_PRIMARY=${CELESTE_TSA_PRIMARY:-https://freetsa.org/tsr}
+      - CELESTE_TSA_FALLBACK=${CELESTE_TSA_FALLBACK:-http://timestamp.digicert.com}
+    volumes:
+      - /Users/celeste7/Documents/CelesteOS-Branding/signing-keys:/app/signing-keys:ro
     command: ["sh", "-c", "uvicorn pipeline_service:app --host 0.0.0.0 --port 8000"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
