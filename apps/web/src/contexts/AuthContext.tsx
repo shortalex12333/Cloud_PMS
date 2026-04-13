@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -496,17 +496,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/login';
   }, []);
 
+  const contextValue = useMemo(() => ({
+    user,
+    session,
+    loading,
+    bootstrapping,
+    error,
+    login,
+    logout,
+    refreshBootstrap
+  }), [user, session, loading, bootstrapping, error, login, logout, refreshBootstrap]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      loading,
-      bootstrapping,
-      error,
-      login,
-      logout,
-      refreshBootstrap
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
