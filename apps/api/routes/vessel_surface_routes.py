@@ -889,6 +889,20 @@ def _format_record(domain: str, record: dict) -> dict:
             "received_date": record.get("received_date"),
             "meta": f"{record.get('received_by', '')} · {record.get('status', '').upper()}",
         })
+    elif domain == "warranty":
+        claim_number = record.get("claim_number") or f"WC-{str(record.get('id', ''))[:6]}"
+        base.update({
+            "ref": claim_number,
+            "claim_number": claim_number,
+            "title": record.get("title") or claim_number,
+            "status": record.get("status", "draft"),
+            "vendor_name": record.get("vendor_name", ""),
+            "claimed_amount": record.get("claimed_amount"),
+            "currency": record.get("currency"),
+            "warranty_expiry": record.get("warranty_expiry"),
+            "created_at": record.get("created_at"),
+            "meta": f"{(record.get('status') or 'draft').upper()} · {record.get('vendor_name', '')}",
+        })
     else:
         # Generic fallback for other domains
         title_field = next(
