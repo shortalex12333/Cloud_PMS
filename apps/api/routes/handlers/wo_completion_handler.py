@@ -135,7 +135,7 @@ async def add_note_to_work_order(
         note_type = "general"
 
     try:
-        check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+        check = db_client.table("pms_work_orders").select("id, title").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
         if not check.data:
             raise HTTPException(status_code=404, detail="Work order not found")
     except HTTPException:
@@ -145,6 +145,8 @@ async def add_note_to_work_order(
         if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
             raise HTTPException(status_code=404, detail="Work order not found")
         raise
+
+    entity_name = (check.data or {}).get("title") or "" if check.data else ""
 
     note_data = {
         "work_order_id": work_order_id,
@@ -164,6 +166,8 @@ async def add_note_to_work_order(
                     action="add_note_to_work_order",
                     user_role=user_context.get("role"),
                     change_summary="Note added to work order",
+                    entity_name=entity_name,
+                    new_state={"note_text": note_text, "note_type": note_type, "added_by": user_id},
                 )
                 db_client.table("ledger_events").insert(ledger_event).execute()
             except Exception as ledger_err:
