@@ -761,6 +761,21 @@ async def create_ledger_export(
             insert_row["cert_fingerprint"] = sealing_info.cert_fingerprint
         db_client.table("ledger_exports").insert(insert_row).execute()
 
+        # ── Ledger event ── record the export action in the activity log
+        try:
+            db_client.table("ledger_events").insert({
+                "yacht_id":       str(resolved_yid),
+                "user_id":        str(user_id),
+                "event_type":     "mutation",
+                "entity_type":    "ledger_export",
+                "entity_id":      str(export_id),
+                "action":         "export_generated",
+                "change_summary": f"Evidence PDF exported — {len(events)} events ({payload.scope}), {'sealed' if is_sealed else 'unsigned'}",
+                "metadata":       {"event_count": len(events), "scope": payload.scope, "sealed": is_sealed},
+            }).execute()
+        except Exception as _ev_err:
+            logger.warning(f"[Ledger] Export ledger event insert failed: {_ev_err}")
+
         # ── Notify ── fire-and-forget; never blocks the export response
         try:
             db_client.table("ledger_notifications").insert({
