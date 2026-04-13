@@ -146,6 +146,17 @@ function formatMonth(yyyyMm: string): string {
   return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
+/** Compute total hours from a periods array — always correct, ignores stored totals. */
+function hoursFromPeriods(periods: RestPeriod[]): number {
+  return periods.reduce((sum, p) => {
+    const [sh, sm] = p.start.split(':').map(Number);
+    const [eh, em] = p.end.split(':').map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = (p.end === '24:00' ? 24 : eh) * 60 + em;
+    return sum + Math.max(0, endMin - startMin) / 60;
+  }, 0);
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function Skeleton({ w = '100%', h = 16 }: { w?: string | number; h?: number }) {
@@ -604,9 +615,33 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                   {isSubmitted ? (
                     <>
                       <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-                        {displayDay.total_work_hours != null ? `${displayDay.total_work_hours}h work / ` : ''}{displayDay.total_rest_hours != null ? `${displayDay.total_rest_hours}h rest` : ''}
+                        {(() => {
+                          // Compute from periods — stored totals may be stale/wrong
+                          const wp = displayDay.work_periods ?? [];
+                          const rp = displayDay.rest_periods ?? [];
+                          const workH = wp.length > 0
+                            ? hoursFromPeriods(wp)
+                            : (rp.length > 0 ? 24 - hoursFromPeriods(rp) : displayDay.total_work_hours ?? 0);
+                          const restH = rp.length > 0
+                            ? hoursFromPeriods(rp)
+                            : (wp.length > 0 ? 24 - hoursFromPeriods(wp) : displayDay.total_rest_hours ?? 0);
+                          return `${workH.toFixed(1)}h work / ${restH.toFixed(1)}h rest`;
+                        })()}
                       </span>
-                      <StatusBadge ok={displayDay.is_compliant} label={displayDay.is_compliant ? 'Compliant' : 'Violation'} />
+                      <StatusBadge
+                        ok={(() => {
+                          const rp = displayDay.rest_periods ?? [];
+                          const restH = rp.length > 0 ? hoursFromPeriods(rp) : (displayDay.total_rest_hours ?? null);
+                          if (restH === null) return displayDay.is_compliant;
+                          return restH >= 10; // MLC 2006 minimum daily rest
+                        })()}
+                        label={(() => {
+                          const rp = displayDay.rest_periods ?? [];
+                          const restH = rp.length > 0 ? hoursFromPeriods(rp) : (displayDay.total_rest_hours ?? null);
+                          if (restH === null || restH >= 10) return 'Compliant';
+                          return `Violation`;
+                        })()}
+                      />
                       {/* Submitted this session — show acknowledgement + Undo */}
                       {canUndo && (
                         <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
