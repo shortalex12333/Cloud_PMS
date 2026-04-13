@@ -8,6 +8,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.c
 export function useReadBeacon(
   entityType: string,
   entityId: string | undefined,
+  entityName?: string,
   metadata?: Record<string, unknown>
 ) {
   const { session } = useAuth();
@@ -24,8 +25,9 @@ export function useReadBeacon(
       body: JSON.stringify({
         entity_type: entityType,
         entity_id: entityId,
+        entity_name: entityName ?? '',
         metadata: metadata ?? {},
       }),
     }).catch(() => { /* intentionally silent */ });
-  }, [entityType, entityId, token]);
+  }, [entityType, entityId, entityName, token]);
 }

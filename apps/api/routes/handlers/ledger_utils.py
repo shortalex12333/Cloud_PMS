@@ -20,7 +20,10 @@ def build_ledger_event(
     metadata: dict = None,
     department: str = None,
     actor_name: str = None,
-    event_category: str = "write"
+    event_category: str = "write",
+    entity_name: str = None,
+    new_state: dict = None,
+    previous_state: dict = None,
 ) -> dict:
     """Build a ledger event with correct schema for ledger_events table.
 
@@ -51,6 +54,12 @@ def build_ledger_event(
     if actor_name:
         event_data["actor_name"] = actor_name
     event_data["event_category"] = event_category or "write"
+    if entity_name:
+        event_data["entity_name"] = entity_name
+    if new_state is not None:
+        event_data["new_state"] = new_state
+    if previous_state is not None:
+        event_data["previous_state"] = previous_state
 
     # Generate proof_hash (SHA-256 of event data)
     hash_input = json.dumps({

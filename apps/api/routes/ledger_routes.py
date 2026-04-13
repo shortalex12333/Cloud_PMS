@@ -284,6 +284,7 @@ async def record_read_event(
     body = await request.json()
     entity_type = body.get("entity_type", "unknown")
     entity_id   = body.get("entity_id", "")
+    entity_name = body.get("entity_name", "")
     metadata    = body.get("metadata", {})
 
     yacht_id      = resolve_yacht_id(user_context, body.get("yacht_id"))
@@ -298,6 +299,10 @@ async def record_read_event(
 
     try:
         now_iso = datetime.utcnow().isoformat()
+        change_summary = (
+            f"Opened: {entity_name}" if entity_name
+            else f"Opened {entity_type.replace('_', ' ')}"
+        )
         ev = {
             "yacht_id":       str(yacht_id),
             "user_id":        str(user_id),
@@ -309,13 +314,15 @@ async def record_read_event(
             "action":         f"view_{entity_type}",
             "entity_type":    entity_type,
             "entity_id":      str(entity_id),
-            "change_summary": f"Opened {entity_type.replace('_', ' ')}",
+            "change_summary": change_summary,
             "source_context": "microaction",
             "metadata":       metadata,
             "proof_hash":     hashlib.sha256(
                 (f"{yacht_id}{user_id}view{entity_type}{entity_id}{now_iso}").encode()
             ).hexdigest(),
         }
+        if entity_name:
+            ev["entity_name"] = entity_name
         db_client = _get_tenant_client(tenant_alias)
         db_client.table("ledger_events").insert(ev).execute()
         return {"success": True}
