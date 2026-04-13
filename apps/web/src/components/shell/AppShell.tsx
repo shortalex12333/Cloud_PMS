@@ -158,7 +158,9 @@ export function AppShell({ children }: AppShellProps) {
     }
   }, [activeDomain]);
 
-  const showSubbar = activeDomain !== 'surface';
+  // hours-of-rest has its own role-aware header — no Subbar needed
+  const SUBBAR_EXCLUDED: DomainId[] = ['surface', 'hours-of-rest'];
+  const showSubbar = !SUBBAR_EXCLUDED.includes(activeDomain);
 
   return (
     <ShellProvider activeDomain={activeDomain}>
