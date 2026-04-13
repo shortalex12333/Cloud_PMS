@@ -76,11 +76,13 @@ type FilterStatus = 'all' | 'pending' | 'awaiting_hod' | 'finalized';
 // If new roles are added to the DB trigger, update this map too.
 // 'captain' maps to 'all' here (meaning: don't send department filter → see everything).
 
+// 'captain' and 'manager' map to 'all' — these roles see all departments.
+// Omitting a role from this map makes getUserDepartment return null → no dept filter → sees all.
 const DEPARTMENT_MAP: Record<string, string> = {
   captain: 'all',
   chief_engineer: 'engineering',
   eto: 'engineering',
-  manager: 'interior',
+  manager: 'all',  // fleet managers see all departments, not just interior
 };
 
 function getUserDepartment(role: string): string | null {
@@ -98,11 +100,12 @@ async function fetchSignoffs(
   token: string,
   params: { department?: string; status?: string; month?: string }
 ): Promise<{ signoffs: MonthlySignoff[]; pending_count: number }> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+  // Use the Next.js BFF proxy so the auth guard and auth headers are applied consistently.
+  // Direct NEXT_PUBLIC_API_URL calls bypass the proxy and skip the BFF auth guard.
   const qs = new URLSearchParams({ yacht_id: yachtId });
-  if (params.department) qs.set('department', params.department);
+  if (params.department && params.department !== 'all') qs.set('department', params.department);
   if (params.status) qs.set('status', params.status);
-  const response = await fetch(`${baseUrl}/v1/hours-of-rest/signoffs?${qs.toString()}`, {
+  const response = await fetch(`/api/v1/hours-of-rest/signoffs?${qs.toString()}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',

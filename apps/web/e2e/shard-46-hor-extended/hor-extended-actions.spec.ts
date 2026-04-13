@@ -128,8 +128,8 @@ test.describe('[Captain] list_crew_warnings — HARD PROOF', () => {
 // acknowledge_warning — ADVISORY (requires valid warning_id)
 // ===========================================================================
 
-test.describe('[Captain] acknowledge_warning — ADVISORY', () => {
-  test('acknowledge_warning with invalid ID → 400/404/500', async ({
+test.describe('[Captain] acknowledge_warning — HARD PROOF', () => {
+  test('acknowledge_warning with invalid ID → 200 (no-op) or 404', async ({
     captainPage,
   }) => {
     await captainPage.goto(`${BASE_URL}/`);
@@ -138,10 +138,11 @@ test.describe('[Captain] acknowledge_warning — ADVISORY', () => {
     const result = await callActionDirect(captainPage, 'acknowledge_warning', {
       warning_id: '00000000-0000-0000-0000-000000000000',
     });
-    console.log(`[JSON] acknowledge_warning (advisory): status=${result.status}`);
+    console.log(`[JSON] acknowledge_warning (invalid id): status=${result.status}`);
 
-    // Handler may return 200 (no-op) instead of 404 for nonexistent warning IDs
-    expect([200, 400, 404, 500]).toContain(result.status);
+    // 200 = handler treats non-existent as no-op (acceptable), 404 = correct not-found
+    // 500 is never acceptable — backend must not crash on invalid UUID
+    expect([200, 404]).toContain(result.status);
   });
 });
 
@@ -149,8 +150,8 @@ test.describe('[Captain] acknowledge_warning — ADVISORY', () => {
 // dismiss_warning — ADVISORY (requires valid warning_id + justification)
 // ===========================================================================
 
-test.describe('[Captain] dismiss_warning — ADVISORY', () => {
-  test('dismiss_warning with invalid ID → 400/404/500', async ({
+test.describe('[Captain] dismiss_warning — HARD PROOF', () => {
+  test('dismiss_warning with invalid ID → 404 NOT_FOUND (no crash)', async ({
     captainPage,
   }) => {
     await captainPage.goto(`${BASE_URL}/`);
@@ -158,13 +159,17 @@ test.describe('[Captain] dismiss_warning — ADVISORY', () => {
 
     const result = await callActionDirect(captainPage, 'dismiss_warning', {
       warning_id: '00000000-0000-0000-0000-000000000000',
-      hod_justification: 'S46 advisory smoke dismiss test',
+      hod_justification: 'S46 dismiss test — invalid ID',
       dismissed_by_role: 'captain',
     });
-    console.log(`[JSON] dismiss_warning (advisory): status=${result.status}`);
+    console.log(`[JSON] dismiss_warning (invalid id): status=${result.status}, data=${JSON.stringify(result.data)}`);
 
-    // Handler may return 200 (no-op) instead of 404 for nonexistent warning IDs
-    expect([200, 400, 404, 500]).toContain(result.status);
+    // BUG-HOR-3 was fixed: .maybe_single() crash replaced with explicit NOT_FOUND check.
+    // Invalid signoff_id must now return NOT_FOUND, not DATABASE_ERROR / 500.
+    expect(result.status).toBe(200); // action bus wraps errors in 200 envelope
+    const data = result.data as { success?: boolean; error?: { code?: string } };
+    expect(data.success).toBe(false);
+    expect(data.error?.code).toBe('NOT_FOUND');
   });
 });
 
@@ -195,8 +200,8 @@ test.describe('[Captain] list_monthly_signoffs — HARD PROOF', () => {
 // get_monthly_signoff — HARD PROOF (READ, requires valid signoff_id)
 // ===========================================================================
 
-test.describe('[Captain] get_monthly_signoff — ADVISORY', () => {
-  test('get_monthly_signoff with invalid ID → 404/500', async ({
+test.describe('[Captain] get_monthly_signoff — HARD PROOF', () => {
+  test('get_monthly_signoff with invalid ID → NOT_FOUND error', async ({
     captainPage,
   }) => {
     await captainPage.goto(`${BASE_URL}/`);
@@ -206,10 +211,14 @@ test.describe('[Captain] get_monthly_signoff — ADVISORY', () => {
       yacht_id: RBAC_CONFIG.yachtId,
       signoff_id: '00000000-0000-0000-0000-000000000000',
     });
-    console.log(`[JSON] get_monthly_signoff (invalid ID): status=${result.status}`);
+    console.log(`[JSON] get_monthly_signoff (invalid ID): status=${result.status}, data=${JSON.stringify(result.data)}`);
 
-    // Handler may return 200 with empty data, 400 for validation, or 404 for nonexistent IDs
-    expect([200, 400, 404, 500]).toContain(result.status);
+    // get_monthly_signoff uses .maybe_single() with explicit NOT_FOUND check.
+    // A zero-UUID must return success:false, error.code NOT_FOUND — never a 500.
+    expect(result.status).toBe(200);
+    const data = result.data as { success?: boolean; error?: { code?: string } };
+    expect(data.success).toBe(false);
+    expect(data.error?.code).toBe('NOT_FOUND');
   });
 });
 
@@ -229,14 +238,14 @@ test.describe('[Captain] upsert_hours_of_rest — ADVISORY (bug re-check)', () =
       yacht_id: RBAC_CONFIG.yachtId,
       user_id: CAPTAIN_USER_ID,
       record_date: '2025-02-01',
-      rest_periods: [{ hours: 8 }, { hours: 2 }],
-      location: 'at_sea',
-      voyage_type: 'at_sea',
+      // work_periods (not rest_periods) — backend derives rest as 24h complement
+      work_periods: [{ start: '08:00', end: '20:00' }],
     });
-    console.log(`[JSON] upsert_hours_of_rest (advisory re-check): status=${result.status}`);
+    console.log(`[JSON] upsert_hours_of_rest (advisory re-check): status=${result.status}, data=${JSON.stringify(result.data)}`);
 
-    // PROMOTED: SyncQueryRequestBuilder fix — separate SELECT after UPDATE/INSERT
     expect(result.status).toBe(200);
+    const data = result.data as { success?: boolean };
+    expect(data.success).toBe(true);
   });
 });
 

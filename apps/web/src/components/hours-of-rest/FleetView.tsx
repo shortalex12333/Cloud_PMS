@@ -3,8 +3,17 @@
 /**
  * FleetView — Fleet Manager cross-vessel Hours of Rest overview
  *
- * Phase 1: renders vessel cards from bootstrap fleet_vessels[].
- * Phase 6: wires to /api/v1/hours-of-rest/fleet-compliance for live data.
+ * Wired to GET /api/v1/hours-of-rest/fleet-compliance
+ * Returns per-vessel compliance aggregates for all managed vessels.
+ *
+ * Field contract (backend → component):
+ *   vessels[].yacht_id              → VesselSummary.yacht_id
+ *   vessels[].yacht_name            → VesselSummary.yacht_name (falls back to user.fleet_vessels)
+ *   vessels[].compliance_pct        → VesselSummary.compliance_pct
+ *   vessels[].total_crew            → VesselSummary.total_crew
+ *   vessels[].violations_this_week  → VesselSummary.violations_this_week
+ *   vessels[].departments_finalized → VesselSummary.departments_finalized
+ *   vessels[].departments_total     → VesselSummary.departments_total
  */
 
 import * as React from 'react';
@@ -13,31 +22,93 @@ import { useAuth } from '@/hooks/useAuth';
 interface VesselSummary {
   yacht_id: string;
   yacht_name: string;
-  // Phase 6: populated from fleet-compliance API
   compliance_pct?: number;
   total_crew?: number;
   violations_this_week?: number;
   departments_finalized?: number;
   departments_total?: number;
-  loading?: boolean;
+  error?: boolean;
+}
+
+function getCurrentWeekStart(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diff);
+  return mon.toISOString().slice(0, 10);
+}
+
+function normalizeFleetCompliance(json: any, fallbackVessels: { yacht_id: string; yacht_name: string }[]): VesselSummary[] {
+  /**
+   * Normalises GET /fleet-compliance response.
+   * Real API deviations:
+   *   - vessels[] may omit yacht_name if fleet_registry lookup failed → fall back to user.fleet_vessels
+   *   - vessels[] may have error:"unavailable" for individual vessel failures
+   */
+  const nameById: Record<string, string> = {};
+  for (const v of fallbackVessels) nameById[v.yacht_id] = v.yacht_name;
+
+  const raw: any[] = Array.isArray(json?.vessels) ? json.vessels : [];
+  return raw.map(v => ({
+    yacht_id:              v.yacht_id ?? '',
+    yacht_name:            v.yacht_name || nameById[v.yacht_id] || v.yacht_id?.slice(0, 8) || '—',
+    compliance_pct:        v.compliance_pct ?? undefined,
+    total_crew:            v.total_crew ?? undefined,
+    violations_this_week:  v.violations_this_week ?? undefined,
+    departments_finalized: v.departments_finalized ?? undefined,
+    departments_total:     v.departments_total ?? undefined,
+    error:                 v.error === 'unavailable',
+  }));
 }
 
 function complianceColor(pct: number | undefined): string {
   if (pct === undefined) return 'rgba(255,255,255,0.3)';
-  if (pct >= 100) return 'rgba(34,197,94,0.9)';
-  if (pct >= 90) return 'rgba(245,158,11,0.9)';
+  if (pct >= 95) return 'rgba(34,197,94,0.9)';
+  if (pct >= 80) return 'rgba(245,158,11,0.9)';
   return 'rgba(239,68,68,0.9)';
 }
 
 export function FleetView() {
-  const { user } = useAuth();
-  const vessels: VesselSummary[] = (user?.fleet_vessels ?? []).map(v => ({
-    yacht_id: v.yacht_id,
-    yacht_name: v.yacht_name,
-    loading: true, // Phase 6: will be replaced by real data fetch
-  }));
+  const { user, session } = useAuth();
+  const fallbackVessels = user?.fleet_vessels ?? [];
 
-  if (vessels.length === 0) {
+  const [vessels, setVessels] = React.useState<VesselSummary[]>(
+    // Optimistic render: show vessel names immediately while data loads
+    fallbackVessels.map(v => ({ yacht_id: v.yacht_id, yacht_name: v.yacht_name }))
+  );
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const token = session?.access_token;
+    if (!token) { setLoading(false); return; }
+
+    const weekStart = getCurrentWeekStart();
+    setLoading(true);
+    setError(null);
+
+    fetch(`/api/v1/hours-of-rest/fleet-compliance?week_start=${weekStart}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => {
+        if (!res.ok) throw new Error(`fleet-compliance ${res.status}`);
+        return res.json();
+      })
+      .then(json => {
+        const normalized = normalizeFleetCompliance(json, fallbackVessels);
+        // If API returned nothing, fall back to vessel list with no compliance data
+        setVessels(normalized.length > 0 ? normalized : fallbackVessels.map(v => ({
+          yacht_id: v.yacht_id, yacht_name: v.yacht_name,
+        })));
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to load fleet data');
+      })
+      .finally(() => setLoading(false));
+  }, [session?.access_token]);
+
+  if (vessels.length === 0 && !loading) {
     return (
       <div style={{
         padding: 48,
@@ -55,15 +126,38 @@ export function FleetView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* ── Header ── */}
-      <div style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 9,
-        color: 'rgba(255,255,255,0.25)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.10em',
-      }}>
-        Fleet Overview — {vessels.length} vessel{vessels.length !== 1 ? 's' : ''}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          color: 'rgba(255,255,255,0.25)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.10em',
+        }}>
+          Fleet Overview — {vessels.length} vessel{vessels.length !== 1 ? 's' : ''}
+        </div>
+        {loading && (
+          <div style={{
+            width: 12, height: 12,
+            border: '1.5px solid rgba(255,255,255,0.1)',
+            borderTopColor: 'rgba(90,171,204,0.6)',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+        )}
       </div>
+
+      {error && (
+        <div style={{
+          fontFamily: 'var(--font-mono)', fontSize: 10,
+          color: 'rgba(239,68,68,0.7)',
+          background: 'rgba(239,68,68,0.05)',
+          border: '1px solid rgba(239,68,68,0.15)',
+          borderRadius: 6, padding: '8px 12px',
+        }}>
+          {error}
+        </div>
+      )}
 
       {/* ── Vessel cards ── */}
       <div style={{
@@ -92,7 +186,11 @@ export function FleetView() {
               {vessel.yacht_name}
             </div>
 
-            {vessel.loading ? (
+            {vessel.error ? (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(239,68,68,0.5)' }}>
+                Data unavailable
+              </div>
+            ) : loading && vessel.compliance_pct === undefined ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[1, 2, 3].map(i => (
                   <div key={i} style={{
@@ -102,16 +200,6 @@ export function FleetView() {
                     animation: 'pulse 1.5s ease-in-out infinite',
                   }} />
                 ))}
-                <div style={{
-                  marginTop: 4,
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 8,
-                  color: 'rgba(255,255,255,0.2)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                }}>
-                  Live data — Phase 6
-                </div>
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -143,20 +231,6 @@ export function FleetView() {
             )}
           </div>
         ))}
-      </div>
-
-      {/* ── Phase 6 notice ── */}
-      <div style={{
-        padding: '10px 14px',
-        background: 'rgba(90,171,204,0.04)',
-        border: '1px solid rgba(90,171,204,0.12)',
-        borderRadius: 6,
-        fontFamily: 'var(--font-mono)',
-        fontSize: 9,
-        color: 'rgba(90,171,204,0.45)',
-        letterSpacing: '0.04em',
-      }}>
-        Cross-vessel compliance data wires in Phase 6. Vessel list is live from your fleet assignment.
       </div>
 
     </div>

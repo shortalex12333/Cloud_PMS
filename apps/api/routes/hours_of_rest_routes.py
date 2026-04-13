@@ -113,11 +113,18 @@ class ViewHoursRequest(BaseModel):
 
 
 class UpdateHoursRequest(BaseModel):
-    """Request body for upsert endpoint (MUTATE - signature optional)."""
+    """Request body for upsert endpoint (MUTATE - signature optional).
+
+    Work/rest inversion (2026-04-13):
+      Crew now inputs work_periods; backend derives rest_periods as 24h complement.
+      rest_periods is kept as an optional alias so any existing direct callers do not 500,
+      but the handler ignores it — only work_periods is processed.
+    """
     # Note: yacht_id comes from JWT auth context, this field is ignored for security
     yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
     record_date: str = Field(..., description="Record date YYYY-MM-DD")
-    rest_periods: list = Field(..., description="Array of rest period objects")
+    work_periods: Optional[list] = Field(None, description="Array of {start, end} work period objects. Empty = full rest day.")
+    rest_periods: Optional[list] = Field(None, description="DEPRECATED: ignored. Backend derives rest from work_periods complement.")
     signature: Optional[Dict[str, Any]] = Field(None, description="Digital signature (optional, included in audit trail)")
     daily_compliance_notes: Optional[str] = Field(None, description="Optional notes")
 
@@ -304,13 +311,16 @@ async def upsert_hours_of_rest_route(
 
     # Call handler
     try:
+        # work_periods is the canonical field. If caller sends only the deprecated
+        # rest_periods, pass an empty work_periods so the handler returns a full rest day.
+        work_periods = request.work_periods if request.work_periods is not None else []
         result = await hor_handlers.upsert_hours_of_rest(
             entity_id=user_id_from_jwt,  # HOR updates are for self
             yacht_id=yacht_id,
             user_id=user_id_from_jwt,
             payload={
                 "record_date": request.record_date,
-                "rest_periods": request.rest_periods,
+                "work_periods": work_periods,
                 "signature": request.signature,
                 "daily_compliance_notes": request.daily_compliance_notes
             }
