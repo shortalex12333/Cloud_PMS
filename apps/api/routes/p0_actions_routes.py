@@ -1127,7 +1127,17 @@ async def execute_action(
                 if meta:
                     try:
                         from routes.handlers.ledger_utils import build_ledger_event
+                        _ACTION_SUMMARY = {
+                            "add_note": "Note added",
+                            "upload_document": "Document uploaded",
+                            "reorder_part": "Part reorder requested",
+                            "adjust_stock_quantity": "Stock quantity adjusted",
+                            "add_checklist_item": "Checklist item added",
+                            "complete_checklist_item": "Checklist item completed",
+                        }
                         entity_id = payload.get(meta["entity_id_field"]) or yacht_id
+                        _summary = _ACTION_SUMMARY.get(action) or action.replace("_", " ").capitalize()
+                        _entity_name = result.get("entity_name") if isinstance(result, dict) else None
                         ledger_event = build_ledger_event(
                             yacht_id=yacht_id,
                             user_id=user_id,
@@ -1136,6 +1146,8 @@ async def execute_action(
                             entity_id=entity_id,
                             action=action,
                             user_role=user_context.get("role"),
+                            change_summary=_summary,
+                            entity_name=_entity_name,
                         )
                         db_client.table("ledger_events").insert(ledger_event).execute()
                     except Exception as _ledger_err:

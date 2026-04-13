@@ -35,6 +35,11 @@ async def update_work_order(
 ) -> dict:
     work_order_id = payload.get("work_order_id")
 
+    # Fetch before state
+    prev_result = db_client.table("pms_work_orders").select("id, title, description, priority, status").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    prev = prev_result.data or {}
+    entity_name = prev.get("title") or ""
+
     # Build update data
     update_data = {"updated_by": user_id, "updated_at": datetime.now(timezone.utc).isoformat()}
     if payload.get("description"):
@@ -49,7 +54,28 @@ async def update_work_order(
 
     wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
     if wo_result.data:
-        return {"status": "success", "message": "Work order updated"}
+        try:
+            diff_fields = ("title", "description", "priority")
+            changes = []
+            for f in diff_fields:
+                old_val = prev.get(f)
+                new_val = update_data.get(f)
+                if new_val is not None and old_val != new_val:
+                    changes.append(f"{f}: {old_val} → {new_val}")
+            summary = "Work order updated" + (" — " + ", ".join(changes) if changes else "")
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id, user_id=user_id, event_type="update",
+                entity_type="work_order", entity_id=work_order_id, action="update_work_order",
+                user_role=user_context.get("role"), change_summary=summary,
+                entity_name=entity_name,
+                previous_state={f: prev.get(f) for f in diff_fields},
+                new_state={f: update_data.get(f, prev.get(f)) for f in diff_fields},
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record update_work_order: {ledger_err}")
+        return {"status": "success", "message": "Work order updated", "_ledger_written": True}
     else:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update work order"}
 
@@ -68,6 +94,11 @@ async def assign_work_order(
     work_order_id = payload.get("work_order_id")
     assigned_to = payload.get("assigned_to")
 
+    prev_result = db_client.table("pms_work_orders").select("id, title, assigned_to").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    prev = prev_result.data or {}
+    entity_name = prev.get("title") or ""
+    prev_assigned = prev.get("assigned_to")
+
     update_data = {
         "assigned_to": assigned_to,
         "updated_by": user_id,
@@ -79,7 +110,11 @@ async def assign_work_order(
             ledger_event = build_ledger_event(
                 yacht_id=yacht_id, user_id=user_id, event_type="assignment",
                 entity_type="work_order", entity_id=work_order_id, action="assign_work_order",
-                user_role=user_context.get("role"), change_summary="Work order assigned",
+                user_role=user_context.get("role"),
+                change_summary=f"Work order assigned — assigned_to: {prev_assigned} → {assigned_to}",
+                entity_name=entity_name,
+                previous_state={"assigned_to": prev_assigned},
+                new_state={"assigned_to": assigned_to},
             )
             db_client.table("ledger_events").insert(ledger_event).execute()
         except Exception as ledger_err:
@@ -103,18 +138,27 @@ async def close_work_order(
 ) -> dict:
     work_order_id = payload.get("work_order_id")
 
+    prev_result = db_client.table("pms_work_orders").select("id, title, status").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    prev = prev_result.data or {}
+    entity_name = prev.get("title") or ""
+    prev_status = prev.get("status", "open")
+
     # Note: completed_by has FK to non-existent users table, skip it
     update_data = {
         "status": "completed",
         "completed_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
-    if payload.get("completion_notes"):
-        update_data["completion_notes"] = payload["completion_notes"]
+    completion_notes = payload.get("completion_notes")
+    if completion_notes:
+        update_data["completion_notes"] = completion_notes
 
     wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
     if wo_result.data:
         try:
+            new_state = {"status": "completed"}
+            if completion_notes:
+                new_state["completion_notes"] = completion_notes
             ledger_event = build_ledger_event(
                 yacht_id=yacht_id,
                 user_id=user_id,
@@ -123,7 +167,10 @@ async def close_work_order(
                 entity_id=work_order_id,
                 action="close_work_order",
                 user_role=user_context.get("role"),
-                change_summary="Work order closed",
+                change_summary=f"Work order closed — status: {prev_status} → completed",
+                entity_name=entity_name,
+                previous_state={"status": prev_status},
+                new_state=new_state,
             )
             db_client.table("ledger_events").insert(ledger_event).execute()
         except Exception as ledger_err:
@@ -147,13 +194,17 @@ async def add_wo_hours(
 ) -> dict:
     work_order_id = payload.get("work_order_id")
     hours = payload.get("hours", 0)
+    hours_description = payload.get("description", "Work performed")
+
+    wo_result = db_client.table("pms_work_orders").select("id, title").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    entity_name = (wo_result.data or {}).get("title") or ""
 
     # Add to work order notes as hours entry
     # Note: created_by is NOT NULL, use authenticated user_id
     # Note: note_type must be 'general' or 'progress'
     note_data = {
         "work_order_id": work_order_id,
-        "note_text": f"Hours logged: {hours}h - {payload.get('description', 'Work performed')}",
+        "note_text": f"Hours logged: {hours}h - {hours_description}",
         "note_type": "progress",
         "created_by": user_id,
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -170,6 +221,8 @@ async def add_wo_hours(
                 action="add_wo_hours",
                 user_role=user_context.get("role"),
                 change_summary=f"Logged {hours} hours",
+                entity_name=entity_name,
+                new_state={"hours": hours, "description": hours_description},
             )
             db_client.table("ledger_events").insert(ledger_event).execute()
         except Exception as ledger_err:
@@ -267,6 +320,9 @@ async def add_wo_note(
         "created_by": user_id,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
+    wo_result = db_client.table("pms_work_orders").select("id, title").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    entity_name = (wo_result.data or {}).get("title") or ""
+
     note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
     if note_result.data:
         result = {"status": "success", "message": "Note added to work order"}
@@ -280,6 +336,8 @@ async def add_wo_note(
                 action="add_wo_note",
                 user_role=user_context.get("role"),
                 change_summary="Note added to work order",
+                entity_name=entity_name,
+                new_state={"note_text": note_text, "note_type": note_type, "added_by": user_id},
             )
             db_client.table("ledger_events").insert(ledger_event).execute()
         except Exception as ledger_err:
@@ -305,6 +363,11 @@ async def start_work_order(
 ) -> dict:
     work_order_id = payload.get("work_order_id")
 
+    prev_result = db_client.table("pms_work_orders").select("id, title, status").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    prev = prev_result.data or {}
+    entity_name = prev.get("title") or ""
+    prev_status = prev.get("status", "planned")
+
     # Note: started_at column doesn't exist, just update status
     update_data = {
         "status": "in_progress",
@@ -317,7 +380,11 @@ async def start_work_order(
             ledger_event = build_ledger_event(
                 yacht_id=yacht_id, user_id=user_id, event_type="status_change",
                 entity_type="work_order", entity_id=work_order_id, action="start_work_order",
-                user_role=user_context.get("role"), change_summary="Work order started",
+                user_role=user_context.get("role"),
+                change_summary=f"Work order started — status: {prev_status} → in_progress",
+                entity_name=entity_name,
+                previous_state={"status": prev_status},
+                new_state={"status": "in_progress"},
             )
             db_client.table("ledger_events").insert(ledger_event).execute()
         except Exception as ledger_err:
@@ -341,6 +408,11 @@ async def cancel_work_order(
 ) -> dict:
     work_order_id = payload.get("work_order_id")
 
+    prev_result = db_client.table("pms_work_orders").select("id, title, status").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    prev = prev_result.data or {}
+    entity_name = prev.get("title") or ""
+    prev_status = prev.get("status", "open")
+
     # Note: cancellation columns don't exist, just update status and add note
     update_data = {
         "status": "cancelled",
@@ -353,7 +425,11 @@ async def cancel_work_order(
             ledger_event = build_ledger_event(
                 yacht_id=yacht_id, user_id=user_id, event_type="status_change",
                 entity_type="work_order", entity_id=work_order_id, action="cancel_work_order",
-                user_role=user_context.get("role"), change_summary="Work order cancelled",
+                user_role=user_context.get("role"),
+                change_summary=f"Work order cancelled — status: {prev_status} → cancelled",
+                entity_name=entity_name,
+                previous_state={"status": prev_status},
+                new_state={"status": "cancelled"},
             )
             db_client.table("ledger_events").insert(ledger_event).execute()
         except Exception as ledger_err:
@@ -463,7 +539,25 @@ async def create_work_order(
             # Log audit failure but don't fail the action
             logger.warning(f"Audit log failed for create_work_order (work_order_id={work_order_id}): {audit_err}")
 
-        return {"status": "success", "work_order_id": work_order_id, "message": "Work order created"}
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id, user_id=user_id, event_type="create",
+                entity_type="work_order", entity_id=work_order_id, action="create_work_order",
+                user_role=user_context.get("role"),
+                change_summary=f"Work order created: {title}",
+                entity_name=title,
+                new_state={
+                    "title": title,
+                    "status": "planned",
+                    "priority": wo_data.get("priority"),
+                    "work_order_type": wo_data.get("work_order_type"),
+                },
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record create_work_order: {ledger_err}")
+        return {"status": "success", "work_order_id": work_order_id, "message": "Work order created", "_ledger_written": True}
     else:
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to create work order"}
 

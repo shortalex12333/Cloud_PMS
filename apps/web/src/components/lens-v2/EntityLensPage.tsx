@@ -121,7 +121,11 @@ export function EntityLensPage({
 
   const signalCount = signalData?.items?.length ?? 0;
 
-  useReadBeacon(entityType, entityId);
+  useReadBeacon(
+    entityType,
+    entityId,
+    String(lens.entity?.title ?? lens.entity?.name ?? lens.entity?.reference_number ?? pageTitle ?? entityType.replace(/_/g, ' '))
+  );
 
   const handleNavigate = React.useCallback(
     (type: string, id: string) => {
