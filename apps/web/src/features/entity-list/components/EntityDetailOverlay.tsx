@@ -48,6 +48,8 @@ export function EntityDetailOverlay({
 
       {/* Overlay content - 90% of screen */}
       <div
+        role="dialog"
+        aria-modal="true"
         className={cn(
           'relative z-10',
           'w-[90vw] h-[90vh]',
