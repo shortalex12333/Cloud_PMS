@@ -391,6 +391,33 @@ export function DepartmentView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+      {/* ── View identity header ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        paddingBottom: 12,
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'rgba(90,171,204,0.8)',
+          background: 'rgba(90,171,204,0.08)',
+          border: '1px solid rgba(90,171,204,0.20)',
+          borderRadius: 4,
+          padding: '3px 8px',
+        }}>
+          {data.department ? `${data.department.toUpperCase()} DEPT` : 'YOUR DEPARTMENT'}
+        </span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          HOD view — crew under your supervision only
+        </span>
+      </div>
+
       {/* ── Week nav ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => shiftWeek(-1)} style={navBtnStyle}>←</button>
@@ -398,9 +425,6 @@ export function DepartmentView() {
           {weekLabel}
         </span>
         <button onClick={() => shiftWeek(1)} style={navBtnStyle}>→</button>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginLeft: 4 }}>
-          {data.department}
-        </span>
       </div>
 
       {/* ── Violation alert notifications ── */}
