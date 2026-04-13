@@ -412,28 +412,82 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   }
 
   // ── Sign week (Submit Week For Approval) ──
+  // Two-step flow:
+  //   1. Create a weekly signoff (period_type=weekly, week_start=data.week_start, department)
+  //   2. Sign it at crew level (signoff_id, signature_level=crew, signature_data)
 
   async function handleSignWeek(values: Record<string, unknown>) {
+    if (!data) return;
     const auth = await getAuthHeader();
-    await fetch('/api/v1/hours-of-rest/signoffs/sign', {
+    const weekStart = (data as any).week_start as string;
+    const department = (data as any).department || 'general';
+    const month = weekStart.slice(0, 7); // YYYY-MM
+
+    // Step 1: Create the weekly signoff
+    const createResp = await fetch('/api/v1/hours-of-rest/signoffs/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': auth },
-      body: JSON.stringify({ type: 'crew_weekly', ...values }),
+      body: JSON.stringify({
+        period_type: 'weekly',
+        week_start: weekStart,
+        month,
+        department,
+      }),
     });
+    const createJson = await createResp.json().catch(() => null);
+    const signoffId = createJson?.data?.signoff?.id ?? createJson?.signoff?.id ?? null;
+
+    // Tolerate duplicate — if signoff already exists for this week, fetch its id
+    if (!signoffId && createJson?.error?.code === 'DUPLICATE_ERROR') {
+      // Try fetching existing signoff id from data
+      const existingId = (data as any).pending_signoff?.id ?? null;
+      if (!existingId) {
+        // Can't proceed without signoff id
+        return;
+      }
+      await _signAtCrewLevel(existingId, auth, values);
+    } else if (signoffId) {
+      await _signAtCrewLevel(signoffId, auth, values);
+    }
+
     weekFinalised.current = true;
     setSignWeekOpen(false);
     await loadWeekData();
   }
 
+  async function _signAtCrewLevel(signoffId: string, auth: string, values: Record<string, unknown>) {
+    await fetch('/api/v1/hours-of-rest/signoffs/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+      body: JSON.stringify({
+        signoff_id: signoffId,
+        signature_level: 'crew',
+        signature_data: {
+          name: (values as any).name ?? 'Crew member',
+          timestamp: new Date().toISOString(),
+        },
+        notes: (values as any).notes ?? null,
+      }),
+    });
+  }
+
   // ── Sign monthly ──
 
   async function handleSignMonthly(values: Record<string, unknown>) {
-    if (!data?.pending_signoff) return;
+    if (!data?.pending_signoff?.id) return;
     const auth = await getAuthHeader();
     await fetch('/api/v1/hours-of-rest/signoffs/sign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': auth },
-      body: JSON.stringify({ signoff_id: data.pending_signoff.id, type: 'crew_sign', ...values }),
+      body: JSON.stringify({
+        signoff_id: data.pending_signoff.id,
+        signature_level: 'crew',
+        signature_data: {
+          name: (values as any).name ?? 'Crew member',
+          timestamp: new Date().toISOString(),
+        },
+        notes: (values as any).notes ?? null,
+      }),
     });
     setSignMonthlyOpen(false);
     await loadWeekData();

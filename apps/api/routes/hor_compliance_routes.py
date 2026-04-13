@@ -75,8 +75,9 @@ async def get_my_week(
       pms_hor_monthly_signoffs.
     - templates: user's available active templates from pms_crew_normal_hours.
     """
-    user_id  = auth["user_id"]
-    yacht_id = auth["yacht_id"]
+    user_id    = auth["user_id"]
+    yacht_id   = auth["yacht_id"]
+    department = auth.get("department", "general")
     tenant_key_alias = auth["tenant_key_alias"]
 
     week_monday = _parse_week_start(week_start)
@@ -93,7 +94,7 @@ async def get_my_week(
         # 1. Daily records for the week
         # ------------------------------------------------------------------
         records_r = supabase.table("pms_hours_of_rest").select(
-            "id, record_date, rest_periods, total_rest_hours, total_work_hours, "
+            "id, record_date, work_periods, rest_periods, total_rest_hours, total_work_hours, "
             "is_daily_compliant, is_weekly_compliant, daily_compliance_notes, "
             "location, voyage_type, updated_at"
         ).eq("yacht_id", yacht_id).eq("user_id", user_id).gte(
@@ -136,6 +137,7 @@ async def get_my_week(
             if rec is None:
                 days.append({
                     "record_date":          dstr,
+                    "work_periods":         [],
                     "rest_periods":         [],
                     "total_rest_hours":     0,
                     "total_work_hours":     0,
@@ -239,6 +241,7 @@ async def get_my_week(
             "week_start":     week_monday.isoformat(),
             "week_end":       week_end.isoformat(),
             "user_id":        user_id,
+            "department":     department,
             "days":           days,
             "compliance":     compliance,
             "pending_signoff": pending_signoff,
