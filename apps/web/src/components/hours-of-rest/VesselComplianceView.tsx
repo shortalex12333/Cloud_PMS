@@ -427,6 +427,33 @@ export function VesselComplianceView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+      {/* ── View identity header ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        paddingBottom: 12,
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'rgba(168,85,247,0.8)',
+          background: 'rgba(168,85,247,0.08)',
+          border: '1px solid rgba(168,85,247,0.20)',
+          borderRadius: 4,
+          padding: '3px 8px',
+        }}>
+          VESSEL OVERVIEW
+        </span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          All departments — captain / fleet manager view
+        </span>
+      </div>
+
       {/* ── Week nav ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => shiftWeek(-1)} style={navBtnStyle}>←</button>

@@ -318,15 +318,16 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   // ── Submit single day ──
 
   async function submitDay(date: string) {
-    const periods = draftPeriods[date];
-    if (!periods?.length) return;
+    // draftPeriods[date] holds WORK periods from the slider.
+    // Blank (no work blocks) = valid 24h rest day — still submittable.
+    const workPeriods: RestPeriod[] = draftPeriods[date] ?? [];
     setSubmitting(prev => ({ ...prev, [date]: true }));
     try {
       const auth = await getAuthHeader();
       const resp = await fetch('/api/v1/hours-of-rest/upsert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
-        body: JSON.stringify({ record_date: date, rest_periods: periods }),
+        body: JSON.stringify({ record_date: date, work_periods: workPeriods }),
       });
       const json = await resp.json().catch(() => null);
 
@@ -683,7 +684,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
 
                 {/* Slider */}
                 <TimeSlider
-                  value={isSubmitted ? (localSubmit?.rest_periods ?? day.rest_periods) : draft}
+                  value={isSubmitted ? (localSubmit?.work_periods ?? day.work_periods ?? []) : draft}
                   readOnly={isSubmitted}
                   onChange={periods => setDraftPeriods(prev => ({ ...prev, [day.date]: periods }))}
                 />

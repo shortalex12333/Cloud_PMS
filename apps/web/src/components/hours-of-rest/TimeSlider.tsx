@@ -1,18 +1,16 @@
 'use client';
 
 /**
- * TimeSlider — 24-hour rest period input
+ * TimeSlider — 24-hour WORK period input
+ *
+ * User draws WORK blocks (amber). Blank slider = no work = 24h rest (valid).
+ * onChange emits work_periods. Use invertToRestPeriods() if you need rest_periods.
  *
  * Interaction:
- * - Click empty track → creates a new 1-hour block at that position
- * - Drag left handle → resize block start
- * - Drag right handle → resize block end
- * - Drag block body → move entire block
- * - "×" button on block → remove block
- *
- * Output (via onChange):
- *   rest_periods: [{start: "HH:MM", end: "HH:MM"}, ...]
- *   Sorted by start time. Overlaps are resolved on mouseUp by clamping.
+ * - Click empty track → creates a new 1-hour work block
+ * - Drag left/right handles → resize
+ * - Drag block body → move
+ * - "×" → remove block
  */
 
 import * as React from 'react';
@@ -24,6 +22,22 @@ export interface RestPeriod {
   end: string;   // "HH:MM"
 }
 
+/** Invert work_periods into rest_periods (24h complement). Empty work = [{00:00–24:00}]. */
+export function invertToRestPeriods(workPeriods: RestPeriod[]): RestPeriod[] {
+  if (!workPeriods.length) return [{ start: '00:00', end: '24:00' }];
+  const sorted = [...workPeriods].sort((a, b) => a.start.localeCompare(b.start));
+  const gaps: RestPeriod[] = [];
+  if (sorted[0].start > '00:00') gaps.push({ start: '00:00', end: sorted[0].start });
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (sorted[i].end < sorted[i + 1].start) {
+      gaps.push({ start: sorted[i].end, end: sorted[i + 1].start });
+    }
+  }
+  const last = sorted[sorted.length - 1];
+  if (last.end < '24:00') gaps.push({ start: last.end, end: '24:00' });
+  return gaps;
+}
+
 interface Block {
   id: string;
   startMin: number; // 0–1440
@@ -31,9 +45,9 @@ interface Block {
 }
 
 interface TimeSliderProps {
-  /** Initial rest periods from saved/submitted data */
+  /** Initial work periods from saved/submitted data */
   value?: RestPeriod[];
-  /** Called every time blocks change */
+  /** Called every time blocks change — emits work_periods */
   onChange: (periods: RestPeriod[]) => void;
   /** If true: read-only (submitted day, no editing) */
   readOnly?: boolean;
@@ -297,7 +311,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
           }} />
         ))}
 
-        {/* Rest blocks (teal = REST) */}
+        {/* Work blocks (amber = WORK) */}
         {blocks.map(block => {
           const left = minutesToPercent(block.startMin);
           const width = minutesToPercent(block.endMin - block.startMin);
@@ -313,8 +327,8 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                 width: `${width}%`,
                 top: 1,
                 bottom: 1,
-                background: 'rgba(90,171,204,0.35)',
-                border: '1px solid rgba(90,171,204,0.55)',
+                background: 'rgba(245,158,11,0.25)',
+                border: '1px solid rgba(245,158,11,0.50)',
                 borderRadius: 3,
                 display: 'flex',
                 alignItems: 'center',
@@ -339,7 +353,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                     justifyContent: 'center',
                   }}
                 >
-                  <div style={{ width: 2, height: 10, background: 'rgba(90,171,204,0.8)', borderRadius: 1 }} />
+                  <div style={{ width: 2, height: 10, background: 'rgba(245,158,11,0.8)', borderRadius: 1 }} />
                 </div>
               )}
 
@@ -360,7 +374,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                   <span style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: 8,
-                    color: 'rgba(90,171,204,0.9)',
+                    color: 'rgba(245,158,11,0.9)',
                     whiteSpace: 'nowrap',
                     pointerEvents: 'none',
                   }}>{label}</span>
@@ -384,7 +398,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                     justifyContent: 'center',
                   }}
                 >
-                  <div style={{ width: 2, height: 10, background: 'rgba(90,171,204,0.8)', borderRadius: 1 }} />
+                  <div style={{ width: 2, height: 10, background: 'rgba(245,158,11,0.8)', borderRadius: 1 }} />
                 </div>
               )}
 
@@ -429,11 +443,11 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
         fontSize: 9,
         color: 'rgba(255,255,255,0.35)',
       }}>
-        <span style={{ color: 'rgba(90,171,204,0.7)' }}>REST {totalRestH}h</span>
-        <span>WORK {totalWorkH}h</span>
+        <span style={{ color: 'rgba(245,158,11,0.7)' }}>WORK {totalWorkH}h</span>
+        <span>REST {totalRestH}h</span>
         {!readOnly && blocks.length === 0 && (
           <span style={{ color: 'rgba(255,255,255,0.22)', fontStyle: 'italic' }}>
-            click track to add rest period
+            click track to add work period — blank = 24h rest
           </span>
         )}
       </div>
