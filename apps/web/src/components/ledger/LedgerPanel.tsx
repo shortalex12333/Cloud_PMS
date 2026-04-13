@@ -8,7 +8,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, BookOpen, Edit3, Eye, ChevronDown, ChevronRight, Plus, Trash2, CheckSquare } from 'lucide-react';
+import { X, BookOpen, Edit3, Eye, ChevronDown, ChevronRight, Plus, Trash2, CheckSquare, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { getEntityRoute } from '@/lib/entityRoutes';
@@ -193,6 +193,13 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [showReads, setShowReads] = useState(false);
   const [viewMode, setViewMode] = useState<'me' | 'department'>('me');
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportDateFrom, setExportDateFrom] = useState('');
+  const [exportDateTo, setExportDateTo] = useState('');
+  const [exportScope, setExportScope] = useState<'me' | 'department'>('department');
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportResult, setExportResult] = useState<{ url: string; count: number; sealed: boolean } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const LIMIT = 50;
@@ -253,6 +260,32 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
     setExpandedDays(prev => { const n = new Set(prev); n.has(date) ? n.delete(date) : n.add(date); return n; });
   };
 
+  const handleExport = useCallback(async () => {
+    if (!exportDateFrom || !exportDateTo) return;
+    setExportLoading(true);
+    setExportError(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${RENDER_API_URL}/v1/ledger/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ date_from: exportDateFrom, date_to: exportDateTo, scope: exportScope }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Export failed (${res.status})`);
+      }
+      const data = await res.json();
+      setExportResult({ url: data.download_url, count: data.event_count, sealed: data.sealed });
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Export failed');
+    } finally {
+      setExportLoading(false);
+    }
+  }, [exportDateFrom, exportDateTo, exportScope]);
+
   if (!isOpen) return null;
   const dayGroups = groupEventsByDay(events);
 
@@ -268,6 +301,13 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--txt)' }}>Ledger</div>
             <div style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', marginTop: 1 }}>Activity timeline</div>
           </div>
+          <button
+            title="Export evidence PDF"
+            style={{ ...S.close, color: exportOpen ? 'var(--mark)' : 'var(--txt-ghost)' }}
+            onClick={() => { setExportOpen(true); setExportResult(null); setExportError(null); }}
+          >
+            <Download size={14} />
+          </button>
           <button style={S.close} onClick={onClose}><X size={14} /></button>
         </div>
 
@@ -282,6 +322,146 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
             <Eye size={12} /> Reads
           </button>
         </div>
+
+        {/* Export modal — overlays the body when open */}
+        {exportOpen && (
+          <div style={{
+            position: 'absolute', inset: 0, top: 57, /* below header */
+            background: 'var(--surface)', zIndex: 10,
+            display: 'flex', flexDirection: 'column', padding: '24px 20px', gap: 16,
+            borderTop: '1px solid var(--border-sub)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Download size={15} style={{ color: 'var(--mark)' }} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--txt)' }}>Export Evidence PDF</span>
+              <div style={{ flex: 1 }} />
+              <button style={S.close} onClick={() => setExportOpen(false)}><X size={14} /></button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Date range</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="date"
+                  value={exportDateFrom}
+                  onChange={e => setExportDateFrom(e.target.value)}
+                  style={{
+                    flex: 1, height: 34, padding: '0 10px', fontSize: 12,
+                    background: 'var(--surface-base)', color: 'var(--txt)',
+                    border: '1px solid var(--border-sub)', borderRadius: 4,
+                    fontFamily: 'var(--font-mono)', outline: 'none',
+                  }}
+                />
+                <span style={{ display: 'flex', alignItems: 'center', fontSize: 11, color: 'var(--txt-ghost)' }}>to</span>
+                <input
+                  type="date"
+                  value={exportDateTo}
+                  onChange={e => setExportDateTo(e.target.value)}
+                  style={{
+                    flex: 1, height: 34, padding: '0 10px', fontSize: 12,
+                    background: 'var(--surface-base)', color: 'var(--txt)',
+                    border: '1px solid var(--border-sub)', borderRadius: 4,
+                    fontFamily: 'var(--font-mono)', outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Scope</label>
+              <select
+                value={exportScope}
+                onChange={e => setExportScope(e.target.value as 'me' | 'department')}
+                style={{
+                  height: 34, padding: '0 10px', fontSize: 12,
+                  background: 'var(--surface-base)', color: 'var(--txt)',
+                  border: '1px solid var(--border-sub)', borderRadius: 4,
+                  fontFamily: 'var(--font-sans)', outline: 'none', cursor: 'pointer',
+                }}
+              >
+                <option value="me">My events only</option>
+                <option value="department">My department</option>
+              </select>
+            </div>
+
+            {exportResult ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{
+                  padding: '12px 14px', borderRadius: 6,
+                  background: 'var(--teal-bg)', border: '1px solid var(--mark-hover)',
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--mark)', marginBottom: 4 }}>
+                    Export ready — {exportResult.count} event{exportResult.count !== 1 ? 's' : ''}
+                    {exportResult.sealed && <span style={{ marginLeft: 8, fontSize: 10, background: 'var(--mark)', color: 'var(--surface)', padding: '1px 6px', borderRadius: 3 }}>SEALED</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--font-mono)' }}>Signed URL expires in 1 hour</div>
+                </div>
+                <a
+                  href={exportResult.url}
+                  download
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    height: 36, borderRadius: 5, fontSize: 12, fontWeight: 600,
+                    background: 'var(--mark)', color: 'var(--surface)',
+                    textDecoration: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <Download size={13} /> Download PDF
+                </a>
+                <button
+                  onClick={() => { setExportResult(null); setExportError(null); }}
+                  style={{
+                    height: 32, borderRadius: 5, fontSize: 11, fontWeight: 500,
+                    background: 'none', color: 'var(--txt3)',
+                    border: '1px solid var(--border-sub)', cursor: 'pointer',
+                  }}
+                >
+                  Generate another
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {exportError && (
+                  <div style={{
+                    padding: '10px 12px', borderRadius: 5, fontSize: 12,
+                    background: 'var(--red-bg, rgba(239,68,68,0.08))', color: 'var(--red)',
+                    border: '1px solid var(--red-border, rgba(239,68,68,0.25))',
+                  }}>
+                    {exportError}
+                  </div>
+                )}
+                <button
+                  onClick={handleExport}
+                  disabled={exportLoading || !exportDateFrom || !exportDateTo}
+                  style={{
+                    height: 36, borderRadius: 5, fontSize: 12, fontWeight: 600,
+                    background: (exportLoading || !exportDateFrom || !exportDateTo) ? 'var(--surface-base)' : 'var(--mark)',
+                    color: (exportLoading || !exportDateFrom || !exportDateTo) ? 'var(--txt-ghost)' : 'var(--surface)',
+                    border: 'none', cursor: (exportLoading || !exportDateFrom || !exportDateTo) ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}
+                >
+                  {exportLoading ? (
+                    <>
+                      <div style={{ width: 13, height: 13, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                      Generating…
+                    </>
+                  ) : (
+                    <><Download size={13} /> Generate PDF</>
+                  )}
+                </button>
+              </div>
+            )}
+
+            <div style={{ marginTop: 'auto', padding: '12px 0 0', borderTop: '1px solid var(--border-faint)' }}>
+              <div style={{ fontSize: 10, color: 'var(--txt-ghost)', fontFamily: 'var(--font-mono)' }}>
+                PDF is HMAC-masked · signed URL · 1hr expiry
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Body */}
         <div ref={scrollRef} style={S.body}>

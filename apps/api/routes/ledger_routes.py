@@ -7,7 +7,7 @@ Frontend (Vercel) calls these endpoints since it only has access to Master DB.
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from typing import Optional, List
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 import logging
 import hashlib
@@ -760,6 +760,22 @@ async def create_ledger_export(
             insert_row["tsa_authority"]    = sealing_info.tsa_authority
             insert_row["cert_fingerprint"] = sealing_info.cert_fingerprint
         db_client.table("ledger_exports").insert(insert_row).execute()
+
+        # ── Notify ── fire-and-forget; never blocks the export response
+        try:
+            db_client.table("ledger_notifications").insert({
+                "yacht_id":           str(resolved_yid),
+                "user_id":            str(user_id),
+                "export_id":          export_id,
+                "notification_type":  "export_complete",
+                "event_count":        len(events),
+                "sealed":             is_sealed,
+                "download_url":       download_url,
+                "expires_at":         (datetime.utcnow() + timedelta(seconds=3600)).isoformat(),
+                "is_read":            False,
+            }).execute()
+        except Exception as _notif_err:
+            logger.warning(f"[Ledger] Notification insert failed: {_notif_err}")
 
         logger.info(
             f"[Ledger] Export {export_id} — {len(events)} events, "
