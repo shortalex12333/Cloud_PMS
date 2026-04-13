@@ -680,3 +680,131 @@ async def get_vessel_compliance(
     except Exception as e:
         logger.error(f"get_vessel_compliance error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+# ===========================================================================
+# GET /v1/hours-of-rest/fleet-compliance
+# ===========================================================================
+
+@router.get("/fleet-compliance")
+async def get_fleet_compliance(
+    week_start: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Fleet Manager view: per-vessel compliance summary across all managed vessels.
+
+    Only accessible to manager/captain roles.
+
+    Returns:
+    - vessels[]: one entry per vessel with:
+      - yacht_id, yacht_name
+      - compliance_pct: 0–100 based on submitted + compliant days
+      - total_crew: count of crew with compliance rows this week
+      - violations_this_week: active warning count for the week
+      - departments_finalized: HOD-signed or finalized dept signoffs
+      - departments_total: total department signoffs for the week
+    """
+    user_role = auth.get("role", "crew")
+    user_id   = auth["user_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+
+    if user_role.lower() not in _CAPTAIN_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "FORBIDDEN", "message": f"Role '{user_role}' cannot access fleet compliance. Manager/captain required."}
+        )
+
+    week_monday = _parse_week_start(week_start)
+
+    # vessel_ids injected by auth middleware for fleet users — falls back to primary yacht
+    vessel_ids: List[str] = auth.get("vessel_ids") or [auth["yacht_id"]]
+
+    # yacht_name lookup from fleet_vessels (populated by auth middleware for fleet users)
+    fleet_vessels: List[Dict[str, Any]] = auth.get("fleet_vessels") or []
+    yacht_name_by_id: Dict[str, str] = {
+        v["yacht_id"]: v.get("yacht_name", "") for v in fleet_vessels
+    }
+    # Ensure primary yacht always has an entry
+    primary_yacht_id = auth["yacht_id"]
+    if primary_yacht_id not in yacht_name_by_id:
+        yacht_name_by_id[primary_yacht_id] = auth.get("yacht_name", "")
+
+    supabase = get_tenant_client(tenant_key_alias)
+    if not supabase:
+        raise HTTPException(status_code=503, detail={"error": "DB_UNAVAILABLE"})
+
+    try:
+        vessels_out: List[Dict[str, Any]] = []
+
+        for yid in vessel_ids:
+            try:
+                # Weekly compliance rows for this vessel
+                comp_r = supabase.table("dash_crew_hours_compliance").select(
+                    "user_id, is_weekly_compliant, days_submitted, days_compliant"
+                ).eq("yacht_id", yid).eq("week_start", week_monday.isoformat()).execute()
+                rows = comp_r.data or []
+
+                total_crew = len(rows)
+                submitted_crew = sum(1 for r in rows if (r.get("days_submitted") or 0) > 0)
+                compliant_crew = sum(1 for r in rows if r.get("is_weekly_compliant"))
+
+                # compliance_pct: proportion of expected crew-days that are compliant
+                total_expected_days  = total_crew * 7
+                total_submitted_days = sum((r.get("days_submitted") or 0) for r in rows)
+                total_compliant_days = sum((r.get("days_compliant") or 0) for r in rows)
+                non_compliant_days   = (total_expected_days - total_submitted_days) + (total_submitted_days - total_compliant_days)
+                compliance_pct = round(
+                    max(0, (total_expected_days - non_compliant_days) / total_expected_days * 100), 1
+                ) if total_expected_days else None
+
+                # Active violations this week
+                week_end = week_monday + timedelta(days=6)
+                viol_r = supabase.table("pms_crew_hours_warnings").select(
+                    "id", count="exact"
+                ).eq("yacht_id", yid).gte(
+                    "record_date", week_monday.isoformat()
+                ).lte("record_date", week_end.isoformat()).execute()
+                violations_this_week = viol_r.count or 0
+
+                # Department signoff status for the week
+                sign_r = supabase.table("pms_hor_monthly_signoffs").select(
+                    "department, status"
+                ).eq("yacht_id", yid).eq("period_type", "weekly").eq(
+                    "week_start", week_monday.isoformat()
+                ).execute()
+                sign_rows = sign_r.data or []
+                dept_total     = len({s.get("department") for s in sign_rows if s.get("department")})
+                dept_finalized = sum(1 for s in sign_rows if s.get("status") in ("hod_signed", "finalized"))
+
+                vessels_out.append({
+                    "yacht_id":              yid,
+                    "yacht_name":            yacht_name_by_id.get(yid, ""),
+                    "compliance_pct":        compliance_pct,
+                    "total_crew":            total_crew,
+                    "submitted_crew":        submitted_crew,
+                    "compliant_crew":        compliant_crew,
+                    "violations_this_week":  violations_this_week,
+                    "departments_finalized": dept_finalized,
+                    "departments_total":     dept_total,
+                })
+            except Exception as vessel_err:
+                # One vessel failure must not block the rest
+                logger.warning(f"fleet_compliance: error for yacht_id={yid}: {vessel_err}")
+                vessels_out.append({
+                    "yacht_id":   yid,
+                    "yacht_name": yacht_name_by_id.get(yid, ""),
+                    "error":      "unavailable",
+                })
+
+        return JSONResponse(content={
+            "status":     "success",
+            "week_start": week_monday.isoformat(),
+            "vessels":    vessels_out,
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_fleet_compliance error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})

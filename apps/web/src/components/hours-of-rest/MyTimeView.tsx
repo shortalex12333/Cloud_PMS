@@ -362,13 +362,13 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         const warnings = json?.data?.warnings_created ?? [];
         const dayPatch = record ? {
           date,
-          rest_periods: periods,
+          work_periods: workPeriods,
           total_rest_hours: record.total_rest_hours ?? compliance?.total_rest_hours ?? null,
           total_work_hours: record.total_work_hours ?? null,
           is_compliant: record.is_daily_compliant ?? compliance?.is_daily_compliant ?? null,
           submitted: true,
           warnings,
-        } : { date, rest_periods: periods, submitted: true, warnings: [] };
+        } : { date, work_periods: workPeriods, submitted: true, warnings: [] };
         setSubmittedDays(prev => ({ ...prev, [date]: dayPatch }));
         setSubmitErrors(prev => { const n = { ...prev }; delete n[date]; return n; });
         setDraftPeriods(prev => { const n = { ...prev }; delete n[date]; return n; });
@@ -773,7 +773,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
 
                 {/* Slider */}
                 <TimeSlider
-                  value={isSubmitted ? (localSubmit?.work_periods ?? day.work_periods ?? []) : draft}
+                  value={isSubmitted ? (localSubmit?.work_periods ?? (day as any).work_periods ?? []) : draft}
                   readOnly={isSubmitted}
                   onChange={periods => setDraftPeriods(prev => ({ ...prev, [day.date]: periods }))}
                 />

@@ -872,6 +872,32 @@ class HoursOfRestHandlers:
 
             signoff = current_result.data[0]
 
+            # Role enforcement: only appropriate roles can countersign at each level.
+            # Crew can always sign their own records (signature_level == "crew").
+            # HOD and master levels require verified role from auth_users_roles.
+            _HOD_ROLES_SIGN    = {"chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"}
+            _MASTER_ROLES_SIGN = {"captain", "manager"}
+
+            if signature_level in ("hod", "master"):
+                role_check = self.db.table("auth_users_roles").select("role").eq(
+                    "yacht_id", yacht_id
+                ).eq("user_id", user_id).maybe_single().execute()
+                caller_role = (role_check.data or {}).get("role") if role_check else None
+
+                if signature_level == "hod" and caller_role not in _HOD_ROLES_SIGN:
+                    builder.set_error(
+                        "FORBIDDEN",
+                        f"Role '{caller_role}' cannot countersign as HOD. Requires: chief_engineer, chief_officer, chief_steward, eto, purser, captain, or manager."
+                    )
+                    return builder.build()
+
+                if signature_level == "master" and caller_role not in _MASTER_ROLES_SIGN:
+                    builder.set_error(
+                        "FORBIDDEN",
+                        f"Role '{caller_role}' cannot give master signature. Requires: captain or manager."
+                    )
+                    return builder.build()
+
             # Enforce sequential signing workflow: crew → hod → master
             current_status = signoff.get("status", "draft")
             if signature_level == "hod" and current_status != "crew_signed":
@@ -960,6 +986,72 @@ class HoursOfRestHandlers:
                     )).execute()
                 except Exception as le:
                     logger.warning(f"Failed to write ledger event for HoR sign: {le}")
+
+                # Dispatch notification to next party in the sign chain.
+                # Non-fatal: a notification failure must never block the sign from completing.
+                try:
+                    signoff_dept  = signoff.get("department", "")
+                    signoff_owner = signoff.get("user_id", "")
+
+                    if signature_level == "crew":
+                        # Notify HOD(s) in this department that crew has signed.
+                        hod_q = self.db.table("auth_users_roles").select("user_id").eq(
+                            "yacht_id", yacht_id
+                        ).in_("role", list(_HOD_ROLES_SIGN))
+                        if signoff_dept:
+                            hod_q = hod_q.eq("department", signoff_dept)
+                        hod_result = hod_q.execute()
+                        notifications = [
+                            {
+                                "yacht_id": yacht_id,
+                                "user_id": row["user_id"],
+                                "notification_type": "hor_awaiting_countersign",
+                                "body": "A crew member has signed their hours of rest — awaiting your counter-signature.",
+                                "idempotency_key": f"hor_crew_signed_{signoff_id}_{row['user_id']}",
+                            }
+                            for row in (hod_result.data or [])
+                        ]
+                        if notifications:
+                            self.db.table("pms_notifications").upsert(
+                                notifications, on_conflict="yacht_id,user_id,idempotency_key"
+                            ).execute()
+
+                    elif signature_level == "hod":
+                        # Notify captain(s) that HOD has countersigned.
+                        cap_result = self.db.table("auth_users_roles").select("user_id").eq(
+                            "yacht_id", yacht_id
+                        ).in_("role", list(_MASTER_ROLES_SIGN)).execute()
+                        notifications = [
+                            {
+                                "yacht_id": yacht_id,
+                                "user_id": row["user_id"],
+                                "notification_type": "hor_awaiting_master_sign",
+                                "body": "HOD has counter-signed crew hours of rest — awaiting your final signature.",
+                                "idempotency_key": f"hor_hod_signed_{signoff_id}_{row['user_id']}",
+                            }
+                            for row in (cap_result.data or [])
+                        ]
+                        if notifications:
+                            self.db.table("pms_notifications").upsert(
+                                notifications, on_conflict="yacht_id,user_id,idempotency_key"
+                            ).execute()
+
+                    elif signature_level == "master":
+                        # Notify the crew member that their month is finalized.
+                        if signoff_owner:
+                            self.db.table("pms_notifications").upsert(
+                                [{
+                                    "yacht_id": yacht_id,
+                                    "user_id": signoff_owner,
+                                    "notification_type": "hor_month_finalized",
+                                    "body": "Your monthly hours of rest record has been signed and finalized by the Master.",
+                                    "idempotency_key": f"hor_master_signed_{signoff_id}",
+                                }],
+                                on_conflict="yacht_id,user_id,idempotency_key"
+                            ).execute()
+
+                except Exception as notif_err:
+                    logger.warning(f"Failed to dispatch sign-chain notification (non-fatal): {notif_err}")
 
             builder.set_data({
                 "signoff": updated_signoff,

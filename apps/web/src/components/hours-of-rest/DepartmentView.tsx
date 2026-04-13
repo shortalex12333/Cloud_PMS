@@ -72,83 +72,9 @@ interface DepartmentStatus {
   };
 }
 
-// ── Mock data ────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-function getMockWeekDates(weekStart: string): string[] {
-  const start = new Date(weekStart);
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
-    return d.toISOString().slice(0, 10);
-  });
-}
-
-function buildMockDepartmentStatus(weekStart: string): DepartmentStatus {
-  const dates = getMockWeekDates(weekStart);
-  return {
-    week_start: weekStart,
-    department: 'Engineering',
-    today_submitted: 3,
-    today_total: 5,
-    today_missing: ['P. Kowalski', 'R. Singh'],
-    pending_counter_signs: [
-      { signoff_id: 'ps-001', crew_user_id: 'u1', crew_name: 'J. Martinez', week_label: 'Apr 7 – Apr 13', submitted_at: '2026-04-12T08:14:00Z' },
-      { signoff_id: 'ps-002', crew_user_id: 'u2', crew_name: 'A. Novak', week_label: 'Apr 7 – Apr 13', submitted_at: '2026-04-11T19:55:00Z' },
-    ],
-    crew: [
-      {
-        user_id: 'u1', name: 'J. Martinez', role: 'Second Engineer', is_weekly_compliant: true,
-        days: dates.map((date, i) => ({
-          date,
-          rest_hours: i < 5 ? [8.5, 7.0, 8.0, 8.5, 7.5, null, null][i] : null,
-          status: (i < 5 ? 'submitted' : 'missing') as CrewDay['status'],
-        })),
-      },
-      {
-        user_id: 'u2', name: 'A. Novak', role: 'Third Engineer', is_weekly_compliant: true,
-        days: dates.map((date, i) => ({
-          date,
-          rest_hours: i < 4 ? [9.0, 8.0, 7.5, 8.0, null, null, null][i] : null,
-          status: (i < 4 ? 'hod_signed' : 'missing') as CrewDay['status'],
-        })),
-      },
-      {
-        user_id: 'u3', name: 'P. Kowalski', role: 'Engine Rating', is_weekly_compliant: null,
-        days: dates.map((date, i) => ({
-          date,
-          rest_hours: i < 6 ? [8.0, 8.0, 8.0, 8.0, 8.0, 8.0, null][i] : null,
-          status: (i < 6 ? 'submitted' : 'missing') as CrewDay['status'],
-        })),
-      },
-      {
-        user_id: 'u4', name: 'R. Singh', role: 'Oiler', is_weekly_compliant: false,
-        days: dates.map((date, i) => ({
-          date,
-          rest_hours: i < 3 ? [6.5, 7.0, 8.5, null, null, null, null][i] : null,
-          status: (i < 3 ? 'submitted' : 'missing') as CrewDay['status'],
-        })),
-      },
-      {
-        user_id: 'u5', name: 'M. Chen', role: 'Electrician', is_weekly_compliant: true,
-        days: dates.map((date, i) => ({
-          date,
-          rest_hours: [8.0, 8.5, 7.0, 9.0, 8.0, 8.5, null][i] ?? null,
-          status: (i < 6 ? 'finalized' : 'missing') as CrewDay['status'],
-        })),
-      },
-    ],
-    compliance: {
-      compliant_days: 28,
-      total_days: 30,
-      violations: 2,
-      avg_rest_hours: 8.1,
-    },
-  };
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function getCurrentWeekStart(): string {
   const now = new Date();
