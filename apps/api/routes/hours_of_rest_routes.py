@@ -5,12 +5,24 @@ Hours of Rest Routes
 FastAPI routes for Hours of Rest (HOR) Lens - Crew Compliance Domain.
 MLC 2006 & STCW Convention compliance tracking.
 
-Endpoints (12 total):
+Endpoints (19 total):
 
 Daily HOR Records:
 - GET  /v1/hours-of-rest                    - View HOR records (READ) [get_hours_of_rest]
 - POST /v1/hours-of-rest/upsert             - Upsert HOR record (MUTATE) [upsert_hours_of_rest]
 - POST /v1/hours-of-rest/export             - Export HOR data (READ) [export_hours_of_rest]
+- POST /v1/hours-of-rest/undo               - Undo submitted day (MUTATE) [undo_hours_of_rest]
+
+MLC 2006 Corrections:
+- POST /v1/hours-of-rest/corrections        - Create correction/note (MUTATE) [create_hor_correction]
+- POST /v1/hours-of-rest/request-correction - HOD/Captain kick-back (MUTATE) [request_hor_correction]
+
+Notifications:
+- GET  /v1/hours-of-rest/notifications/unread    - Unread notifications [get_unread_notifications]
+- POST /v1/hours-of-rest/notifications/mark-read - Mark as read [mark_notifications_read]
+
+Sign Chain (Fleet Manager):
+- GET  /v1/hours-of-rest/sign-chain         - Per-vessel sign chain status [get_hor_sign_chain]
 
 Monthly Sign-offs:
 - GET  /v1/hours-of-rest/signoffs           - List sign-offs (READ) [list_monthly_signoffs]
@@ -122,11 +134,14 @@ class ExportHoursRequest(BaseModel):
 
 # Monthly Sign-off Models
 class CreateMonthlySignoffRequest(BaseModel):
-    """Request body for creating monthly sign-off."""
+    """Request body for creating monthly or weekly sign-off."""
     # Note: yacht_id comes from JWT auth context, this field is ignored for security
     yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
-    month: str = Field(..., description="Month in YYYY-MM format")
+    month: Optional[str] = Field(None, description="Month in YYYY-MM format (required for monthly, auto-derived for weekly)")
     department: str = Field(..., description="Department: engineering/deck/interior/galley/general")
+    period_type: Optional[str] = Field("monthly", description="weekly|monthly (default: monthly)")
+    week_start: Optional[str] = Field(None, description="Monday date YYYY-MM-DD (required if period_type=weekly)")
+    target_user_id: Optional[str] = Field(None, description="UUID of crew member to create signoff for (HOD use)")
 
 
 class SignMonthlySignoffRequest(BaseModel):
@@ -175,6 +190,34 @@ class DismissWarningRequest(BaseModel):
     warning_id: str = Field(..., description="Warning UUID")
     hod_justification: str = Field(..., description="Explanation required")
     dismissed_by_role: str = Field(..., description="hod|captain")
+
+
+class UndoHoursRequest(BaseModel):
+    """Request body for undoing a submitted HoR record."""
+    record_id: str = Field(..., description="UUID of pms_hours_of_rest row to undo")
+
+
+class CreateCorrectionRequest(BaseModel):
+    """Request body for creating a HoR correction or note."""
+    original_record_id: str = Field(..., description="UUID of pms_hours_of_rest row to correct")
+    reason: str = Field(..., description="Mandatory legal field — why correction was made")
+    note: Optional[str] = Field(None, description="Optional additional context")
+    corrected_rest_periods: Optional[list] = Field(None, description="New rest periods (crew only). Omit for note-only.")
+    requested_by_user_id: Optional[str] = Field(None, description="Who requested this correction (HOD/Captain UUID)")
+    correction_chain: Optional[list] = Field(None, description="Ordered kick-back chain [{user_id, role, requested_at}]")
+
+
+class RequestCorrectionRequest(BaseModel):
+    """Request body for HOD/Captain requesting a correction kick-back."""
+    signoff_id: str = Field(..., description="UUID of pms_hor_monthly_signoffs row")
+    target_user_id: str = Field(..., description="UUID of user who should receive the correction request")
+    correction_note: str = Field(..., description="What needs correcting (required)")
+    role: str = Field(..., description="hod|captain — role of the requester")
+
+
+class MarkReadRequest(BaseModel):
+    """Request body for marking notifications as read."""
+    notification_ids: Optional[list] = Field(None, description="List of notification UUIDs. Omit to mark ALL as read.")
 
 
 # ============================================================================
@@ -372,6 +415,8 @@ async def list_monthly_signoffs_route(
     user_id: Optional[str] = None,
     department: Optional[str] = None,
     status: Optional[str] = None,
+    period_type: Optional[str] = None,
+    week_start: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
     auth: dict = Depends(get_authenticated_user)
@@ -395,7 +440,15 @@ async def list_monthly_signoffs_route(
         result = await hor_handlers.list_monthly_signoffs(
             entity_id=user_id or user_id_from_jwt,
             yacht_id=yacht_id,
-            params={"user_id": user_id, "department": department, "status": status, "limit": limit, "offset": offset}
+            params={
+                "user_id": user_id,
+                "department": department,
+                "status": status,
+                "period_type": period_type,
+                "week_start": week_start,
+                "limit": limit,
+                "offset": offset,
+            }
         )
         return JSONResponse(content=result)
     except Exception as e:
@@ -459,9 +512,17 @@ async def create_monthly_signoff_route(
             entity_id=user_id_from_jwt,
             yacht_id=yacht_id,
             user_id=user_id_from_jwt,
-            payload={"month": request.month, "department": request.department}
+            payload={
+                "month": request.month,
+                "department": request.department,
+                "period_type": request.period_type or "monthly",
+                "week_start": request.week_start,
+                "target_user_id": request.target_user_id,
+            }
         )
-        return JSONResponse(content=result)
+        # Propagate the semantic HTTP status from the handler's error envelope
+        http_status = (result.get("error") or {}).get("status_code") or 200
+        return JSONResponse(content=result, status_code=http_status)
     except Exception as e:
         logger.error(f"create_monthly_signoff error: {e}", exc_info=True)
         error_str = str(e).lower()
@@ -485,6 +546,18 @@ async def sign_monthly_signoff_route(
     user_id_from_jwt = auth["user_id"]
     yacht_id = auth["yacht_id"]
     tenant_key_alias = auth["tenant_key_alias"]
+    caller_role = auth.get("role", "")
+
+    # Role enforcement: signature_level must match caller's role
+    HOD_ROLES    = {"chief_engineer", "chief_officer", "chief_steward", "eto", "purser"}
+    MASTER_ROLES = {"captain", "master"}
+    sig_level = request.signature_level
+    if sig_level == "hod" and caller_role not in HOD_ROLES:
+        raise HTTPException(status_code=403, detail={"error": "FORBIDDEN",
+            "message": f"HOD signature requires HOD role. Your role: {caller_role}"})
+    if sig_level == "master" and caller_role not in MASTER_ROLES:
+        raise HTTPException(status_code=403, detail={"error": "FORBIDDEN",
+            "message": f"Master signature requires captain/master role. Your role: {caller_role}"})
 
     hor_handlers = get_hor_handlers(tenant_key_alias)
 
@@ -732,4 +805,239 @@ async def dismiss_warning_route(
         error_str = str(e).lower()
         if "not found" in error_str:
             raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": str(e)})
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+# ============================================================================
+# MLC 2006 PHASE 1 — UNDO / CORRECTIONS / NOTIFICATIONS / SIGN CHAIN
+# ============================================================================
+
+@router.post("/undo")
+async def undo_hours_of_rest_route(
+    request: UndoHoursRequest,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Crew undoes their own submitted HoR record.
+
+    MLC: original preserved in pms_hor_corrections. Blocked if HOD already signed.
+
+    **Action**: undo_hours_of_rest
+    **Endpoint**: POST /v1/hours-of-rest/undo
+    """
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+    hor_handlers = get_hor_handlers(tenant_key_alias)
+
+    try:
+        result = await hor_handlers.undo_hours_of_rest(
+            entity_id=user_id_from_jwt,
+            yacht_id=yacht_id,
+            user_id=user_id_from_jwt,
+            payload={"record_id": request.record_id}
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"undo_hours_of_rest error: {e}", exc_info=True)
+        error_str = str(e).lower()
+        if "locked" in error_str:
+            raise HTTPException(status_code=409, detail={"error": "LOCKED", "message": str(e)})
+        if "not found" in error_str:
+            raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": str(e)})
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.post("/corrections")
+async def create_hor_correction_route(
+    request: CreateCorrectionRequest,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Create a correction for an existing HoR record.
+
+    Crew: full time correction (corrected_rest_periods required).
+    HOD/Captain: note only (corrected_rest_periods omitted).
+    Original is NEVER modified.
+
+    **Action**: create_hor_correction
+    **Endpoint**: POST /v1/hours-of-rest/corrections
+    """
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+    hor_handlers = get_hor_handlers(tenant_key_alias)
+
+    try:
+        result = await hor_handlers.create_hor_correction(
+            entity_id=user_id_from_jwt,
+            yacht_id=yacht_id,
+            user_id=user_id_from_jwt,
+            payload={
+                "original_record_id": request.original_record_id,
+                "reason": request.reason,
+                "note": request.note,
+                "corrected_rest_periods": request.corrected_rest_periods,
+                "requested_by_user_id": request.requested_by_user_id,
+                "correction_chain": request.correction_chain or [],
+            }
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"create_hor_correction error: {e}", exc_info=True)
+        error_str = str(e).lower()
+        if "not found" in error_str:
+            raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": str(e)})
+        if "forbidden" in error_str:
+            raise HTTPException(status_code=403, detail={"error": "FORBIDDEN", "message": str(e)})
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.post("/request-correction")
+async def request_hor_correction_route(
+    request: RequestCorrectionRequest,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    HOD or Captain requests a correction from the party below them.
+
+    HOD → Crew: sets correction_requested on weekly signoff, notifies crew.
+    Captain → HOD: same but notifies HOD.
+
+    **Action**: request_hor_correction
+    **Endpoint**: POST /v1/hours-of-rest/request-correction
+    """
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+    user_role = auth.get("role", "crew")
+
+    hod_plus_roles = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"]
+    if user_role.lower() not in hod_plus_roles:
+        raise HTTPException(status_code=403, detail={"error": "FORBIDDEN", "message": "HOD+ required to request corrections"})
+
+    hor_handlers = get_hor_handlers(tenant_key_alias)
+
+    try:
+        result = await hor_handlers.request_hor_correction(
+            entity_id=user_id_from_jwt,
+            yacht_id=yacht_id,
+            user_id=user_id_from_jwt,
+            payload={
+                "signoff_id": request.signoff_id,
+                "target_user_id": request.target_user_id,
+                "correction_note": request.correction_note,
+                "role": request.role,
+            }
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"request_hor_correction error: {e}", exc_info=True)
+        error_str = str(e).lower()
+        if "not found" in error_str:
+            raise HTTPException(status_code=404, detail={"error": "NOT_FOUND", "message": str(e)})
+        if "invalid_state" in error_str or "invalid state" in error_str:
+            raise HTTPException(status_code=409, detail={"error": "INVALID_STATE", "message": str(e)})
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.get("/notifications/unread")
+async def get_unread_notifications_route(
+    limit: int = 50,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Get unread HoR notifications for the current user.
+
+    **Action**: get_unread_notifications
+    **Endpoint**: GET /v1/hours-of-rest/notifications/unread
+    """
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+    hor_handlers = get_hor_handlers(tenant_key_alias)
+
+    try:
+        result = await hor_handlers.get_unread_notifications(
+            entity_id=user_id_from_jwt,
+            yacht_id=yacht_id,
+            user_id=user_id_from_jwt,
+            params={"limit": limit}
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"get_unread_notifications error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.post("/notifications/mark-read")
+async def mark_notifications_read_route(
+    request: MarkReadRequest,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Mark one or all notifications as read.
+
+    **Action**: mark_notifications_read
+    **Endpoint**: POST /v1/hours-of-rest/notifications/mark-read
+    """
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+    hor_handlers = get_hor_handlers(tenant_key_alias)
+
+    try:
+        result = await hor_handlers.mark_notifications_read(
+            entity_id=user_id_from_jwt,
+            yacht_id=yacht_id,
+            user_id=user_id_from_jwt,
+            payload={"notification_ids": request.notification_ids}
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"mark_notifications_read error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.get("/sign-chain")
+async def get_hor_sign_chain_route(
+    week_start: str,
+    target_yacht_id: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Get per-vessel sign chain status for fleet manager (S6).
+
+    Returns crew submission count, per-dept HOD sign status,
+    captain sign status, FM review status, and outstanding corrections.
+
+    **Action**: get_hor_sign_chain
+    **Endpoint**: GET /v1/hours-of-rest/sign-chain
+    """
+    user_id_from_jwt = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+    caller_role = auth.get("role", "")
+
+    # Role enforcement: sign-chain is for managers, captains, and HODs only
+    SIGN_CHAIN_ROLES = {"manager", "owner", "captain", "master",
+                        "chief_engineer", "chief_officer", "chief_steward", "eto", "purser"}
+    if caller_role not in SIGN_CHAIN_ROLES:
+        raise HTTPException(status_code=403, detail={"error": "FORBIDDEN",
+            "message": "sign-chain access requires manager/captain/HOD role"})
+
+    hor_handlers = get_hor_handlers(tenant_key_alias)
+
+    try:
+        result = await hor_handlers.get_hor_sign_chain(
+            entity_id=user_id_from_jwt,
+            yacht_id=yacht_id,
+            params={
+                "week_start": week_start,
+                "target_yacht_id": target_yacht_id,
+            }
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"get_hor_sign_chain error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})

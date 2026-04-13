@@ -14,6 +14,7 @@
 
 import * as React from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { ActionPopup } from '@/components/lens-v2/ActionPopup';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,20 @@ interface DepartmentCard {
   submitted_today: number;
   total_today: number;
   crew: DeptCrewMember[];
+  // Phase 6: sign chain fields
+  signoff_id: string | null;
+  status: 'draft' | 'crew_signed' | 'hod_signed' | 'finalized' | string;
+  hod_signed_at: string | null;
+  correction_requested: boolean;
+  correction_note: string | null;
+}
+
+interface SignChain {
+  all_hods_signed: boolean;
+  captain_signed: boolean;
+  fleet_manager_reviewed: boolean;
+  ready_for_captain: boolean;
+  ready_for_fleet_manager: boolean;
 }
 
 interface VesselCompliance {
@@ -54,10 +69,12 @@ interface VesselCompliance {
   vessel_name: string;
   departments: DepartmentCard[];
   pending_final_signs: PendingFinalSign[];
+  sign_chain: SignChain;
   vessel_analytics: {
     overall_compliance_pct: number;
     total_violations: number;
-    avg_work_hours: number;
+    avg_work_hours: number;      // weekly total average
+    avg_work_hours_per_day: number;
     total_crew: number;
     fully_compliant_departments: number;
   };
@@ -96,6 +113,11 @@ function buildMockVesselCompliance(weekStart: string): VesselCompliance {
         avg_work_hours: 8.1,
         submitted_today: 4,
         total_today: 5,
+        signoff_id: 'so-eng-001',
+        status: 'hod_signed',
+        hod_signed_at: '2026-04-13T09:00:00Z',
+        correction_requested: false,
+        correction_note: null,
         crew: [
           { user_id: 'e1', name: 'J. Martinez',  role: 'Second Engineer', days: makeDays([8.5, 7.0, 8.0, 8.5, 7.5, null, null]) },
           { user_id: 'e2', name: 'A. Novak',     role: 'Third Engineer',  days: makeDays([9.0, 8.0, 7.5, 8.0, null, null, null]) },
@@ -112,6 +134,11 @@ function buildMockVesselCompliance(weekStart: string): VesselCompliance {
         avg_work_hours: 7.2,
         submitted_today: 2,
         total_today: 4,
+        signoff_id: null,
+        status: 'crew_signed',
+        hod_signed_at: null,
+        correction_requested: true,
+        correction_note: 'Day 4 shows 5.5h rest — please correct before HOD can sign.',
         crew: [
           { user_id: 'd1', name: 'T. Okonkwo',   role: 'First Mate',      days: makeDays([7.0, 6.5, 7.5, 5.5, 7.0, null, null]) },
           { user_id: 'd2', name: 'S. Petrov',    role: 'Bosun',           days: makeDays([8.0, 7.5, null, 7.0, null, null, null]) },
@@ -127,6 +154,11 @@ function buildMockVesselCompliance(weekStart: string): VesselCompliance {
         avg_work_hours: 8.6,
         submitted_today: 3,
         total_today: 3,
+        signoff_id: 'so-int-001',
+        status: 'hod_signed',
+        hod_signed_at: '2026-04-13T10:30:00Z',
+        correction_requested: false,
+        correction_note: null,
         crew: [
           { user_id: 'i1', name: 'C. Dubois',    role: 'Chief Steward',   days: makeDays([9.0, 8.5, 9.0, 8.5, null, null, null]) },
           { user_id: 'i2', name: 'N. Santos',    role: 'Steward',         days: makeDays([8.5, 8.5, 8.5, 8.5, 8.5, null, null]) },
@@ -137,10 +169,18 @@ function buildMockVesselCompliance(weekStart: string): VesselCompliance {
     pending_final_signs: [
       { signoff_id: 'fs-001', department: 'Engineering', week_label: 'Mar 31 – Apr 6', hod_name: 'Chief Engineer', signed_at: '2026-04-08T09:00:00Z' },
     ],
+    sign_chain: {
+      all_hods_signed: false,    // Deck still crew_signed
+      captain_signed: false,
+      fleet_manager_reviewed: false,
+      ready_for_captain: false,  // false because Deck not yet HOD-signed
+      ready_for_fleet_manager: false,
+    },
     vessel_analytics: {
       overall_compliance_pct: 91,
       total_violations: 4,
       avg_work_hours: 8.0,
+      avg_work_hours_per_day: 8.0 / 7,
       total_crew: 12,
       fully_compliant_departments: 2,
     },
@@ -174,12 +214,18 @@ function complianceColor(pct: number): string {
 
 function restHoursColor(hours: number | null): string {
   if (hours === null) return 'rgba(255,255,255,0.12)';
-  if (hours < 6) return 'rgba(239,68,68,0.8)';
-  if (hours < 7) return 'rgba(245,158,11,0.8)';
-  return 'rgba(90,171,204,0.8)';
+  if (hours < 10) return 'rgba(239,68,68,0.8)';    // MLC violation — minimum is 10h rest/day
+  if (hours < 10.5) return 'rgba(245,158,11,0.8)'; // borderline
+  return 'rgba(90,171,204,0.8)';                    // ok
 }
 
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// ── MLC declaration ──────────────────────────────────────────────────────────
+
+const MLC_MASTER_DECLARATION =
+  'I confirm I have reviewed and verified the vessel hours of rest records ' +
+  'in accordance with MLC 2006 Regulation 2.3 as Master.';
 
 // ── Response normalizer ───────────────────────────────────────────────────────
 // Maps real API response to component types.
@@ -203,12 +249,17 @@ function normalizeVesselCompliance(raw: any, ws: string): VesselCompliance {
 
     return {
       name: d.name ?? d.department ?? '—',
-      crew_count: d.crew_count ?? d.crew_total ?? crewSource.length,
+      crew_count: d.crew_count ?? d.total_crew ?? crewSource.length,
       compliance_pct: d.compliance_pct ?? d.compliance_rate ?? 0,
       violations: d.violations ?? 0,
       avg_work_hours: d.avg_work_hours ?? 0,
-      submitted_today: d.submitted_today ?? 0,
-      total_today: d.total_today ?? d.crew_count ?? 0,
+      submitted_today: d.submitted_today ?? d.submitted_count ?? 0,
+      total_today: d.total_today ?? d.crew_count ?? d.total_crew ?? 0,
+      signoff_id: d.signoff_id ?? null,
+      status: d.status ?? 'draft',
+      hod_signed_at: d.hod_signed_at ?? null,
+      correction_requested: d.correction_requested ?? false,
+      correction_note: d.correction_note ?? null,
       crew: crewSource.map((m: any) => ({
         user_id: m.user_id ?? m.id ?? String(Math.random()),
         name: m.name ?? '—',
@@ -226,6 +277,13 @@ function normalizeVesselCompliance(raw: any, ws: string): VesselCompliance {
     week_start: raw.week_start ?? ws,
     vessel_name: raw.vessel_name ?? raw.yacht_name ?? '—',
     departments,
+    sign_chain: {
+      all_hods_signed: raw.sign_chain?.all_hods_signed ?? false,
+      captain_signed: raw.sign_chain?.captain_signed ?? false,
+      fleet_manager_reviewed: raw.sign_chain?.fleet_manager_reviewed ?? false,
+      ready_for_captain: raw.sign_chain?.ready_for_captain ?? false,
+      ready_for_fleet_manager: raw.sign_chain?.ready_for_fleet_manager ?? false,
+    },
     pending_final_signs: (raw.pending_final_signs ?? []).map((ps: any) => ({
       signoff_id: ps.signoff_id ?? ps.id,
       department: ps.department ?? '—',
@@ -234,10 +292,10 @@ function normalizeVesselCompliance(raw: any, ws: string): VesselCompliance {
       signed_at: ps.signed_at ?? new Date().toISOString(),
     })),
     vessel_analytics: {
-      // real: compliance_rate (0-100 pct), violations_this_quarter, avg_work_hours
-      overall_compliance_pct: a.overall_compliance_pct ?? a.compliance_rate ?? 0,
-      total_violations: a.total_violations ?? a.violations_this_quarter ?? 0,
-      avg_work_hours: a.avg_work_hours ?? 0,
+      overall_compliance_pct: a.compliance_pct ?? a.overall_compliance_pct ?? 0,
+      total_violations: a.violations_this_week ?? a.total_violations ?? 0,
+      avg_work_hours: a.avg_work_hours_per_week ?? a.avg_work_hours ?? 0,
+      avg_work_hours_per_day: a.avg_work_hours_per_day ?? (a.avg_work_hours_per_week ? a.avg_work_hours_per_week / 7 : a.avg_work_hours ? a.avg_work_hours / 7 : 0),
       total_crew: a.total_crew ?? allCrewFlat.length ?? 0,
       fully_compliant_departments: a.fully_compliant_departments ?? 0,
     },
@@ -255,6 +313,9 @@ export function VesselComplianceView() {
   const [error, setError] = React.useState<string | null>(null);
   const [expandedDept, setExpandedDept] = React.useState<string | null>(null);
   const [signingId, setSigningId] = React.useState<string | null>(null);
+  const [signingPopupId, setSigningPopupId] = React.useState<string | null>(null);
+  const [signAllPopupOpen, setSignAllPopupOpen] = React.useState(false);
+  const [signingAll, setSigningAll] = React.useState(false);
 
   // ── Load ──
 
@@ -283,14 +344,54 @@ export function VesselComplianceView() {
 
   // ── Final sign ──
 
-  async function finalSign(signoffId: string) {
+  async function signAllDepartments(signatureName: string) {
+    if (!data) return;
+    const signable = data.departments.filter(d => d.status === 'hod_signed' && d.signoff_id);
+    const skipped = data.departments.filter(d => d.status !== 'hod_signed' && d.status !== 'finalized');
+    if (skipped.length > 0) {
+      // Non-fatal warning — log to console, still sign the signable ones
+      console.warn(`[HoR] Skipping ${skipped.length} dept(s) not yet HOD-signed: ${skipped.map(d => d.name).join(', ')}`);
+    }
+    setSigningAll(true);
+    try {
+      const token = session?.access_token;
+      for (const dept of signable) {
+        await fetch('/api/v1/hours-of-rest/signoffs/sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            signoff_id: dept.signoff_id,
+            signature_level: 'master',
+            signature_data: {
+              name: signatureName,
+              declaration: MLC_MASTER_DECLARATION,
+              timestamp: new Date().toISOString(),
+            },
+          }),
+        });
+      }
+      await loadData(weekStart);
+    } finally {
+      setSigningAll(false);
+    }
+  }
+
+  async function finalSign(signoffId: string, signatureName: string) {
     setSigningId(signoffId);
     try {
       const token = session?.access_token;
       await fetch('/api/v1/hours-of-rest/signoffs/sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ signoff_id: signoffId, level: 'captain' }),
+        body: JSON.stringify({
+          signoff_id: signoffId,
+          signature_level: 'master',
+          signature_data: {
+            name: signatureName,
+            declaration: MLC_MASTER_DECLARATION,
+            timestamp: new Date().toISOString(),
+          },
+        }),
       });
       await loadData(weekStart);
     } finally {
@@ -345,9 +446,8 @@ export function VesselComplianceView() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
           {[
-            { label: 'Compliance', value: `${va.overall_compliance_pct}%`, color: complianceColor(va.overall_compliance_pct) },
+            { label: 'Compliance', value: `${va.overall_compliance_pct.toFixed(1)}%`, color: complianceColor(va.overall_compliance_pct) },
             { label: 'Violations', value: String(va.total_violations), color: va.total_violations > 0 ? 'rgba(239,68,68,0.9)' : 'rgba(34,197,94,0.9)' },
-            { label: 'Avg Work', value: `${va.avg_work_hours.toFixed(1)}h`, color: 'rgba(90,171,204,0.9)' },
             { label: 'Total Crew', value: String(va.total_crew), color: 'rgba(255,255,255,0.7)' },
             { label: 'Dept OK', value: `${va.fully_compliant_departments}/${data.departments.length}`, color: 'rgba(34,197,94,0.9)' },
           ].map(({ label, value, color }) => (
@@ -356,10 +456,77 @@ export function VesselComplianceView() {
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 600, color }}>{value}</span>
             </div>
           ))}
+          {/* Avg Work — two lines: per day and per week */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Avg Work</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 600, color: 'rgba(90,171,204,0.9)' }}>
+              {va.avg_work_hours_per_day.toFixed(1)}h/day
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(90,171,204,0.55)' }}>
+              {va.avg_work_hours.toFixed(1)}h/wk
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* ── Pending final signs ── */}
+      {/* ── Captain sign chain card ── */}
+      {(() => {
+        const sc = data.sign_chain;
+        const signable = data.departments.filter(d => d.status === 'hod_signed' && d.signoff_id);
+        const notReady = data.departments.filter(d => d.status !== 'hod_signed' && d.status !== 'finalized');
+
+        if (sc.captain_signed) {
+          return (
+            <div style={{ ...cardStyle, borderColor: 'rgba(34,197,94,0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(34,197,94,0.8)' }}>Master Signed ✓</span>
+                {sc.fleet_manager_reviewed
+                  ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(34,197,94,0.6)' }}>Fleet Reviewed ✓</span>
+                  : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Pending fleet review</span>
+                }
+              </div>
+            </div>
+          );
+        }
+
+        if (signable.length === 0) return null;
+
+        return (
+          <div style={{ ...cardStyle, borderColor: 'rgba(90,171,204,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                  Captain Attestation Required
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>
+                  {signable.length} dept{signable.length !== 1 ? 's' : ''} ready
+                  {notReady.length > 0 && ` · ${notReady.length} dept${notReady.length !== 1 ? 's' : ''} awaiting HOD`}
+                </div>
+              </div>
+              <button
+                data-testid="hor-sign-all-depts"
+                onClick={() => setSignAllPopupOpen(true)}
+                disabled={signingAll}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  color: signingAll ? 'rgba(255,255,255,0.3)' : 'rgba(34,197,94,0.9)',
+                  background: 'rgba(34,197,94,0.08)',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  borderRadius: 4,
+                  padding: '5px 14px',
+                  cursor: signingAll ? 'wait' : 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {signingAll ? 'Signing…' : `Sign ${signable.length} Dept${signable.length !== 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Pending final signs (legacy — individual dept HOD signoffs) ── */}
       {data.pending_final_signs.length > 0 && (
         <div style={{ ...cardStyle, borderColor: 'rgba(245,158,11,0.25)' }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(245,158,11,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
@@ -377,7 +544,7 @@ export function VesselComplianceView() {
                   </span>
                 </div>
                 <button
-                  onClick={() => finalSign(ps.signoff_id)}
+                  onClick={() => { if (!signingId) setSigningPopupId(ps.signoff_id); }}
                   disabled={signingId === ps.signoff_id}
                   style={{
                     fontFamily: 'var(--font-mono)',
@@ -435,13 +602,101 @@ export function VesselComplianceView() {
                 <Stat label="Crew" value={String(dept.crew_count)} color="rgba(255,255,255,0.4)" />
                 <Stat label="Violations" value={String(dept.violations)} color={dept.violations > 0 ? 'rgba(239,68,68,0.8)' : 'rgba(34,197,94,0.7)'} />
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 8, textAlign: 'center' }}>
+              {/* Sign chain status badges */}
+              <div style={{ display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
+                {dept.status === 'hod_signed' && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(34,197,94,0.8)', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 3, padding: '1px 5px' }}>
+                    HOD Signed ✓
+                  </span>
+                )}
+                {dept.status === 'finalized' && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(34,197,94,0.9)', background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 3, padding: '1px 5px' }}>
+                    Finalized ✓
+                  </span>
+                )}
+                {dept.correction_requested && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(245,158,11,0.9)', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 3, padding: '1px 5px' }}>
+                    Correction Requested
+                  </span>
+                )}
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 6, textAlign: 'center' }}>
                 {isExpanded ? '▲ collapse' : '▼ show crew'}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* ── Sign All Departments popup (L2) ── */}
+      {signAllPopupOpen && (() => {
+        const signable = data.departments.filter(d => d.status === 'hod_signed' && d.signoff_id);
+        const skipped  = data.departments.filter(d => d.status !== 'hod_signed' && d.status !== 'finalized');
+        return (
+          <ActionPopup
+            mode="mutate"
+            title="Sign All Departments"
+            subtitle="MLC 2006 Reg. 2.3 — Master's Attestation"
+            signatureLevel={2}
+            submitLabel={signingAll ? 'Signing…' : 'Sign All'}
+            submitDisabled={signingAll}
+            fields={[
+              { name: 'vessel',    label: 'Vessel',            type: 'kv-read', value: data.vessel_name },
+              { name: 'week',      label: 'Week',              type: 'kv-read', value: formatWeekLabel(data.week_start) },
+              { name: 'signing',   label: 'Departments Signing', type: 'kv-read', value: signable.map(d => d.name).join(', ') },
+              ...(skipped.length > 0 ? [{
+                name: 'skipped',
+                label: 'Skipped (HOD pending)',
+                type: 'kv-read' as const,
+                value: skipped.map(d => d.name).join(', '),
+              }] : []),
+              { name: 'regulation', label: 'Regulation', type: 'kv-read', value: 'MLC 2006 Regulation 2.3 — Rest Hours' },
+            ]}
+            previewRows={[
+              { key: 'Vessel Compliance', value: `${va.overall_compliance_pct.toFixed(1)}%` },
+              { key: 'Total Violations',  value: String(va.total_violations) },
+              { key: 'Total Crew',        value: String(va.total_crew) },
+            ]}
+            onClose={() => setSignAllPopupOpen(false)}
+            onSubmit={(values) => {
+              setSignAllPopupOpen(false);
+              signAllDepartments(String(values.signature_name ?? ''));
+            }}
+          />
+        );
+      })()}
+
+      {/* ── Captain final-sign popup (L2) ── */}
+      {signingPopupId && (() => {
+        const ps = data.pending_final_signs.find(p => p.signoff_id === signingPopupId);
+        if (!ps) return null;
+        return (
+          <ActionPopup
+            mode="mutate"
+            title="Final Sign — Vessel Hours of Rest"
+            subtitle="MLC 2006 Reg. 2.3 — Master's Attestation"
+            signatureLevel={2}
+            submitLabel="Final Sign"
+            fields={[
+              { name: 'department',  label: 'Department',   type: 'kv-read', value: ps.department },
+              { name: 'week',        label: 'Week',         type: 'kv-read', value: ps.week_label },
+              { name: 'hod_signed',  label: 'HOD Signed By', type: 'kv-read', value: ps.hod_name },
+              { name: 'vessel',      label: 'Vessel',       type: 'kv-read', value: data.vessel_name },
+              { name: 'regulation',  label: 'Regulation',   type: 'kv-read', value: 'MLC 2006 Regulation 2.3 — Rest Hours' },
+            ]}
+            previewRows={[
+              { key: 'Vessel Compliance', value: `${va.overall_compliance_pct.toFixed(1)}%` },
+              { key: 'Total Violations',  value: String(va.total_violations) },
+              { key: 'Total Crew',        value: String(va.total_crew) },
+            ]}
+            onClose={() => setSigningPopupId(null)}
+            onSubmit={(values) => {
+              setSigningPopupId(null);
+              finalSign(ps.signoff_id, String(values.signature_name ?? ''));
+            }}
+          />
+        );
+      })()}
 
       {/* ── Expanded crew grid (shown below cards when a dept is expanded) ── */}
       {expandedDept && (() => {

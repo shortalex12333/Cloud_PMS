@@ -3,53 +3,104 @@
 /**
  * Hours of Rest — role-aware operational dashboard
  *
- * Crew (all roles):             My Time tab only
- * HOD (chief_engineer, eto):    My Time | Department View
- * Captain / Manager:            My Time | All Departments
+ * crew:                      My Time
+ * HOD (chief_engineer,
+ *      chief_officer, eto):  My Time | Department
+ * captain:                   My Time | Department | All Departments
+ * manager (fleet):           My Time | All Departments | Fleet
+ *
+ * MLC 2006 rule enforced by backend:
+ *   HOD/captain cannot counter-sign until own week is submitted.
  *
  * No DomainListView. No EntityLensPage. Inline time input only.
  */
 
 import * as React from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { isHOD } from '@/contexts/AuthContext';
 import { MyTimeView } from '@/components/hours-of-rest/MyTimeView';
 import { DepartmentView } from '@/components/hours-of-rest/DepartmentView';
 import { VesselComplianceView } from '@/components/hours-of-rest/VesselComplianceView';
+import { FleetView } from '@/components/hours-of-rest/FleetView';
 
-type Tab = 'my-time' | 'department' | 'vessel';
+type Tab = 'my-time' | 'department' | 'vessel' | 'fleet';
 
-function isCaptainOrManager(role: string | undefined): boolean {
-  return role === 'captain' || role === 'manager';
+// ── Role helpers (local to HoR — do NOT use AuthContext.isHOD which is too broad) ──
+
+function isHODRole(role: string | undefined): boolean {
+  // HODs: head of a department. Responsible for counter-signing crew in their dept.
+  // chief_officer = HOD of deck; chief_engineer = HOD of engine; eto = HOD of electrical.
+  return ['chief_engineer', 'chief_officer', 'eto'].includes(role ?? '');
 }
 
-function isHODOnly(role: string | undefined): boolean {
-  return role === 'chief_engineer' || role === 'eto';
+function isCaptainRole(role: string | undefined): boolean {
+  return role === 'captain';
+}
+
+function isFleetManagerRole(role: string | undefined): boolean {
+  return role === 'manager';
+}
+
+function roleLabel(role: string | undefined): string {
+  if (!role) return '';
+  const labels: Record<string, string> = {
+    chief_engineer: 'Chief Engineer',
+    chief_officer: 'Chief Officer',
+    eto: 'ETO',
+    captain: 'Captain',
+    manager: 'Fleet Manager',
+  };
+  return labels[role] ?? role.replace(/_/g, ' ');
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
+
+function useHoRUnreadCount(token: string | undefined): number {
+  const [count, setCount] = React.useState(0);
+  React.useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch('/api/v1/hours-of-rest/notifications/unread', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const data = json.success ? json.data : (json.data ?? json);
+        if (!cancelled) setCount(data?.unread_count ?? 0);
+      } catch { /* silent — badge is non-critical */ }
+    }
+    load();
+    const iv = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [token]);
+  return count;
 }
 
 function HoursOfRestContent() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const role = user?.role;
 
-  const showDept = isHOD(user);
-  const showVessel = isCaptainOrManager(role);
+  const showDept    = isHODRole(role) || isCaptainRole(role);
+  const showVessel  = isCaptainRole(role) || isFleetManagerRole(role);
+  const showFleet   = isFleetManagerRole(role);
 
   const [tab, setTab] = React.useState<Tab>('my-time');
+  const unreadCount = useHoRUnreadCount(showDept ? session?.access_token : undefined);
 
-  // Constrain the active tab to what the current role permits.
-  // Computed inline — no useEffect, no setTab call, no re-render loop.
+  // Clamp active tab to what this role permits (no useEffect, no loop).
   const activeTab: Tab =
-    (tab === 'vessel' && !showVessel) ? 'my-time' :
-    (tab === 'department' && !showDept) ? 'my-time' :
+    (tab === 'fleet'      && !showFleet)   ? 'my-time' :
+    (tab === 'vessel'     && !showVessel)  ? 'my-time' :
+    (tab === 'department' && !showDept)    ? 'my-time' :
     tab;
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'my-time', label: 'My Time' },
-    ...(isHODOnly(role) ? [{ id: 'department' as Tab, label: 'Department' }] : []),
-    ...(showVessel ? [{ id: 'department' as Tab, label: 'Department' }, { id: 'vessel' as Tab, label: 'All Departments' }] : []),
+  const tabs: { id: Tab; label: string; badge?: number }[] = [
+    { id: 'my-time',    label: 'My Time' },
+    ...(showDept   ? [{ id: 'department' as Tab, label: 'Department', badge: unreadCount > 0 ? unreadCount : undefined }] : []),
+    ...(showVessel ? [{ id: 'vessel'     as Tab, label: 'All Departments' }] : []),
+    ...(showFleet  ? [{ id: 'fleet'      as Tab, label: 'Fleet' }] : []),
   ];
-
-  const dedupedTabs = tabs.filter((t, i, arr) => arr.findIndex(x => x.id === t.id) === i);
 
   return (
     <div style={{
@@ -60,6 +111,7 @@ function HoursOfRestContent() {
       background: 'var(--surface-base, #0e0c09)',
       overflow: 'hidden',
     }}>
+
       {/* ── Domain header ── */}
       <div style={{
         display: 'flex',
@@ -78,18 +130,18 @@ function HoursOfRestContent() {
             textTransform: 'uppercase',
             letterSpacing: '0.10em',
           }}>Hours of Rest</span>
-          {user?.role && (
+          {role && (
             <span style={{
               fontFamily: 'var(--font-mono)',
               fontSize: 9,
               color: 'rgba(255,255,255,0.25)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
-            }}>{user.role.replace(/_/g, ' ')}</span>
+            }}>{roleLabel(role)}</span>
           )}
         </div>
 
-        {dedupedTabs.length > 1 && (
+        {tabs.length > 1 && (
           <div style={{
             display: 'flex',
             gap: 2,
@@ -98,9 +150,10 @@ function HoursOfRestContent() {
             borderRadius: 6,
             padding: 2,
           }}>
-            {dedupedTabs.map(t => (
+            {tabs.map(t => (
               <button
                 key={t.id}
+                data-testid={`hor-tab-${t.id}`}
                 onClick={() => setTab(t.id)}
                 style={{
                   fontFamily: 'var(--font-mono)',
@@ -115,23 +168,44 @@ function HoursOfRestContent() {
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
                   whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
                 }}
-              >{t.label}</button>
+              >
+                {t.label}
+                {t.badge !== undefined && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 14,
+                    height: 14,
+                    borderRadius: 7,
+                    background: 'rgba(239,68,68,0.9)',
+                    color: '#fff',
+                    fontSize: 8,
+                    fontWeight: 700,
+                    padding: '0 3px',
+                    letterSpacing: 0,
+                  }}>
+                    {t.badge > 9 ? '9+' : t.badge}
+                  </span>
+                )}
+              </button>
             ))}
           </div>
         )}
       </div>
 
       {/* ── Tab content ── */}
-      <div style={{
-        flex: 1,
-        overflow: 'auto',
-        padding: '20px',
-      }}>
-        {activeTab === 'my-time' && <MyTimeView />}
-        {activeTab === 'department' && showDept && <DepartmentView />}
-        {activeTab === 'vessel' && showVessel && <VesselComplianceView />}
+      <div style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
+        {activeTab === 'my-time'    && <MyTimeView />}
+        {activeTab === 'department' && showDept   && <DepartmentView />}
+        {activeTab === 'vessel'     && showVessel && <VesselComplianceView />}
+        {activeTab === 'fleet'      && showFleet  && <FleetView />}
       </div>
+
     </div>
   );
 }

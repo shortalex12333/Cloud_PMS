@@ -185,7 +185,7 @@ async def get_my_week(
         }
 
         # ------------------------------------------------------------------
-        # 5. Pending sign-off for current month
+        # 5. Pending sign-off for current month + weekly signoff status
         # ------------------------------------------------------------------
         signoff_r = supabase.table("pms_hor_monthly_signoffs").select(
             "id, month, status"
@@ -206,6 +206,16 @@ async def get_my_week(
                 "status":     "not_started",
                 "signoff_id": None,
             }
+
+        # Weekly signoff status for the selected week (Phase 7 lock signal)
+        weekly_signoff_r = supabase.table("pms_hor_monthly_signoffs").select(
+            "id, status, correction_requested, correction_note"
+        ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
+            "period_type", "weekly"
+        ).eq("week_start", week_monday.isoformat()).maybe_single().execute()
+
+        weekly_signoff_data = weekly_signoff_r.data if weekly_signoff_r else None
+        signoff_status = weekly_signoff_data.get("status") if weekly_signoff_data else None
 
         # ------------------------------------------------------------------
         # 6. Templates
@@ -233,6 +243,12 @@ async def get_my_week(
             "compliance":     compliance,
             "pending_signoff": pending_signoff,
             "templates":      templates,
+            # Phase 7: weekly sign-off status for lock signal
+            # null = no weekly signoff exists yet (editable)
+            # "finalized" or "locked" = read-only, TimeSlider hidden
+            "signoff_status": signoff_status,
+            "correction_requested": weekly_signoff_data.get("correction_requested", False) if weekly_signoff_data else False,
+            "correction_note": weekly_signoff_data.get("correction_note") if weekly_signoff_data else None,
         })
 
     except HTTPException:
@@ -409,9 +425,11 @@ async def get_department_status(
         pending_r = pending_q.execute()
         pending_rows = pending_r.data or []
         pending_signoffs = {
-            "month":       current_month,
+            "month":        current_month,
             "awaiting_hod": len(pending_rows),
             "signoff_ids":  [r["id"] for r in pending_rows],
+            "crew_user_ids": [r["user_id"] for r in pending_rows],
+            # parallel arrays — index i: signoff_ids[i] belongs to crew_user_ids[i]
         }
 
         dept_label = department if user_role.lower() not in _CAPTAIN_ROLES else "all"
@@ -495,12 +513,20 @@ async def get_vessel_compliance(
             name_by_id = {p["id"]: p.get("name") or "Unknown" for p in (prof_r.data or [])}
 
         # ------------------------------------------------------------------
-        # 3. Violations this quarter
+        # 3. Violations — this quarter (legacy) and this week (scoped)
         # ------------------------------------------------------------------
         viol_r = supabase.table("pms_crew_hours_warnings").select(
             "id"
         ).eq("yacht_id", yacht_id).gte("record_date", quarter_start).execute()
         violations_this_quarter = len(viol_r.data or [])
+
+        week_end = week_monday + timedelta(days=6)
+        viol_week_r = supabase.table("pms_crew_hours_warnings").select(
+            "id"
+        ).eq("yacht_id", yacht_id).gte(
+            "record_date", week_monday.isoformat()
+        ).lte("record_date", week_end.isoformat()).execute()
+        violations_this_week = len(viol_week_r.data or [])
 
         # ------------------------------------------------------------------
         # 4. Build department groups
@@ -552,8 +578,71 @@ async def get_vessel_compliance(
         total_crew      = len(rows)
         total_compliant = sum(1 for r in rows if r.get("is_weekly_compliant"))
         total_work_hrs  = [r.get("total_work_hours") for r in rows if r.get("total_work_hours") is not None]
-        avg_work_hours  = round(sum(total_work_hrs) / len(total_work_hrs), 2) if total_work_hrs else None
-        compliance_rate = round(total_compliant / total_crew, 4) if total_crew else None
+        # avg_work_hours = average crew member's TOTAL weekly work hours
+        avg_work_hours_per_week = round(sum(total_work_hrs) / len(total_work_hrs), 2) if total_work_hrs else None
+        avg_work_hours_per_day  = round(avg_work_hours_per_week / 7, 2) if avg_work_hours_per_week is not None else None
+        # compliance_pct: 0–100 (not 0–1). 100 = all crew submitted with no violations.
+        # A missed submission day OR a violation day = non-compliance.
+        total_submitted_days = sum((r.get("days_submitted") or 0) for r in rows)
+        total_expected_days  = total_crew * 7
+        total_violation_days = sum(
+            7 - (r.get("days_compliant") or 0) for r in rows
+            if (r.get("days_submitted") or 0) > 0
+        )
+        non_compliant_days = (total_expected_days - total_submitted_days) + total_violation_days
+        compliance_pct = round(
+            max(0, (total_expected_days - non_compliant_days) / total_expected_days * 100), 1
+        ) if total_expected_days else None
+
+        # ------------------------------------------------------------------
+        # 7. Sign chain — per-dept HOD sign status + captain/FM sign for this week
+        # ------------------------------------------------------------------
+        sign_chain_r = supabase.table("pms_hor_monthly_signoffs").select(
+            "id, user_id, department, status, period_type, week_start, "
+            "hod_signed_by, hod_signed_at, master_signed_by, master_signed_at, "
+            "fleet_manager_signed_by, fleet_manager_signed_at, "
+            "correction_requested, correction_note"
+        ).eq("yacht_id", yacht_id).eq("period_type", "weekly").eq(
+            "week_start", week_monday.isoformat()
+        ).execute()
+
+        sign_rows = sign_chain_r.data or []
+
+        # dept → sign status
+        dept_sign: Dict[str, dict] = {}
+        captain_signed = False
+        fleet_reviewed = False
+        for s in sign_rows:
+            dept = s.get("department", "unassigned")
+            status = s.get("status", "draft")
+            dept_sign[dept] = {
+                "signoff_id":         s.get("id"),
+                "status":             status,
+                "hod_signed_at":      s.get("hod_signed_at"),
+                "correction_requested": s.get("correction_requested", False),
+                "correction_note":    s.get("correction_note"),
+            }
+            if s.get("master_signed_by"):
+                captain_signed = True
+            if s.get("fleet_manager_signed_by"):
+                fleet_reviewed = True
+
+        # Merge sign status into dept_map
+        departments_out = []
+        for dept, g in dept_map.items():
+            sign_info = dept_sign.get(dept, {
+                "signoff_id": None,
+                "status": "draft",
+                "hod_signed_at": None,
+                "correction_requested": False,
+                "correction_note": None,
+            })
+            departments_out.append({**g, **sign_info})
+
+        all_hods_signed = all(
+            d.get("status") in ("hod_signed", "finalized") and not d.get("correction_requested")
+            for d in departments_out
+        ) if departments_out else False
 
         return JSONResponse(content={
             "status":      "success",
@@ -563,12 +652,23 @@ async def get_vessel_compliance(
                 "submitted_count": sum(1 for r in rows if (r.get("days_submitted") or 0) > 0),
                 "compliant_count": total_compliant,
             },
-            "departments": list(dept_map.values()),
+            "departments": departments_out,
             "all_crew":    all_crew,
             "analytics": {
-                "avg_work_hours":           avg_work_hours,
-                "compliance_rate":          compliance_rate,
-                "violations_this_quarter":  violations_this_quarter,
+                "avg_work_hours":           avg_work_hours_per_week,   # kept for backward compat
+                "avg_work_hours_per_week":  avg_work_hours_per_week,
+                "avg_work_hours_per_day":   avg_work_hours_per_day,
+                "compliance_pct":           compliance_pct,            # 0–100, use this
+                "compliance_rate":          compliance_pct,            # deprecated alias
+                "violations_this_week":     violations_this_week,
+                "violations_this_quarter":  violations_this_quarter,   # deprecated
+            },
+            "sign_chain": {
+                "all_hods_signed":       all_hods_signed,
+                "captain_signed":        captain_signed,
+                "fleet_manager_reviewed": fleet_reviewed,
+                "ready_for_captain":     all_hods_signed and not captain_signed,
+                "ready_for_fleet_manager": all_hods_signed and captain_signed and not fleet_reviewed,
             },
         })
 

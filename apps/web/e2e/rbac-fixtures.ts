@@ -18,8 +18,18 @@ import * as path from 'path';
  */
 
 // Environment configuration
+// IMPORTANT: TEST_YACHT_ID must always be set in CI via secrets.
+// Never hard-code a production yacht ID here — CI test users will be created
+// in the production tenant DB and appear in real crew views.
+if (!process.env.TEST_YACHT_ID) {
+  throw new Error(
+    '[rbac-fixtures] TEST_YACHT_ID env var is required. ' +
+    'Set it in CI secrets or your local .env.test. ' +
+    'Do NOT use the production yacht ID as a fallback.'
+  );
+}
 export const RBAC_CONFIG = {
-  yachtId: process.env.TEST_YACHT_ID || '85fe1119-b04c-41ac-80f1-829d23322598',
+  yachtId: process.env.TEST_YACHT_ID,
   baseUrl: process.env.E2E_BASE_URL || 'https://app.celeste7.ai',
   apiUrl: process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai',
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzsohavtuotocgrfkfyd.supabase.co',
@@ -32,9 +42,10 @@ export const RBAC_CONFIG = {
 
 // Auth state paths
 const AUTH_STATES = {
-  hod: path.join(__dirname, '../playwright/.auth/hod.json'),
-  crew: path.join(__dirname, '../playwright/.auth/crew.json'),
-  captain: path.join(__dirname, '../playwright/.auth/captain.json'),
+  hod:          path.join(__dirname, '../playwright/.auth/hod.json'),
+  crew:         path.join(__dirname, '../playwright/.auth/crew.json'),
+  captain:      path.join(__dirname, '../playwright/.auth/captain.json'),
+  fleet_manager: path.join(__dirname, '../playwright/.auth/fleet_manager.json'),
 };
 
 // Test data generator with unique IDs (LAW 29: MUTATION ISOLATION)
@@ -48,6 +59,7 @@ type RBACFixtures = {
   hodPage: Page;
   crewPage: Page;
   captainPage: Page;
+  fleetManagerPage: Page;
 
   // Supabase service-role client for database verification
   supabaseAdmin: SupabaseClient;
@@ -106,6 +118,14 @@ export const test = base.extend<RBACFixtures>({
   // Captain authenticated page (highest privileges)
   captainPage: async ({ browser }, use) => {
     const context = await browser.newContext({ storageState: AUTH_STATES.captain });
+    const page = await context.newPage();
+    await use(page);
+    await context.close();
+  },
+
+  // Fleet manager authenticated page (cross-vessel view)
+  fleetManagerPage: async ({ browser }, use) => {
+    const context = await browser.newContext({ storageState: AUTH_STATES.fleet_manager });
     const page = await context.newPage();
     await use(page);
     await context.close();

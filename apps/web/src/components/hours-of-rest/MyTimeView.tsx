@@ -213,7 +213,14 @@ function StatusBadge({ ok, label }: { ok: boolean | null; label?: string }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function MyTimeView() {
+interface MyTimeViewProps {
+  /** If set, loads another crew member's week (read-only, HOD/Captain viewing) */
+  targetUserId?: string;
+  /** Force entire view into read-only mode */
+  readOnly?: boolean;
+}
+
+export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeViewProps = {}) {
   const [data, setData] = React.useState<typeof MOCK_MY_WEEK | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -221,9 +228,18 @@ export function MyTimeView() {
   // Local state for unsubmitted days' slider values
   const [draftPeriods, setDraftPeriods] = React.useState<Record<string, RestPeriod[]>>({});
   const [submitting, setSubmitting] = React.useState<Record<string, boolean>>({});
+  // Days submitted this session (before page reload) — avoids full reload on each submit
+  const [submittedDays, setSubmittedDays] = React.useState<Record<string, any>>({});
+  // Per-day submit errors (e.g. overlap rejection from backend)
+  const [submitErrors, setSubmitErrors] = React.useState<Record<string, string>>({});
+  // Once weekly submit succeeds, Undo buttons are locked
+  const weekFinalised = React.useRef(false);
 
   // Template selector
   const [selectedTemplate, setSelectedTemplate] = React.useState('');
+
+  // Phase 7: week locked when finalized (signoff_status === 'finalized' OR LOCKED error)
+  const [weekLocked, setWeekLocked] = React.useState(false);
   const [applyingTemplate, setApplyingTemplate] = React.useState(false);
 
   // Sign week popup
@@ -245,7 +261,10 @@ export function MyTimeView() {
     setError(null);
     try {
       const auth = await getAuthHeader();
-      const resp = await fetch('/api/v1/hours-of-rest/my-week', {
+      const url = targetUserId
+        ? `/api/v1/hours-of-rest/my-week?user_id=${encodeURIComponent(targetUserId)}`
+        : '/api/v1/hours-of-rest/my-week';
+      const resp = await fetch(url, {
         headers: { 'Authorization': auth },
       });
       if (resp.ok) {
@@ -261,6 +280,9 @@ export function MyTimeView() {
           json.pending_signoff.id = json.pending_signoff.signoff_id;
         }
         setData(json);
+        // Phase 7: lock week if finalized
+        const locked = json.signoff_status === 'finalized' || json.signoff_status === 'locked';
+        setWeekLocked(locked);
       } else {
         const text = await resp.text().catch(() => '');
         setError(`Failed to load hours of rest (${resp.status})${text ? `: ${text.slice(0, 120)}` : ''}`);
@@ -301,18 +323,60 @@ export function MyTimeView() {
     setSubmitting(prev => ({ ...prev, [date]: true }));
     try {
       const auth = await getAuthHeader();
-      await fetch('/api/v1/hours-of-rest/upsert', {
+      const resp = await fetch('/api/v1/hours-of-rest/upsert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
         body: JSON.stringify({ record_date: date, rest_periods: periods }),
       });
-      await loadWeekData();
-      setDraftPeriods(prev => { const n = { ...prev }; delete n[date]; return n; });
+      const json = await resp.json().catch(() => null);
+
+      // Phase 7: LOCKED check — HTTP 409 or envelope status:'error' + code:'LOCKED'
+      const isLockedErr =
+        resp.status === 409 ||
+        (json?.status === 'error' && json?.error?.code === 'LOCKED');
+      if (isLockedErr) {
+        setWeekLocked(true);
+        setSubmitErrors(prev => ({
+          ...prev,
+          [date]: 'This week is finalized. Ask your HOD to submit a correction.',
+        }));
+        return;
+      }
+
+      if (resp.ok) {
+        // Patch local state from response — NO page reload
+        const record = json?.data?.record ?? null;
+        const compliance = json?.data?.compliance ?? null;
+        const warnings = json?.data?.warnings_created ?? [];
+        const dayPatch = record ? {
+          date,
+          rest_periods: periods,
+          total_rest_hours: record.total_rest_hours ?? compliance?.total_rest_hours ?? null,
+          total_work_hours: record.total_work_hours ?? null,
+          is_compliant: record.is_daily_compliant ?? compliance?.is_daily_compliant ?? null,
+          submitted: true,
+          warnings,
+        } : { date, rest_periods: periods, submitted: true, warnings: [] };
+        setSubmittedDays(prev => ({ ...prev, [date]: dayPatch }));
+        setSubmitErrors(prev => { const n = { ...prev }; delete n[date]; return n; });
+        setDraftPeriods(prev => { const n = { ...prev }; delete n[date]; return n; });
+      } else {
+        const msg = json?.message ?? `Submit failed (${resp.status})`;
+        setSubmitErrors(prev => ({ ...prev, [date]: msg }));
+      }
     } catch {
       // handle error
     } finally {
       setSubmitting(prev => ({ ...prev, [date]: false }));
     }
+  }
+
+  function undoDay(date: string) {
+    const submitted = submittedDays[date];
+    if (submitted?.rest_periods?.length) {
+      setDraftPeriods(prev => ({ ...prev, [date]: submitted.rest_periods }));
+    }
+    setSubmittedDays(prev => { const n = { ...prev }; delete n[date]; return n; });
   }
 
   // ── Apply template ──
@@ -344,6 +408,7 @@ export function MyTimeView() {
       headers: { 'Content-Type': 'application/json', 'Authorization': auth },
       body: JSON.stringify({ type: 'crew_weekly', ...values }),
     });
+    weekFinalised.current = true;
     setSignWeekOpen(false);
     await loadWeekData();
   }
@@ -383,8 +448,12 @@ export function MyTimeView() {
 
   const comp = data.compliance;
   const signoff = data.pending_signoff;
-  const allSubmitted = data.days.filter(Boolean).every(d => d.submitted);
-  const anyUnsubmitted = data.days.filter(Boolean).some(d => !d.submitted && (draftPeriods[d.date]?.length ?? 0) > 0);
+  const isReadOnly = forceReadOnly || weekLocked;
+  const allSubmitted = data.days.filter(Boolean).every(d => d.submitted || !!submittedDays[d.date]);
+  const anyUnsubmitted = data.days.filter(Boolean).some(d => !d.submitted && !submittedDays[d.date] && (draftPeriods[d.date]?.length ?? 0) > 0);
+  const signoffStatus: string | null = (data as any).signoff_status ?? null;
+  const correctionRequested: boolean = (data as any).correction_requested ?? false;
+  const correctionNote: string | null = (data as any).correction_note ?? null;
 
   return (
     <div style={{ maxWidth: 680 }}>
@@ -417,9 +486,16 @@ export function MyTimeView() {
       {/* ── THIS WEEK ── */}
       <SectionCard>
         <SectionHeader
-          label={`This Week — ${data.week_start}`}
-          right={
+          label={`This Week — ${data.week_start}${weekLocked ? ' 🔒' : ''}`}
+          right={isReadOnly ? (
+            weekLocked && !forceReadOnly ? (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em' }}>
+                {signoffStatus === 'hod_signed' ? 'Awaiting Captain' : signoffStatus === 'finalized' ? 'Finalized' : 'Read-only'}
+              </span>
+            ) : undefined
+          ) : (
             <button
+              data-testid="hor-submit-week"
               onClick={() => setSignWeekOpen(true)}
               disabled={!allSubmitted}
               style={{
@@ -438,14 +514,72 @@ export function MyTimeView() {
             >
               Submit Week For Approval
             </button>
-          }
+          )}
         />
+
+        {/* Finalized banner */}
+        {weekLocked && !forceReadOnly && (
+          <div style={{
+            margin: '8px 16px',
+            padding: '8px 12px',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            borderRadius: 5,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            color: 'rgba(255,255,255,0.45)',
+          }}>
+            🔒 This week is finalized. To make changes, ask your HOD to submit a correction request.
+          </div>
+        )}
+
+        {/* HOD signed — soft lock warning */}
+        {signoffStatus === 'hod_signed' && !weekLocked && !forceReadOnly && (
+          <div style={{
+            margin: '8px 16px',
+            padding: '8px 12px',
+            background: 'rgba(245,158,11,0.05)',
+            border: '1px solid rgba(245,158,11,0.20)',
+            borderRadius: 5,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            color: 'rgba(245,158,11,0.75)',
+          }}>
+            HOD has counter-signed this week. Editing will require your HOD to re-counter-sign.
+          </div>
+        )}
+
+        {/* Correction requested banner */}
+        {correctionRequested && !forceReadOnly && (
+          <div style={{
+            margin: '8px 16px',
+            padding: '8px 12px',
+            background: 'rgba(245,158,11,0.06)',
+            border: '1px solid rgba(245,158,11,0.25)',
+            borderRadius: 5,
+          }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(245,158,11,0.8)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+              Correction Requested by HOD
+            </div>
+            {correctionNote && (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(245,158,11,0.7)' }}>
+                {correctionNote}
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ padding: '4px 0' }}>
           {data.days.filter(Boolean).map((day, idx) => {
-            const hasWarning = day.warnings?.length > 0;
-            const draft = draftPeriods[day.date];
+            const localSubmit = submittedDays[day.date];
+            const isSubmittedLocally = !!localSubmit;
+            const isSubmitted = day.submitted || isSubmittedLocally || isReadOnly;
+            const displayDay = isSubmittedLocally ? localSubmit : day;
+            const warnings: any[] = displayDay.warnings ?? [];
+            const hasWarning = warnings.length > 0;
+            const draft = isReadOnly ? undefined : draftPeriods[day.date];
             const isSubmitting = submitting[day.date];
+            const canUndo = isSubmittedLocally && !weekFinalised.current && !isReadOnly;
 
             return (
               <div
@@ -453,11 +587,11 @@ export function MyTimeView() {
                 style={{
                   padding: '10px 16px',
                   borderBottom: idx < 6 ? '1px solid rgba(255,255,255,0.03)' : undefined,
-                  background: hasWarning && !day.submitted ? 'rgba(192,80,58,0.04)' : undefined,
+                  background: hasWarning && !isSubmitted ? 'rgba(192,80,58,0.04)' : undefined,
                 }}
               >
                 {/* Day header row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.submitted ? 6 : 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isSubmitted ? 6 : 8 }}>
                   <span style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: 10,
@@ -466,20 +600,41 @@ export function MyTimeView() {
                     width: 28,
                   }}>{day.label}</span>
 
-                  {day.submitted ? (
+                  {isSubmitted ? (
                     <>
                       <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-                        {day.total_work_hours}h work / {day.total_rest_hours}h rest
+                        {displayDay.total_work_hours != null ? `${displayDay.total_work_hours}h work / ` : ''}{displayDay.total_rest_hours != null ? `${displayDay.total_rest_hours}h rest` : ''}
                       </span>
-                      <StatusBadge ok={day.is_compliant} label={day.is_compliant ? 'Compliant' : 'Violation'} />
+                      <StatusBadge ok={displayDay.is_compliant} label={displayDay.is_compliant ? 'Compliant' : 'Violation'} />
+                      {/* Submitted this session — show acknowledgement + Undo */}
+                      {canUndo && (
+                        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--green, #4A9468)', fontWeight: 600 }}>Submitted ✓</span>
+                          <button
+                            onClick={() => undoDay(day.date)}
+                            style={{
+                              padding: '3px 8px',
+                              background: 'none',
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              borderRadius: 4,
+                              color: 'rgba(255,255,255,0.45)',
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: 9,
+                              cursor: 'pointer',
+                              letterSpacing: '0.06em',
+                            }}
+                          >Undo</button>
+                        </span>
+                      )}
                     </>
                   ) : (
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Not submitted</span>
                   )}
 
-                  {/* Submit day button */}
-                  {!day.submitted && draft?.length > 0 && (
+                  {/* Submit day button — only when not submitted and has draft */}
+                  {!isSubmitted && (draft?.length ?? 0) > 0 && (
                     <button
+                      data-testid={`hor-submit-day-${day.date}`}
                       onClick={() => submitDay(day.date)}
                       disabled={isSubmitting}
                       style={{
@@ -503,10 +658,33 @@ export function MyTimeView() {
                   )}
                 </div>
 
+                {/* Submit error (e.g. overlap rejection) */}
+                {submitErrors[day.date] && (
+                  <div style={{ marginBottom: 6, paddingLeft: 38 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(239,68,68,0.85)' }}>
+                      ✕ {submitErrors[day.date]}
+                    </span>
+                  </div>
+                )}
+
+                {/* Violation reason (BUG 3) */}
+                {isSubmitted && hasWarning && (
+                  <div style={{ marginBottom: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {warnings.map((w: any, wi: number) => (
+                      <span key={wi} style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 9,
+                        color: 'rgba(192,80,58,0.85)',
+                        paddingLeft: 38,
+                      }}>⚠ {w.message ?? 'Compliance rule breached'}</span>
+                    ))}
+                  </div>
+                )}
+
                 {/* Slider */}
                 <TimeSlider
-                  value={day.submitted ? day.rest_periods : draft}
-                  readOnly={day.submitted}
+                  value={isSubmitted ? (localSubmit?.rest_periods ?? day.rest_periods) : draft}
+                  readOnly={isSubmitted}
                   onChange={periods => setDraftPeriods(prev => ({ ...prev, [day.date]: periods }))}
                 />
               </div>

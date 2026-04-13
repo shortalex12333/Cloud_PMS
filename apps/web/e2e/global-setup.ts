@@ -31,9 +31,19 @@ const _supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzsohavtuo
 const SUPABASE_PROJECT_REF = new URL(_supabaseUrl).hostname.split('.')[0];
 const STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
 
-// Captain user — all roles currently map to this user (see STAGE_3_HANDOVER.md §8)
-const CAPTAIN_SUB = 'a35cad0b-02ff-4287-b6e4-17c96fa6a424';
-const CAPTAIN_EMAIL = 'x@alex-short.com';
+// Per-role test users — each has the correct role in auth_users_roles for TEST_YACHT_ID.
+// Verified 2026-04-13 against vzsohavtuotocgrfkfyd (tenant DB).
+// auth.users.id values — verified 2026-04-13 via /auth/v1/admin/users.
+// IMPORTANT: these MUST be auth.users.id (Supabase native user UUIDs).
+//            auth_users_profiles.id is a SEPARATE surrogate key and will not work as JWT sub.
+// hod.test@alex-short.com has NO auth.users entry → use eto.test (role: eto, also an HOD).
+// captain.tenant@alex-short.com: auth.users.id = 5af9d61d (NOT b72c35ff which is profiles.id).
+const USERS: Record<string, { sub: string; email: string }> = {
+  crew:    { sub: '4a66036f-899c-40c8-9b2a-598cee24a62f', email: 'engineer.test@alex-short.com' },
+  hod:     { sub: '81c239df-f8ef-4bba-9496-78bf8f46733c', email: 'eto.test@alex-short.com'      },
+  captain: { sub: '5af9d61d-9b2e-4db4-a54c-a3c95eec70e5', email: 'captain.tenant@alex-short.com' },
+  user:    { sub: 'f11f1247-b7bd-4017-bfe3-ebd3f8c9e871', email: 'fleet-test-1775570624@celeste7.ai' },
+};
 
 function mintJwt(sub: string, email: string, expiresInSeconds = 8 * 3600): string {
   const secretString = process.env.SUPABASE_JWT_SECRET;
@@ -99,17 +109,26 @@ async function globalSetup() {
     fs.mkdirSync(AUTH_DIR, { recursive: true });
   }
 
-  // Mint a captain JWT (all roles use the same user for now)
-  const jwt = mintJwt(CAPTAIN_SUB, CAPTAIN_EMAIL);
+  // Mint per-role JWTs — each user has the correct role in auth_users_roles.
+  // Also write a fleet_manager.json for FleetView tests.
+  const roleFiles: Array<{ file: string; key: keyof typeof USERS }> = [
+    { file: 'crew',          key: 'crew'    },
+    { file: 'hod',           key: 'hod'     },
+    { file: 'captain',       key: 'captain' },
+    { file: 'user',          key: 'user'    },
+    { file: 'fleet_manager', key: 'user'    }, // manager role — same user as 'user'
+  ];
 
-  // Write auth state files — always overwrite to ensure fresh JWTs
-  for (const role of ['captain', 'hod', 'crew', 'user']) {
-    const filePath = path.join(AUTH_DIR, `${role}.json`);
-    fs.writeFileSync(filePath, buildAuthState(jwt, CAPTAIN_SUB, CAPTAIN_EMAIL));
+  for (const { file, key } of roleFiles) {
+    const u = USERS[key];
+    const jwt = mintJwt(u.sub, u.email);
+    const filePath = path.join(AUTH_DIR, `${file}.json`);
+    fs.writeFileSync(filePath, buildAuthState(jwt, u.sub, u.email));
   }
 
-  if (jwt) {
-    console.log(`[global-setup] Auth state written for captain/hod/crew/user (JWT valid 8h, project: ${SUPABASE_PROJECT_REF})`);
+  const hasSecret = !!process.env.SUPABASE_JWT_SECRET;
+  if (hasSecret) {
+    console.log(`[global-setup] Auth state written for crew/hod/captain/user/fleet_manager (JWT valid 8h, project: ${SUPABASE_PROJECT_REF})`);
   } else {
     console.log(`[global-setup] Empty auth state — SUPABASE_JWT_SECRET not set`);
   }
