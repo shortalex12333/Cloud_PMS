@@ -395,6 +395,13 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
                     {exportResult.sealed && <span style={{ marginLeft: 8, fontSize: 10, background: 'var(--mark)', color: 'var(--surface)', padding: '1px 6px', borderRadius: 3 }}>SEALED</span>}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--font-mono)' }}>Signed URL expires in 1 hour</div>
+                  <div style={{ fontSize: 11, color: 'var(--txt2)', marginTop: 6, lineHeight: 1.5 }}>
+                    To verify authenticity: download the PDF, then upload it to{' '}
+                    <a href="https://verify.celeste7.ai" target="_blank" rel="noreferrer"
+                      style={{ color: 'var(--mark)', textDecoration: 'none', fontWeight: 600 }}>
+                      verify.celeste7.ai
+                    </a>
+                  </div>
                 </div>
                 <a
                   href={exportResult.url}
