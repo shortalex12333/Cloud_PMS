@@ -32,7 +32,7 @@ const MOCK_MY_WEEK = {
   ],
   compliance: {
     rolling_24h_rest: 13,
-    rolling_7d_rest: 48,
+    rolling_7day_rest: 48,
     rolling_7d_work: 48,
     mlc_status: 'COMPLIANT',
     min_24h: 10,
@@ -46,15 +46,7 @@ const MOCK_MY_WEEK = {
     status: 'draft',
   },
   templates: [
-    { id: 'tpl-1', schedule_name: '4-on/8-off Watch System', schedule_template: {
-      monday:    [{ start: '00:00', end: '04:00' }, { start: '12:00', end: '20:00' }],
-      tuesday:   [{ start: '00:00', end: '04:00' }, { start: '12:00', end: '20:00' }],
-      wednesday: [{ start: '00:00', end: '04:00' }, { start: '12:00', end: '20:00' }],
-      thursday:  [{ start: '00:00', end: '04:00' }, { start: '12:00', end: '20:00' }],
-      friday:    [{ start: '00:00', end: '04:00' }, { start: '12:00', end: '20:00' }],
-      saturday:  [{ start: '00:00', end: '08:00' }, { start: '16:00', end: '24:00' }],
-      sunday:    [{ start: '00:00', end: '08:00' }, { start: '16:00', end: '24:00' }],
-    }},
+    { id: 'tpl-1', name: '4-on/8-off Watch System' },
   ],
   prior_weeks: [
     { week_start: '2026-03-31', label: 'Mar 31 – Apr 6', total_rest_hours: 85, is_compliant: true },
@@ -62,7 +54,6 @@ const MOCK_MY_WEEK = {
   ],
 };
 
-const DAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -90,8 +81,8 @@ function normalizeDays(days: any[], weekStart: string): any[] {
  * Normalises the real API response shape to what the component expects.
  * Real API deviations:
  *  - compliance is flat: {rolling_24h_rest, rolling_7day_rest} — missing mlc_status, min_*, violations_this_month, rolling_7d_work
- *  - prior_weeks may be absent
- *  - templates[].name instead of schedule_name
+ *  - prior_weeks may be absent (backend feature not yet implemented)
+ *  - templates[].name (backend renames schedule_name → name in response)
  *  - days[].record_date instead of date; no label field
  */
 function normalizeMyWeekResponse(json: any): void {
@@ -106,15 +97,16 @@ function normalizeMyWeekResponse(json: any): void {
         return dt.toISOString().slice(0, 10);
       })();
       const label = d.label ?? DAY_LABELS[i];
-      return { ...d, date, label };
+      // Remap is_daily_compliant (backend) → is_compliant (component)
+      const is_compliant = d.is_compliant ?? d.is_daily_compliant ?? null;
+      return { ...d, date, label, is_compliant };
     });
   }
 
   // 2. Normalise compliance — add missing fields with safe defaults
   const c: any = json.compliance ?? {};
   const rolling24 = c.rolling_24h_rest ?? null;
-  // API may return rolling_7day_rest (typo in spec) or rolling_7d_rest
-  const rolling7d = c.rolling_7d_rest ?? c.rolling_7day_rest ?? null;
+  const rolling7d = c.rolling_7day_rest ?? null;
   const min24 = c.min_24h ?? 10;
   const min7d = c.min_7d ?? 77;
   const mlcStatus: string | null = c.mlc_status ?? (
@@ -124,7 +116,7 @@ function normalizeMyWeekResponse(json: any): void {
   );
   json.compliance = {
     rolling_24h_rest: rolling24,
-    rolling_7d_rest: rolling7d,
+    rolling_7day_rest: rolling7d,
     rolling_7d_work: c.rolling_7d_work ?? null,
     min_24h: min24,
     min_7d: min7d,
@@ -137,13 +129,8 @@ function normalizeMyWeekResponse(json: any): void {
     json.prior_weeks = [];
   }
 
-  // 4. Normalise templates: real API uses name, component uses schedule_name
-  if (Array.isArray(json.templates)) {
-    json.templates = json.templates.map((t: any) => ({
-      ...t,
-      schedule_name: t.schedule_name ?? t.name ?? '',
-    }));
-  } else {
+  // 4. Ensure templates is always an array (backend field: name)
+  if (!Array.isArray(json.templates)) {
     json.templates = [];
   }
 }
@@ -251,9 +238,6 @@ export function MyTimeView() {
   // Unsigned alert
   const [unsignedAlert, setUnsignedAlert] = React.useState(false);
 
-  // Guard against double-mount (React StrictMode / auth re-renders)
-  const fetchedRef = React.useRef(false);
-
   // ── Load week data ──
 
   async function loadWeekData() {
@@ -298,14 +282,13 @@ export function MyTimeView() {
         const json = await resp.json();
         setUnsignedAlert((json.data?.length ?? 0) > 0);
       }
+      // 404 = notifications endpoint not yet deployed — silently skip
     } catch {
       // non-critical
     }
   }
 
   React.useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
     loadWeekData();
     checkUnsignedAlert();
   }, []);
@@ -335,23 +318,9 @@ export function MyTimeView() {
   // ── Apply template ──
 
   async function applyTemplate() {
-    if (!selectedTemplate || !data) return;
-    const tpl = data.templates.find(t => t.id === selectedTemplate);
-    if (!tpl) return;
+    if (!selectedTemplate) return;
     setApplyingTemplate(true);
     try {
-      // Optimistic: populate draft periods from template
-      const newDrafts: Record<string, RestPeriod[]> = {};
-      data.days.filter(Boolean).forEach((day, idx) => {
-        if (!day.submitted) {
-          const dayName = DAY_NAMES[idx];
-          const tplDay = (tpl.schedule_template as Record<string, RestPeriod[]>)[dayName];
-          if (tplDay?.length) newDrafts[day.date] = tplDay;
-        }
-      });
-      setDraftPeriods(prev => ({ ...prev, ...newDrafts }));
-
-      // Try backend apply
       const auth = await getAuthHeader();
       await fetch('/api/v1/hours-of-rest/templates/apply', {
         method: 'POST',
@@ -360,7 +329,7 @@ export function MyTimeView() {
       });
       await loadWeekData();
     } catch {
-      // optimistic update remains in draftPeriods
+      // non-critical
     } finally {
       setApplyingTemplate(false);
     }
@@ -568,7 +537,7 @@ export function MyTimeView() {
             >
               <option value="">Select a template…</option>
               {data.templates.map(t => (
-                <option key={t.id} value={t.id}>{t.schedule_name}</option>
+                <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
             <button
@@ -613,10 +582,10 @@ export function MyTimeView() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-              7-day rolling — {comp.rolling_7d_rest != null ? `${comp.rolling_7d_rest}h rest` : '—'}
+              7-day rolling — {comp.rolling_7day_rest != null ? `${comp.rolling_7day_rest}h rest` : '—'}
             </span>
-            {comp.rolling_7d_rest != null
-              ? <StatusBadge ok={comp.rolling_7d_rest >= comp.min_7d} label={comp.rolling_7d_rest >= comp.min_7d ? `✓ min ${comp.min_7d}h` : `⚠ min ${comp.min_7d}h`} />
+            {comp.rolling_7day_rest != null
+              ? <StatusBadge ok={comp.rolling_7day_rest >= comp.min_7d} label={comp.rolling_7day_rest >= comp.min_7d ? `✓ min ${comp.min_7d}h` : `⚠ min ${comp.min_7d}h`} />
               : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>No data</span>
             }
           </div>
