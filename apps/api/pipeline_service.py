@@ -87,13 +87,15 @@ ALLOWED_ORIGINS_STR = os.getenv(
 )
 
 # Normalize: strip whitespace, remove empties, deduplicate
-# Always include localhost for local dev regardless of env override
-_LOCAL_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3007", "http://localhost:3009", "http://localhost:3333", "http://localhost:8000", "https://registration.celeste7.ai"]
+# Production origins from env; localhost:* covered by allow_origin_regex below
+_STATIC_ORIGINS = ["https://registration.celeste7.ai"]
 ALLOWED_ORIGINS = list(dict.fromkeys([
     origin.strip()
     for origin in ALLOWED_ORIGINS_STR.split(",")
     if origin.strip()
-] + _LOCAL_ORIGINS))
+] + _STATIC_ORIGINS))
+# Any localhost port is allowed in dev — avoids per-port hardcoding
+LOCALHOST_ORIGIN_REGEX = r"^http://localhost:\d+$"
 
 # Log normalized origins on startup for verification
 logger.info(f"✅ [Pipeline] CORS ALLOWED_ORIGINS (normalized): {ALLOWED_ORIGINS}")
@@ -107,6 +109,7 @@ if len(ALLOWED_ORIGINS) == 0:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=LOCALHOST_ORIGIN_REGEX,
     allow_credentials=False,  # Bearer tokens in headers, no cookies
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=[

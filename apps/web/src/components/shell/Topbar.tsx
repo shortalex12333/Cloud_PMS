@@ -295,6 +295,7 @@ export function Topbar({
       {/* Menu button + dropdown */}
       <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
         <button
+          data-testid="user-menu-trigger"
           onClick={() => setMenuOpen((v) => !v)}
           style={{
             width: 28,
@@ -345,6 +346,7 @@ export function Topbar({
 
             {/* Activity Log */}
             <button
+              data-testid="ledger-open"
               onClick={() => { setMenuOpen(false); onLedgerClick?.(); }}
               style={{
                 display: 'flex',
