@@ -14,6 +14,8 @@
 
 import * as React from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { MyTimeView } from './MyTimeView';
+import { ActionPopup } from '@/components/lens-v2/ActionPopup';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,13 +30,30 @@ interface CrewMember {
   name: string;
   role: string;
   days: CrewDay[];    // 7 entries for the week
+  is_weekly_compliant: boolean | null;
 }
 
 interface PendingSignoff {
   signoff_id: string;
+  crew_user_id: string;
   crew_name: string;
   week_label: string; // "Apr 7 – Apr 13"
   submitted_at: string;
+}
+
+interface HoRNotification {
+  id: string;
+  notification_type: 'violation_alert' | 'correction_notice' | 'sign_request' | string;
+  title: string;
+  body: string;
+  entity_id: string;
+  metadata: {
+    crew_user_id?: string;
+    record_date?: string;
+    total_rest_hours?: number;
+  };
+  is_read: boolean;
+  created_at: string;
 }
 
 interface DepartmentStatus {
@@ -75,12 +94,12 @@ function buildMockDepartmentStatus(weekStart: string): DepartmentStatus {
     today_total: 5,
     today_missing: ['P. Kowalski', 'R. Singh'],
     pending_counter_signs: [
-      { signoff_id: 'ps-001', crew_name: 'J. Martinez', week_label: 'Apr 7 – Apr 13', submitted_at: '2026-04-12T08:14:00Z' },
-      { signoff_id: 'ps-002', crew_name: 'A. Novak', week_label: 'Apr 7 – Apr 13', submitted_at: '2026-04-11T19:55:00Z' },
+      { signoff_id: 'ps-001', crew_user_id: 'u1', crew_name: 'J. Martinez', week_label: 'Apr 7 – Apr 13', submitted_at: '2026-04-12T08:14:00Z' },
+      { signoff_id: 'ps-002', crew_user_id: 'u2', crew_name: 'A. Novak', week_label: 'Apr 7 – Apr 13', submitted_at: '2026-04-11T19:55:00Z' },
     ],
     crew: [
       {
-        user_id: 'u1', name: 'J. Martinez', role: 'Second Engineer',
+        user_id: 'u1', name: 'J. Martinez', role: 'Second Engineer', is_weekly_compliant: true,
         days: dates.map((date, i) => ({
           date,
           rest_hours: i < 5 ? [8.5, 7.0, 8.0, 8.5, 7.5, null, null][i] : null,
@@ -88,7 +107,7 @@ function buildMockDepartmentStatus(weekStart: string): DepartmentStatus {
         })),
       },
       {
-        user_id: 'u2', name: 'A. Novak', role: 'Third Engineer',
+        user_id: 'u2', name: 'A. Novak', role: 'Third Engineer', is_weekly_compliant: true,
         days: dates.map((date, i) => ({
           date,
           rest_hours: i < 4 ? [9.0, 8.0, 7.5, 8.0, null, null, null][i] : null,
@@ -96,7 +115,7 @@ function buildMockDepartmentStatus(weekStart: string): DepartmentStatus {
         })),
       },
       {
-        user_id: 'u3', name: 'P. Kowalski', role: 'Engine Rating',
+        user_id: 'u3', name: 'P. Kowalski', role: 'Engine Rating', is_weekly_compliant: null,
         days: dates.map((date, i) => ({
           date,
           rest_hours: i < 6 ? [8.0, 8.0, 8.0, 8.0, 8.0, 8.0, null][i] : null,
@@ -104,7 +123,7 @@ function buildMockDepartmentStatus(weekStart: string): DepartmentStatus {
         })),
       },
       {
-        user_id: 'u4', name: 'R. Singh', role: 'Oiler',
+        user_id: 'u4', name: 'R. Singh', role: 'Oiler', is_weekly_compliant: false,
         days: dates.map((date, i) => ({
           date,
           rest_hours: i < 3 ? [6.5, 7.0, 8.5, null, null, null, null][i] : null,
@@ -112,7 +131,7 @@ function buildMockDepartmentStatus(weekStart: string): DepartmentStatus {
         })),
       },
       {
-        user_id: 'u5', name: 'M. Chen', role: 'Electrician',
+        user_id: 'u5', name: 'M. Chen', role: 'Electrician', is_weekly_compliant: true,
         days: dates.map((date, i) => ({
           date,
           rest_hours: [8.0, 8.5, 7.0, 9.0, 8.0, 8.5, null][i] ?? null,
@@ -150,9 +169,9 @@ function formatWeekLabel(weekStart: string): string {
 
 function restHoursColor(hours: number | null): string {
   if (hours === null) return 'rgba(255,255,255,0.12)';
-  if (hours < 6) return 'rgba(239,68,68,0.8)';   // violation
-  if (hours < 7) return 'rgba(245,158,11,0.8)';  // borderline
-  return 'rgba(90,171,204,0.8)';                  // ok
+  if (hours < 10) return 'rgba(239,68,68,0.8)';    // MLC violation — minimum is 10h rest/day
+  if (hours < 10.5) return 'rgba(245,158,11,0.8)'; // borderline
+  return 'rgba(90,171,204,0.8)';                    // ok
 }
 
 function statusDot(status: CrewDay['status']): string {
@@ -163,6 +182,12 @@ function statusDot(status: CrewDay['status']): string {
     default:            return 'rgba(255,255,255,0.12)';
   }
 }
+
+// ── MLC declaration ──────────────────────────────────────────────────────────
+
+const MLC_HOD_DECLARATION =
+  'I confirm I have reviewed and verified the above crew member\'s hours of rest ' +
+  'in accordance with MLC 2006 Regulation 2.3.';
 
 // ── Response normalizer ───────────────────────────────────────────────────────
 // Maps real API response shapes to component types.
@@ -175,9 +200,11 @@ function normalizeDepStatus(raw: any, ws: string): DepartmentStatus {
   const pending_counter_signs: PendingSignoff[] = [];
   const signoffIds: string[] = Array.isArray(ps.signoff_ids) ? ps.signoff_ids : [];
   const crewNames: string[] = Array.isArray(ps.crew_names) ? ps.crew_names : [];
+  const crewUserIds: string[] = Array.isArray(ps.crew_user_ids) ? ps.crew_user_ids : [];
   signoffIds.forEach((id: string, i: number) => {
     pending_counter_signs.push({
       signoff_id: id,
+      crew_user_id: crewUserIds[i] ?? '',
       crew_name: crewNames[i] ?? `Crew member ${i + 1}`,
       week_label: formatWeekLabel(ws),
       submitted_at: new Date().toISOString(),
@@ -188,6 +215,7 @@ function normalizeDepStatus(raw: any, ws: string): DepartmentStatus {
     user_id: m.user_id ?? m.id ?? String(Math.random()),
     name: m.name ?? '—',
     role: m.role ?? '',
+    is_weekly_compliant: m.is_weekly_compliant ?? null,
     // real: daily[], mock: days[]
     days: (m.daily ?? m.days ?? []).map((d: any) => ({
       date: d.date,
@@ -224,6 +252,11 @@ export function DepartmentView() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [signingId, setSigningId] = React.useState<string | null>(null);
+  const [signingPopupId, setSigningPopupId] = React.useState<string | null>(null);
+  const [viewingUserId, setViewingUserId] = React.useState<string | null>(null);
+  const [notifications, setNotifications] = React.useState<HoRNotification[]>([]);
+  const [correctionPopupSignoff, setCorrectionPopupSignoff] = React.useState<PendingSignoff | null>(null);
+  const [submittingCorrection, setSubmittingCorrection] = React.useState(false);
 
   // ── Load ──
 
@@ -251,18 +284,74 @@ export function DepartmentView() {
     }
   }
 
-  React.useEffect(() => { loadData(weekStart); }, [weekStart, session?.access_token]);
+  async function loadNotifications() {
+    try {
+      const token = session?.access_token;
+      if (!token) return;
+      const res = await fetch('/api/v1/hours-of-rest/notifications/unread', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const d = json.success ? json.data : (json.data ?? json);
+      setNotifications(d?.notifications ?? []);
+    } catch { /* silent */ }
+  }
+
+  async function markNotificationsRead(ids: string[]) {
+    try {
+      const token = session?.access_token;
+      if (!token || ids.length === 0) return;
+      await fetch('/api/v1/hours-of-rest/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ notification_ids: ids }),
+      });
+    } catch { /* silent */ }
+  }
+
+  async function requestCorrection(ps: PendingSignoff, note: string) {
+    setSubmittingCorrection(true);
+    try {
+      const token = session?.access_token;
+      await fetch('/api/v1/hours-of-rest/request-correction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          signoff_id: ps.signoff_id,
+          target_user_id: ps.crew_user_id,
+          correction_note: note,
+          role: 'hod',
+        }),
+      });
+    } finally {
+      setSubmittingCorrection(false);
+    }
+  }
+
+  React.useEffect(() => {
+    loadData(weekStart);
+    loadNotifications();
+  }, [weekStart, session?.access_token]);
 
   // ── Counter-sign ──
 
-  async function counterSign(signoffId: string) {
+  async function counterSign(signoffId: string, signatureName: string) {
     setSigningId(signoffId);
     try {
       const token = session?.access_token;
       await fetch('/api/v1/hours-of-rest/signoffs/sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ signoff_id: signoffId, level: 'hod' }),
+        body: JSON.stringify({
+          signoff_id: signoffId,
+          signature_level: 'hod',
+          signature_data: {
+            name: signatureName,
+            declaration: MLC_HOD_DECLARATION,
+            timestamp: new Date().toISOString(),
+          },
+        }),
       });
       await loadData(weekStart);
     } finally {
@@ -314,6 +403,49 @@ export function DepartmentView() {
         </span>
       </div>
 
+      {/* ── Violation alert notifications ── */}
+      {notifications.filter(n => n.notification_type === 'violation_alert' && !n.is_read).length > 0 && (() => {
+        const alerts = notifications.filter(n => n.notification_type === 'violation_alert' && !n.is_read);
+        return (
+          <div style={{
+            background: 'rgba(239,68,68,0.06)',
+            border: '1px solid rgba(239,68,68,0.25)',
+            borderRadius: 8,
+            padding: '12px 14px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(239,68,68,0.8)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                MLC Violations — {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
+              </span>
+              <button
+                onClick={() => {
+                  markNotificationsRead(alerts.map(n => n.id));
+                  setNotifications(prev => prev.map(n =>
+                    alerts.some(a => a.id === n.id) ? { ...n, is_read: true } : n
+                  ));
+                }}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 9,
+                  color: 'rgba(255,255,255,0.3)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  letterSpacing: '0.04em',
+                }}
+              >Dismiss all</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {alerts.map(n => (
+                <div key={n.id} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(239,68,68,0.75)' }}>
+                  {n.body || n.title}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Today's submission status ── */}
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: data.today_missing.length > 0 ? 10 : 0 }}>
@@ -364,23 +496,41 @@ export function DepartmentView() {
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>{ps.crew_name}</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginLeft: 8 }}>{ps.week_label}</span>
                 </div>
-                <button
-                  onClick={() => counterSign(ps.signoff_id)}
-                  disabled={signingId === ps.signoff_id}
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    color: signingId === ps.signoff_id ? 'rgba(255,255,255,0.3)' : 'rgba(90,171,204,0.9)',
-                    background: 'rgba(90,171,204,0.08)',
-                    border: '1px solid rgba(90,171,204,0.3)',
-                    borderRadius: 4,
-                    padding: '4px 10px',
-                    cursor: signingId === ps.signoff_id ? 'wait' : 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {signingId === ps.signoff_id ? 'Signing…' : 'Review & Counter-Sign'}
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => setCorrectionPopupSignoff(ps)}
+                    disabled={signingId === ps.signoff_id}
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      color: 'rgba(245,158,11,0.8)',
+                      background: 'rgba(245,158,11,0.06)',
+                      border: '1px solid rgba(245,158,11,0.25)',
+                      borderRadius: 4,
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >Request Correction</button>
+                  <button
+                    data-testid={`hor-counter-sign-${ps.signoff_id}`}
+                    onClick={() => { if (!signingId) setSigningPopupId(ps.signoff_id); }}
+                    disabled={signingId === ps.signoff_id}
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      color: signingId === ps.signoff_id ? 'rgba(255,255,255,0.3)' : 'rgba(90,171,204,0.9)',
+                      background: 'rgba(90,171,204,0.08)',
+                      border: '1px solid rgba(90,171,204,0.3)',
+                      borderRadius: 4,
+                      padding: '4px 10px',
+                      cursor: signingId === ps.signoff_id ? 'wait' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {signingId === ps.signoff_id ? 'Signing…' : 'Review & Counter-Sign'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -402,14 +552,16 @@ export function DepartmentView() {
                   <th key={d} style={thStyle({ width: 52, textAlign: 'center' })}>{d}</th>
                 ))}
                 <th style={thStyle({ width: 52, textAlign: 'center' })}>Avg</th>
+                <th style={thStyle({ width: 72, textAlign: 'center' })}>Violation</th>
               </tr>
             </thead>
             <tbody>
-              {data.crew.map((member, ri) => {
-                const submittedDays = member.days.filter(d => d.rest_hours !== null);
-                const avg = submittedDays.length
-                  ? (submittedDays.reduce((s, d) => s + (d.rest_hours ?? 0), 0) / submittedDays.length).toFixed(1)
+              {data.crew.map((member) => {
+                const daysWithData = member.days.filter(d => d.rest_hours !== null);
+                const avg = daysWithData.length
+                  ? (daysWithData.reduce((s, d) => s + (d.rest_hours ?? 0), 0) / daysWithData.length).toFixed(1)
                   : '—';
+                const hasViolation = member.is_weekly_compliant === false;
 
                 return (
                   <tr key={member.user_id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -417,7 +569,7 @@ export function DepartmentView() {
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>{member.name}</div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{member.role}</div>
                     </td>
-                    {member.days.map((day, di) => (
+                    {member.days.map((day) => (
                       <td key={day.date} style={{ padding: '8px 4px', textAlign: 'center' }}>
                         {day.rest_hours !== null ? (
                           <div style={{
@@ -453,6 +605,29 @@ export function DepartmentView() {
                     <td style={{ padding: '8px 4px', textAlign: 'center' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{avg}</span>
                     </td>
+                    <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                      {member.is_weekly_compliant === null ? (
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>—</span>
+                      ) : hasViolation ? (
+                        <button
+                          onClick={() => setViewingUserId(member.user_id)}
+                          style={{
+                            padding: '3px 8px',
+                            background: 'rgba(239,68,68,0.1)',
+                            border: '1px solid rgba(239,68,68,0.35)',
+                            borderRadius: 4,
+                            color: 'rgba(239,68,68,0.9)',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: 9,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            letterSpacing: '0.06em',
+                          }}
+                        >View</button>
+                      ) : (
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'rgba(34,197,94,0.8)' }}>✓</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -466,7 +641,7 @@ export function DepartmentView() {
             { color: 'rgba(34,197,94,0.8)', label: 'Finalized' },
             { color: 'rgba(90,171,204,0.8)', label: 'HOD signed' },
             { color: 'rgba(245,158,11,0.6)', label: 'Submitted' },
-            { color: 'rgba(239,68,68,0.8)', label: '<6h violation' },
+            { color: 'rgba(239,68,68,0.8)', label: '<10h rest (MLC violation)' },
           ].map(({ color, label }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
@@ -495,6 +670,107 @@ export function DepartmentView() {
           ))}
         </div>
       </div>
+
+      {/* ── Correction request popup (L1) ── */}
+      {correctionPopupSignoff && (
+        <ActionPopup
+          mode="mutate"
+          title="Request Correction"
+          subtitle={`${correctionPopupSignoff.crew_name} — ${correctionPopupSignoff.week_label}`}
+          signatureLevel={1}
+          submitLabel={submittingCorrection ? 'Sending…' : 'Send Request'}
+          submitDisabled={submittingCorrection}
+          fields={[
+            { name: 'crew_member', label: 'Crew Member', type: 'kv-read', value: correctionPopupSignoff.crew_name },
+            { name: 'week',        label: 'Week',         type: 'kv-read', value: correctionPopupSignoff.week_label },
+            {
+              name: 'correction_note',
+              label: 'Note to crew member',
+              type: 'text-area',
+              required: true,
+              placeholder: 'Describe what needs to be corrected (e.g. "Day 3 shows 8.5h rest — MLC minimum is 10h, please re-enter your rest periods.")',
+            },
+          ]}
+          onClose={() => setCorrectionPopupSignoff(null)}
+          onSubmit={async (values) => {
+            const note = String(values.correction_note ?? '').trim();
+            if (!note) return;
+            setCorrectionPopupSignoff(null);
+            await requestCorrection(correctionPopupSignoff, note);
+          }}
+        />
+      )}
+
+      {/* ── HOD counter-sign popup (L2) ── */}
+      {signingPopupId && (() => {
+        const ps = data.pending_counter_signs.find(p => p.signoff_id === signingPopupId);
+        if (!ps) return null;
+        return (
+          <ActionPopup
+            mode="mutate"
+            title="Counter-Sign Hours of Rest"
+            subtitle={`MLC 2006 Reg. 2.3 — HOD Attestation`}
+            signatureLevel={2}
+            submitLabel="Counter-Sign"
+            fields={[
+              { name: 'crew_member', label: 'Crew Member', type: 'kv-read', value: ps.crew_name },
+              { name: 'week',        label: 'Week',         type: 'kv-read', value: ps.week_label },
+              { name: 'department',  label: 'Department',   type: 'kv-read', value: data.department },
+              { name: 'regulation',  label: 'Regulation',   type: 'kv-read', value: 'MLC 2006 Regulation 2.3 — Rest Hours' },
+            ]}
+            previewRows={[
+              { key: 'Dept Compliance', value: `${compliancePct}%` },
+              { key: 'Violations',      value: String(data.compliance.violations) },
+              { key: 'Avg Rest',        value: `${data.compliance.avg_rest_hours.toFixed(1)}h` },
+            ]}
+            onClose={() => setSigningPopupId(null)}
+            onSubmit={(values) => {
+              setSigningPopupId(null);
+              counterSign(ps.signoff_id, String(values.signature_name ?? ''));
+            }}
+          />
+        );
+      })()}
+
+      {/* ── Read-only My Time overlay (HOD viewing a crew member's violation) ── */}
+      {viewingUserId && (() => {
+        const member = data.crew.find(m => m.user_id === viewingUserId);
+        return (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 50,
+              background: 'rgba(0,0,0,0.6)',
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+              paddingTop: 48, overflowY: 'auto',
+            }}
+            onClick={e => { if (e.target === e.currentTarget) setViewingUserId(null); }}
+          >
+            <div style={{
+              background: 'var(--surface, #181614)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 10,
+              width: '100%',
+              maxWidth: 720,
+              padding: 24,
+              margin: '0 16px 48px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                    {member?.name ?? 'Crew Member'} — Hours of Rest
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginLeft: 10 }}>Read-only</span>
+                </div>
+                <button
+                  onClick={() => setViewingUserId(null)}
+                  style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
+                >×</button>
+              </div>
+              <MyTimeView targetUserId={viewingUserId} readOnly />
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

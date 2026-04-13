@@ -12,7 +12,7 @@
  *
  * Output (via onChange):
  *   rest_periods: [{start: "HH:MM", end: "HH:MM"}, ...]
- *   Sorted by start time, no overlaps enforced (backend validates).
+ *   Sorted by start time. Overlaps are resolved on mouseUp by clamping.
  */
 
 import * as React from 'react';
@@ -64,7 +64,18 @@ function periodsFromBlocks(blocks: Block[]): RestPeriod[] {
     .map(b => ({ start: toHHMM(b.startMin), end: toHHMM(b.endMin) }));
 }
 
-const HOUR_LABELS = ['00', '03', '06', '09', '12', '15', '18', '21', '24'];
+/** Clamp overlapping blocks so they meet but never overlap. */
+function resolveOverlaps(blocks: Block[]): Block[] {
+  const sorted = [...blocks].sort((a, b) => a.startMin - b.startMin);
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const curr = sorted[i];
+    if (curr.startMin < prev.endMin) {
+      sorted[i] = { ...curr, startMin: prev.endMin };
+    }
+  }
+  return sorted.filter(b => b.endMin > b.startMin);
+}
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -197,8 +208,9 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
 
   const handleGlobalMouseUp = React.useCallback(() => {
     setBlocks(prev => {
-      onChange(periodsFromBlocks(prev));
-      return prev;
+      const resolved = resolveOverlaps(prev);
+      onChange(periodsFromBlocks(resolved));
+      return resolved;
     });
     dragState.current = null;
     window.removeEventListener('mousemove', handleGlobalMouseMove);
@@ -231,17 +243,30 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
 
   return (
     <div style={{ width: '100%', userSelect: 'none' }}>
-      {/* Hour labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, paddingLeft: 0 }}>
-        {HOUR_LABELS.map(h => (
-          <span key={h} style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 8,
-            color: 'rgba(255,255,255,0.25)',
-            letterSpacing: '0.04em',
-            minWidth: 0,
-          }}>{h}</span>
-        ))}
+      {/* Hour labels — every 2 hours, absolutely positioned so they align with tick marks */}
+      <div style={{ position: 'relative', height: 12, marginBottom: 2 }}>
+        {Array.from({ length: 13 }, (_, i) => {
+          const hour = i * 2;
+          const pct = (hour / 24) * 100;
+          return (
+            <span
+              key={hour}
+              style={{
+                position: 'absolute',
+                left: `${pct}%`,
+                transform: hour === 0 ? 'none' : hour === 24 ? 'translateX(-100%)' : 'translateX(-50%)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 8,
+                color: 'rgba(255,255,255,0.25)',
+                letterSpacing: '0.04em',
+                lineHeight: '12px',
+                pointerEvents: 'none',
+              }}
+            >
+              {String(hour).padStart(2, '0')}
+            </span>
+          );
+        })}
       </div>
 
       {/* Track */}
@@ -259,7 +284,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
           overflow: 'visible',
         }}
       >
-        {/* Hour tick marks */}
+        {/* Hour tick marks — every hour, with 6h anchors brighter */}
         {Array.from({ length: 25 }, (_, i) => (
           <div key={i} style={{
             position: 'absolute',
@@ -267,7 +292,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
             top: 0,
             bottom: 0,
             width: 1,
-            background: i % 6 === 0 ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)',
+            background: i % 6 === 0 ? 'rgba(255,255,255,0.12)' : i % 2 === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
             pointerEvents: 'none',
           }} />
         ))}

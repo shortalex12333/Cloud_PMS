@@ -229,18 +229,99 @@ class HoursOfRestHandlers:
                 builder.set_error("VALIDATION_ERROR", "record_date and rest_periods are required")
                 return builder.build()
 
+            # Phase 7 lock: reject if weekly OR monthly signoff is finalized or locked
+            try:
+                from datetime import date as date_type
+                rd = date_type.fromisoformat(str(record_date))
+                week_mon = (rd - timedelta(days=rd.weekday())).isoformat()
+                month_str = str(record_date)[:7]  # YYYY-MM
+
+                # Check weekly lock
+                # Use .execute() (list mode) — maybe_single() throws APIError('204') in
+                # supabase-py 2.12.0 when 0 rows exist, which silently swallowed the monthly check.
+                lock_check_result = self.db.table("pms_hor_monthly_signoffs").select(
+                    "status"
+                ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
+                    "period_type", "weekly"
+                ).eq("week_start", week_mon).execute()
+
+                if any(r.get("status") in ("finalized", "locked")
+                       for r in (lock_check_result.data or [])):
+                    builder.set_error(
+                        "LOCKED",
+                        f"Week of {week_mon} is finalized and cannot be modified. Contact your HOD to raise a correction."
+                    )
+                    return builder.build()
+
+                # Check monthly lock — any finalized monthly signoff for this user+month blocks upserts
+                monthly_lock_result = self.db.table("pms_hor_monthly_signoffs").select(
+                    "status"
+                ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
+                    "period_type", "monthly"
+                ).eq("month", month_str).execute()
+
+                if any(r.get("status") in ("finalized", "locked", "captain_signed")
+                       for r in (monthly_lock_result.data or [])):
+                    builder.set_error(
+                        "LOCKED",
+                        f"Month {month_str} is finalized and cannot be modified. Contact your captain to raise a correction."
+                    )
+                    return builder.build()
+
+            except Exception as lock_err:
+                logger.warning(f"Lock check failed (FATAL — blocking upsert): {lock_err}")
+                builder.set_error("DATABASE_ERROR", f"Lock check failed: {lock_err}")
+                return builder.build()
+
+            # Validate: each period must have start and end
+            for p in rest_periods:
+                if not p.get("start") or not p.get("end"):
+                    builder.set_error("VALIDATION_ERROR",
+                        "Each rest_period must have start and end (HH:MM format)")
+                    return builder.build()
+
+            # Validate: no overlapping rest periods (periods must meet, never overlap)
+            sorted_periods = sorted(rest_periods, key=lambda p: p.get("start", ""))
+            for i in range(len(sorted_periods) - 1):
+                a, b = sorted_periods[i], sorted_periods[i + 1]
+                if a.get("end", "") > b.get("start", ""):
+                    builder.set_error("VALIDATION_ERROR", "Rest periods must not overlap")
+                    return builder.build()
+
+            # Compute hours from start/end when not provided by client.
+            # Frontend sends {start: "HH:MM", end: "HH:MM"} without an hours field.
+            # The DB trigger reads period->>'hours', so we MUST inject hours into each period.
+            def _period_hours(p: dict) -> float:
+                if "hours" in p:
+                    return float(p["hours"])
+                try:
+                    sh, sm = map(int, str(p["start"]).split(":"))
+                    eh, em = map(int, str(p["end"]).split(":"))
+                    start_mins = sh * 60 + sm
+                    end_mins   = eh * 60 + em
+                    if end_mins <= start_mins:  # overnight period crosses midnight
+                        end_mins += 24 * 60
+                    return round((end_mins - start_mins) / 60, 2)
+                except Exception:
+                    return 0.0
+
+            # Inject hours into each period so the DB trigger can read it
+            rest_periods = [
+                dict(p, hours=_period_hours(p)) for p in rest_periods
+            ]
+
             # Calculate totals
             if total_rest_hours is None:
-                total_rest_hours = sum(p.get("hours", 0) for p in rest_periods)
+                total_rest_hours = sum(p["hours"] for p in rest_periods)
 
             total_work_hours = 24 - total_rest_hours
 
-            # Check daily compliance (MLC 2006: 10 hrs minimum)
+            # Check daily compliance (MLC 2006: min 10h rest per 24h)
             is_daily_compliant = total_rest_hours >= 10
 
-            # Check rest period rules (no more than 2 periods, one at least 6 hrs)
+            # Check rest period rules (no more than 2 periods, one at least 6h)
             rest_period_count = len(rest_periods)
-            longest_rest_period = max((p.get("hours", 0) for p in rest_periods), default=0)
+            longest_rest_period = max((_period_hours(p) for p in rest_periods), default=0.0)
 
             has_valid_rest_periods = (
                 rest_period_count <= 2 and
@@ -300,7 +381,7 @@ class HoursOfRestHandlers:
                 record = result.data[0] if result.data else None
                 action_taken = "created"
 
-            # Write audit log
+            # Write audit log + ledger event
             if record and record.get("id"):
                 _write_hor_audit_log(self.db, {
                     "yacht_id": yacht_id,
@@ -311,6 +392,34 @@ class HoursOfRestHandlers:
                     "new_values": {"record_date": record_date, "total_rest_hours": total_rest_hours},
                     "signature": payload.get("signature", {}),  # {} for non-signed
                 })
+
+                # Insert into ledger_events so the ledger panel reflects HoR submissions
+                is_violation = not (is_daily_compliant and has_valid_rest_periods)
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="create" if action_taken == "created" else "update",
+                        entity_type="hours_of_rest",
+                        entity_id=str(record["id"]),
+                        action="upsert_hours_of_rest",
+                        change_summary=(
+                            f"HoR submitted for {record_date}: "
+                            f"{total_rest_hours:.1f}h rest, "
+                            f"{'VIOLATION' if is_violation else 'compliant'}"
+                        ),
+                        metadata={
+                            "record_date": record_date,
+                            "total_rest_hours": total_rest_hours,
+                            "total_work_hours": total_work_hours,
+                            "is_daily_compliant": not is_violation,
+                            "violation": is_violation,
+                        },
+                        event_category="write",
+                    )
+                    self.db.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    logger.warning(f"Ledger insert failed (non-fatal): {ledger_err}")
 
             # Check for violations and create warnings
             warnings_created = []
@@ -323,6 +432,71 @@ class HoursOfRestHandlers:
 
                 if violation_check.data:
                     warnings_created = violation_check.data
+
+                # S7: if violation, notify the crew member's HOD
+                is_violation = not (is_daily_compliant and has_valid_rest_periods)
+                if is_violation:
+                    try:
+                        # Find HOD for this user's department — look up crew's department directly
+                        crew_role_result = self.db.table("auth_users_roles").select(
+                            "department"
+                        ).eq("yacht_id", yacht_id).eq("user_id", user_id).maybe_single().execute()
+                        dept = (crew_role_result.data or {}).get("department") if crew_role_result and crew_role_result.data else None
+
+                        HOD_ROLES = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser"]
+                        if dept:
+                            hod_result = self.db.table("auth_users_roles").select(
+                                "user_id"
+                            ).eq("yacht_id", yacht_id).eq("department", dept).in_(
+                                "role", HOD_ROLES
+                            ).execute()
+                            # Fallback: no HOD in crew's dept — notify all HOD users on vessel
+                            if not (hod_result.data or []):
+                                hod_result = self.db.table("auth_users_roles").select(
+                                    "user_id"
+                                ).eq("yacht_id", yacht_id).in_(
+                                    "role", HOD_ROLES
+                                ).execute()
+                        else:
+                            hod_result = self.db.table("auth_users_roles").select(
+                                "user_id"
+                            ).eq("yacht_id", yacht_id).in_(
+                                "role", HOD_ROLES
+                            ).execute()
+
+                        # Notify all resolved HOD users — runs regardless of dept path
+                        crew_name_result = self.db.table("auth_users_profiles").select(
+                            "name"
+                        ).eq("yacht_id", yacht_id).eq("id", user_id).maybe_single().execute()
+                        crew_name = crew_name_result.data.get("name", "Crew member") if crew_name_result and crew_name_result.data else "Crew member"
+
+                        notifications = []
+                        for hod in (hod_result.data or []):
+                            notifications.append({
+                                "yacht_id": yacht_id,
+                                "user_id": hod["user_id"],
+                                "notification_type": "violation_alert",
+                                "title": f"HoR Violation — {crew_name}",
+                                "body": f"{crew_name} logged only {total_rest_hours:.1f}h rest on {record_date} (MLC minimum: 10h)",
+                                "entity_type": "hours_of_rest",
+                                "entity_id": record["id"],
+                                "idempotency_key": f"violation:{record['id']}",
+                                "metadata": {
+                                    "crew_user_id": user_id,
+                                    "record_date": record_date,
+                                    "total_rest_hours": total_rest_hours,
+                                    "violation": True,
+                                },
+                                "is_read": False,
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                            })
+                        if notifications:
+                            self.db.table("pms_notifications").upsert(
+                                notifications,
+                                on_conflict="yacht_id,user_id,idempotency_key"
+                            ).execute()
+                    except Exception as notif_err:
+                        logger.warning(f"Failed to send violation notification (non-fatal): {notif_err}")
 
             builder.set_data({
                 "record": record,
@@ -378,15 +552,20 @@ class HoursOfRestHandlers:
             user_filter = params.get("user_id")
             department_filter = params.get("department")
             status_filter = params.get("status")
+            period_type_filter = params.get("period_type")
+            week_start_filter = params.get("week_start")
             limit = params.get("limit", 50)
             offset = params.get("offset", 0)
 
             # Build query
             query = self.db.table("pms_hor_monthly_signoffs").select(
                 "id, user_id, department, month, status, "
+                "period_type, week_start, "
+                "correction_requested, correction_note, correction_requested_by, "
                 "crew_signature, crew_signed_at, crew_signed_by, "
                 "hod_signature, hod_signed_at, hod_signed_by, "
                 "master_signature, master_signed_at, master_signed_by, "
+                "fleet_manager_signed_by, fleet_manager_signed_at, "
                 "total_rest_hours, total_work_hours, violation_count, "
                 "created_at, updated_at",
                 count="exact"
@@ -399,6 +578,10 @@ class HoursOfRestHandlers:
                 query = query.eq("department", department_filter)
             if status_filter:
                 query = query.eq("status", status_filter)
+            if period_type_filter:
+                query = query.eq("period_type", period_type_filter)
+            if week_start_filter:
+                query = query.eq("week_start", week_start_filter)
 
             # Execute with pagination
             result = query.order("month", desc=True).order(
@@ -538,15 +721,26 @@ class HoursOfRestHandlers:
         try:
             month = payload.get("month")
             department = payload.get("department")
+            period_type = payload.get("period_type", "monthly")
+            week_start = payload.get("week_start")
+            target_user_id = payload.get("target_user_id") or user_id
+
+            if period_type == "weekly" and not week_start:
+                builder.set_error("VALIDATION_ERROR", "week_start is required for weekly sign-offs (YYYY-MM-DD Monday)")
+                return builder.build()
+
+            # Auto-derive month from week_start for weekly signoffs
+            if period_type == "weekly" and not month and week_start:
+                month = week_start[:7]  # YYYY-MM from YYYY-MM-DD
 
             if not month or not department:
                 builder.set_error("VALIDATION_ERROR", "month and department are required")
                 return builder.build()
 
-            # Check if sign-off already exists
+            # Check if sign-off already exists for target user
             existing = self.db.table("pms_hor_monthly_signoffs").select("id").eq(
                 "yacht_id", yacht_id
-            ).eq("user_id", user_id).eq("month", month).maybe_single().execute()
+            ).eq("user_id", target_user_id).eq("month", month).maybe_single().execute()
 
             if existing is not None and existing.data:
                 builder.set_error("DUPLICATE_ERROR", f"Sign-off already exists for {month}", status_code=409)
@@ -574,16 +768,18 @@ class HoursOfRestHandlers:
             violations = summary.get("violations", 0)
             compliance_pct = summary.get("compliance_pct", 0)
 
-            # Create sign-off
+            # Create sign-off (for target_user_id when HOD is creating for crew)
             insert_data = {
                 "yacht_id": yacht_id,
-                "user_id": user_id,
+                "user_id": target_user_id,
                 "department": department,
                 "month": month,
                 "status": "draft",
                 "total_rest_hours": total_rest,
                 "total_work_hours": total_work,
                 "violation_count": violations,
+                "period_type": period_type,
+                "week_start": week_start,
                 # compliance_percentage removed — column doesn't exist in DB schema
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -713,11 +909,13 @@ class HoursOfRestHandlers:
                 builder.set_error("VALIDATION_ERROR", f"Invalid signature_level: {signature_level}")
                 return builder.build()
 
-            # Update sign-off
-            result = self.db.table("pms_hor_monthly_signoffs").update(update_data).eq(
+            # Update sign-off (SyncFilterRequestBuilder does not support .select() after .update())
+            self.db.table("pms_hor_monthly_signoffs").update(update_data).eq(
                 "id", signoff_id
-            ).select("*").execute()
-
+            ).execute()
+            result = self.db.table("pms_hor_monthly_signoffs").select("*").eq(
+                "id", signoff_id
+            ).execute()
             updated_signoff = result.data[0] if result.data else None
 
             # Write audit log with signature
@@ -1147,11 +1345,13 @@ class HoursOfRestHandlers:
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            result = self.db.table("pms_crew_hours_warnings").update(update_data).eq(
+            self.db.table("pms_crew_hours_warnings").update(update_data).eq(
                 "id", warning_id
-            ).eq("yacht_id", yacht_id).eq("user_id", user_id).select("*").execute()
-
-            warning = result.data[0] if result.data else None
+            ).eq("yacht_id", yacht_id).eq("user_id", user_id).execute()
+            result = self.db.table("pms_crew_hours_warnings").select("*").eq(
+                "id", warning_id
+            ).maybe_single().execute()
+            warning = result.data if result and result.data else None
 
             # Write audit log
             _write_hor_audit_log(self.db, {
@@ -1211,7 +1411,7 @@ class HoursOfRestHandlers:
                 "id", warning_id
             ).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            if not existing.data:
+            if existing is None or not existing.data:
                 builder.set_error("NOT_FOUND", f"Warning not found: {warning_id}")
                 return builder.build()
 
@@ -1225,11 +1425,13 @@ class HoursOfRestHandlers:
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            result = self.db.table("pms_crew_hours_warnings").update(update_data).eq(
+            # .execute() on update returns the updated rows — use that directly.
+            # A separate select().maybe_single() throws APIError(204) in supabase-py 2.x
+            # because the dismissed row may not be visible through the active-records view.
+            update_result = self.db.table("pms_crew_hours_warnings").update(update_data).eq(
                 "id", warning_id
-            ).eq("yacht_id", yacht_id).select("*").execute()
-
-            warning = result.data[0] if result.data else None
+            ).eq("yacht_id", yacht_id).execute()
+            warning = update_result.data[0] if (update_result and update_result.data) else None
 
             # Write audit log with justification
             _write_hor_audit_log(self.db, {
@@ -1254,5 +1456,655 @@ class HoursOfRestHandlers:
 
         except Exception as e:
             logger.error(f"Error dismissing warning: {e}")
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
+
+    # =========================================================================
+    # MLC 2006 PHASE 1 — Undo, Corrections, Notifications
+    # =========================================================================
+
+    async def undo_hours_of_rest(
+        self,
+        entity_id: str,
+        yacht_id: str,
+        user_id: str,
+        payload: Dict
+    ) -> Dict:
+        """
+        POST /v1/hours-of-rest/undo
+
+        Crew undoes their own submitted day record.
+
+        MLC requirement: original is NEVER deleted. Undo creates a
+        pms_hor_corrections row with the original snapshot, then resets the
+        pms_hours_of_rest row to unsubmitted state.
+
+        Blocked if HOD has already signed the week containing this record.
+
+        Payload:
+        - record_id: UUID of pms_hours_of_rest row (required)
+        """
+        builder = ResponseBuilder("undo_hours_of_rest", entity_id, "hours_of_rest", yacht_id)
+
+        try:
+            record_id = payload.get("record_id")
+            if not record_id:
+                builder.set_error("VALIDATION_ERROR", "record_id is required")
+                return builder.build()
+
+            # Fetch the record to undo
+            result = self.db.table("pms_hours_of_rest").select("*").eq(
+                "id", record_id
+            ).eq("yacht_id", yacht_id).eq("user_id", user_id).maybe_single().execute()
+
+            if result is None or not result.data:
+                builder.set_error("NOT_FOUND", "Record not found or not owned by you")
+                return builder.build()
+
+            record = result.data
+            record_date = record.get("record_date")
+
+            # Block undo if HOD has signed the week containing this record
+            # Determine the Monday of the week containing record_date
+            from datetime import date as date_type
+            rd = date_type.fromisoformat(str(record_date))
+            week_monday = (rd - timedelta(days=rd.weekday())).isoformat()
+            week_sunday = (rd - timedelta(days=rd.weekday()) + timedelta(days=6)).isoformat()
+
+            hod_sign_check = self.db.table("pms_hor_monthly_signoffs").select("id, status").eq(
+                "yacht_id", yacht_id
+            ).eq("user_id", user_id).eq("period_type", "weekly").eq(
+                "week_start", week_monday
+            ).maybe_single().execute()
+
+            if hod_sign_check and hod_sign_check.data and hod_sign_check.data.get("status") in ("hod_signed", "finalized"):
+                builder.set_error(
+                    "LOCKED",
+                    "Cannot undo: HOD has already signed this week. Request a correction through your HOD."
+                )
+                return builder.build()
+
+            # Snapshot original data into pms_hor_corrections
+            correction_insert = {
+                "yacht_id": yacht_id,
+                "original_record_id": record_id,
+                "corrected_record_id": None,  # undo = no replacement record
+                "corrected_by": user_id,
+                "reason": "crew_undo",
+                "note": None,
+                "original_rest_periods": record.get("rest_periods", []),
+                "corrected_rest_periods": None,
+                "requested_by_user_id": None,
+                "correction_chain": [],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            self.db.table("pms_hor_corrections").insert(correction_insert).execute()
+
+            # Reset the HoR record to unsubmitted state
+            reset_data = {
+                "rest_periods": [],
+                "total_rest_hours": 0,
+                "total_work_hours": 0,
+                "is_daily_compliant": False,
+                "is_correction": False,
+                "daily_compliance_notes": None,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            self.db.table("pms_hours_of_rest").update(reset_data).eq("id", record_id).execute()
+
+            # Ledger event
+            try:
+                self.db.table("ledger_events").insert(build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="update",
+                    entity_type="hours_of_rest",
+                    entity_id=record_id,
+                    action="crew_undo",
+                    change_summary=f"Crew undid HoR submission for {record_date} — original preserved in pms_hor_corrections",
+                    metadata={"record_date": record_date, "original_total_rest_hours": record.get("total_rest_hours")},
+                    event_category="write",
+                )).execute()
+            except Exception as le:
+                logger.warning(f"Ledger insert failed on undo (non-fatal): {le}")
+
+            builder.set_data({
+                "record_id": record_id,
+                "record_date": record_date,
+                "undone": True,
+                "original_preserved": True,
+            })
+
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"Error undoing hours of rest: {e}")
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
+
+    async def create_hor_correction(
+        self,
+        entity_id: str,
+        yacht_id: str,
+        user_id: str,
+        payload: Dict
+    ) -> Dict:
+        """
+        POST /v1/hours-of-rest/corrections
+
+        Create a correction for an existing HoR record.
+
+        Crew: corrects their own time (full rest_periods replacement, reason required).
+        HOD/Captain: adds a note only (corrected_rest_periods=None, cannot edit crew time).
+
+        MLC requirement: original row is NEVER modified. A new pms_hours_of_rest
+        row is created (is_correction=TRUE) and pms_hor_corrections links both.
+
+        Payload:
+        - original_record_id: UUID (required)
+        - reason: str (required — legal field)
+        - note: str (optional)
+        - corrected_rest_periods: Array of {start, end} (required for crew, null for HOD note-only)
+        - requested_by_user_id: UUID (optional — set when correction was kicked back by HOD/Captain)
+        - correction_chain: list of {user_id, role, requested_at} (optional)
+        """
+        builder = ResponseBuilder("create_hor_correction", entity_id, "hours_of_rest", yacht_id)
+
+        try:
+            original_record_id = payload.get("original_record_id")
+            reason = payload.get("reason", "").strip()
+            note = payload.get("note")
+            corrected_rest_periods = payload.get("corrected_rest_periods")
+            requested_by_user_id = payload.get("requested_by_user_id")
+            correction_chain = payload.get("correction_chain", [])
+
+            if not original_record_id:
+                builder.set_error("VALIDATION_ERROR", "original_record_id is required")
+                return builder.build()
+            if not reason:
+                builder.set_error("VALIDATION_ERROR", "reason is required (MLC legal field)")
+                return builder.build()
+
+            # Fetch original record
+            orig_result = self.db.table("pms_hours_of_rest").select("*").eq(
+                "id", original_record_id
+            ).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            if not orig_result.data:
+                builder.set_error("NOT_FOUND", "Original record not found")
+                return builder.build()
+
+            original = orig_result.data
+            original_owner_id = original.get("user_id")
+            record_date = original.get("record_date")
+
+            corrected_record_id = None
+            corrected_record = None
+
+            # If corrected_rest_periods provided — create new HoR row (crew correction only)
+            if corrected_rest_periods is not None:
+                # Only the record owner (crew) may change rest_periods
+                if user_id != original_owner_id:
+                    builder.set_error(
+                        "FORBIDDEN",
+                        "Only the crew member who submitted this record can change rest periods. "
+                        "HOD/Captain may add a note only."
+                    )
+                    return builder.build()
+
+                # Compute new totals (handle overnight periods crossing midnight)
+                def _period_hours(p: dict) -> float:
+                    if "hours" in p:
+                        return float(p["hours"])
+                    try:
+                        sh, sm = map(int, str(p["start"]).split(":"))
+                        eh, em = map(int, str(p["end"]).split(":"))
+                        start_mins = sh * 60 + sm
+                        end_mins   = eh * 60 + em
+                        if end_mins <= start_mins:
+                            end_mins += 24 * 60
+                        return round((end_mins - start_mins) / 60, 2)
+                    except Exception:
+                        return 0.0
+
+                # Inject hours into corrected periods for DB trigger
+                corrected_rest_periods = [
+                    dict(p, hours=_period_hours(p)) for p in corrected_rest_periods
+                ]
+                total_rest_hours = sum(p["hours"] for p in corrected_rest_periods)
+                total_work_hours = 24 - total_rest_hours
+                is_daily_compliant = total_rest_hours >= 10
+                longest = max((_period_hours(p) for p in corrected_rest_periods), default=0.0)
+                has_valid_periods = len(corrected_rest_periods) <= 2 and longest >= 6
+
+                # Insert corrected HoR row
+                new_row = {
+                    "yacht_id": yacht_id,
+                    "user_id": original_owner_id,
+                    "record_date": record_date,
+                    "rest_periods": corrected_rest_periods,
+                    "total_rest_hours": total_rest_hours,
+                    "total_work_hours": total_work_hours,
+                    "is_daily_compliant": is_daily_compliant and has_valid_periods,
+                    "is_correction": True,
+                    "correction_of_id": original_record_id,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                self.db.table("pms_hours_of_rest").insert(new_row).execute()
+
+                fetch = self.db.table("pms_hours_of_rest").select("*").eq(
+                    "yacht_id", yacht_id
+                ).eq("user_id", original_owner_id).eq("record_date", record_date).eq(
+                    "is_correction", True
+                ).order("created_at", desc=True).limit(1).execute()
+                corrected_record = fetch.data[0] if fetch.data else None
+                corrected_record_id = corrected_record.get("id") if corrected_record else None
+
+                # Clear correction_requested on the weekly signoff (crew has addressed it)
+                from datetime import date as date_type
+                rd = date_type.fromisoformat(str(record_date))
+                week_monday = (rd - timedelta(days=rd.weekday())).isoformat()
+                self.db.table("pms_hor_monthly_signoffs").update({
+                    "correction_requested": False,
+                    "correction_requested_at": None,
+                    "correction_note": None,
+                    "correction_requested_by": None,
+                    # Revert HOD sign status to draft so HOD must re-sign
+                    "status": "draft",
+                    "hod_signature": None,
+                    "hod_signed_at": None,
+                    "hod_signed_by": None,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }).eq("yacht_id", yacht_id).eq("user_id", original_owner_id).eq(
+                    "period_type", "weekly"
+                ).eq("week_start", week_monday).execute()
+
+            # Insert into pms_hor_corrections
+            correction_row = {
+                "yacht_id": yacht_id,
+                "original_record_id": original_record_id,
+                "corrected_record_id": corrected_record_id,
+                "corrected_by": user_id,
+                "reason": reason,
+                "note": note,
+                "original_rest_periods": original.get("rest_periods", []),
+                "corrected_rest_periods": corrected_rest_periods,
+                "requested_by_user_id": requested_by_user_id,
+                "correction_chain": correction_chain,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            self.db.table("pms_hor_corrections").insert(correction_row).execute()
+
+            # Ledger event
+            try:
+                change_desc = (
+                    f"Correction by {user_id} for {record_date}: {reason}"
+                    if corrected_rest_periods else
+                    f"Note added by {user_id} for {record_date}: {reason}"
+                )
+                self.db.table("ledger_events").insert(build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="update",
+                    entity_type="hours_of_rest",
+                    entity_id=original_record_id,
+                    action="create_hor_correction",
+                    change_summary=change_desc,
+                    metadata={
+                        "original_record_id": original_record_id,
+                        "corrected_record_id": corrected_record_id,
+                        "reason": reason,
+                        "is_time_change": corrected_rest_periods is not None,
+                    },
+                    event_category="write",
+                )).execute()
+            except Exception as le:
+                logger.warning(f"Ledger insert failed on correction (non-fatal): {le}")
+
+            builder.set_data({
+                "original_record_id": original_record_id,
+                "corrected_record_id": corrected_record_id,
+                "corrected_record": corrected_record,
+                "is_time_change": corrected_rest_periods is not None,
+                "reason": reason,
+            })
+
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"Error creating HoR correction: {e}")
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
+
+    async def request_hor_correction(
+        self,
+        entity_id: str,
+        yacht_id: str,
+        user_id: str,
+        payload: Dict
+    ) -> Dict:
+        """
+        POST /v1/hours-of-rest/request-correction
+
+        HOD or Captain kicks back a signed week/signoff record, requesting
+        correction from the next party down the chain.
+
+        HOD → Crew: sets correction_requested=TRUE on weekly signoff + notifies crew.
+        Captain → HOD: sets correction_requested=TRUE on captain-signed signoff + notifies HOD.
+
+        Payload:
+        - signoff_id: UUID of pms_hor_monthly_signoffs (required)
+        - target_user_id: UUID of who should receive the correction request (required)
+        - correction_note: str (required — what needs correcting)
+        - role: 'hod' | 'captain' (role of the requester, required)
+        """
+        builder = ResponseBuilder("request_hor_correction", entity_id, "monthly_signoff", yacht_id)
+
+        try:
+            signoff_id = payload.get("signoff_id")
+            target_user_id = payload.get("target_user_id")
+            correction_note = payload.get("correction_note", "").strip()
+            requester_role = payload.get("role")
+
+            if not signoff_id or not target_user_id or not correction_note:
+                builder.set_error(
+                    "VALIDATION_ERROR",
+                    "signoff_id, target_user_id, and correction_note are required"
+                )
+                return builder.build()
+
+            # Fetch signoff
+            signoff_result = self.db.table("pms_hor_monthly_signoffs").select("*").eq(
+                "id", signoff_id
+            ).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            if not signoff_result.data:
+                builder.set_error("NOT_FOUND", "Sign-off not found")
+                return builder.build()
+
+            signoff = signoff_result.data
+            current_status = signoff.get("status")
+
+            # Auth: HOD can only request correction on hod_signed records
+            #       Captain can only request on captain_signed / hod_signed records
+            allowed_statuses = {
+                "hod": ["hod_signed"],
+                "captain": ["hod_signed", "finalized"],
+            }
+            if requester_role not in allowed_statuses:
+                builder.set_error("VALIDATION_ERROR", f"Invalid role: {requester_role}")
+                return builder.build()
+
+            if current_status not in allowed_statuses[requester_role]:
+                builder.set_error(
+                    "INVALID_STATE",
+                    f"Cannot request correction from {current_status} state as {requester_role}"
+                )
+                return builder.build()
+
+            # Set correction_requested on signoff
+            self.db.table("pms_hor_monthly_signoffs").update({
+                "correction_requested": True,
+                "correction_requested_at": datetime.now(timezone.utc).isoformat(),
+                "correction_note": correction_note,
+                "correction_requested_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("id", signoff_id).execute()
+
+            # Notify the target user
+            notification_type = "correction_notice"
+            role_label = "HOD" if requester_role == "hod" else "Captain"
+
+            self.db.table("pms_notifications").insert({
+                "yacht_id": yacht_id,
+                "user_id": target_user_id,
+                "notification_type": notification_type,
+                "entity_type": "hours_of_rest",
+                "entity_id": signoff_id,
+                "body": f"{role_label} has requested a correction: {correction_note}",
+                "metadata": {
+                    "signoff_id": signoff_id,
+                    "requested_by": user_id,
+                    "requester_role": requester_role,
+                    "correction_note": correction_note,
+                    "signoff_period_type": signoff.get("period_type", "monthly"),
+                    "week_start": signoff.get("week_start"),
+                    "month": signoff.get("month"),
+                },
+                "triggered_by": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+
+            # Ledger event
+            try:
+                self.db.table("ledger_events").insert(build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="update",
+                    entity_type="pms_hor_monthly_signoffs",
+                    entity_id=signoff_id,
+                    action="request_hor_correction",
+                    change_summary=f"{role_label} requested correction from user {target_user_id}: {correction_note}",
+                    metadata={
+                        "signoff_id": signoff_id,
+                        "target_user_id": target_user_id,
+                        "requester_role": requester_role,
+                        "correction_note": correction_note,
+                    },
+                    event_category="write",
+                )).execute()
+            except Exception as le:
+                logger.warning(f"Ledger insert failed on correction request (non-fatal): {le}")
+
+            builder.set_data({
+                "signoff_id": signoff_id,
+                "correction_requested": True,
+                "target_user_id": target_user_id,
+                "notification_sent": True,
+            })
+
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"Error requesting HoR correction: {e}")
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
+
+    async def get_unread_notifications(
+        self,
+        entity_id: str,
+        yacht_id: str,
+        user_id: str,
+        params: Optional[Dict] = None
+    ) -> Dict:
+        """
+        GET /v1/hours-of-rest/notifications/unread
+
+        Returns unread notifications for the current user on this vessel.
+        Frontend polls this on page load and after any action.
+
+        Params:
+        - limit: int (default 50)
+        """
+        builder = ResponseBuilder("get_unread_notifications", entity_id, "notification", yacht_id)
+
+        try:
+            params = params or {}
+            limit = int(params.get("limit", 50))
+
+            result = self.db.table("pms_notifications").select("*").eq(
+                "yacht_id", yacht_id
+            ).eq("user_id", user_id).eq(
+                "is_read", False
+            ).order("created_at", desc=True).limit(limit).execute()
+
+            notifications = result.data or []
+
+            builder.set_data({
+                "notifications": notifications,
+                "unread_count": len(notifications),
+            })
+
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"Error fetching notifications: {e}")
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
+
+    async def mark_notifications_read(
+        self,
+        entity_id: str,
+        yacht_id: str,
+        user_id: str,
+        payload: Dict
+    ) -> Dict:
+        """
+        POST /v1/hours-of-rest/notifications/mark-read
+
+        Mark one or all unread notifications as read.
+
+        Payload:
+        - notification_ids: list of UUIDs (optional — if omitted, marks ALL as read)
+        """
+        builder = ResponseBuilder("mark_notifications_read", entity_id, "notification", yacht_id)
+
+        try:
+            notification_ids = payload.get("notification_ids")
+            now = datetime.now(timezone.utc).isoformat()
+
+            query = self.db.table("pms_notifications").update({
+                "is_read": True,
+                "read_at": now,
+            }).eq("yacht_id", yacht_id).eq("user_id", user_id)
+
+            if notification_ids:
+                query = query.in_("id", notification_ids)
+
+            query.execute()
+
+            builder.set_data({"marked_read": True})
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"Error marking notifications read: {e}")
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
+
+    async def get_hor_sign_chain(
+        self,
+        entity_id: str,
+        yacht_id: str,
+        params: Optional[Dict] = None
+    ) -> Dict:
+        """
+        GET /v1/hours-of-rest/sign-chain
+
+        Returns per-vessel or per-week sign chain status for fleet manager view (S6).
+
+        Params:
+        - week_start: YYYY-MM-DD (Monday of week, required)
+        - target_yacht_id: UUID (optional — for fleet manager viewing another vessel)
+
+        Returns for the week:
+        - crew_submitted: count
+        - hod_signed: bool per department
+        - captain_signed: bool
+        - fleet_manager_reviewed: bool
+        - correction_requests: list of outstanding correction_requested=TRUE records
+        """
+        builder = ResponseBuilder("get_hor_sign_chain", entity_id, "sign_chain", yacht_id)
+
+        try:
+            params = params or {}
+            week_start = params.get("week_start")
+            if not week_start:
+                builder.set_error("VALIDATION_ERROR", "week_start is required (YYYY-MM-DD Monday)")
+                return builder.build()
+
+            target_yacht = params.get("target_yacht_id") or yacht_id
+
+            # All weekly signoffs for this vessel + week
+            signoffs_result = self.db.table("pms_hor_monthly_signoffs").select(
+                "id, user_id, department, status, period_type, week_start, "
+                "hod_signed_by, hod_signed_at, master_signed_by, master_signed_at, "
+                "fleet_manager_signed_by, fleet_manager_signed_at, "
+                "correction_requested, correction_note, correction_requested_by"
+            ).eq("yacht_id", target_yacht).eq("period_type", "weekly").eq(
+                "week_start", week_start
+            ).execute()
+
+            signoffs = signoffs_result.data or []
+
+            # Count crew submissions for this week
+            from datetime import date as date_type
+            ws = date_type.fromisoformat(str(week_start))
+            week_end = (ws + timedelta(days=6)).isoformat()
+
+            submitted_result = self.db.table("pms_hours_of_rest").select(
+                "user_id", count="exact"
+            ).eq("yacht_id", target_yacht).gte(
+                "record_date", week_start
+            ).lte("record_date", week_end).execute()
+
+            crew_submitted_count = submitted_result.count or 0
+
+            # Build department sign status
+            dept_status = {}
+            captain_signed = False
+            fleet_reviewed = False
+            outstanding_corrections = []
+
+            for s in signoffs:
+                dept = s.get("department", "unknown")
+                status = s.get("status", "draft")
+
+                if dept not in dept_status:
+                    dept_status[dept] = {
+                        "status": status,
+                        "hod_signed_at": s.get("hod_signed_at"),
+                        "hod_signed_by": s.get("hod_signed_by"),
+                        "correction_requested": s.get("correction_requested", False),
+                        "correction_note": s.get("correction_note"),
+                    }
+
+                if status in ("finalized",) and s.get("master_signed_by"):
+                    captain_signed = True
+
+                if s.get("fleet_manager_signed_by"):
+                    fleet_reviewed = True
+
+                if s.get("correction_requested"):
+                    outstanding_corrections.append({
+                        "signoff_id": s.get("id"),
+                        "department": dept,
+                        "user_id": s.get("user_id"),
+                        "correction_note": s.get("correction_note"),
+                        "requested_by": s.get("correction_requested_by"),
+                    })
+
+            all_hods_signed = all(
+                d.get("status") in ("hod_signed", "finalized") and not d.get("correction_requested")
+                for d in dept_status.values()
+            ) if dept_status else False
+
+            builder.set_data({
+                "week_start": week_start,
+                "yacht_id": target_yacht,
+                "crew_submitted_count": crew_submitted_count,
+                "department_status": dept_status,
+                "all_hods_signed": all_hods_signed,
+                "captain_signed": captain_signed,
+                "fleet_manager_reviewed": fleet_reviewed,
+                "outstanding_corrections": outstanding_corrections,
+                "ready_for_captain": all_hods_signed and not captain_signed,
+                "ready_for_fleet_manager": all_hods_signed and captain_signed and not fleet_reviewed,
+            })
+
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"Error fetching HoR sign chain: {e}")
             builder.set_error("DATABASE_ERROR", str(e))
             return builder.build()
