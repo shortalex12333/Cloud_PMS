@@ -251,6 +251,9 @@ export function MyTimeView() {
   // Unsigned alert
   const [unsignedAlert, setUnsignedAlert] = React.useState(false);
 
+  // Guard against double-mount (React StrictMode / auth re-renders)
+  const fetchedRef = React.useRef(false);
+
   // ── Load week data ──
 
   async function loadWeekData() {
@@ -301,6 +304,8 @@ export function MyTimeView() {
   }
 
   React.useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     loadWeekData();
     checkUnsignedAlert();
   }, []);
