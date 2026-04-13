@@ -53,7 +53,8 @@ function HoursOfRestContent() {
 
   return (
     <div style={{
-      height: '100%',
+      flex: 1,
+      minHeight: 0,
       display: 'flex',
       flexDirection: 'column',
       background: 'var(--surface-base, #0e0c09)',
