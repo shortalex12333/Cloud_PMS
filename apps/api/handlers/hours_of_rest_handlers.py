@@ -444,13 +444,15 @@ class HoursOfRestHandlers:
                 is_violation = not (is_daily_compliant and has_valid_rest_periods)
                 if is_violation:
                     try:
-                        # Find HOD for this user's department — look up crew's department directly
-                        crew_role_result = self.db.table("auth_users_roles").select(
+                        # Find HOD for this user's department.
+                        # Use list-mode (not .maybe_single()) to handle users with multiple dept rows.
+                        crew_role_rows = self.db.table("auth_users_roles").select(
                             "department"
-                        ).eq("yacht_id", yacht_id).eq("user_id", user_id).maybe_single().execute()
-                        dept = (crew_role_result.data or {}).get("department") if crew_role_result and crew_role_result.data else None
+                        ).eq("yacht_id", yacht_id).eq("user_id", user_id).limit(1).execute()
+                        dept = (crew_role_rows.data[0] if crew_role_rows.data else {}).get("department")
 
-                        HOD_ROLES = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser"]
+                        # Notify HOD roles + captain/manager (they hold final responsibility)
+                        HOD_ROLES = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"]
                         if dept:
                             hod_result = self.db.table("auth_users_roles").select(
                                 "user_id"
@@ -472,22 +474,30 @@ class HoursOfRestHandlers:
                             ).execute()
 
                         # Notify all resolved HOD users — runs regardless of dept path
-                        crew_name_result = self.db.table("auth_users_profiles").select(
+                        # Use list-mode (not .maybe_single()) — throws APIError(204) on 0 rows
+                        crew_profile_rows = self.db.table("auth_users_profiles").select(
                             "name"
-                        ).eq("yacht_id", yacht_id).eq("id", user_id).maybe_single().execute()
-                        crew_name = crew_name_result.data.get("name", "Crew member") if crew_name_result and crew_name_result.data else "Crew member"
+                        ).eq("yacht_id", yacht_id).eq("id", user_id).limit(1).execute()
+                        crew_name = (crew_profile_rows.data[0] if crew_profile_rows.data else {}).get("name") or "Crew member"
 
+                        # Deduplicate by user_id — auth_users_roles has one row per role,
+                        # so the same user can appear multiple times if they hold multiple roles.
+                        seen_hod_ids: set = set()
                         notifications = []
                         for hod in (hod_result.data or []):
+                            hod_uid = hod["user_id"]
+                            if hod_uid in seen_hod_ids:
+                                continue
+                            seen_hod_ids.add(hod_uid)
                             notifications.append({
                                 "yacht_id": yacht_id,
-                                "user_id": hod["user_id"],
+                                "user_id": hod_uid,
                                 "notification_type": "violation_alert",
                                 "title": f"HoR Violation — {crew_name}",
                                 "body": f"{crew_name} logged only {total_rest_hours:.1f}h rest on {record_date} (MLC minimum: 10h)",
                                 "entity_type": "hours_of_rest",
                                 "entity_id": record["id"],
-                                "idempotency_key": f"violation:{record['id']}",
+                                "idempotency_key": f"violation:{record['id']}:{hod_uid}",
                                 "metadata": {
                                     "crew_user_id": user_id,
                                     "record_date": record_date,
@@ -1001,15 +1011,18 @@ class HoursOfRestHandlers:
                         if signoff_dept:
                             hod_q = hod_q.eq("department", signoff_dept)
                         hod_result = hod_q.execute()
+                        _seen: set = set()
                         notifications = [
                             {
                                 "yacht_id": yacht_id,
                                 "user_id": row["user_id"],
                                 "notification_type": "hor_awaiting_countersign",
+                                "title": "HoR Awaiting Counter-Signature",
                                 "body": "A crew member has signed their hours of rest — awaiting your counter-signature.",
                                 "idempotency_key": f"hor_crew_signed_{signoff_id}_{row['user_id']}",
                             }
                             for row in (hod_result.data or [])
+                            if row["user_id"] not in _seen and not _seen.add(row["user_id"])
                         ]
                         if notifications:
                             self.db.table("pms_notifications").upsert(
@@ -1021,15 +1034,18 @@ class HoursOfRestHandlers:
                         cap_result = self.db.table("auth_users_roles").select("user_id").eq(
                             "yacht_id", yacht_id
                         ).in_("role", list(_MASTER_ROLES_SIGN)).execute()
+                        _seen2: set = set()
                         notifications = [
                             {
                                 "yacht_id": yacht_id,
                                 "user_id": row["user_id"],
                                 "notification_type": "hor_awaiting_master_sign",
+                                "title": "HoR Awaiting Master Signature",
                                 "body": "HOD has counter-signed crew hours of rest — awaiting your final signature.",
                                 "idempotency_key": f"hor_hod_signed_{signoff_id}_{row['user_id']}",
                             }
                             for row in (cap_result.data or [])
+                            if row["user_id"] not in _seen2 and not _seen2.add(row["user_id"])
                         ]
                         if notifications:
                             self.db.table("pms_notifications").upsert(
@@ -1044,6 +1060,7 @@ class HoursOfRestHandlers:
                                     "yacht_id": yacht_id,
                                     "user_id": signoff_owner,
                                     "notification_type": "hor_month_finalized",
+                                    "title": "Monthly HoR Record Finalized",
                                     "body": "Your monthly hours of rest record has been signed and finalized by the Master.",
                                     "idempotency_key": f"hor_master_signed_{signoff_id}",
                                 }],

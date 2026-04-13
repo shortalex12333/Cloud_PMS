@@ -20,12 +20,14 @@ def client():
 
 
 def fetch_one(table: str, **filters) -> Optional[dict]:
-    """Fetch single row by filters. Returns None if not found."""
+    """Fetch single row by filters. Returns None if not found.
+    Uses list-mode select to avoid supabase-py 2.x .maybe_single() APIError(204) on 0 rows."""
     q = client().table(table).select("*")
     for k, v in filters.items():
         q = q.eq(k, v)
-    r = q.maybe_single().execute()
-    return r.data if r else None
+    r = q.limit(1).execute()
+    rows = r.data or []
+    return rows[0] if rows else None
 
 
 def fetch_many(table: str, **filters) -> list:

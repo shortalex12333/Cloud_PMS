@@ -558,9 +558,10 @@ async def sign_monthly_signoff_route(
     tenant_key_alias = auth["tenant_key_alias"]
     caller_role = auth.get("role", "")
 
-    # Role enforcement: signature_level must match caller's role
-    HOD_ROLES    = {"chief_engineer", "chief_officer", "chief_steward", "eto", "purser"}
-    MASTER_ROLES = {"captain", "master"}
+    # Role enforcement: signature_level must match caller's role.
+    # captain/manager are authorised at both HOD and master levels.
+    HOD_ROLES    = {"chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"}
+    MASTER_ROLES = {"captain", "master", "manager"}
     sig_level = request.signature_level
     if sig_level == "hod" and caller_role not in HOD_ROLES:
         raise HTTPException(status_code=403, detail={"error": "FORBIDDEN",
