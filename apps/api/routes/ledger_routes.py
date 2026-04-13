@@ -692,8 +692,13 @@ async def create_ledger_export(
         is_sealed = os.environ.get("LEDGER_EXPORT_SEAL", "false").lower() == "true"
         if is_sealed:
             try:
+                import asyncio
+                from functools import partial
                 from evidence.sealing import seal_export, SealingError
-                pdf_bytes, sealing_info = seal_export(pdf_bytes)
+                loop = asyncio.get_event_loop()
+                pdf_bytes, sealing_info = await loop.run_in_executor(
+                    None, partial(seal_export, pdf_bytes)
+                )
                 logger.info(
                     f"[Ledger] Export {export_id} sealed — "
                     f"sha256={sealing_info.pdf_sha256[:16]}… "
