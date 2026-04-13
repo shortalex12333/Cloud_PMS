@@ -207,9 +207,8 @@ class HoursOfRestHandlers:
 
         Payload:
         - record_date: YYYY-MM-DD (required)
-        - rest_periods: Array of {start, end, hours} (required)
-        - total_rest_hours: Calculated sum (required)
-        - total_work_hours: 24 - total_rest_hours (optional)
+        - work_periods: Array of {start, end} — crew's working hours (required)
+          Backend derives rest_periods as the 24h complement and stores both.
         - daily_compliance_notes: Optional notes
 
         Returns:
@@ -220,13 +219,12 @@ class HoursOfRestHandlers:
         builder = ResponseBuilder("upsert_hours_of_rest", entity_id, "hours_of_rest", yacht_id)
 
         try:
-            record_date = payload.get("record_date")
-            rest_periods = payload.get("rest_periods", [])
-            total_rest_hours = payload.get("total_rest_hours")
+            record_date  = payload.get("record_date")
+            work_periods = payload.get("work_periods", [])
             daily_compliance_notes = payload.get("daily_compliance_notes")
 
-            if not record_date or not rest_periods:
-                builder.set_error("VALIDATION_ERROR", "record_date and rest_periods are required")
+            if not record_date:
+                builder.set_error("VALIDATION_ERROR", "record_date is required")
                 return builder.build()
 
             # Phase 7 lock: reject if weekly OR monthly signoff is finalized or locked
@@ -237,8 +235,6 @@ class HoursOfRestHandlers:
                 month_str = str(record_date)[:7]  # YYYY-MM
 
                 # Check weekly lock
-                # Use .execute() (list mode) — maybe_single() throws APIError('204') in
-                # supabase-py 2.12.0 when 0 rows exist, which silently swallowed the monthly check.
                 lock_check_result = self.db.table("pms_hor_monthly_signoffs").select(
                     "status"
                 ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
@@ -253,7 +249,7 @@ class HoursOfRestHandlers:
                     )
                     return builder.build()
 
-                # Check monthly lock — any finalized monthly signoff for this user+month blocks upserts
+                # Check monthly lock
                 monthly_lock_result = self.db.table("pms_hor_monthly_signoffs").select(
                     "status"
                 ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
@@ -273,24 +269,21 @@ class HoursOfRestHandlers:
                 builder.set_error("DATABASE_ERROR", f"Lock check failed: {lock_err}")
                 return builder.build()
 
-            # Validate: each period must have start and end
-            for p in rest_periods:
+            # Validate: each work_period must have start and end
+            for p in work_periods:
                 if not p.get("start") or not p.get("end"):
                     builder.set_error("VALIDATION_ERROR",
-                        "Each rest_period must have start and end (HH:MM format)")
+                        "Each work_period must have start and end (HH:MM format)")
                     return builder.build()
 
-            # Validate: no overlapping rest periods (periods must meet, never overlap)
-            sorted_periods = sorted(rest_periods, key=lambda p: p.get("start", ""))
-            for i in range(len(sorted_periods) - 1):
-                a, b = sorted_periods[i], sorted_periods[i + 1]
+            # Validate: no overlapping work periods
+            sorted_work = sorted(work_periods, key=lambda p: p.get("start", ""))
+            for i in range(len(sorted_work) - 1):
+                a, b = sorted_work[i], sorted_work[i + 1]
                 if a.get("end", "") > b.get("start", ""):
-                    builder.set_error("VALIDATION_ERROR", "Rest periods must not overlap")
+                    builder.set_error("VALIDATION_ERROR", "Work periods must not overlap")
                     return builder.build()
 
-            # Compute hours from start/end when not provided by client.
-            # Frontend sends {start: "HH:MM", end: "HH:MM"} without an hours field.
-            # The DB trigger reads period->>'hours', so we MUST inject hours into each period.
             def _period_hours(p: dict) -> float:
                 if "hours" in p:
                     return float(p["hours"])
@@ -299,27 +292,40 @@ class HoursOfRestHandlers:
                     eh, em = map(int, str(p["end"]).split(":"))
                     start_mins = sh * 60 + sm
                     end_mins   = eh * 60 + em
-                    if end_mins <= start_mins:  # overnight period crosses midnight
+                    if end_mins <= start_mins:  # overnight
                         end_mins += 24 * 60
                     return round((end_mins - start_mins) / 60, 2)
                 except Exception:
                     return 0.0
 
-            # Inject hours into each period so the DB trigger can read it
-            rest_periods = [
-                dict(p, hours=_period_hours(p)) for p in rest_periods
-            ]
+            # Inject hours into work_periods
+            work_periods = [dict(p, hours=_period_hours(p)) for p in sorted_work]
 
-            # Calculate totals
-            if total_rest_hours is None:
-                total_rest_hours = sum(p["hours"] for p in rest_periods)
+            # Derive rest_periods as 24h complement of work_periods
+            def _complement(periods: list) -> list:
+                """Return gaps between 00:00 and 24:00 not covered by periods."""
+                if not periods:
+                    return [{"start": "00:00", "end": "24:00", "hours": 24.0}]
+                rest = []
+                prev_end = "00:00"
+                for wp in periods:
+                    wp_start = wp.get("start", "")
+                    if wp_start > prev_end:
+                        gap = {"start": prev_end, "end": wp_start}
+                        rest.append(dict(gap, hours=_period_hours(gap)))
+                    prev_end = wp.get("end", "")
+                if prev_end < "24:00":
+                    gap = {"start": prev_end, "end": "24:00"}
+                    rest.append(dict(gap, hours=_period_hours(gap)))
+                return rest
 
-            total_work_hours = 24 - total_rest_hours
+            rest_periods = _complement(work_periods)
 
-            # Check daily compliance (MLC 2006: min 10h rest per 24h)
+            total_work_hours = sum(p["hours"] for p in work_periods)
+            total_rest_hours = 24 - total_work_hours
+
+            # MLC 2006 compliance checks
             is_daily_compliant = total_rest_hours >= 10
-
-            # Check rest period rules (no more than 2 periods, one at least 6h)
             rest_period_count = len(rest_periods)
             longest_rest_period = max((_period_hours(p) for p in rest_periods), default=0.0)
 
@@ -333,6 +339,7 @@ class HoursOfRestHandlers:
                 "yacht_id": yacht_id,
                 "user_id": user_id,
                 "record_date": record_date,
+                "work_periods": work_periods,
                 "rest_periods": rest_periods,
                 "total_rest_hours": total_rest_hours,
                 "total_work_hours": total_work_hours,
@@ -738,11 +745,13 @@ class HoursOfRestHandlers:
                 return builder.build()
 
             # Check if sign-off already exists for target user
-            existing = self.db.table("pms_hor_monthly_signoffs").select("id").eq(
+            # NOTE: .maybe_single() throws APIError(204) in supabase-py 2.12.0 when 0 rows found.
+            # Use .execute() list mode instead and check len(data).
+            existing_result = self.db.table("pms_hor_monthly_signoffs").select("id").eq(
                 "yacht_id", yacht_id
-            ).eq("user_id", target_user_id).eq("month", month).maybe_single().execute()
+            ).eq("user_id", target_user_id).eq("month", month).execute()
 
-            if existing is not None and existing.data:
+            if existing_result.data:
                 builder.set_error("DUPLICATE_ERROR", f"Sign-off already exists for {month}", status_code=409)
                 return builder.build()
 
@@ -789,7 +798,7 @@ class HoursOfRestHandlers:
             self.db.table("pms_hor_monthly_signoffs").insert(insert_data).execute()
             result = self.db.table("pms_hor_monthly_signoffs").select("*").eq(
                 "yacht_id", yacht_id
-            ).eq("user_id", user_id).eq("month", month).eq("department", department).execute()
+            ).eq("user_id", target_user_id).eq("month", month).eq("department", department).execute()
             signoff = result.data[0] if (result is not None and result.data) else None
 
             # Write audit log
@@ -851,15 +860,17 @@ class HoursOfRestHandlers:
                 return builder.build()
 
             # Fetch current sign-off
-            current = self.db.table("pms_hor_monthly_signoffs").select("*").eq(
+            # NOTE: .maybe_single() throws APIError(204) in supabase-py 2.12.0 when 0 rows found.
+            # Use .execute() list mode and check data explicitly for NOT_FOUND.
+            current_result = self.db.table("pms_hor_monthly_signoffs").select("*").eq(
                 "id", signoff_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).execute()
 
-            if not current.data:
+            if not current_result.data:
                 builder.set_error("NOT_FOUND", f"Sign-off not found: {signoff_id}")
                 return builder.build()
 
-            signoff = current.data
+            signoff = current_result.data[0]
 
             # Enforce sequential signing workflow: crew → hod → master
             current_status = signoff.get("status", "draft")
