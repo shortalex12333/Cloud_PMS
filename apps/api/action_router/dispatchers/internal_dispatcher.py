@@ -3424,6 +3424,185 @@ async def _draft_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+async def _submit_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+    warranty_id = params.get("warranty_id") or params.get("claim_id") or params.get("entity_id")
+    user_id = params.get("user_id")
+    yacht_id = params["yacht_id"]
+
+    r = supabase.table("pms_warranty_claims").select("*").eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    claim = r.data if r else None
+    if not claim:
+        return {"status": "error", "message": "Warranty claim not found"}
+    if claim.get("status") != "draft":
+        return {"status": "error", "message": "Claim must be in draft status to submit"}
+
+    supabase.table("pms_warranty_claims").update({
+        "status": "submitted",
+        "submitted_by": user_id,
+        "submitted_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", warranty_id).eq("yacht_id", yacht_id).execute()
+
+    try:
+        supabase.table("pms_notifications").insert({
+            "id": str(uuid_lib.uuid4()),
+            "yacht_id": yacht_id,
+            "user_id": None,
+            "notification_type": "warranty_submitted",
+            "title": f"Warranty Claim Submitted: {claim['title']}",
+            "body": f"Claim {claim['claim_number']} requires your review.",
+            "priority": "normal",
+            "entity_type": "warranty",
+            "entity_id": warranty_id,
+            "created_at": datetime.utcnow().isoformat(),
+        }).execute()
+    except Exception:
+        pass
+
+    return {"status": "success", "claim_id": warranty_id, "new_status": "submitted"}
+
+
+async def _approve_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+    warranty_id = params.get("warranty_id") or params.get("claim_id") or params.get("entity_id")
+    user_id = params.get("user_id")
+    yacht_id = params["yacht_id"]
+    approved_amount = params.get("approved_amount")
+
+    r = supabase.table("pms_warranty_claims").select("*").eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    claim = r.data if r else None
+    if not claim:
+        return {"status": "error", "message": "Warranty claim not found"}
+    if claim.get("status") not in ("submitted", "under_review"):
+        return {"status": "error", "message": "Claim must be submitted or under_review to approve"}
+
+    update_data: Dict[str, Any] = {
+        "status": "approved",
+        "approved_by": user_id,
+        "approved_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    if approved_amount is not None:
+        update_data["approved_amount"] = approved_amount
+
+    supabase.table("pms_warranty_claims").update(update_data).eq("id", warranty_id).eq("yacht_id", yacht_id).execute()
+
+    try:
+        supabase.table("pms_notifications").insert({
+            "id": str(uuid_lib.uuid4()),
+            "yacht_id": yacht_id,
+            "user_id": claim.get("drafted_by"),
+            "notification_type": "warranty_approved",
+            "title": "Warranty Claim Approved",
+            "body": f"Claim {claim['claim_number']} has been approved.",
+            "priority": "normal",
+            "entity_type": "warranty",
+            "entity_id": warranty_id,
+            "triggered_by": user_id,
+            "created_at": datetime.utcnow().isoformat(),
+        }).execute()
+    except Exception:
+        pass
+
+    return {"status": "success", "claim_id": warranty_id, "new_status": "approved"}
+
+
+async def _reject_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+    warranty_id = params.get("warranty_id") or params.get("claim_id") or params.get("entity_id")
+    user_id = params.get("user_id")
+    yacht_id = params["yacht_id"]
+    rejection_reason = params.get("rejection_reason", "")
+
+    r = supabase.table("pms_warranty_claims").select("*").eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    claim = r.data if r else None
+    if not claim:
+        return {"status": "error", "message": "Warranty claim not found"}
+    if claim.get("status") not in ("submitted", "under_review"):
+        return {"status": "error", "message": "Claim must be submitted or under_review to reject"}
+
+    supabase.table("pms_warranty_claims").update({
+        "status": "rejected",
+        "rejection_reason": rejection_reason,
+        "approved_by": user_id,
+        "approved_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", warranty_id).eq("yacht_id", yacht_id).execute()
+
+    try:
+        supabase.table("pms_notifications").insert({
+            "id": str(uuid_lib.uuid4()),
+            "yacht_id": yacht_id,
+            "user_id": claim.get("drafted_by"),
+            "notification_type": "warranty_rejected",
+            "title": "Warranty Claim Rejected",
+            "body": f"Claim {claim['claim_number']} has been rejected. Reason: {rejection_reason}",
+            "priority": "normal",
+            "entity_type": "warranty",
+            "entity_id": warranty_id,
+            "triggered_by": user_id,
+            "created_at": datetime.utcnow().isoformat(),
+        }).execute()
+    except Exception:
+        pass
+
+    return {"status": "success", "claim_id": warranty_id, "new_status": "rejected"}
+
+
+async def _close_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
+    supabase = get_supabase_client()
+    warranty_id = params.get("warranty_id") or params.get("claim_id") or params.get("entity_id")
+    user_id = params.get("user_id")
+    yacht_id = params["yacht_id"]
+
+    r = supabase.table("pms_warranty_claims").select("status").eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    claim = r.data if r else None
+    if not claim:
+        return {"status": "error", "message": "Warranty claim not found"}
+    if claim.get("status") != "approved":
+        return {"status": "error", "message": "Claim must be approved to close"}
+
+    supabase.table("pms_warranty_claims").update({
+        "status": "closed",
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", warranty_id).eq("yacht_id", yacht_id).execute()
+
+    return {"status": "success", "claim_id": warranty_id, "new_status": "closed"}
+
+
+async def _compose_warranty_email(params: Dict[str, Any]) -> Dict[str, Any]:
+    supabase = get_supabase_client()
+    warranty_id = params.get("warranty_id") or params.get("claim_id") or params.get("entity_id")
+    yacht_id = params["yacht_id"]
+
+    r = supabase.table("pms_warranty_claims").select("*").eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    claim = r.data if r else None
+    if not claim:
+        return {"status": "error", "message": "Warranty claim not found"}
+
+    drafted_at_str = claim.get("drafted_at", "")
+    drafted_date = drafted_at_str[:10] if drafted_at_str else "N/A"
+
+    email_draft = {
+        "subject": f"Warranty Claim {claim['claim_number']} — {claim.get('title', '')}",
+        "to": claim.get("vendor_name", "Supplier"),
+        "body": f"""Dear {claim.get('vendor_name', 'Sir/Madam')},\n\nWe write regarding warranty claim {claim['claim_number']} filed on {drafted_date}.\n\nClaim Details:\n- Title: {claim.get('title', '')}\n- Claim Type: {claim.get('claim_type', '').replace('_', ' ').title()}\n- Serial Number: {claim.get('serial_number', 'N/A')}\n- Manufacturer: {claim.get('manufacturer', 'N/A')}\n- Claimed Amount: {claim.get('currency', 'USD')} {claim.get('claimed_amount', 0)}\n\nDescription:\n{claim.get('description', '')}\n\nPlease confirm receipt and advise on the warranty assessment process.\n\nKind regards""",
+        "composed_at": datetime.utcnow().isoformat(),
+        "composed_by": params.get("user_id"),
+    }
+
+    supabase.table("pms_warranty_claims").update({
+        "email_draft": email_draft,
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", warranty_id).eq("yacht_id", yacht_id).execute()
+
+    return {"status": "success", "email_draft": email_draft}
+
+
 INTERNAL_HANDLERS: Dict[str, Any] = {
     # Original handlers
     "add_note": add_note,
@@ -3665,6 +3844,11 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "sign_handover": _sign_handover,
     "draft_warranty_claim": _draft_warranty_claim,
     "file_warranty_claim": _draft_warranty_claim,
+    "submit_warranty_claim": _submit_warranty_claim,
+    "approve_warranty_claim": _approve_warranty_claim,
+    "reject_warranty_claim": _reject_warranty_claim,
+    "close_warranty_claim": _close_warranty_claim,
+    "compose_warranty_email": _compose_warranty_email,
     "investigate_fault": diagnose_fault,
     "resolve_fault": close_fault,
     "track_po_delivery": _track_delivery,

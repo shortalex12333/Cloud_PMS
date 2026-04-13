@@ -450,7 +450,7 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        r = supabase.table("pms_warranty_claims").select("*") \
+        r = supabase.table("v_warranty_enriched").select("*") \
             .eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
         if r is None or not r.data:
@@ -487,6 +487,16 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             "claim_type": data.get("claim_type"),
             "created_at": data.get("created_at"),
             "yacht_id": data.get("yacht_id"),
+            "equipment_name": data.get("equipment_name"),
+            "equipment_code": data.get("equipment_code"),
+            "days_until_expiry": data.get("days_until_expiry"),
+            "status_label": data.get("status_label"),
+            "workflow_stage": data.get("workflow_stage"),
+            "drafted_at": data.get("drafted_at"),
+            "submitted_at": data.get("submitted_at"),
+            "approved_at": data.get("approved_at"),
+            "rejection_reason": data.get("rejection_reason"),
+            "email_draft": data.get("email_draft"),
             "attachments": attachments,
             "related_entities": nav,
         }

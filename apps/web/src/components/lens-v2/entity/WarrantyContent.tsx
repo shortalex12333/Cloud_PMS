@@ -9,11 +9,7 @@
  * - Actions from availableActions[] → backend /v1/actions/execute
  * - ActionPopup auto-builds form fields from action.required_fields
  *
- * Sections: Identity → Coverage → Financials → Claims → Equipment → Related → History → Audit Trail → Notes → Attachments
- *
- * TODO notes for next engineer:
- * - Upload Document handler not wired
- * - Add Note handler not wired
+ * Sections: Identity → Claim Details → Financials → Equipment → Related → Audit Trail → Notes → Attachments → Email Draft
  */
 
 import * as React from 'react';
@@ -44,16 +40,17 @@ import {
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
 
-// ─── Colour mapping helpers ───
+// ─── Helpers ───
 
 function statusToPillVariant(status: string): PillDef['variant'] {
   switch (status) {
-    case 'active':
+    case 'approved':
       return 'green';
-    case 'expiring':
+    case 'submitted':
+    case 'under_review':
       return 'amber';
-    case 'expired':
-    case 'claimed':
+    case 'rejected':
+    case 'closed':
       return 'red';
     default:
       return 'neutral';
@@ -71,54 +68,32 @@ export function WarrantyContent() {
   const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // ── Extract entity fields ──
-  const payload = (entity?.payload as Record<string, unknown>) ?? {};
-  const warranty_number = (entity?.warranty_number ?? payload.warranty_number) as string | undefined;
-  const title = ((entity?.title ?? entity?.name ?? payload.title ?? payload.name) as string | undefined) ?? 'Warranty';
-  const provider = (entity?.provider ?? entity?.supplier ?? payload.provider ?? payload.supplier) as string | undefined;
-  const start_date = (entity?.start_date ?? payload.start_date) as string | undefined;
-  const end_date = (entity?.end_date ?? entity?.expiry_date ?? payload.end_date ?? payload.expiry_date) as string | undefined;
-  const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'active';
-  const coverage_type = (entity?.coverage_type ?? entity?.coverage ?? payload.coverage_type ?? payload.coverage) as string | undefined;
-  const equipment_name = (entity?.equipment_name ?? payload.equipment_name) as string | undefined;
-  const equipment_id = (entity?.equipment_id ?? payload.equipment_id) as string | undefined;
-  const equipment_code = (entity?.equipment_code ?? payload.equipment_code) as string | undefined;
-  const agreement_number = (entity?.agreement_number ?? payload.agreement_number) as string | undefined;
-  const managed_by = (entity?.managed_by ?? payload.managed_by) as string | undefined;
-  const vessel_name = (entity?.vessel_name ?? payload.vessel_name) as string | undefined;
-  const description = (entity?.description ?? payload.description) as string | undefined;
+  const title = ((entity?.title ?? entity?.name) as string | undefined) ?? 'Warranty Claim';
+  const status = ((entity?.status) as string | undefined) ?? 'draft';
+  const description = (entity?.description) as string | undefined;
+  const claim_number = (entity?.claim_number) as string | undefined;
+  const vendor_name = (entity?.vendor_name) as string | undefined;
+  const expiry_date = (entity?.expiry_date) as string | undefined;
+  const claimed_amount = (entity?.claimed_amount) as string | number | undefined;
+  const approved_amount = (entity?.approved_amount) as string | number | undefined;
+  const days_until_expiry = (entity?.days_until_expiry) as number | undefined;
+  const status_label = (entity?.status_label as string | undefined) ?? formatLabel(status);
+  const drafted_at = (entity?.drafted_at) as string | undefined;
+  const rejection_reason = (entity?.rejection_reason) as string | undefined;
+  const email_draft = entity?.email_draft as Record<string, string> | null | undefined;
+  const equipment_name = (entity?.equipment_name) as string | undefined;
+  const equipment_id = (entity?.equipment_id) as string | undefined;
+  const equipment_code = (entity?.equipment_code) as string | undefined;
+  const claim_type = (entity?.claim_type) as string | undefined;
 
-  // Coverage detail fields
-  const coverage_duration = (entity?.coverage_duration ?? payload.coverage_duration) as string | undefined;
-  const components_covered = (entity?.components_covered ?? payload.components_covered) as string | undefined;
-  const exclusions = (entity?.exclusions ?? payload.exclusions) as string | undefined;
-  const labour_terms = (entity?.labour_terms ?? payload.labour_terms) as string | undefined;
-  const parts_terms = (entity?.parts_terms ?? payload.parts_terms) as string | undefined;
-  const response_time = (entity?.response_time ?? payload.response_time) as string | undefined;
-  const max_claim_value = (entity?.max_claim_value ?? payload.max_claim_value) as string | undefined;
+  // Section data (arrays guaranteed by normalizer)
+  const notes = (entity?.notes as Array<Record<string, unknown>>) ?? [];
+  const attachments = (entity?.attachments as Array<Record<string, unknown>>) ?? [];
+  const related_entities = (entity?.related_entities as Array<Record<string, unknown>>) ?? [];
+  const auditTrail = ((entity?.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
+  const priorPeriods = ((entity?.prior_periods ?? entity?.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
 
-  // Financial fields
-  const total_claimed = (entity?.total_claimed ?? payload.total_claimed) as string | number | undefined;
-  const approved_amount = (entity?.approved_amount ?? payload.approved_amount) as string | number | undefined;
-  const labour_cost = (entity?.labour_cost ?? payload.labour_cost) as string | number | undefined;
-  const parts_cost = (entity?.parts_cost ?? payload.parts_cost) as string | number | undefined;
-  const other_costs = (entity?.other_costs ?? payload.other_costs) as string | number | undefined;
-
-  // Section data
-  const notes = ((entity?.notes ?? payload.notes) as Array<Record<string, unknown>> | undefined) ?? [];
-  const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
-  const claims_history = ((entity?.claims_history ?? payload.claims_history ?? entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
-  const related_equipment = ((entity?.related_equipment ?? payload.related_equipment ?? entity?.equipment ?? payload.equipment) as Array<Record<string, unknown>> | undefined) ?? [];
-  const related_entities = ((entity?.related_entities ?? payload.related_entities) as Array<Record<string, unknown>> | undefined) ?? [];
-  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
-  const auditTrail = ((entity?.audit_trail ?? payload.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
-
-  // ── Action gates ──
-  const fileClaimAction = getAction('file_warranty_claim');
-  const archiveAction = getAction('archive_warranty');
-  const addNoteAction = getAction('add_warranty_note');
-  const uploadDocAction = getAction('add_warranty_attachment');
-
-  // BACKEND_AUTO moved to mapActionFields.ts
+  // ── Action popup state ──
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
     actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
   } | null>(null);
@@ -129,120 +104,122 @@ export function WarrantyContent() {
     setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
   }
 
-  const canFileClaim = fileClaimAction !== null && ['active', 'expiring'].includes(status);
+  // ── Action feedback ──
+  const [actionFeedback, setActionFeedback] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // ── Derived display ──
-  const statusLabel = formatLabel(status);
+  React.useEffect(() => {
+    if (!actionFeedback) return;
+    const t = setTimeout(() => setActionFeedback(null), 4000);
+    return () => clearTimeout(t);
+  }, [actionFeedback]);
 
-  // Calculate days remaining
-  let days_remaining: number | undefined;
-  if (end_date) {
-    days_remaining = Math.floor((new Date(end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  }
-  // Also try explicit days_remaining from entity
-  const explicit_days = (entity?.days_remaining ?? payload.days_remaining) as number | undefined;
-  const daysRemaining = explicit_days ?? days_remaining;
+  // ── Status-aware action gates ──
+  // Real DB statuses: draft | submitted | under_review | approved | rejected | closed
+  const submitAction   = getAction('submit_warranty_claim');
+  const approveAction  = getAction('approve_warranty_claim');
+  const rejectAction   = getAction('reject_warranty_claim');
+  const closeAction    = getAction('close_warranty_claim');
+  const composeAction  = getAction('compose_warranty_email');
+  const archiveAction  = getAction('archive_warranty');
+  const addNoteAction  = getAction('add_warranty_note');
 
+  type PrimaryConfig = { label: string; action: typeof submitAction; confirmFields?: boolean };
+  const primaryConfig: PrimaryConfig | null = (() => {
+    if (status === 'draft'        && submitAction)  return { label: 'Submit Claim',       action: submitAction };
+    if (status === 'submitted'    && approveAction) return { label: 'Approve',            action: approveAction };
+    if (status === 'under_review' && approveAction) return { label: 'Approve Claim',      action: approveAction };
+    if (status === 'approved'     && closeAction)   return { label: 'Close Claim',        action: closeAction };
+    if (status === 'rejected'     && submitAction)  return { label: 'Revise & Resubmit',  action: submitAction };
+    return null;
+  })();
+
+  const handlePrimary = React.useCallback(() => {
+    if (!primaryConfig?.action) return;
+    const a = primaryConfig.action;
+    const hasFields = actionHasFields(a as any);
+    if (hasFields || a.requires_signature) {
+      openActionPopup(a as any);
+    } else {
+      executeAction(a.action_id).then((result) => {
+        if (!result.success) {
+          setActionFeedback({ type: 'error', message: result.message ?? (result as any).error ?? 'Action failed' });
+        } else {
+          setActionFeedback({ type: 'success', message: `${primaryConfig.label} — done` });
+        }
+      });
+    }
+  }, [primaryConfig, executeAction]);
+
+  // ── Pills ──
   const pills: PillDef[] = [
-    { label: statusLabel, variant: statusToPillVariant(status) },
+    { label: status_label, variant: statusToPillVariant(status) },
   ];
-  if (daysRemaining !== undefined && daysRemaining > 0) {
-    pills.push({ label: `${daysRemaining} days remaining`, variant: statusToPillVariant(status) });
-  }
 
+  // ── Identity strip details ──
   const details: DetailLine[] = [];
-  if (equipment_name) {
-    const equipDisplay = equipment_code ? `${equipment_code} ${equipment_name}` : equipment_name;
-    details.push({ label: 'Equipment', value: equipDisplay });
+  if (equipment_name) details.push({ label: 'Equipment', value: equipment_code ? `${equipment_code} ${equipment_name}` : equipment_name });
+  if (vendor_name) details.push({ label: 'Supplier', value: vendor_name });
+  if (expiry_date) details.push({ label: 'Warranty Expiry', value: expiry_date, mono: true });
+  if (days_until_expiry !== undefined && days_until_expiry !== null) {
+    details.push({ label: 'Days Remaining', value: `${days_until_expiry}`, mono: true });
   }
-  if (provider) {
-    details.push({ label: 'Supplier', value: provider });
-  }
-  if (start_date) {
-    details.push({ label: 'Start Date', value: start_date, mono: true });
-  }
-  if (end_date) {
-    details.push({ label: 'Expiry Date', value: end_date, mono: true });
-  }
-  if (coverage_type) {
-    details.push({ label: 'Coverage', value: coverage_type });
-  }
-  if (agreement_number) {
-    details.push({ label: 'Agreement No', value: agreement_number, mono: true });
-  }
-  if (managed_by) {
-    details.push({ label: 'Managed By', value: managed_by });
-  }
-  // Days remaining with mono formatting (prominent display per spec)
-  if (daysRemaining !== undefined) {
-    details.push({ label: 'Days Remaining', value: `${daysRemaining}`, mono: true });
-  }
+  if (claim_type) details.push({ label: 'Claim Type', value: formatLabel(claim_type) });
+  if (drafted_at) details.push({ label: 'Filed', value: drafted_at.slice(0, 10), mono: true });
 
-  // Context line
-  const contextParts: string[] = [];
-  if (provider) contextParts.push(provider);
-  if (vessel_name) contextParts.push(vessel_name);
-  const contextNode = contextParts.length > 0 ? <>{contextParts.join(' · ')}</> : undefined;
+  // ── Claim Details (KVSection) ──
+  const claimItems: KVItem[] = [];
+  if (claim_type) claimItems.push({ label: 'Claim Type', value: formatLabel(claim_type) });
+  if (vendor_name) claimItems.push({ label: 'Supplier / Vendor', value: vendor_name });
+  if (entity?.manufacturer) claimItems.push({ label: 'Manufacturer', value: entity.manufacturer as string });
+  if (entity?.serial_number) claimItems.push({ label: 'Serial Number', value: entity.serial_number as string, mono: true });
+  if (entity?.part_number) claimItems.push({ label: 'Part Number', value: entity.part_number as string, mono: true });
+  if (entity?.purchase_date) claimItems.push({ label: 'Purchase Date', value: entity.purchase_date as string, mono: true });
+  if (rejection_reason) claimItems.push({ label: 'Rejection Reason', value: rejection_reason });
 
-  // ── Split button config ──
-  const primaryLabel = 'Submit Claim';
-  const primaryDisabled = !canFileClaim || (fileClaimAction?.disabled ?? false);
-  const primaryDisabledReason = fileClaimAction?.disabled_reason;
-
-  const handlePrimary = React.useCallback(async () => {
-    await executeAction('file_warranty_claim', {
-      equipment_id: equipment_id ?? '',
-    });
-  }, [executeAction, equipment_id]);
-
-  const SPECIAL_HANDLERS: Record<string, () => void> = {};
-  const DANGER_ACTIONS = new Set(['archive_warranty', 'void_warranty']);
-  const primaryActionId = 'file_warranty_claim';
-
-  const dropdownItems: DropdownItem[] = availableActions
-    .filter((a) => a.action_id !== primaryActionId)
-    .map((a) => ({
-      label: a.label,
-      onClick: SPECIAL_HANDLERS[a.action_id]
-        ? SPECIAL_HANDLERS[a.action_id]
-        : () => {
-            const hasFields = actionHasFields(a as any);
-            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
-          },
-      disabled: a.disabled,
-      disabledReason: a.disabled_reason ?? undefined,
-      danger: DANGER_ACTIONS.has(a.action_id),
-    }));
-
-  // ── Map section data ──
-
-  // Coverage details (KVSection)
-  const coverageItems: KVItem[] = [];
-  if (coverage_type) coverageItems.push({ label: 'Type', value: coverage_type });
-  if (coverage_duration) coverageItems.push({ label: 'Duration', value: coverage_duration });
-  if (components_covered) coverageItems.push({ label: 'Components Covered', value: components_covered });
-  if (exclusions) coverageItems.push({ label: 'Exclusions', value: exclusions });
-  if (labour_terms) coverageItems.push({ label: 'Labour', value: labour_terms });
-  if (parts_terms) coverageItems.push({ label: 'Parts', value: parts_terms });
-  if (response_time) coverageItems.push({ label: 'Response Time', value: response_time });
-  if (max_claim_value) coverageItems.push({ label: 'Max Claim Value', value: max_claim_value });
-
-  // Financial summary (KVSection)
+  // ── Financial Summary (KVSection) ──
   const financialItems: KVItem[] = [];
-  if (labour_cost !== undefined) financialItems.push({ label: 'Labour', value: `${labour_cost}`, mono: true });
-  if (parts_cost !== undefined) financialItems.push({ label: 'Parts', value: `${parts_cost}`, mono: true });
-  if (other_costs !== undefined) financialItems.push({ label: 'Travel / Shipping', value: `${other_costs}`, mono: true });
-  if (total_claimed !== undefined) financialItems.push({ label: 'Total Claimed', value: `${total_claimed}`, mono: true });
-  if (approved_amount !== undefined) financialItems.push({ label: 'Approved Amount', value: `${approved_amount}`, mono: true });
+  if (claimed_amount !== undefined) financialItems.push({ label: 'Claimed Amount', value: `${entity?.currency ?? ''} ${claimed_amount}`.trim(), mono: true });
+  if (approved_amount !== undefined) financialItems.push({ label: 'Approved Amount', value: `${entity?.currency ?? ''} ${approved_amount}`.trim(), mono: true });
 
-  // Claims history (AuditTrail)
-  const claimEvents: AuditEvent[] = claims_history.map((h, i) => ({
-    id: (h.id as string) ?? `claim-${i}`,
+  // ── Split button dropdown ──
+  const dropdownItems: DropdownItem[] = [
+    ...(rejectAction && (status === 'submitted' || status === 'under_review') ? [{
+      label: 'Reject Claim',
+      onClick: () => openActionPopup(rejectAction as any),
+      danger: true,
+      disabled: false,
+    }] : []),
+    ...(composeAction && status !== 'draft' ? [{
+      label: 'Compose Email Draft',
+      onClick: () => {
+        const hasF = actionHasFields(composeAction as any);
+        if (hasF) openActionPopup(composeAction as any);
+        else executeAction('compose_warranty_email');
+      },
+      disabled: composeAction.disabled,
+    }] : []),
+    ...(addNoteAction ? [{
+      label: 'Add Note',
+      onClick: () => setAddNoteOpen(true),
+      disabled: false,
+    }] : []),
+    ...(archiveAction && (status === 'draft' || status === 'rejected') ? [{
+      label: 'Archive',
+      onClick: () => executeAction('archive_warranty'),
+      danger: true,
+      disabled: archiveAction.disabled,
+    }] : []),
+  ];
+
+  // ── Audit trail ──
+  const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
+    id: (h.id as string) ?? `audit-${i}`,
     action: (h.action ?? h.description ?? h.event) as string ?? '',
     actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
-    timestamp: (h.created_at ?? h.date ?? h.timestamp) as string ?? '',
+    timestamp: (h.created_at ?? h.timestamp) as string ?? '',
   }));
 
+  // ── History periods ──
   const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
     id: (p.id as string) ?? `period-${i}`,
     year: (p.year ?? p.period_year) as string ?? '',
@@ -251,25 +228,9 @@ export function WarrantyContent() {
     summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
-  const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
-    id: (h.id as string) ?? `audit-${i}`,
-    action: (h.action ?? h.description ?? h.event) as string ?? '',
-    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
-    timestamp: (h.created_at ?? h.timestamp) as string ?? '',
-  }));
-
-  // Related equipment (DocRows)
-  const equipmentItems: DocRowItem[] = related_equipment.map((e, i) => ({
-    id: (e.id as string) ?? `equip-${i}`,
-    name: (e.name ?? e.equipment_name) as string ?? 'Equipment',
-    code: (e.code ?? e.equipment_code) as string | undefined,
-    meta: (e.meta ?? e.location ?? e.description) as string | undefined,
-    onClick: e.equipment_id
-      ? () => router.push(getEntityRoute('equipment' as Parameters<typeof getEntityRoute>[0], e.equipment_id as string))
-      : undefined,
-  }));
-  // If no related_equipment array but we have a single equipment reference, create one row
-  if (equipmentItems.length === 0 && equipment_id && equipment_name) {
+  // ── Related equipment row (from single reference) ──
+  const equipmentItems: DocRowItem[] = [];
+  if (equipment_id && equipment_name) {
     equipmentItems.push({
       id: equipment_id,
       name: equipment_name,
@@ -278,7 +239,7 @@ export function WarrantyContent() {
     });
   }
 
-  // Related entities (DocRows — general related)
+  // ── Related entities ──
   const relatedItems: DocRowItem[] = related_entities.map((r, i) => ({
     id: (r.id as string) ?? `related-${i}`,
     name: (r.name ?? r.title) as string ?? 'Entity',
@@ -290,7 +251,7 @@ export function WarrantyContent() {
       : undefined,
   }));
 
-  // Notes
+  // ── Notes ──
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
     author: (n.author ?? n.created_by ?? n.user_name) as string ?? 'Unknown',
@@ -298,7 +259,7 @@ export function WarrantyContent() {
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
 
-  // Attachments
+  // ── Attachments ──
   const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
     id: (a.id as string) ?? `att-${i}`,
     name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
@@ -320,33 +281,54 @@ export function WarrantyContent() {
 
   return (
     <>
+      {/* Action feedback banner */}
+      {actionFeedback && (
+        <div style={{
+          padding: '10px 16px',
+          marginBottom: '8px',
+          borderRadius: '6px',
+          fontSize: '13px',
+          background: actionFeedback.type === 'success' ? 'var(--teal-bg)' : 'rgba(239,68,68,0.1)',
+          color: actionFeedback.type === 'success' ? 'var(--mark)' : '#ef4444',
+          border: `1px solid ${actionFeedback.type === 'success' ? 'var(--mark)' : '#ef4444'}`,
+        }}>
+          {actionFeedback.message}
+        </div>
+      )}
+
       {/* Identity Strip */}
       <IdentityStrip
-        overline={warranty_number}
+        overline={claim_number}
         title={title}
-        context={contextNode}
         pills={pills}
         details={details}
         description={description}
         actionSlot={
-          fileClaimAction ? (
+          primaryConfig ? (
             <SplitButton
-              label={primaryLabel}
+              label={primaryConfig.label}
               onClick={handlePrimary}
-              disabled={primaryDisabled}
-              disabledReason={primaryDisabledReason ?? undefined}
+              disabled={primaryConfig.action?.disabled ?? false}
+              disabledReason={primaryConfig.action?.disabled_reason ?? undefined}
+              items={dropdownItems}
+            />
+          ) : dropdownItems.length > 0 ? (
+            <SplitButton
+              label="Actions"
+              onClick={() => {}}
+              disabled={false}
               items={dropdownItems}
             />
           ) : undefined
         }
       />
 
-      {/* Coverage Details */}
-      {coverageItems.length > 0 && (
+      {/* Claim Details */}
+      {claimItems.length > 0 && (
         <ScrollReveal>
           <KVSection
-            title="Coverage Details"
-            items={coverageItems}
+            title="Claim Details"
+            items={claimItems}
             icon={
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
             }
@@ -366,14 +348,6 @@ export function WarrantyContent() {
           />
         </ScrollReveal>
       )}
-
-      {/* Claims History */}
-      <ScrollReveal>
-        <AuditTrailSection
-          events={claimEvents}
-          title="Audit Trail"
-        />
-      </ScrollReveal>
 
       {/* Related Equipment */}
       {equipmentItems.length > 0 && (
@@ -413,10 +387,33 @@ export function WarrantyContent() {
         />
       </ScrollReveal>
 
+      {/* Email Draft */}
+      {email_draft && (
+        <ScrollReveal>
+          <KVSection
+            title="Email Draft"
+            items={[
+              { label: 'Subject', value: email_draft.subject ?? '' },
+              { label: 'To', value: email_draft.to ?? '' },
+              { label: 'Composed', value: email_draft.composed_at ? email_draft.composed_at.slice(0, 10) : '' },
+            ]}
+            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>}
+          />
+        </ScrollReveal>
+      )}
+
       {actionPopupConfig && (
         <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
           signatureLevel={actionPopupConfig.signatureLevel}
-          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onSubmit={async (values) => {
+            const result = await executeAction(actionPopupConfig.actionId, values);
+            setActionPopupConfig(null);
+            if (!result.success) {
+              setActionFeedback({ type: 'error', message: result.message ?? (result as any).error ?? 'Action failed' });
+            } else {
+              setActionFeedback({ type: 'success', message: `${actionPopupConfig.title} — completed` });
+            }
+          }}
           onClose={() => setActionPopupConfig(null)} />
       )}
       <AddNoteModal
