@@ -126,17 +126,26 @@ async def get_my_week(
             })
 
         # ------------------------------------------------------------------
-        # 3. Build 7-slot days array
+        # 3. Build 7-slot days array — always 7 non-null objects
         # ------------------------------------------------------------------
-        days: List[Optional[dict]] = []
+        days: List[dict] = []
         for i in range(7):
             d = week_monday + timedelta(days=i)
             dstr = d.isoformat()
             rec = daily_by_date.get(dstr)
             if rec is None:
-                days.append(None)
+                days.append({
+                    "record_date":          dstr,
+                    "rest_periods":         [],
+                    "total_rest_hours":     0,
+                    "total_work_hours":     0,
+                    "is_daily_compliant":   None,
+                    "submitted":            False,
+                    "warnings":             [],
+                })
             else:
                 rec = dict(rec)
+                rec["submitted"] = True
                 rec["warnings"] = warnings_by_date.get(dstr, [])
                 days.append(rec)
 
@@ -163,9 +172,10 @@ async def get_my_week(
         ).eq("yacht_id", yacht_id).eq("user_id", user_id).gte(
             "record_date", rolling_start.isoformat()
         ).lte("record_date", today.isoformat()).execute()
+        rolling_data = rolling_r.data or []
         rolling_7day = sum(
-            (r.get("total_rest_hours") or 0) for r in (rolling_r.data or [])
-        ) or None
+            (r.get("total_rest_hours") or 0) for r in rolling_data
+        ) if rolling_data else None
 
         summary_data = summary_r.data if summary_r else None
         compliance = {
@@ -404,10 +414,11 @@ async def get_department_status(
             "signoff_ids":  [r["id"] for r in pending_rows],
         }
 
+        dept_label = department if user_role.lower() not in _CAPTAIN_ROLES else "all"
         return JSONResponse(content={
             "status":          "success",
             "week_start":      week_monday.isoformat(),
-            "department":      department,
+            "department":      dept_label,
             "total_crew":      len(crew_user_ids),
             "submitted_count": submitted_count,
             "compliant_count": compliant_count,
