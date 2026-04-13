@@ -106,7 +106,9 @@ function normalizeMyWeekResponse(json: any): void {
         return dt.toISOString().slice(0, 10);
       })();
       const label = d.label ?? DAY_LABELS[i];
-      return { ...d, date, label };
+      // Remap is_daily_compliant (backend) → is_compliant (component)
+      const is_compliant = d.is_compliant ?? d.is_daily_compliant ?? null;
+      return { ...d, date, label, is_compliant };
     });
   }
 
@@ -251,9 +253,6 @@ export function MyTimeView() {
   // Unsigned alert
   const [unsignedAlert, setUnsignedAlert] = React.useState(false);
 
-  // Guard against double-mount (React StrictMode / auth re-renders)
-  const fetchedRef = React.useRef(false);
-
   // ── Load week data ──
 
   async function loadWeekData() {
@@ -298,14 +297,13 @@ export function MyTimeView() {
         const json = await resp.json();
         setUnsignedAlert((json.data?.length ?? 0) > 0);
       }
+      // 404 = notifications endpoint not yet deployed — silently skip
     } catch {
       // non-critical
     }
   }
 
   React.useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
     loadWeekData();
     checkUnsignedAlert();
   }, []);
