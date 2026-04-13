@@ -91,6 +91,11 @@ ACTION_METADATA: dict = {
     "archive_warranty":                  {"event_type": "update",        "entity_type": "warranty",      "entity_id_field": "warranty_id"},
     "file_warranty_claim":               {"event_type": "create",        "entity_type": "warranty",      "entity_id_field": "warranty_id"},
     "void_warranty":                     {"event_type": "status_change", "entity_type": "warranty",      "entity_id_field": "warranty_id"},
+    "submit_warranty_claim":             {"event_type": "status_change", "entity_type": "warranty",      "entity_id_field": "warranty_id"},
+    "approve_warranty_claim":            {"event_type": "approval",      "entity_type": "warranty",      "entity_id_field": "warranty_id"},
+    "reject_warranty_claim":             {"event_type": "rejection",     "entity_type": "warranty",      "entity_id_field": "warranty_id"},
+    "close_warranty_claim":              {"event_type": "status_change", "entity_type": "warranty",      "entity_id_field": "warranty_id"},
+    "compose_warranty_email":            {"event_type": "update",        "entity_type": "warranty",      "entity_id_field": "warranty_id"},
 
     # ── Handover ─────────────────────────────────────────────────────────────
     "archive_handover":                  {"event_type": "update",        "entity_type": "handover",      "entity_id_field": "handover_id"},

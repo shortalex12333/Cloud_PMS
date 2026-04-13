@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { ATTENTION_QUERY_KEY } from '@/hooks/useNeedsAttention';
 import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
+import { normalizeWarrantyEntity } from '@/lib/normalizeWarranty';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -43,7 +44,9 @@ export function useEntityLens(
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json() as Record<string, unknown> & { available_actions?: AvailableAction[] };
       const { available_actions = [], ...rest } = data;
-      setEntity(rest);
+      // Normalize entity shape for warranty (and other entities with field contract deviations)
+      const normalized = entityType === 'warranty' ? normalizeWarrantyEntity(rest) : rest;
+      setEntity(normalized);
       setAvailableActions(available_actions);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
@@ -69,7 +72,9 @@ export function useEntityLens(
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json() as Record<string, unknown> & { available_actions?: AvailableAction[] };
         const { available_actions = [], ...rest } = data;
-        setEntity(rest);
+        // Normalize entity shape for warranty (and other entities with field contract deviations)
+        const normalized = entityType === 'warranty' ? normalizeWarrantyEntity(rest) : rest;
+        setEntity(normalized);
         setAvailableActions(available_actions);
       } catch (e) {
         if (e instanceof Error && e.name === 'AbortError') return; // ignore cancellation

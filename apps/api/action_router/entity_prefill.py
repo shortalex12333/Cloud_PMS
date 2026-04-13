@@ -108,6 +108,9 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("warranty", "reject_warranty_claim"):  {"warranty_id": "id"},
     ("warranty", "compose_warranty_email"): {"warranty_id": "id"},
     ("warranty", "draft_warranty_claim"):   {"warranty_id": "id"},
+    ("warranty", "close_warranty_claim"):   {"warranty_id": "id"},
+    ("warranty", "add_warranty_note"):      {"warranty_id": "id"},
+    ("warranty", "add_to_handover"):        {"entity_id": "id", "title": "title"},
 
     # ── Document ──────────────────────────────────────────────────────────────
     ("document", "update_document"):         {"document_id": "id"},

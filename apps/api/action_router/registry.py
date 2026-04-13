@@ -2285,6 +2285,23 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
+    "close_warranty_claim": ActionDefinition(
+        action_id="close_warranty_claim",
+        label="Close Claim",
+        endpoint="/v1/warranty/close",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["captain", "manager"],
+        required_fields=["yacht_id", "warranty_id"],
+        domain="warranty",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["close", "complete", "warranty", "claim", "finalise"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("warranty_id", FieldClassification.REQUIRED),
+        ],
+    ),
+
     # ========================================================================
     # HOURS OF REST ACTIONS (Crew Lens v3) - 12 actions
     # ========================================================================
