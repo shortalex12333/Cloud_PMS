@@ -1158,6 +1158,8 @@ def _supersede_certificate_adapter(handlers: CertificateHandlers):
             "is_signed": True,
         }
 
+    return _fn
+
 
 def _resolve_cert_domain(db, yacht_id: str, cert_id: str) -> tuple:
     """

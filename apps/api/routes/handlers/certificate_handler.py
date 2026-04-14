@@ -33,13 +33,16 @@ def _enforce_rbac(action: str, user_context: dict) -> None:
 
 
 async def _delegate(action_name: str, db_client: Client, payload: dict,
-                    yacht_id: str, user_id: str, user_context: dict) -> dict:
+                    yacht_id: str, user_id: str, user_context: dict,
+                    context: dict = None) -> dict:
     from handlers.certificate_handlers import get_certificate_handlers
     handlers = get_certificate_handlers(db_client)
     fn = handlers.get(action_name)
     if not fn:
         raise HTTPException(501, detail=f"'{action_name}' not registered in certificate_handlers")
-    return await fn(**{"yacht_id": yacht_id, "user_id": user_id, **payload})
+    # Merge context (contains entity_id/certificate_id) + payload into params
+    merged = {"yacht_id": yacht_id, "user_id": user_id, **(context or {}), **payload}
+    return await fn(**merged)
 
 
 async def create_vessel_certificate(payload, context, yacht_id, user_id, user_context, db_client):
@@ -54,7 +57,7 @@ async def create_crew_certificate(payload, context, yacht_id, user_id, user_cont
 
 async def update_certificate(payload, context, yacht_id, user_id, user_context, db_client):
     _enforce_rbac("update_certificate", user_context)
-    return await _delegate("update_certificate", db_client, payload, yacht_id, user_id, user_context)
+    return await _delegate("update_certificate", db_client, payload, yacht_id, user_id, user_context, context)
 
 
 async def link_document_to_certificate(payload, context, yacht_id, user_id, user_context, db_client):
@@ -68,14 +71,14 @@ async def link_document_to_certificate(payload, context, yacht_id, user_id, user
         dm = None
     if not getattr(dm, "data", None):
         raise HTTPException(404, detail="document_id not found")
-    return await _delegate("link_document_to_certificate", db_client, payload, yacht_id, user_id, user_context)
+    return await _delegate("link_document_to_certificate", db_client, payload, yacht_id, user_id, user_context, context)
 
 
 async def supersede_certificate(payload, context, yacht_id, user_id, user_context, db_client):
     _enforce_rbac("supersede_certificate", user_context)
     if not payload.get("signature"):
         raise HTTPException(400, detail="signature payload required for supersede (signed action)")
-    return await _delegate("supersede_certificate", db_client, payload, yacht_id, user_id, user_context)
+    return await _delegate("supersede_certificate", db_client, payload, yacht_id, user_id, user_context, context)
 
 
 HANDLERS: dict = {
