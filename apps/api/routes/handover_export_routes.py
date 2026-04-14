@@ -749,6 +749,20 @@ async def save_draft(
         }
     }).eq("id", export_id).execute()
 
+    # Ledger: audit trail for the actor (self-notify, no cascade)
+    _write_handover_event(
+        db=supabase,
+        yacht_id=result.data["yacht_id"],
+        actor_id=auth['user_id'],
+        actor_role=auth.get('role', ''),
+        target_user_id=auth['user_id'],
+        entity_id=export_id,
+        event_type="update",
+        action="save_draft_edits",
+        change_summary=f"Draft edits saved for handover {export_id}",
+        new_values={"section_count": len(sections)},
+    )
+
     return {"success": True, "saved_at": datetime.utcnow().isoformat()}
 
 
@@ -861,6 +875,41 @@ async def countersign_export(
         "review_status": "complete"
     }).eq("id", export_id).execute()
 
+    # Ledger: HOD actor self-audit
+    hod_actor_id = auth['user_id']
+    hod_actor_role = auth.get('role', '')
+    _write_handover_event(
+        db=supabase,
+        yacht_id=yacht_id,
+        actor_id=hod_actor_id,
+        actor_role=hod_actor_role,
+        target_user_id=hod_actor_id,
+        entity_id=export_id,
+        event_type="approval",
+        action="handover_countersigned",
+        change_summary=f"Handover {export_id} countersigned and complete. Rotation closed.",
+        new_values={"review_status": "complete", "hod_signed_at": request.hodSignature.signed_at},
+    )
+
+    # Ledger: notify captain + manager that countersign is done
+    notify_users = _get_role_users(supabase, yacht_id, ["captain", "manager"])
+    for notify_user in notify_users:
+        if notify_user["user_id"] == hod_actor_id:
+            continue  # skip if HOD is also captain/manager — already wrote above
+        _write_handover_event(
+            db=supabase,
+            yacht_id=yacht_id,
+            actor_id=hod_actor_id,
+            actor_role=hod_actor_role,
+            target_user_id=notify_user["user_id"],
+            entity_id=export_id,
+            event_type="handover",
+            action="handover_countersigned",
+            change_summary=f"Handover {export_id} countersigned and complete. Rotation closed.",
+            new_values={"review_status": "complete"},
+            department=notify_user.get("department"),
+        )
+
     # Trigger search indexing
     _trigger_indexing(supabase, export_id, yacht_id, export_data["edited_content"]["sections"])
 
@@ -868,6 +917,170 @@ async def countersign_export(
         "success": True,
         "review_status": "complete"
     }
+
+
+# =============================================================================
+# HANDOVER ITEMS — CRUD ENDPOINTS
+# =============================================================================
+
+class UpdateHandoverItemBody(BaseModel):
+    summary: Optional[str] = None
+    category: Optional[str] = None
+    section: Optional[str] = None
+    status: Optional[str] = None  # on_going | not_started | requires_parts (stored in metadata)
+
+
+class MarkExportedBody(BaseModel):
+    item_ids: List[str]
+
+
+@router.patch("/items/{item_id}")
+async def update_handover_item(
+    item_id: str,
+    body: UpdateHandoverItemBody,
+    auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
+):
+    """Edit a draft handover item."""
+    from integrations.supabase import get_supabase_client
+    db = get_supabase_client()
+
+    resolved_yacht_id = resolve_yacht_id(auth, yacht_id)
+    user_id = auth['user_id']
+
+    update_payload: dict = {}
+    if body.summary is not None:
+        update_payload["summary"] = body.summary
+    if body.category is not None:
+        update_payload["category"] = body.category
+        update_payload["is_critical"] = body.category == "critical"
+    if body.section is not None:
+        update_payload["section"] = body.section
+    if body.status is not None:
+        update_payload["requires_action"] = body.status == "requires_parts"
+        update_payload["metadata"] = {"ui_status": body.status}
+
+    if not update_payload:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    result = db.table("handover_items").update(
+        update_payload
+    ).eq("id", item_id).eq("added_by", user_id).eq("yacht_id", resolved_yacht_id).is_("deleted_at", "null").execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Item not found or no change")
+
+    # Ledger: actor self-audit
+    _write_handover_event(
+        db=db,
+        yacht_id=resolved_yacht_id,
+        actor_id=user_id,
+        actor_role=auth.get('role', ''),
+        target_user_id=user_id,
+        entity_id=item_id,
+        event_type="update",
+        action="edit_draft_item",
+        change_summary=f"Draft handover item {item_id} edited",
+        new_values={"summary": body.summary, "category": body.category, "section": body.section},
+    )
+
+    return {"success": True, "item": result.data[0] if result.data else {}}
+
+
+@router.delete("/items/{item_id}")
+async def delete_handover_item(
+    item_id: str,
+    auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
+):
+    """Soft-delete a draft handover item."""
+    from integrations.supabase import get_supabase_client
+    db = get_supabase_client()
+
+    resolved_yacht_id = resolve_yacht_id(auth, yacht_id)
+    user_id = auth['user_id']
+
+    result = db.table("handover_items").update({
+        "deleted_at": datetime.utcnow().isoformat(),
+        "deleted_by": user_id,
+        "deletion_reason": "User deleted from draft panel",
+    }).eq("id", item_id).eq("added_by", user_id).eq("yacht_id", resolved_yacht_id).is_("deleted_at", "null").execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Item not found or already deleted")
+
+    actor_role = auth.get('role', '')
+
+    # Ledger: actor self-audit
+    _write_handover_event(
+        db=db,
+        yacht_id=resolved_yacht_id,
+        actor_id=user_id,
+        actor_role=actor_role,
+        target_user_id=user_id,
+        entity_id=item_id,
+        event_type="delete",
+        action="draft_item_deleted",
+        change_summary=f"Draft handover item deleted by {user_id}",
+    )
+
+    # Ledger: notify HODs
+    hod_users = _get_role_users(db, resolved_yacht_id, ["chief_engineer", "chief_officer", "captain"])
+    for hod in hod_users:
+        if hod["user_id"] == user_id:
+            continue  # already wrote audit above
+        _write_handover_event(
+            db=db,
+            yacht_id=resolved_yacht_id,
+            actor_id=user_id,
+            actor_role=actor_role,
+            target_user_id=hod["user_id"],
+            entity_id=item_id,
+            event_type="delete",
+            action="draft_item_deleted",
+            change_summary=f"Draft handover item deleted by {user_id}",
+            department=hod.get("department"),
+        )
+
+    return {"success": True}
+
+
+@router.post("/items/mark-exported")
+async def mark_handover_items_exported(
+    body: MarkExportedBody,
+    auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
+):
+    """Bulk-mark handover items as exported."""
+    from integrations.supabase import get_supabase_client
+    db = get_supabase_client()
+
+    resolved_yacht_id = resolve_yacht_id(auth, yacht_id)
+    user_id = auth['user_id']
+
+    if not body.item_ids:
+        raise HTTPException(status_code=400, detail="item_ids must not be empty")
+
+    db.table("handover_items").update({
+        "export_status": "exported",
+        "status": "completed",
+    }).in_("id", body.item_ids).eq("added_by", user_id).eq("yacht_id", resolved_yacht_id).execute()
+
+    # Ledger: actor self-audit
+    _write_handover_event(
+        db=db,
+        yacht_id=resolved_yacht_id,
+        actor_id=user_id,
+        actor_role=auth.get('role', ''),
+        target_user_id=user_id,
+        entity_id=resolved_yacht_id,
+        event_type="status_change",
+        action="items_marked_exported",
+        change_summary=f"{len(body.item_ids)} handover items marked as exported",
+        new_values={"item_count": len(body.item_ids)},
+    )
+
+    return {"success": True, "marked_count": len(body.item_ids)}
 
 
 # =============================================================================
@@ -949,58 +1162,140 @@ def _generate_final_html(sections: list, user_sig: dict, hod_sig: dict) -> str:
     return "\n".join(html_parts)
 
 
-def _notify_hod_for_countersign(supabase, export_id: str, yacht_id: str, auth: dict):
-    """Create audit log + ledger notification for HOD users."""
-    import uuid
+def _get_role_users(supabase, yacht_id: str, roles: list) -> list:
+    """
+    Query auth_users_roles for users matching given roles on a yacht,
+    then enrich with names from auth_users_profiles.
+    Returns list of dicts: {user_id, role, department, name}.
+    """
+    try:
+        roles_result = supabase.table("auth_users_roles").select(
+            "user_id, role, department"
+        ).eq("yacht_id", yacht_id).in_("role", roles).eq("is_active", True).execute()
+        role_rows = roles_result.data or []
+    except Exception as e:
+        logger.warning("_get_role_users: failed to query auth_users_roles: %s", e)
+        return []
+
+    if not role_rows:
+        return []
+
+    # Enrich with names from auth_users_profiles
+    user_ids = [r["user_id"] for r in role_rows]
+    name_map: dict = {}
+    try:
+        profiles_result = supabase.table("auth_users_profiles").select(
+            "id, name"
+        ).in_("id", user_ids).execute()
+        for p in (profiles_result.data or []):
+            name_map[p["id"]] = p.get("name") or ""
+    except Exception as e:
+        logger.warning("_get_role_users: failed to query auth_users_profiles: %s", e)
+
+    enriched = []
+    for r in role_rows:
+        enriched.append({
+            "user_id": r["user_id"],
+            "role": r["role"],
+            "department": r.get("department") or "",
+            "name": name_map.get(r["user_id"], ""),
+        })
+    return enriched
+
+
+def _write_handover_event(
+    db,
+    yacht_id: str,
+    actor_id: str,
+    actor_role: str,
+    target_user_id: str,
+    entity_id: str,
+    event_type: str,
+    action: str,
+    change_summary: str,
+    old_values=None,
+    new_values=None,
+    metadata=None,
+    department=None,
+    actor_name=None,
+):
+    """
+    Write one row to pms_audit_log AND one row to ledger_events for a single
+    target user. Both writes are wrapped in try/except — never raises.
+    """
     from datetime import timezone
     from routes.handlers.ledger_utils import build_ledger_event
 
-    user_id = auth.get("user_id") or auth.get("id") or str(auth)
-    user_email = auth.get("email") or user_id
+    now_iso = datetime.now(timezone.utc).isoformat()
 
-    # Get HOD users for this yacht
-    hod_users = supabase.table("auth_users_profiles").select(
-        "id, full_name"
-    ).eq("yacht_id", yacht_id).in_("role", ["hod", "captain", "manager"]).execute()
+    # 1. pms_audit_log (immutable compliance trail)
+    try:
+        db.table("pms_audit_log").insert({
+            "id": str(uuid4()),
+            "yacht_id": yacht_id,
+            "entity_type": "handover_export",
+            "entity_id": entity_id,
+            "action": action,
+            "user_id": target_user_id,
+            "actor_id": actor_id,
+            "signature": {
+                "actor_id": actor_id,
+                "actor_role": actor_role,
+                "timestamp": now_iso,
+            },
+            "old_values": old_values or {},
+            "new_values": new_values or {},
+            "metadata": metadata or {},
+            "created_at": now_iso,
+        }).execute()
+    except Exception as e:
+        logger.warning("_write_handover_event: pms_audit_log insert failed (entity=%s, action=%s): %s", entity_id, action, e)
 
-    for hod in (hod_users.data or []):
-        # 1. Audit log (compliance) — requires signature + new_values
-        try:
-            supabase.table("pms_audit_log").insert({
-                "id": str(uuid.uuid4()),
-                "yacht_id": yacht_id,
-                "entity_type": "handover_export",
-                "entity_id": export_id,
-                "action": "requires_countersignature",
-                "user_id": hod["id"],
-                "signature": {
-                    "user_id": user_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                },
-                "new_values": {
-                    "submitted_by": user_id,
-                    "submitted_at": datetime.now(timezone.utc).isoformat()
-                },
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }).execute()
-        except Exception as e:
-            logger.warning(f"Audit log insert failed for HOD {hod['id']}: {e}")
+    # 2. ledger_events (notification bus)
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id,
+            user_id=target_user_id,
+            event_type=event_type,
+            entity_type="handover_export",
+            entity_id=entity_id,
+            action=action,
+            user_role=actor_role,
+            change_summary=change_summary,
+            metadata=metadata or {},
+            department=department,
+            actor_name=actor_name,
+            new_state=new_values,
+            previous_state=old_values,
+        )
+        db.table("ledger_events").insert(ledger_event).execute()
+    except Exception as e:
+        logger.warning("_write_handover_event: ledger_events insert failed (entity=%s, action=%s): %s", entity_id, action, e)
 
-        # 2. Ledger event (user notification)
-        try:
-            ledger_event = build_ledger_event(
-                yacht_id=yacht_id,
-                user_id=hod["id"],
-                event_type="handover",
-                entity_type="handover_export",
-                entity_id=export_id,
-                action="requires_countersignature",
-                change_summary=f"Handover from {user_email} requires your countersignature",
-                metadata={"submitted_by": user_id, "submitted_at": datetime.now(timezone.utc).isoformat()}
-            )
-            supabase.table("ledger_events").insert(ledger_event).execute()
-        except Exception as e:
-            logger.warning(f"Ledger event insert failed for HOD {hod['id']}: {e}")
+
+def _notify_hod_for_countersign(supabase, export_id: str, yacht_id: str, auth: dict):
+    """Create audit log + ledger notification for HOD+ users requiring countersignature."""
+    actor_id = auth.get("user_id") or auth.get("id") or ""
+    actor_role = auth.get("role", "")
+    actor_name = auth.get("name") or auth.get("email") or actor_id
+
+    hod_users = _get_role_users(supabase, yacht_id, ["chief_engineer", "chief_officer", "captain"])
+
+    for hod in hod_users:
+        _write_handover_event(
+            db=supabase,
+            yacht_id=yacht_id,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            target_user_id=hod["user_id"],
+            entity_id=export_id,
+            event_type="handover",
+            action="requires_countersignature",
+            change_summary=f"Handover {export_id} submitted and requires your countersignature",
+            new_values={"submitted_by": actor_id, "export_id": export_id},
+            department=hod.get("department"),
+            actor_name=actor_name,
+        )
 
 
 def _trigger_indexing(supabase, export_id: str, yacht_id: str, sections: list):

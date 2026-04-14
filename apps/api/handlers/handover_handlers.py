@@ -25,6 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from actions.action_response_schema import ResponseBuilder
+from routes.handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +296,7 @@ class HandoverHandlers:
                     message="Summary must be less than 2000 characters"
                 )
 
+<<<<<<< HEAD
             # Normalise category — accept new UI values and legacy values
             category_map = {
                 "critical": "urgent",
@@ -309,6 +311,17 @@ class HandoverHandlers:
             raw_category = category
             category = category_map.get(category, "fyi")
             # Derive is_critical from raw_category if not explicitly set
+=======
+            # Normalise category — accept new UI values (critical/standard/low) and legacy values
+            category_map = {
+                "critical": "urgent", "standard": "fyi", "low": "fyi",
+                "urgent": "urgent", "in_progress": "in_progress",
+                "completed": "completed", "watch": "watch", "fyi": "fyi",
+            }
+            raw_category = category
+            category = category_map.get(category, "fyi")
+            # Derive is_critical from category if not explicitly set
+>>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
             if raw_category == "critical":
                 is_critical = True
 
@@ -385,6 +398,30 @@ class HandoverHandlers:
                 }).execute()
             except Exception as e:
                 logger.warning(f"Failed to create audit log: {e}")
+
+            # If item is critical — notify HOD immediately
+            if is_critical:
+                try:
+                    hod_rows = self.db.table("auth_users_roles").select("user_id, role, department") \
+                        .eq("yacht_id", yacht_id) \
+                        .in_("role", ["chief_engineer", "chief_officer", "captain"]) \
+                        .eq("is_active", True).execute()
+                    for hod in (hod_rows.data or []):
+                        ledger_event = build_ledger_event(
+                            yacht_id=yacht_id,
+                            user_id=hod["user_id"],
+                            event_type="escalation",
+                            entity_type="handover_item",
+                            entity_id=item_id,
+                            action="critical_item_added",
+                            user_role=hod["role"],
+                            change_summary=f"Critical handover item added: {summary[:100]}",
+                            actor_name=user_name,
+                            metadata={"added_by": user_id, "item_id": item_id, "summary": summary[:200]}
+                        )
+                        self.db.table("ledger_events").insert(ledger_event).execute()
+                except Exception as e:
+                    logger.warning(f"Critical item HOD notification failed: {e}")
 
             # Build response
             return ResponseBuilder.success(
@@ -488,6 +525,31 @@ class HandoverHandlers:
                     error_code="INTERNAL_ERROR",
                     message="Failed to update handover item"
                 )
+
+            # Audit trail for item edit
+            try:
+                self.db.table("pms_audit_log").insert({
+                    "id": str(uuid.uuid4()),
+                    "yacht_id": yacht_id,
+                    "action": "edit_handover_item",
+                    "entity_type": "handover_item",
+                    "entity_id": item_id,
+                    "user_id": user_id,
+                    "actor_id": user_id,
+                    "signature": {
+                        "user_id": user_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    },
+                    "old_values": {
+                        "summary": existing.data.get("summary"),
+                        "category": existing.data.get("category"),
+                        "is_critical": existing.data.get("is_critical")
+                    },
+                    "new_values": update_data,
+                    "metadata": {"item_id": item_id}
+                }).execute()
+            except Exception as e:
+                logger.warning(f"Audit log failed for edit_handover_item {item_id}: {e}")
 
             return ResponseBuilder.success(
                 action="edit_handover_section",

@@ -709,35 +709,58 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     Required params:
         - yacht_id: UUID
         - entity_type: str (equipment, fault, work_order, part, document, note, purchase_order)
+<<<<<<< HEAD
         - entity_id: UUID
+=======
+        - entity_id: UUID (optional for notes)
+>>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
         - summary: str (also accepts summary_text for backwards compat)
         - category: str (critical, standard, low, urgent, in_progress, completed, watch, fyi)
         - user_id: UUID (from JWT)
         - priority: str (optional: low, normal, high)
+<<<<<<< HEAD
         - section: str (optional: Engineering, Deck, Interior, Command)
         - entity_url: str (optional: deep link back to entity)
+=======
+        - section: str (optional)
+        - entity_url: str (optional)
+>>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     """
     import uuid as uuid_lib
     supabase = get_supabase_client()
 
+<<<<<<< HEAD
     # Accept both "summary" (new frontend) and "summary_text" (legacy) field names
+=======
+    # Accept both "summary" (new frontend) and "summary_text" (legacy)
+>>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     summary = params.get("summary") or params.get("summary_text", "")
     if not summary or len(summary.strip()) < 3:
         raise ValueError("summary must be at least 3 characters")
 
     # Normalise category — accept new UI values (critical/standard/low) and legacy values
+<<<<<<< HEAD
     raw_category = params.get("category", "standard")
+=======
+>>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     category_map = {
         "critical": "urgent",
         "standard": "fyi",
         "low": "fyi",
+<<<<<<< HEAD
         # legacy values pass through unchanged
+=======
+>>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
         "urgent": "urgent",
         "in_progress": "in_progress",
         "completed": "completed",
         "watch": "watch",
         "fyi": "fyi",
     }
+<<<<<<< HEAD
+=======
+    raw_category = params.get("category", "standard")
+>>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     category = category_map.get(raw_category, "fyi")
 
     # SECURITY FIX P1-004: Verify entity belongs to yacht before INSERT
@@ -767,15 +790,24 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     if entity_type == "note" and not entity_id:
         entity_id = str(uuid_lib.uuid4())
 
+<<<<<<< HEAD
     # Map priority to integer
     priority_value = {"low": 1, "normal": 2, "high": 3, "urgent": 4}.get(
         params.get("priority", "normal"), 2
     )
     # critical category always gets high priority
+=======
+    # Map priority to integer; critical category always gets high priority
+    priority_value = {"low": 1, "normal": 2, "high": 3, "urgent": 4}.get(
+        params.get("priority", "normal"), 2
+    )
+>>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     if raw_category == "critical":
         priority_value = 3
 
-    # Create handover entry
+    is_critical = raw_category == "critical"
+
+    # Create handover entry — correct column names matching handover_items schema
     handover_id = str(uuid_lib.uuid4())
     handover_entry = {
         "id": handover_id,
@@ -787,7 +819,11 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
         "priority": priority_value,
         "status": "pending",
         "export_status": "pending",
+<<<<<<< HEAD
         "is_critical": raw_category == "critical",
+=======
+        "is_critical": is_critical,
+>>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
         "requires_action": params.get("requires_action", False),
         "action_summary": params.get("action_summary"),
         "section": params.get("section"),
@@ -800,24 +836,50 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     if not result.data:
         raise Exception("Failed to create handover entry")
 
-    # Create audit log
-    # SECURITY FIX P1-005: Log warning on audit failure instead of silent pass
+    # Audit log — SECURITY FIX P1-005: warn on failure, never block
     try:
         supabase.table("pms_audit_log").insert({
+            "id": str(uuid_lib.uuid4()),
             "yacht_id": yacht_id,
             "action": "add_to_handover",
-            "entity_type": "handover",
+            "entity_type": "handover_item",
             "entity_id": handover_id,
             "user_id": params["user_id"],
+            "actor_id": params["user_id"],
+            "signature": {"user_id": params["user_id"], "timestamp": datetime.utcnow().isoformat()},
             "new_values": {
                 "entity_type": entity_type,
                 "entity_id": entity_id,
                 "category": category,
+                "is_critical": is_critical,
             },
-            "created_at": datetime.utcnow().isoformat(),
         }).execute()
     except Exception as e:
         logger.warning(f"Audit log failed for add_to_handover (handover_id={handover_id}): {e}")
+
+    # If item is critical — notify HODs immediately via ledger_events
+    if is_critical:
+        try:
+            from routes.handlers.ledger_utils import build_ledger_event
+            hod_rows = supabase.table("auth_users_roles").select("user_id, role, department") \
+                .eq("yacht_id", yacht_id) \
+                .in_("role", ["chief_engineer", "chief_officer", "captain"]) \
+                .eq("is_active", True).execute()
+            for hod in (hod_rows.data or []):
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=hod["user_id"],
+                    event_type="escalation",
+                    entity_type="handover_item",
+                    entity_id=handover_id,
+                    action="critical_item_added",
+                    user_role=hod["role"],
+                    change_summary=f"Critical handover item added: {summary[:100]}",
+                    metadata={"added_by": params["user_id"], "item_id": handover_id}
+                )
+                supabase.table("ledger_events").insert(ledger_event).execute()
+        except Exception as e:
+            logger.warning(f"Critical item HOD notification failed (add_to_handover): {e}")
 
     return {
         "handover_id": handover_id,
@@ -3479,6 +3541,24 @@ async def _draft_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _get_approver_user_ids(supabase, yacht_id: str) -> list:
+    """Return deduplicated list of user_ids holding captain or manager role on this vessel."""
+    try:
+        result = supabase.table("auth_users_roles").select(
+            "user_id"
+        ).eq("yacht_id", yacht_id).in_("role", ["captain", "manager"]).execute()
+        seen: set = set()
+        ids = []
+        for row in (result.data or []):
+            uid = row["user_id"]
+            if uid not in seen:
+                seen.add(uid)
+                ids.append(uid)
+        return ids
+    except Exception:
+        return []
+
+
 async def _submit_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
     import uuid as uuid_lib
     supabase = get_supabase_client()
@@ -3515,18 +3595,28 @@ async def _submit_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
         pass
 
     try:
-        supabase.table("pms_notifications").insert({
-            "id": str(uuid_lib.uuid4()),
-            "yacht_id": yacht_id,
-            "user_id": None,
-            "notification_type": "warranty_submitted",
-            "title": f"Warranty Claim Submitted: {claim['title']}",
-            "body": f"Claim {claim['claim_number']} requires your review.",
-            "priority": "normal",
-            "entity_type": "warranty",
-            "entity_id": warranty_id,
-            "created_at": datetime.utcnow().isoformat(),
-        }).execute()
+        approver_ids = _get_approver_user_ids(supabase, yacht_id)
+        _notifs = []
+        for _uid in approver_ids:
+            _notifs.append({
+                "id": str(uuid_lib.uuid4()),
+                "yacht_id": yacht_id,
+                "user_id": _uid,
+                "notification_type": "warranty_submitted",
+                "title": f"Warranty Claim Submitted: {claim.get('title') or claim.get('claim_number', '')}",
+                "body": f"Claim {claim.get('claim_number', '')} requires your review and approval.",
+                "priority": "normal",
+                "entity_type": "warranty",
+                "entity_id": warranty_id,
+                "triggered_by": user_id,
+                "idempotency_key": f"warranty_submitted:{warranty_id}:{_uid}",
+                "is_read": False,
+                "created_at": datetime.utcnow().isoformat(),
+            })
+        if _notifs:
+            supabase.table("pms_notifications").upsert(
+                _notifs, on_conflict="yacht_id,user_id,idempotency_key"
+            ).execute()
     except Exception:
         pass
 
@@ -3574,7 +3664,7 @@ async def _approve_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
         pass
 
     try:
-        supabase.table("pms_notifications").insert({
+        supabase.table("pms_notifications").upsert({
             "id": str(uuid_lib.uuid4()),
             "yacht_id": yacht_id,
             "user_id": claim.get("drafted_by"),
@@ -3585,8 +3675,32 @@ async def _approve_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
             "entity_type": "warranty",
             "entity_id": warranty_id,
             "triggered_by": user_id,
+            "idempotency_key": f"warranty_approved:{warranty_id}:{claim.get('drafted_by')}",
             "created_at": datetime.utcnow().isoformat(),
-        }).execute()
+        }, on_conflict="yacht_id,user_id,idempotency_key").execute()
+    except Exception:
+        pass
+
+    # Also notify submitter if different from drafter
+    try:
+        _submitted_by = claim.get("submitted_by")
+        _drafted_by = claim.get("drafted_by")
+        if _submitted_by and _submitted_by != _drafted_by and _submitted_by != user_id:
+            supabase.table("pms_notifications").upsert({
+                "id": str(uuid_lib.uuid4()),
+                "yacht_id": yacht_id,
+                "user_id": _submitted_by,
+                "notification_type": "warranty_approved",
+                "title": "Warranty Claim Approved",
+                "body": f"Claim {claim.get('claim_number', '')} has been approved.",
+                "priority": "normal",
+                "entity_type": "warranty",
+                "entity_id": warranty_id,
+                "triggered_by": user_id,
+                "idempotency_key": f"warranty_approved:{warranty_id}:{_submitted_by}",
+                "is_read": False,
+                "created_at": datetime.utcnow().isoformat(),
+            }, on_conflict="yacht_id,user_id,idempotency_key").execute()
     except Exception:
         pass
 
@@ -3631,7 +3745,7 @@ async def _reject_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
         pass
 
     try:
-        supabase.table("pms_notifications").insert({
+        supabase.table("pms_notifications").upsert({
             "id": str(uuid_lib.uuid4()),
             "yacht_id": yacht_id,
             "user_id": claim.get("drafted_by"),
@@ -3642,8 +3756,32 @@ async def _reject_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
             "entity_type": "warranty",
             "entity_id": warranty_id,
             "triggered_by": user_id,
+            "idempotency_key": f"warranty_rejected:{warranty_id}:{claim.get('drafted_by')}",
             "created_at": datetime.utcnow().isoformat(),
-        }).execute()
+        }, on_conflict="yacht_id,user_id,idempotency_key").execute()
+    except Exception:
+        pass
+
+    # Also notify submitter if different from drafter
+    try:
+        _submitted_by = claim.get("submitted_by")
+        _drafted_by = claim.get("drafted_by")
+        if _submitted_by and _submitted_by != _drafted_by and _submitted_by != user_id:
+            supabase.table("pms_notifications").upsert({
+                "id": str(uuid_lib.uuid4()),
+                "yacht_id": yacht_id,
+                "user_id": _submitted_by,
+                "notification_type": "warranty_rejected",
+                "title": "Warranty Claim Rejected",
+                "body": f"Claim {claim.get('claim_number', '')} has been rejected. Reason: {rejection_reason}",
+                "priority": "high",
+                "entity_type": "warranty",
+                "entity_id": warranty_id,
+                "triggered_by": user_id,
+                "idempotency_key": f"warranty_rejected:{warranty_id}:{_submitted_by}",
+                "is_read": False,
+                "created_at": datetime.utcnow().isoformat(),
+            }, on_conflict="yacht_id,user_id,idempotency_key").execute()
     except Exception:
         pass
 
@@ -3657,7 +3795,7 @@ async def _close_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
     user_id = params.get("user_id")
     yacht_id = params["yacht_id"]
 
-    r = supabase.table("pms_warranty_claims").select("status").eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    r = supabase.table("pms_warranty_claims").select("status, drafted_by, submitted_by, claim_number").eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
     claim = r.data if r else None
     if not claim:
         return {"status": "error", "message": "Warranty claim not found"}
@@ -3680,6 +3818,33 @@ async def _close_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
             "new_values": {"status": "closed"},
             "created_at": datetime.utcnow().isoformat(),
         }).execute()
+    except Exception:
+        pass
+
+    # Notify drafter and submitter that claim has been closed
+    try:
+        _recipients = list({claim.get("drafted_by"), claim.get("submitted_by")} - {None, user_id})
+        _close_notifs = []
+        for _uid in _recipients:
+            _close_notifs.append({
+                "id": str(uuid_lib.uuid4()),
+                "yacht_id": yacht_id,
+                "user_id": _uid,
+                "notification_type": "warranty_closed",
+                "title": "Warranty Claim Closed",
+                "body": f"Claim {claim.get('claim_number', '')} has been closed.",
+                "priority": "normal",
+                "entity_type": "warranty",
+                "entity_id": warranty_id,
+                "triggered_by": user_id,
+                "idempotency_key": f"warranty_closed:{warranty_id}:{_uid}",
+                "is_read": False,
+                "created_at": datetime.utcnow().isoformat(),
+            })
+        if _close_notifs:
+            supabase.table("pms_notifications").upsert(
+                _close_notifs, on_conflict="yacht_id,user_id,idempotency_key"
+            ).execute()
     except Exception:
         pass
 
@@ -3712,7 +3877,88 @@ async def _compose_warranty_email(params: Dict[str, Any]) -> Dict[str, Any]:
         "updated_at": datetime.utcnow().isoformat(),
     }).eq("id", warranty_id).eq("yacht_id", yacht_id).execute()
 
+    # Notify captain/manager that email draft is ready for review
+    try:
+        import uuid as uuid_lib
+        _approver_ids = _get_approver_user_ids(supabase, yacht_id)
+        _email_notifs = []
+        _today = datetime.utcnow().strftime("%Y%m%d")
+        for _uid in _approver_ids:
+            if _uid != params.get("user_id"):  # Don't notify self
+                _email_notifs.append({
+                    "id": str(uuid_lib.uuid4()),
+                    "yacht_id": yacht_id,
+                    "user_id": _uid,
+                    "notification_type": "warranty_email_composed",
+                    "title": "Warranty Email Draft Ready",
+                    "body": f"An email draft for claim {claim.get('claim_number', '')} is ready for your review.",
+                    "priority": "normal",
+                    "entity_type": "warranty",
+                    "entity_id": warranty_id,
+                    "triggered_by": params.get("user_id"),
+                    "idempotency_key": f"warranty_email:{warranty_id}:{_uid}:{_today}",
+                    "is_read": False,
+                    "created_at": datetime.utcnow().isoformat(),
+                })
+        if _email_notifs:
+            supabase.table("pms_notifications").upsert(
+                _email_notifs, on_conflict="yacht_id,user_id,idempotency_key"
+            ).execute()
+    except Exception:
+        pass
+
     return {"status": "success", "email_draft": email_draft}
+
+
+async def _add_warranty_note_handler(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Warranty-specific note handler — calls generic add_note, then notifies
+    all claim stakeholders (drafter, submitter, approver) except the note author.
+    """
+    result = await add_note(params)
+    if result.get("status") == "success":
+        try:
+            import uuid as uuid_lib
+            supabase = get_supabase_client()
+            warranty_id = params.get("warranty_id") or params.get("entity_id")
+            yacht_id = params["yacht_id"]
+            user_id = params.get("user_id")
+
+            r = supabase.table("pms_warranty_claims").select(
+                "drafted_by, submitted_by, approved_by, claim_number"
+            ).eq("id", warranty_id).eq("yacht_id", yacht_id).limit(1).execute()
+            claim = r.data[0] if r.data else {}
+
+            _recipients = list({
+                claim.get("drafted_by"),
+                claim.get("submitted_by"),
+                claim.get("approved_by"),
+            } - {None, user_id})
+
+            _note_notifs = []
+            for _uid in _recipients:
+                _note_notifs.append({
+                    "id": str(uuid_lib.uuid4()),
+                    "yacht_id": yacht_id,
+                    "user_id": _uid,
+                    "notification_type": "warranty_note_added",
+                    "title": "Note Added to Warranty Claim",
+                    "body": f"A new note was added to claim {claim.get('claim_number', '')}.",
+                    "priority": "low",
+                    "entity_type": "warranty",
+                    "entity_id": warranty_id,
+                    "triggered_by": user_id,
+                    "idempotency_key": f"warranty_note:{warranty_id}:{_uid}:{datetime.utcnow().strftime('%Y%m%d%H%M')}",
+                    "is_read": False,
+                    "created_at": datetime.utcnow().isoformat(),
+                })
+            if _note_notifs:
+                supabase.table("pms_notifications").upsert(
+                    _note_notifs, on_conflict="yacht_id,user_id,idempotency_key"
+                ).execute()
+        except Exception:
+            pass
+    return result
 
 
 INTERNAL_HANDLERS: Dict[str, Any] = {
@@ -3948,7 +4194,7 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "add_document_note": add_note,
     "add_part_note": add_note,
     "add_po_note": add_note,
-    "add_warranty_note": add_note,
+    "add_warranty_note": _add_warranty_note_handler,
     "add_wo_photo": add_work_order_photo,
     "apply_template": _hor_apply_template,
     "approve_list": _sl_approve_item,
