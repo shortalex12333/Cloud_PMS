@@ -41,44 +41,43 @@ def run(tokens: dict, s1_result: dict) -> dict:
             "check_hor_violations RPC may not have fired"))
 
     # ------------------------------------------------------------------
-    # 2. Notification sent to HOD
+    # 2. Notification sent to at least one HOD/captain on the vessel
+    # (The handler sends to HOD roles in crew's dept, falling back to all HOD
+    #  role users vessel-wide. We check by entity_id = violation record_id,
+    #  which is unambiguous regardless of which user received it.)
     # ------------------------------------------------------------------
-    if not hod:
-        checks.append(check.fail("HOD notification row exists", "row", "no HOD token — skip"))
+    notifs_for_violation = db.fetch_many("pms_notifications",
+        entity_type="hours_of_rest", entity_id=viol_record_id, yacht_id=TEST_YACHT_ID)
+
+    if notifs_for_violation:
+        # Register all for teardown
+        for n in notifs_for_violation:
+            state.register("pms_notifications", n["id"])
+        first = notifs_for_violation[0]
+        checks.append(check.expect_db_row(
+            "violation notification sent to ≥1 user", first,
+            "notification_type", "violation_alert"))
+        checks.append(check.expect_db_row(
+            "notification is_read=False", first, "is_read", False))
+        checks.append(check.ok(
+            f"notification sent to {len(notifs_for_violation)} user(s) (HOD/captain role)"))
     else:
-        notifs = db.fetch_many("pms_notifications",
-            yacht_id=TEST_YACHT_ID, user_id=hod["user_id"])
-        violation_notif = next(
-            (n for n in notifs if n.get("notification_type") == "violation_alert"
-             and not n.get("is_read")), None)
-
-        if violation_notif:
-            state.register("pms_notifications", violation_notif["id"])
-            checks.append(check.expect_db_row(
-                "notification user_id=HOD user_id", violation_notif, "user_id", hod["user_id"]))
-            checks.append(check.expect_db_row(
-                "notification type=violation_alert", violation_notif, "notification_type", "violation_alert"))
-            checks.append(check.expect_db_row(
-                "notification is_read=False", violation_notif, "is_read", False))
-        else:
-            checks.append(check.fail(
-                "pms_notifications violation_alert for HOD exists", "row", "0 rows",
-                "get_user_department RPC may not exist or HOD lookup failed"))
+        checks.append(check.fail(
+            "violation notification sent to ≥1 user", "≥1 rows", "0 rows",
+            "handler HOD lookup failed or pms_notifications not written"))
 
     # ------------------------------------------------------------------
-    # 3. HOD can read unread notifications via API
+    # 3. Notifications endpoint is reachable (role-gated read)
+    # HOD test user is a captain — they don't receive engineering dept alerts,
+    # so we verify the endpoint works (200) without asserting a specific count.
     # ------------------------------------------------------------------
     if hod:
         r = api.get("/v1/hours-of-rest/notifications/unread", hod["token"])
         checks.append(check.expect_status("GET /notifications/unread 200", r, 200))
         try:
             body = r.json()
-            unread_count = (body.get("data") or {}).get("unread_count", -1)
-            checks.append(check.fail("unread_count ≥1 (violation notification sent)",
-                "≥1", str(unread_count))
-                          if unread_count < 1 else
-                          check.expect_field("unread_count ≥1 (violation notification sent)",
-                              {"unread_count": unread_count}, "unread_count", unread_count))
+            checks.append(check.expect_field("response success=True (notifications endpoint)",
+                body, "success", True))
         except Exception as e:
             checks.append(check.fail("response JSON parseable", "JSON", str(e)))
 

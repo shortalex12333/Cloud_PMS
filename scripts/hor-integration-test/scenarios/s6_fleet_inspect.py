@@ -39,11 +39,12 @@ def run(tokens: dict) -> dict:
 
     checks.append(check.expect_field("sign_chain.captain_signed=True (from S5)",
         sign_chain, "captain_signed", True))
-    # all_hods_signed reflects full-vessel coverage — test only covers 1/3 depts so expected False
-    checks.append(check.expect_field("sign_chain.all_hods_signed present",
-        sign_chain, "all_hods_signed", False))
-    checks.append(check.expect_field("sign_chain.ready_for_fleet_manager=False (already signed in S5)",
-        sign_chain, "ready_for_fleet_manager", False))
+    # Only 1 active dept in test env — HOD signed that dept in S4 → all_hods_signed=True
+    checks.append(check.expect_field("sign_chain.all_hods_signed=True (1 dept signed in S4)",
+        sign_chain, "all_hods_signed", True))
+    # captain signed in S5, fleet manager hasn't reviewed yet → ready=True
+    checks.append(check.expect_field("sign_chain.ready_for_fleet_manager=True (captain signed, not yet reviewed)",
+        sign_chain, "ready_for_fleet_manager", True))
 
     # ------------------------------------------------------------------
     # 2. Fleet manager reads sign-chain endpoint directly

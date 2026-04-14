@@ -35,10 +35,13 @@ def run(tokens: dict, s4_result: dict) -> dict:
         return {"id": ID, "name": NAME, "pass": False, "checks": checks}
 
     # ------------------------------------------------------------------
-    # 1. Security: HOD cannot sign as master — must be rejected
+    # 1. Security: non-captain crew cannot sign as master — must be rejected
+    # (The HOD test user has role=captain and legitimately CAN sign as master.
+    #  Using crew token instead — role=crew should always be rejected for master.)
     # ------------------------------------------------------------------
-    if hod:
-        r_sec = api.post("/v1/hours-of-rest/signoffs/sign", hod["token"], {
+    crew = tokens.get("crew")
+    if crew:
+        r_sec = api.post("/v1/hours-of-rest/signoffs/sign", crew["token"], {
             "signoff_id":      signoff_id,
             "signature_level": "master",
             "signature_data":  {
@@ -48,13 +51,13 @@ def run(tokens: dict, s4_result: dict) -> dict:
             },
         })
         if r_sec.status_code in (400, 403):
-            checks.append(check.expect_status("HOD cannot sign as master (rejected)",
+            checks.append(check.expect_status("crew cannot sign as master (rejected)",
                 r_sec, r_sec.status_code))
         else:
             body_sec = {}
             try: body_sec = r_sec.json()
             except: pass
-            checks.append(check.fail("HOD cannot sign as master",
+            checks.append(check.fail("crew cannot sign as master",
                 "HTTP 400 or 403",
                 f"HTTP {r_sec.status_code} success={body_sec.get('success')}",
                 "role enforcement missing"))

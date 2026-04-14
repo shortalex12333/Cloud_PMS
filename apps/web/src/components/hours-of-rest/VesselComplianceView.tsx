@@ -133,21 +133,31 @@ function normalizeVesselCompliance(raw: any, ws: string): VesselCompliance {
   const rawDepts: any[] = Array.isArray(raw.departments) ? raw.departments : [];
 
   const departments: DepartmentCard[] = rawDepts.map((d: any) => {
-    // Nested crew in dept, or join from flat all_crew by department name
+    // Backend uses d.department as the key, not d.name
+    const deptName = d.department ?? d.name ?? '—';
+    // vessel-compliance has no nested crew[]; join from flat all_crew[] by department
     const nestedCrew: any[] = Array.isArray(d.crew) ? d.crew : [];
     const flatCrew: any[] = allCrewFlat.filter((c: any) =>
-      (c.department ?? '').toLowerCase() === (d.name ?? '').toLowerCase()
+      (c.department ?? '').toLowerCase() === deptName.toLowerCase()
     );
     const crewSource = nestedCrew.length > 0 ? nestedCrew : flatCrew;
+    const totalCrew = d.total_crew ?? d.crew_count ?? crewSource.length;
+
+    // Backend sends compliant_count and total_crew, not compliance_pct per dept
+    const compliantCount = d.compliant_count ?? 0;
+    const compliancePct = totalCrew > 0
+      ? Math.round(compliantCount / totalCrew * 100)
+      : (d.compliance_pct ?? 0);
 
     return {
-      name: d.name ?? d.department ?? '—',
-      crew_count: d.crew_count ?? d.total_crew ?? crewSource.length,
-      compliance_pct: d.compliance_pct ?? d.compliance_rate ?? 0,
-      violations: d.violations ?? 0,
+      name: deptName,
+      crew_count: totalCrew,
+      compliance_pct: compliancePct,
+      // Backend sends pending_warnings (crew with active warnings), not violations
+      violations: d.violations ?? d.pending_warnings ?? 0,
       avg_work_hours: d.avg_work_hours ?? 0,
       submitted_today: d.submitted_today ?? d.submitted_count ?? 0,
-      total_today: d.total_today ?? d.crew_count ?? d.total_crew ?? 0,
+      total_today: d.total_today ?? totalCrew,
       signoff_id: d.signoff_id ?? null,
       status: d.status ?? 'draft',
       hod_signed_at: d.hod_signed_at ?? null,
@@ -157,10 +167,11 @@ function normalizeVesselCompliance(raw: any, ws: string): VesselCompliance {
         user_id: m.user_id ?? m.id ?? String(Math.random()),
         name: m.name ?? '—',
         role: m.role ?? '',
+        // vessel-compliance all_crew[] has no daily[] — weekly aggregate only
         days: (m.daily ?? m.days ?? []).map((day: any) => ({
           date: day.date,
           rest_hours: day.rest_hours ?? day.total_rest_hours ?? null,
-          status: (day.status ?? 'missing') as DeptDay['status'],
+          status: day.submitted ? 'submitted' : ((day.status ?? 'missing') as DeptDay['status']),
         })),
       })),
     };

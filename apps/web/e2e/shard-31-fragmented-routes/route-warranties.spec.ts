@@ -7,13 +7,13 @@ import { test, expect, RBAC_CONFIG } from '../rbac-fixtures';
  * All staging test data is pre-seeded on yacht_id 85fe1119-b04c-41ac-80f1-829d23322598.
  * IDs are hardcoded — no DB lookup needed for navigation or visibility assertions.
  *
- * Real status values: draft | submitted | under_review | approved | rejected | closed
+ * Real status values: draft | submitted | approved | rejected | closed
  * View used by list page: v_warranty_enriched
  *
  * Staging test records:
  *   WC-TEST-001  aa000001-0000-0000-0000-000000000001  draft
  *   WC-TEST-002  aa000002-0000-0000-0000-000000000002  submitted
- *   WC-TEST-003  aa000003-0000-0000-0000-000000000003  under_review
+ *   WC-TEST-003  aa000003-0000-0000-0000-000000000003  submitted
  *   WC-TEST-004  aa000004-0000-0000-0000-000000000004  approved
  *   WC-TEST-005  aa000005-0000-0000-0000-000000000005  rejected
  */
@@ -27,7 +27,7 @@ const STAGING_YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598';
 const CLAIMS = {
   draft:        { id: 'aa000001-0000-0000-0000-000000000001', claimNumber: 'WC-TEST-001', status: 'draft' },
   submitted:    { id: 'aa000002-0000-0000-0000-000000000002', claimNumber: 'WC-TEST-002', status: 'submitted' },
-  under_review: { id: 'aa000003-0000-0000-0000-000000000003', claimNumber: 'WC-TEST-003', status: 'under_review' },
+  under_review: { id: 'aa000003-0000-0000-0000-000000000003', claimNumber: 'WC-TEST-003', status: 'submitted' },
   approved:     { id: 'aa000004-0000-0000-0000-000000000004', claimNumber: 'WC-TEST-004', status: 'approved' },
   rejected:     { id: 'aa000005-0000-0000-0000-000000000005', claimNumber: 'WC-TEST-005', status: 'rejected' },
 } as const;
@@ -217,16 +217,16 @@ test.describe('Group 3: Button Visibility per Role + Status', () => {
     console.log(`  T3-WAR-BTN-02 PASS: Crew cannot submit claim (visible=${isVisible}, enabled=${isEnabled})`);
   });
 
-  test('T3-WAR-BTN-03: Captain sees "Approve Claim" button on WC-TEST-003 (under_review)', async ({ captainPage }) => {
+  test('T3-WAR-BTN-03: Captain sees "Approve" button on WC-TEST-003 (submitted)', async ({ captainPage }) => {
     const loaded = await gotoWarranties(captainPage, ROUTES.detail(CLAIMS.under_review.id));
     if (!loaded) { test.skip(); return; }
 
     const btn = captainPage.locator(
-      'button:has-text("Approve Claim"), [data-testid="action-approve-claim"]'
+      'button:has-text("Approve"), [data-testid="action-approve-claim"]'
     );
     await expect(btn.first()).toBeVisible({ timeout: 10000 });
 
-    console.log('  T3-WAR-BTN-03 PASS: Captain sees Approve Claim on under_review record');
+    console.log('  T3-WAR-BTN-03 PASS: Captain sees Approve on submitted record (WC-TEST-003)');
   });
 
   test('T3-WAR-BTN-04: HOD sees "Revise & Resubmit" on WC-TEST-005 (rejected)', async ({ hodPage }) => {
@@ -449,8 +449,8 @@ test.describe('Mutative Flows (skipped — require live backend)', () => {
   });
 
   // requires live backend
-  test.skip('approve_warranty_claim action via UI transitions under_review → approved', async () => {
+  test.skip('approve_warranty_claim action via UI transitions submitted → approved', async () => {
     // Skip reason: approve_warranty_claim action handler must be running on the backend.
-    // When live: open WC-TEST-003 as captain, click "Approve Claim", confirm, verify DB.
+    // When live: open WC-TEST-003 as captain, click "Approve", confirm, verify DB.
   });
 });

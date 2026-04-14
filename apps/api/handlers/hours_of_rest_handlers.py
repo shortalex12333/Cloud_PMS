@@ -355,11 +355,11 @@ class HoursOfRestHandlers:
             try:
                 existing = self.db.table("pms_hours_of_rest").select("id").eq(
                     "yacht_id", yacht_id
-                ).eq("user_id", user_id).eq("record_date", record_date).maybe_single().execute()
+                ).eq("user_id", user_id).eq("record_date", record_date).limit(1).execute()
 
                 if existing and existing.data:
                     record_exists = True
-                    existing_id = existing.data["id"]
+                    existing_id = existing.data[0]["id"]
             except Exception as check_err:
                 # 406/RLS errors mean no existing record or no permission
                 # Safe to attempt INSERT (will fail with 403 if not allowed)
@@ -444,13 +444,15 @@ class HoursOfRestHandlers:
                 is_violation = not (is_daily_compliant and has_valid_rest_periods)
                 if is_violation:
                     try:
-                        # Find HOD for this user's department — look up crew's department directly
-                        crew_role_result = self.db.table("auth_users_roles").select(
+                        # Find HOD for this user's department.
+                        # Use list-mode (not .maybe_single()) to handle users with multiple dept rows.
+                        crew_role_rows = self.db.table("auth_users_roles").select(
                             "department"
-                        ).eq("yacht_id", yacht_id).eq("user_id", user_id).maybe_single().execute()
-                        dept = (crew_role_result.data or {}).get("department") if crew_role_result and crew_role_result.data else None
+                        ).eq("yacht_id", yacht_id).eq("user_id", user_id).limit(1).execute()
+                        dept = (crew_role_rows.data[0] if crew_role_rows.data else {}).get("department")
 
-                        HOD_ROLES = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser"]
+                        # Notify HOD roles + captain/manager (they hold final responsibility)
+                        HOD_ROLES = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"]
                         if dept:
                             hod_result = self.db.table("auth_users_roles").select(
                                 "user_id"
@@ -472,22 +474,30 @@ class HoursOfRestHandlers:
                             ).execute()
 
                         # Notify all resolved HOD users — runs regardless of dept path
-                        crew_name_result = self.db.table("auth_users_profiles").select(
+                        # Use list-mode (not .maybe_single()) — throws APIError(204) on 0 rows
+                        crew_profile_rows = self.db.table("auth_users_profiles").select(
                             "name"
-                        ).eq("yacht_id", yacht_id).eq("id", user_id).maybe_single().execute()
-                        crew_name = crew_name_result.data.get("name", "Crew member") if crew_name_result and crew_name_result.data else "Crew member"
+                        ).eq("yacht_id", yacht_id).eq("id", user_id).limit(1).execute()
+                        crew_name = (crew_profile_rows.data[0] if crew_profile_rows.data else {}).get("name") or "Crew member"
 
+                        # Deduplicate by user_id — auth_users_roles has one row per role,
+                        # so the same user can appear multiple times if they hold multiple roles.
+                        seen_hod_ids: set = set()
                         notifications = []
                         for hod in (hod_result.data or []):
+                            hod_uid = hod["user_id"]
+                            if hod_uid in seen_hod_ids:
+                                continue
+                            seen_hod_ids.add(hod_uid)
                             notifications.append({
                                 "yacht_id": yacht_id,
-                                "user_id": hod["user_id"],
+                                "user_id": hod_uid,
                                 "notification_type": "violation_alert",
                                 "title": f"HoR Violation — {crew_name}",
                                 "body": f"{crew_name} logged only {total_rest_hours:.1f}h rest on {record_date} (MLC minimum: 10h)",
                                 "entity_type": "hours_of_rest",
                                 "entity_id": record["id"],
-                                "idempotency_key": f"violation:{record['id']}",
+                                "idempotency_key": f"violation:{record['id']}:{hod_uid}",
                                 "metadata": {
                                     "crew_user_id": user_id,
                                     "record_date": record_date,
@@ -647,13 +657,12 @@ class HoursOfRestHandlers:
         try:
             result = self.db.table("pms_hor_monthly_signoffs").select(
                 "*, user:user_id(email, name)"
-            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not result.data:
+            signoff = result.data[0] if result.data else None
+            if not signoff:
                 builder.set_error("NOT_FOUND", f"Sign-off not found: {entity_id}")
                 return builder.build()
-
-            signoff = result.data
 
             # Calculate month completeness
             month_complete_check = self.db.rpc(
@@ -879,10 +888,12 @@ class HoursOfRestHandlers:
             _MASTER_ROLES_SIGN = {"captain", "manager"}
 
             if signature_level in ("hod", "master"):
-                role_check = self.db.table("auth_users_roles").select("role").eq(
+                # Use list-mode — .maybe_single() throws APIError(204) on 0 rows in supabase-py 2.12.x.
+                # A user may also hold multiple roles; take the first.
+                role_rows = self.db.table("auth_users_roles").select("role").eq(
                     "yacht_id", yacht_id
-                ).eq("user_id", user_id).maybe_single().execute()
-                caller_role = (role_check.data or {}).get("role") if role_check else None
+                ).eq("user_id", user_id).limit(1).execute()
+                caller_role = (role_rows.data[0] if role_rows.data else {}).get("role")
 
                 if signature_level == "hod" and caller_role not in _HOD_ROLES_SIGN:
                     builder.set_error(
@@ -898,20 +909,81 @@ class HoursOfRestHandlers:
                     )
                     return builder.build()
 
-            # Enforce sequential signing workflow: crew → hod → master
+            # Enforce sequential signing workflow: crew → [hod if dept has a HOD] → master
             current_status = signoff.get("status", "draft")
+            signoff_dept   = signoff.get("department", "")
+
             if signature_level == "hod" and current_status != "crew_signed":
                 builder.set_error(
                     "VALIDATION_ERROR",
                     f"HOD can only sign after crew. Current status: {current_status}"
                 )
                 return builder.build()
-            elif signature_level == "master" and current_status != "hod_signed":
-                builder.set_error(
-                    "VALIDATION_ERROR",
-                    f"Master can only sign after HOD. Current status: {current_status}"
-                )
-                return builder.build()
+
+            elif signature_level == "master":
+                if current_status == "hod_signed":
+                    # Normal path. Block same-person signing — MLC requires independent HOD + master.
+                    hod_signed_by = signoff.get("hod_signed_by")
+                    if hod_signed_by and hod_signed_by == user_id:
+                        builder.set_error(
+                            "FORBIDDEN",
+                            "Master cannot finalise a signoff they counter-signed as HOD. MLC 2006 requires independent verification at each level."
+                        )
+                        return builder.build()
+
+                elif current_status == "crew_signed":
+                    # HOD step not yet completed — only permitted if no designated HOD
+                    # exists for this department (pure dept roles, not captain/manager).
+                    _DEPT_HOD_ROLES = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser"]
+                    dept_hod_q = self.db.table("auth_users_roles").select("user_id").eq(
+                        "yacht_id", yacht_id
+                    ).in_("role", _DEPT_HOD_ROLES)
+                    if signoff_dept:
+                        dept_hod_q = dept_hod_q.eq("department", signoff_dept)
+                    dept_hod_result = dept_hod_q.limit(1).execute()
+
+                    if dept_hod_result.data:
+                        # A designated HOD exists — they must sign before master.
+                        builder.set_error(
+                            "VALIDATION_ERROR",
+                            f"Master can only sign after HOD. Department '{signoff_dept}' has a designated HOD who must countersign first. Current status: {current_status}"
+                        )
+                        return builder.build()
+                    else:
+                        # No dept HOD — captain may bypass. Notify vessel-wide HOD-role users.
+                        try:
+                            vessel_hods = self.db.table("auth_users_roles").select("user_id").eq(
+                                "yacht_id", yacht_id
+                            ).in_("role", _DEPT_HOD_ROLES).execute()
+                            _seen_hod: set = set()
+                            bypass_notifs = []
+                            for r in (vessel_hods.data or []):
+                                uid = r["user_id"]
+                                if uid in _seen_hod:
+                                    continue
+                                _seen_hod.add(uid)
+                                bypass_notifs.append({
+                                    "yacht_id":           yacht_id,
+                                    "user_id":            uid,
+                                    "notification_type":  "hor_hod_step_bypassed",
+                                    "title":              "HoR HOD Step Bypassed",
+                                    "body":               f"No HOD found for department '{signoff_dept}'. Master signed directly. Please review.",
+                                    "entity_type":        "pms_hor_monthly_signoffs",
+                                    "entity_id":          signoff_id,
+                                    "idempotency_key":    f"hor_hod_bypass_{signoff_id}",
+                                })
+                            if bypass_notifs:
+                                self.db.table("pms_notifications").upsert(
+                                    bypass_notifs, on_conflict="yacht_id,user_id,idempotency_key"
+                                ).execute()
+                        except Exception as bypass_notif_err:
+                            logger.warning(f"Failed to send HOD-bypass notification (non-fatal): {bypass_notif_err}")
+                else:
+                    builder.set_error(
+                        "VALIDATION_ERROR",
+                        f"Master can only sign from hod_signed (or crew_signed when no dept HOD exists). Current status: {current_status}"
+                    )
+                    return builder.build()
 
             # Determine update based on signature level
             update_data = {
@@ -1001,15 +1073,18 @@ class HoursOfRestHandlers:
                         if signoff_dept:
                             hod_q = hod_q.eq("department", signoff_dept)
                         hod_result = hod_q.execute()
+                        _seen: set = set()
                         notifications = [
                             {
                                 "yacht_id": yacht_id,
                                 "user_id": row["user_id"],
                                 "notification_type": "hor_awaiting_countersign",
+                                "title": "HoR Awaiting Counter-Signature",
                                 "body": "A crew member has signed their hours of rest — awaiting your counter-signature.",
                                 "idempotency_key": f"hor_crew_signed_{signoff_id}_{row['user_id']}",
                             }
                             for row in (hod_result.data or [])
+                            if row["user_id"] not in _seen and not _seen.add(row["user_id"])
                         ]
                         if notifications:
                             self.db.table("pms_notifications").upsert(
@@ -1021,15 +1096,18 @@ class HoursOfRestHandlers:
                         cap_result = self.db.table("auth_users_roles").select("user_id").eq(
                             "yacht_id", yacht_id
                         ).in_("role", list(_MASTER_ROLES_SIGN)).execute()
+                        _seen2: set = set()
                         notifications = [
                             {
                                 "yacht_id": yacht_id,
                                 "user_id": row["user_id"],
                                 "notification_type": "hor_awaiting_master_sign",
+                                "title": "HoR Awaiting Master Signature",
                                 "body": "HOD has counter-signed crew hours of rest — awaiting your final signature.",
                                 "idempotency_key": f"hor_hod_signed_{signoff_id}_{row['user_id']}",
                             }
                             for row in (cap_result.data or [])
+                            if row["user_id"] not in _seen2 and not _seen2.add(row["user_id"])
                         ]
                         if notifications:
                             self.db.table("pms_notifications").upsert(
@@ -1044,6 +1122,7 @@ class HoursOfRestHandlers:
                                     "yacht_id": yacht_id,
                                     "user_id": signoff_owner,
                                     "notification_type": "hor_month_finalized",
+                                    "title": "Monthly HoR Record Finalized",
                                     "body": "Your monthly hours of rest record has been signed and finalized by the Master.",
                                     "idempotency_key": f"hor_master_signed_{signoff_id}",
                                 }],
@@ -1434,7 +1513,7 @@ class HoursOfRestHandlers:
             # Verify warning exists and belongs to this crew member before updating
             existing = self.db.table("pms_crew_hours_warnings").select("id").eq(
                 "id", warning_id
-            ).eq("yacht_id", yacht_id).eq("user_id", user_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).eq("user_id", user_id).limit(1).execute()
 
             if not existing.data:
                 builder.set_error("NOT_FOUND", f"Warning not found or not accessible: {warning_id}")
@@ -1453,8 +1532,8 @@ class HoursOfRestHandlers:
             ).eq("yacht_id", yacht_id).eq("user_id", user_id).execute()
             result = self.db.table("pms_crew_hours_warnings").select("*").eq(
                 "id", warning_id
-            ).maybe_single().execute()
-            warning = result.data if result and result.data else None
+            ).limit(1).execute()
+            warning = result.data[0] if result.data else None
 
             # Write audit log
             _write_hor_audit_log(self.db, {
@@ -1512,9 +1591,9 @@ class HoursOfRestHandlers:
             # Verify warning exists before updating
             existing = self.db.table("pms_crew_hours_warnings").select("id").eq(
                 "id", warning_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if existing is None or not existing.data:
+            if not existing.data:
                 builder.set_error("NOT_FOUND", f"Warning not found: {warning_id}")
                 return builder.build()
 
@@ -1598,13 +1677,13 @@ class HoursOfRestHandlers:
             # Fetch the record to undo
             result = self.db.table("pms_hours_of_rest").select("*").eq(
                 "id", record_id
-            ).eq("yacht_id", yacht_id).eq("user_id", user_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).eq("user_id", user_id).limit(1).execute()
 
-            if result is None or not result.data:
+            if not result.data:
                 builder.set_error("NOT_FOUND", "Record not found or not owned by you")
                 return builder.build()
 
-            record = result.data
+            record = result.data[0]
             record_date = record.get("record_date")
 
             # Block undo if HOD has signed the week containing this record
@@ -1618,9 +1697,9 @@ class HoursOfRestHandlers:
                 "yacht_id", yacht_id
             ).eq("user_id", user_id).eq("period_type", "weekly").eq(
                 "week_start", week_monday
-            ).maybe_single().execute()
+            ).limit(1).execute()
 
-            if hod_sign_check and hod_sign_check.data and hod_sign_check.data.get("status") in ("hod_signed", "finalized"):
+            if hod_sign_check.data and hod_sign_check.data[0].get("status") in ("hod_signed", "finalized"):
                 builder.set_error(
                     "LOCKED",
                     "Cannot undo: HOD has already signed this week. Request a correction through your HOD."
@@ -1645,6 +1724,7 @@ class HoursOfRestHandlers:
 
             # Reset the HoR record to unsubmitted state
             reset_data = {
+                "work_periods": [],
                 "rest_periods": [],
                 "total_rest_hours": 0,
                 "total_work_hours": 0,
@@ -1731,13 +1811,13 @@ class HoursOfRestHandlers:
             # Fetch original record
             orig_result = self.db.table("pms_hours_of_rest").select("*").eq(
                 "id", original_record_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not orig_result.data:
                 builder.set_error("NOT_FOUND", "Original record not found")
                 return builder.build()
 
-            original = orig_result.data
+            original = orig_result.data[0]
             original_owner_id = original.get("user_id")
             record_date = original.get("record_date")
 
@@ -1920,13 +2000,13 @@ class HoursOfRestHandlers:
             # Fetch signoff
             signoff_result = self.db.table("pms_hor_monthly_signoffs").select("*").eq(
                 "id", signoff_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not signoff_result.data:
                 builder.set_error("NOT_FOUND", "Sign-off not found")
                 return builder.build()
 
-            signoff = signoff_result.data
+            signoff = signoff_result.data[0]
             current_status = signoff.get("status")
 
             # Auth: HOD can only request correction on hod_signed records
@@ -1959,9 +2039,10 @@ class HoursOfRestHandlers:
             notification_type = "correction_notice"
             role_label = "HOD" if requester_role == "hod" else "Captain"
 
-            self.db.table("pms_notifications").insert({
+            self.db.table("pms_notifications").upsert({
                 "yacht_id": yacht_id,
                 "user_id": target_user_id,
+                "title": "HoR Correction Requested",
                 "notification_type": notification_type,
                 "entity_type": "hours_of_rest",
                 "entity_id": signoff_id,
@@ -1975,9 +2056,10 @@ class HoursOfRestHandlers:
                     "week_start": signoff.get("week_start"),
                     "month": signoff.get("month"),
                 },
+                "idempotency_key": f"correction_notice:{signoff_id}:{target_user_id}",
                 "triggered_by": user_id,
                 "created_at": datetime.now(timezone.utc).isoformat(),
-            }).execute()
+            }, on_conflict="idempotency_key").execute()
 
             # Ledger event
             try:

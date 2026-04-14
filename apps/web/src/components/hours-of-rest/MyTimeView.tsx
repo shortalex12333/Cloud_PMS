@@ -14,7 +14,7 @@
 
 import * as React from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { TimeSlider, type RestPeriod } from './TimeSlider';
+import { TimeSlider, invertToRestPeriods, type RestPeriod } from './TimeSlider';
 import { ActionPopup, type ActionPopupField } from '@/components/lens-v2/ActionPopup';
 
 // ── Mock data (used until ENGINEER02 endpoints land) ──────────────────────────
@@ -773,7 +773,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
 
                 {/* Slider */}
                 <TimeSlider
-                  value={isSubmitted ? (localSubmit?.work_periods ?? (day as any).work_periods ?? []) : draft}
+                  value={isSubmitted ? (localSubmit?.work_periods ?? (day as any).work_periods ?? invertToRestPeriods((day as any).rest_periods ?? [])) : draft}
                   readOnly={isSubmitted}
                   onChange={periods => setDraftPeriods(prev => ({ ...prev, [day.date]: periods }))}
                 />

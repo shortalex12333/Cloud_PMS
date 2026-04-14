@@ -7,7 +7,7 @@ from datetime import date, timedelta
 
 # Isolated test week — far enough in the past to avoid colliding with real data.
 # Using a Monday. Change if real data exists for this week.
-TEST_WEEK_MONDAY = "2026-03-02"   # a past Monday
+TEST_WEEK_MONDAY = "2025-01-06"   # a past Monday with no real data
 TEST_YACHT_ID    = "85fe1119-b04c-41ac-80f1-829d23322598"
 
 # Tables → list of UUIDs created during tests

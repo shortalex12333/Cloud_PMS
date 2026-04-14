@@ -34,7 +34,7 @@ ATTACHMENT_BUCKET = {
     "checklist_item": "pms-work-order-photos",
     "equipment": "pms-work-order-photos",
     "purchase_order": "pms-finance-documents",
-    "warranty": "pms-finance-documents",
+    "warranty": "pms-warranty-documents",
     "receiving": "pms-receiving-images",
 }
 
@@ -466,6 +466,22 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             _nav("work_order", data.get("work_order_id"), "Work Order"),
         ] if n]
 
+        try:
+            notes_r = supabase.table("pms_notes").select(
+                "id, text, note_type, created_by, created_at"
+            ).eq("warranty_id", warranty_id).eq("yacht_id", yacht_id).order("created_at", desc=True).execute()
+            warranty_notes = notes_r.data or []
+        except Exception:
+            warranty_notes = []
+
+        try:
+            audit_r = supabase.table("pms_audit_log").select(
+                "id, action, user_id, new_values, created_at"
+            ).eq("entity_type", "warranty").eq("entity_id", warranty_id).eq("yacht_id", yacht_id).order("created_at", desc=True).limit(50).execute()
+            warranty_audit = audit_r.data or []
+        except Exception:
+            warranty_audit = []
+
         _entity_response = {
             "id": data.get("id"),
             "title": title,
@@ -495,9 +511,13 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             "drafted_at": data.get("drafted_at"),
             "submitted_at": data.get("submitted_at"),
             "approved_at": data.get("approved_at"),
+            "rejected_by": data.get("rejected_by"),
+            "rejected_at": data.get("rejected_at"),
             "rejection_reason": data.get("rejection_reason"),
             "email_draft": data.get("email_draft"),
             "attachments": attachments,
+            "notes": warranty_notes,
+            "audit_trail": warranty_audit,
             "related_entities": nav,
         }
         _entity_response["available_actions"] = get_available_actions(
