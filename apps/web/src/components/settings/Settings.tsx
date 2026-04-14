@@ -534,7 +534,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
           width: '547px',
           height: '483px',
           maxWidth: 'calc(100vw - 48px)',
-          maxHeight: 'calc(100vh - 48px)',
+          maxHeight: 'calc(100vh - var(--shell-topbar-h))',
           borderRadius: '8px',
           overflow: 'hidden',
           display: 'flex',

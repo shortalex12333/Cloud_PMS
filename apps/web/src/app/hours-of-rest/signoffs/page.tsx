@@ -369,7 +369,7 @@ function SignoffsPageContent() {
   const departmentOrder = ['deck', 'engineering', 'interior', 'general'];
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--surface-base)', color: 'var(--txt)', fontFamily: 'var(--font-sans)' }}>
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: 'var(--surface-base)', color: 'var(--txt)', fontFamily: 'var(--font-sans)' }}>
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 24px 64px' }}>
         {/* Back link */}
         <a
@@ -502,7 +502,7 @@ export default function SignoffsPage() {
   return (
     <React.Suspense
       fallback={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--surface-base)' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-base)' }}>
           <div style={{ width: 32, height: 32, border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
         </div>
       }

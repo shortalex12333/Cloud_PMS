@@ -249,11 +249,12 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
     });
   }
 
-  // ── Total rest hours for display ──
+  // ── Total work/rest hours for display ──
+  // blocks ARE work periods (amber = work). Sum of block durations = total work.
 
-  const totalRestMin = blocks.reduce((sum, b) => sum + Math.max(0, b.endMin - b.startMin), 0);
-  const totalRestH = (totalRestMin / 60).toFixed(1);
-  const totalWorkH = ((1440 - totalRestMin) / 60).toFixed(1);
+  const totalWorkMin = blocks.reduce((sum, b) => sum + Math.max(0, b.endMin - b.startMin), 0);
+  const totalWorkH = (totalWorkMin / 60).toFixed(1);
+  const totalRestH = ((1440 - totalWorkMin) / 60).toFixed(1);
 
   return (
     <div style={{ width: '100%', userSelect: 'none' }}>
