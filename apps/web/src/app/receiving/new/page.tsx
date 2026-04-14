@@ -26,7 +26,7 @@ export default function NewReceivingPage() {
   }, [router]);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--surface-base)' }}>
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: 'var(--surface-base)' }}>
       {/* Topbar */}
       <div style={{
         height: 44, display: 'flex', alignItems: 'center', padding: '0 16px',

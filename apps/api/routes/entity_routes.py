@@ -37,6 +37,7 @@ ATTACHMENT_BUCKET = {
     "purchase_order": "pms-finance-documents",
     "warranty": "pms-warranty-documents",
     "receiving": "pms-receiving-images",
+    "certificate": "pms-certificate-documents",
 }
 
 
@@ -102,55 +103,86 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        r = supabase.table("pms_vessel_certificates").select("*") \
-            .eq("id", certificate_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        # Two-table lookup: vessel first, crew fallback.
+        # Use limit(1).execute() instead of maybe_single() — the latter returns
+        # None (not a response object) on no-match in this supabase client
+        # version, causing AttributeError on .data access.
+        domain = None
+        data = None
 
-        if not r or not r.data:
+        vessel_r = supabase.table("pms_vessel_certificates").select("*") \
+            .eq("id", certificate_id).eq("yacht_id", yacht_id).limit(1).execute()
+        vessel_rows = getattr(vessel_r, "data", None) or []
+        if vessel_rows:
+            domain = "vessel"
+            data = vessel_rows[0]
+        else:
+            crew_r = supabase.table("pms_crew_certificates").select("*") \
+                .eq("id", certificate_id).eq("yacht_id", yacht_id).limit(1).execute()
+            crew_rows = getattr(crew_r, "data", None) or []
+            if crew_rows:
+                domain = "crew"
+                data = crew_rows[0]
+
+        if not data:
             raise HTTPException(status_code=404, detail="Certificate not found")
 
-        data = r.data
-        metadata = data.get("metadata") or {}
-        if isinstance(metadata, str):
+        # properties is the cert-table column (not metadata); may be dict or JSON str
+        properties = data.get("properties") or {}
+        if isinstance(properties, str):
             import json as _j
-            metadata = _j.loads(metadata) if metadata else {}
+            try:
+                properties = _j.loads(properties) if properties else {}
+            except Exception:
+                properties = {}
 
-        # Sign document URL if linked
-        document_url = None
+        # Collect attachments from pms_attachments (multi-file) AND from the
+        # single document_id FK — unified into one list for the frontend.
+        attachments = _get_attachments(supabase, "certificate", certificate_id, yacht_id)
         doc_id = data.get("document_id")
         if doc_id:
             try:
                 doc_r = supabase.table("doc_metadata").select(
-                    "storage_path, storage_bucket"
-                ).eq("id", doc_id).maybe_single().execute()
-                if doc_r and doc_r.data:
-                    bucket = doc_r.data.get("storage_bucket") or "documents"
-                    document_url = _sign_url(supabase, bucket, doc_r.data.get("storage_path"))
-            except Exception:
-                pass
-
-        attachments = _get_attachments(supabase, "certificate", certificate_id, yacht_id)
+                    "id, filename, mime_type, file_size, storage_path, storage_bucket"
+                ).eq("id", doc_id).limit(1).execute()
+                doc_rows = getattr(doc_r, "data", None) or []
+                if doc_rows:
+                    dm = doc_rows[0]
+                    bucket = dm.get("storage_bucket") or "pms-certificate-documents"
+                    url = _sign_url(supabase, bucket, dm.get("storage_path"))
+                    if url:
+                        attachments.append({
+                            "id": dm.get("id") or doc_id,
+                            "filename": dm.get("filename") or "Certificate Document",
+                            "url": url,
+                            "mime_type": dm.get("mime_type") or "application/octet-stream",
+                            "size_bytes": dm.get("file_size") or 0,
+                        })
+            except Exception as e:
+                logger.warning(f"Failed to resolve document_id {doc_id} for cert {certificate_id}: {e}")
 
         nav = [n for n in [
-            _nav("equipment", data.get("equipment_id"), "Equipment"),
             _nav("document", doc_id, "Document"),
         ] if n]
 
         _entity_response = {
             "id": data.get("id"),
-            "name": data.get("certificate_name"),
+            "name": data.get("certificate_name") or data.get("person_name") or data.get("certificate_type"),
             "certificate_type": data.get("certificate_type"),
             "certificate_number": data.get("certificate_number"),
             "issuing_authority": data.get("issuing_authority"),
             "issue_date": data.get("issue_date"),
             "expiry_date": data.get("expiry_date"),
+            "last_survey_date": data.get("last_survey_date"),
+            "next_survey_due": data.get("next_survey_due"),
             "status": data.get("status", "valid"),
-            "equipment_id": data.get("equipment_id"),
-            "document_id": data.get("document_id"),
-            "document_url": document_url,
-            "notes": data.get("notes"),
-            "domain": "vessel",
+            "holder_name": data.get("person_name"),
+            "vessel_name": None if domain == "crew" else data.get("certificate_name"),
+            "document_id": doc_id,
+            "domain": domain,
             "yacht_id": data.get("yacht_id"),
             "created_at": data.get("created_at"),
+            "properties": properties,
             "attachments": attachments,
             "related_entities": nav,
         }
@@ -161,7 +193,7 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to fetch certificate {certificate_id}: {e}")
+        logger.error(f"Failed to fetch certificate {certificate_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

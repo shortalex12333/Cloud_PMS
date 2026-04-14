@@ -168,6 +168,18 @@
   --settings-modal-shadow:   0 0 0 1px rgba(0,0,0,0.60), 0 28px 80px rgba(0,0,0,0.80), 0 8px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
   --settings-header-bg:      rgba(16,14,12,0.65);
   --settings-backdrop:       rgba(0,0,0,0.35);
+
+  /* ── Shell structural dimensions ──────────────────────────────────────────
+     Single source of truth for AppShell grid layout.
+     Any component measuring against the shell (e.g. fixed-position overlays,
+     calc-based offsets) must use these tokens — never hardcode 48/46/192.
+     These are dimension tokens (not theme tokens) so they live in :root and
+     do NOT change between dark/light themes.
+  ── */
+  --shell-topbar-h:          48px;   /* Topbar row height                      */
+  --shell-subbar-h:          46px;   /* Subbar row height (hidden on surface/HoR) */
+  --shell-sidebar-w:         192px;  /* Full sidebar width (desktop)            */
+  --shell-sidebar-compact-w: 48px;   /* Compact sidebar width (tablet)          */
 }
 
 /* ═══════════════════════════════════════════════════════

@@ -212,11 +212,13 @@ export function EntityLensPage({
       data-testid={`${entityType}-detail`}
       className={lensStyles.root}
       style={{
+        flex: 1,
+        minHeight: 0,
+        overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         padding: '24px 16px 48px',
-        minHeight: '100vh',
         background: 'var(--surface-base)',
       }}
     >

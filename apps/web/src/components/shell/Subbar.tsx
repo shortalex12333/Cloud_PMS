@@ -143,7 +143,7 @@ export function Subbar({
   return (
     <div
       style={{
-        height: 46,
+        height: 'var(--shell-subbar-h)',
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',

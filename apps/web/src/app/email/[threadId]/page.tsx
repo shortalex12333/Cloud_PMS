@@ -18,7 +18,7 @@ function EmailThreadDeepLink() {
   const { user } = useAuth();
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--surface-base)', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5 }}>
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: 'var(--surface-base)', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5 }}>
       {/* Topbar — matches elegant.html */}
       <header style={{
         height: 40, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 8,
@@ -60,7 +60,7 @@ export default function EmailThreadDetailPage() {
   return (
     <React.Suspense
       fallback={
-        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-base)' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-base)' }}>
           <div style={{ width: 20, height: 20, border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>

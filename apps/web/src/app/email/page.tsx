@@ -61,7 +61,7 @@ function EmailSplitContent() {
   }, [router]);
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5, WebkitFontSmoothing: 'antialiased', background: 'var(--surface-base)', color: 'var(--txt)' }}>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5, WebkitFontSmoothing: 'antialiased', background: 'var(--surface-base)', color: 'var(--txt)' }}>
 
       {/* Topbar — matches elegant.html */}
       <header style={{
@@ -169,7 +169,7 @@ export default function EmailPage() {
   return (
     <React.Suspense
       fallback={
-        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-base)' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-base)' }}>
           <div style={{ width: 20, height: 20, border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>

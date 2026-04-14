@@ -1511,6 +1511,28 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         domain="certificates",
         variant=ActionVariant.MUTATE,
         search_keywords=["add", "create", "new", "vessel", "certificate", "cert", "flag", "class", "safety"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("certificate_type", FieldClassification.REQUIRED,
+                          description="Certificate Type",
+                          options=["ISM", "ISPS", "SOLAS", "MLC", "CLASS", "FLAG",
+                                   "SEC", "SRC", "SCC", "LOAD_LINE", "TONNAGE",
+                                   "MARPOL", "IOPP"]),
+            FieldMetadata("certificate_name", FieldClassification.REQUIRED,
+                          description="Certificate Name"),
+            FieldMetadata("issuing_authority", FieldClassification.REQUIRED,
+                          description="Issuing Authority"),
+            FieldMetadata("certificate_number", FieldClassification.OPTIONAL,
+                          description="Certificate Number"),
+            FieldMetadata("issue_date", FieldClassification.OPTIONAL,
+                          description="Issue Date"),
+            FieldMetadata("expiry_date", FieldClassification.OPTIONAL,
+                          description="Expiry Date"),
+            FieldMetadata("last_survey_date", FieldClassification.OPTIONAL,
+                          description="Last Survey Date"),
+            FieldMetadata("next_survey_due", FieldClassification.OPTIONAL,
+                          description="Next Survey Due"),
+        ],
     ),
 
     "create_crew_certificate": ActionDefinition(
@@ -1530,6 +1552,23 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         domain="certificates",
         variant=ActionVariant.MUTATE,
         search_keywords=["add", "create", "new", "crew", "certificate", "cert", "stcw", "training"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("person_name", FieldClassification.REQUIRED,
+                          description="Crew Member Name"),
+            FieldMetadata("certificate_type", FieldClassification.REQUIRED,
+                          description="Certificate Type",
+                          options=["STCW", "ENG1", "COC", "GMDSS", "BST", "PSC",
+                                   "AFF", "MEDICAL_CARE"]),
+            FieldMetadata("issuing_authority", FieldClassification.REQUIRED,
+                          description="Issuing Authority"),
+            FieldMetadata("certificate_number", FieldClassification.OPTIONAL,
+                          description="Certificate Number"),
+            FieldMetadata("issue_date", FieldClassification.OPTIONAL,
+                          description="Issue Date"),
+            FieldMetadata("expiry_date", FieldClassification.OPTIONAL,
+                          description="Expiry Date"),
+        ],
     ),
 
     "update_certificate": ActionDefinition(
@@ -3467,9 +3506,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "entity_id", "reason"],
         domain="certificates",
         variant=ActionVariant.SIGNED,
-        field_metadata={
-            "reason": {"name": "reason", "type": "text-area", "label": "Reason for suspension", "placeholder": "State the reason this certificate is being suspended..."},
-        },
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("entity_id", FieldClassification.CONTEXT),
+            FieldMetadata("reason", FieldClassification.REQUIRED, description="Reason for suspension"),
+        ],
     ),
 
     "revoke_certificate": ActionDefinition(
@@ -3482,9 +3523,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "entity_id", "reason"],
         domain="certificates",
         variant=ActionVariant.SIGNED,
-        field_metadata={
-            "reason": {"name": "reason", "type": "text-area", "label": "Reason for revocation", "placeholder": "State the reason this certificate is being revoked..."},
-        },
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("entity_id", FieldClassification.CONTEXT),
+            FieldMetadata("reason", FieldClassification.REQUIRED, description="Reason for revocation"),
+        ],
     ),
 
     "archive_part": ActionDefinition(
@@ -3633,12 +3676,14 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "certificate_id", "new_issue_date", "new_expiry_date"],
         domain="certificates",
         variant=ActionVariant.MUTATE,
-        field_metadata={
-            "new_issue_date": {"name": "new_issue_date", "type": "date", "label": "New Issue Date", "placeholder": "YYYY-MM-DD"},
-            "new_expiry_date": {"name": "new_expiry_date", "type": "date", "label": "New Expiry Date", "placeholder": "YYYY-MM-DD"},
-            "new_certificate_number": {"name": "new_certificate_number", "type": "text", "label": "New Certificate Number (optional)", "placeholder": "e.g. ISM-2026-001"},
-            "new_issuing_authority": {"name": "new_issuing_authority", "type": "text", "label": "Issuing Authority (if changed)", "placeholder": "e.g. DNV GL"},
-        },
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("certificate_id", FieldClassification.CONTEXT),
+            FieldMetadata("new_issue_date", FieldClassification.REQUIRED, description="New Issue Date"),
+            FieldMetadata("new_expiry_date", FieldClassification.REQUIRED, description="New Expiry Date"),
+            FieldMetadata("new_certificate_number", FieldClassification.OPTIONAL, description="New Certificate Number"),
+            FieldMetadata("new_issuing_authority", FieldClassification.OPTIONAL, description="New Issuing Authority"),
+        ],
     ),
 
     "reorder_part": ActionDefinition(

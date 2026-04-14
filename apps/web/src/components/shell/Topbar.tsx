@@ -108,7 +108,7 @@ export function Topbar({
   return (
     <header
       style={{
-        height: 48,
+        height: 'var(--shell-topbar-h)',
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',

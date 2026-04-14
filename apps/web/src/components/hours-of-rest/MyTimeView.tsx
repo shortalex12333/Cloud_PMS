@@ -186,7 +186,7 @@ function SectionCard({ children, style }: { children: React.ReactNode; style?: R
   );
 }
 
-function SectionHeader({ label, right }: { label: string; right?: React.ReactNode }) {
+function SectionHeader({ label, right }: { label: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div style={{
       display: 'flex',
@@ -265,16 +265,48 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   // Unsigned alert
   const [unsignedAlert, setUnsignedAlert] = React.useState(false);
 
+  // Week navigation — null = current week (backend defaults)
+  const [viewWeekStart, setViewWeekStart] = React.useState<string | null>(null);
+  // Disable forward nav when we're already on current week
+  const isCurrentWeek = viewWeekStart === null;
+
+  function navigateWeek(direction: -1 | 1) {
+    setViewWeekStart(prev => {
+      const base = prev ?? data?.week_start ?? null;
+      if (!base) return prev;
+      const d = new Date(base);
+      d.setDate(d.getDate() + direction * 7);
+      const next = d.toISOString().slice(0, 10);
+      // Don't go past today's week
+      const todayMonday = (() => {
+        const t = new Date();
+        const day = t.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        t.setDate(t.getDate() + diff);
+        return t.toISOString().slice(0, 10);
+      })();
+      if (next > todayMonday) return null; // snap back to current
+      return next === todayMonday ? null : next;
+    });
+  }
+
   // ── Load week data ──
 
-  async function loadWeekData() {
+  async function loadWeekData(weekStart?: string | null) {
     setLoading(true);
     setError(null);
+    // Reset per-week local state when navigating
+    setDraftPeriods({});
+    setSubmittedDays({});
+    setSubmitErrors({});
+    weekFinalised.current = false;
     try {
       const auth = await getAuthHeader();
-      const url = targetUserId
-        ? `/api/v1/hours-of-rest/my-week?user_id=${encodeURIComponent(targetUserId)}`
-        : '/api/v1/hours-of-rest/my-week';
+      const ws = weekStart !== undefined ? weekStart : viewWeekStart;
+      const params = new URLSearchParams();
+      if (targetUserId) params.set('user_id', targetUserId);
+      if (ws) params.set('week_start', ws);
+      const url = `/api/v1/hours-of-rest/my-week${params.toString() ? `?${params}` : ''}`;
       const resp = await fetch(url, {
         headers: { 'Authorization': auth },
       });
@@ -322,9 +354,9 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   }
 
   React.useEffect(() => {
-    loadWeekData();
+    loadWeekData(viewWeekStart);
     checkUnsignedAlert();
-  }, []);
+  }, [viewWeekStart]);
 
   // ── Submit single day ──
 
@@ -394,18 +426,25 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   // ── Apply template ──
 
   async function applyTemplate() {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate || !data) return;
     setApplyingTemplate(true);
     try {
       const auth = await getAuthHeader();
-      await fetch('/api/v1/hours-of-rest/templates/apply', {
+      const resp = await fetch('/api/v1/hours-of-rest/templates/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
-        body: JSON.stringify({ template_id: selectedTemplate }),
+        body: JSON.stringify({
+          template_id: selectedTemplate,
+          week_start_date: (data as any).week_start,
+        }),
       });
+      if (!resp.ok) {
+        const json = await resp.json().catch(() => null);
+        console.error('Template apply failed:', resp.status, json);
+      }
       await loadWeekData();
-    } catch {
-      // non-critical
+    } catch (e) {
+      console.error('Template apply error:', e);
     } finally {
       setApplyingTemplate(false);
     }
@@ -507,7 +546,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     return (
       <div style={{ padding: 24, textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
         Failed to load hours of rest data.
-        <button onClick={loadWeekData} style={{ marginLeft: 10, color: 'var(--mark)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 11 }}>Retry</button>
+        <button onClick={() => loadWeekData()} style={{ marginLeft: 10, color: 'var(--mark)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 11 }}>Retry</button>
       </div>
     );
   }
@@ -552,14 +591,52 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
       {/* ── THIS WEEK ── */}
       <SectionCard>
         <SectionHeader
-          label={`This Week — ${data.week_start}${weekLocked ? ' 🔒' : ''}`}
+          label={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Prev week */}
+              <button
+                onClick={() => navigateWeek(-1)}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', padding: '0 2px', fontSize: 12, lineHeight: 1 }}
+                title="Previous week"
+              >‹</button>
+              {/* Week label */}
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase', color: isCurrentWeek ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.35)' }}>
+                {isCurrentWeek ? `This Week — ${data.week_start}` : data.week_start}
+                {weekLocked ? ' 🔒' : ''}
+              </span>
+              {/* Next week — disabled on current */}
+              <button
+                onClick={() => navigateWeek(1)}
+                disabled={isCurrentWeek}
+                style={{ background: 'none', border: 'none', color: isCurrentWeek ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.45)', cursor: isCurrentWeek ? 'default' : 'pointer', padding: '0 2px', fontSize: 12, lineHeight: 1 }}
+                title="Next week"
+              >›</button>
+              {/* Day-status dots — green=compliant, amber=violation, grey=not filed */}
+              <div style={{ display: 'flex', gap: 3, marginLeft: 6 }}>
+                {data.days.filter(Boolean).map((day: any) => {
+                  const ls = submittedDays[day.date];
+                  const isSubmit = day.submitted || !!ls;
+                  const w = (ls?.warnings ?? day.warnings ?? []);
+                  const hasViolation = w.length > 0;
+                  const color = !isSubmit
+                    ? 'rgba(255,255,255,0.18)'
+                    : hasViolation
+                    ? 'rgba(192,80,58,0.85)'
+                    : 'rgba(74,148,104,0.85)';
+                  return (
+                    <div key={day.date} title={`${day.label}: ${!isSubmit ? 'Not filed' : hasViolation ? 'Violation' : 'Compliant'}`} style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                  );
+                })}
+              </div>
+            </div>
+          }
           right={isReadOnly ? (
             weekLocked && !forceReadOnly ? (
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em' }}>
                 {signoffStatus === 'hod_signed' ? 'Awaiting Captain' : signoffStatus === 'finalized' ? 'Finalized' : 'Read-only'}
               </span>
             ) : undefined
-          ) : (
+          ) : isCurrentWeek ? (
             <button
               data-testid="hor-submit-week"
               onClick={() => setSignWeekOpen(true)}
@@ -580,6 +657,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
             >
               Submit Week For Approval
             </button>
+          ) : (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.06em' }}>Past week — read only</span>
           )}
         />
 

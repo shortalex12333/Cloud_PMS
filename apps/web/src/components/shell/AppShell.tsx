@@ -4,9 +4,13 @@
  * AppShell — The main application layout for the Interface Pivot
  *
  * Three-row grid layout:
- *   Row 1: Topbar (48px) — brand + vessel + global search + role
- *   Row 2: Subbar (46px) — breadcrumb + scoped search + chips + action (hidden on Surface)
- *   Row 3: Body — sidebar (192px) + main content
+ *   Row 1: Topbar (var(--shell-topbar-h)) — brand + vessel + global search + role
+ *   Row 2: Subbar (var(--shell-subbar-h)) — breadcrumb + scoped search + chips + action (hidden on Surface)
+ *   Row 3: Body — sidebar (var(--shell-sidebar-w) / var(--shell-sidebar-compact-w)) + main content
+ *
+ * Dimensions are defined as tokens in tokens.css under "Shell structural dimensions".
+ * JS constants below mirror those tokens for the dynamic sidebarWidth calculation —
+ * if you change the tokens, update the constants too.
  *
  * This shell wraps all authenticated routes. It is the single source of
  * navigation, search, and layout structure.
@@ -14,6 +18,13 @@
  * Spec: celeste-interface-pivot-spec.pdf (all sections)
  * Prototype: vessel-surface-v2.html (visual reference only)
  */
+
+// ── Shell dimension constants — mirror tokens.css "Shell structural dimensions" ──
+// Keep these in sync with --shell-* tokens. Used for JS-computed gridTemplateColumns.
+const SHELL_TOPBAR_H          = 48;   // --shell-topbar-h
+const SHELL_SUBBAR_H          = 46;   // --shell-subbar-h
+const SHELL_SIDEBAR_W         = 192;  // --shell-sidebar-w
+const SHELL_SIDEBAR_COMPACT_W = 48;   // --shell-sidebar-compact-w
 
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -224,7 +235,7 @@ function AppShellInner({
 }) {
   const { activeChip, setActiveChip, setSearchQuery, setActiveSort } = useShellContext();
   const breakpoint = useBreakpoint();
-  const sidebarWidth = breakpoint === 'mobile' ? 0 : breakpoint === 'tablet' ? 48 : 192;
+  const sidebarWidth = breakpoint === 'mobile' ? 0 : breakpoint === 'tablet' ? SHELL_SIDEBAR_COMPACT_W : SHELL_SIDEBAR_W;
   const showSidebar = breakpoint !== 'mobile';
   const isMobile = breakpoint === 'mobile';
 
@@ -259,7 +270,7 @@ function AppShellInner({
         height: '100vh',
         overflow: 'hidden',
         display: 'grid',
-        gridTemplateRows: showSubbar ? '48px 46px 1fr' : '48px 1fr',
+        gridTemplateRows: showSubbar ? `var(--shell-topbar-h) var(--shell-subbar-h) 1fr` : `var(--shell-topbar-h) 1fr`,
         gridTemplateColumns: '1fr',
         fontSize: 13,
         lineHeight: 1.5,
@@ -309,7 +320,7 @@ function AppShellInner({
             activeDomain={activeDomain}
             onSelectDomain={onSelectDomain}
             counts={sidebarCounts}
-            compact={sidebarWidth === 48}
+            compact={sidebarWidth === SHELL_SIDEBAR_COMPACT_W}
           />
         )}
 
