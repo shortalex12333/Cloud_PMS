@@ -1162,12 +1162,17 @@ def _supersede_certificate_adapter(handlers: CertificateHandlers):
 def _resolve_cert_domain(db, yacht_id: str, cert_id: str) -> tuple:
     """
     Auto-detect which table a certificate belongs to.
-    Returns (table_name, row_data) or raises ValueError if not found.
+    Returns (domain, table_key, row_data) or raises ValueError if not found.
+
+    Uses .execute() with limit(1) instead of maybe_single() because
+    maybe_single() returns None (not a response object) when no row matches
+    in this supabase client version, causing AttributeError on .data access.
     """
     for domain, table_key in [("vessel", "vessel_certificates"), ("crew", "crew_certificates")]:
-        result = db.table(get_table(table_key)).select("*").eq("yacht_id", yacht_id).eq("id", cert_id).maybe_single().execute()
-        if result.data:
-            return domain, table_key, result.data
+        result = db.table(get_table(table_key)).select("*").eq("yacht_id", yacht_id).eq("id", cert_id).limit(1).execute()
+        rows = getattr(result, "data", None) or []
+        if rows:
+            return domain, table_key, rows[0]
     raise ValueError(f"Certificate {cert_id} not found or access denied")
 
 
