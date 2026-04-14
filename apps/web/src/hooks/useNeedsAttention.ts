@@ -355,20 +355,25 @@ async function fetchAllAttention(
   }
 
   // ── Handover ──
-  // DB: priority is INTEGER 0-3 (not string), column is `summary` (not summary_text)
-  // DB: status = pending | acknowledged | completed
-  // DB: has is_critical, requires_action, is_finalized
+  // Routes through Render API — handover_items lives in TENANT DB, not MASTER.
+  // Direct supabase.from('handover_items') hits MASTER → 400.
   if (isSourceVisible(role, 'handover')) {
     fetchers.push(async () => {
-      const { data } = await supabase
-        .from('handover_items')
-        .select('id, entity_type, summary, priority, category, created_at, is_critical, requires_action')
-        .eq('status', 'pending')
-        .or('is_critical.eq.true,requires_action.eq.true,priority.gte.2')
-        .order('created_at', { ascending: false })
-        .limit(25);
-      if (!data) return;
-      newCounts.handover = data.length;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) return;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+        const res = await fetch(`${apiUrl}/v1/handover?limit=25`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const data = (json.items || []).filter((h: Record<string, unknown>) =>
+          h.is_critical || h.requires_action || (h.priority as number) >= 2
+        );
+        if (!data.length) return;
+        newCounts.handover = data.length;
       for (const h of data) {
         const base = h.is_critical ? 85 : ((h.priority ?? 0) >= 3 ? 80 : 60);
         const timeUrg = eventTimeUrgency(h.created_at);
@@ -384,6 +389,7 @@ async function fetchAllAttention(
           route: '/work-orders',
         });
       }
+      } catch { /* non-fatal — attention panel degrades gracefully */ }
     });
   }
 
