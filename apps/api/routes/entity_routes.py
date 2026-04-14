@@ -464,7 +464,7 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             import hashlib as _hl
             _view_now = datetime.now(timezone.utc).isoformat()
             _proof = _hl.sha256(f"{yacht_id}{warranty_id}view_warranty_claim{_view_now}".encode()).hexdigest()
-            supabase.table("ledger_events").insert({
+            get_supabase_client().table("ledger_events").insert({
                 "yacht_id": yacht_id,
                 "event_type": "view",
                 "entity_type": "warranty",
@@ -473,7 +473,7 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
                 "user_id": auth.get("user_id") or auth.get("sub") or "00000000-0000-0000-0000-000000000000",
                 "user_role": auth.get("role") or "unknown",
                 "change_summary": f"Viewed warranty claim",
-                "source_context": "entity_route",
+                "source_context": "microaction",
                 "proof_hash": _proof,
                 "event_timestamp": _view_now,
                 "created_at": _view_now,
