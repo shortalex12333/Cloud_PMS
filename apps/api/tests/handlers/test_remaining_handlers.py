@@ -11,7 +11,7 @@ Tests import from routes.handlers.* which must exist for tests to pass.
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from routes.handlers.certificate_handler import HANDLERS as CERT_HANDLERS
+from routes.handlers.certificate_phase4_handler import HANDLERS as CERT_HANDLERS
 from routes.handlers.document_handler import HANDLERS as DOC_HANDLERS
 from routes.handlers.handover_handler import HANDLERS as HAND_HANDLERS
 from routes.handlers.shopping_handler import HANDLERS as SHOP_HANDLERS

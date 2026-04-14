@@ -296,8 +296,7 @@ class HandoverHandlers:
                     message="Summary must be less than 2000 characters"
                 )
 
-<<<<<<< HEAD
-            # Normalise category — accept new UI values and legacy values
+            # Normalise category — accept new UI values (critical/standard/low) and legacy values
             category_map = {
                 "critical": "urgent",
                 "standard": "fyi",
@@ -311,17 +310,6 @@ class HandoverHandlers:
             raw_category = category
             category = category_map.get(category, "fyi")
             # Derive is_critical from raw_category if not explicitly set
-=======
-            # Normalise category — accept new UI values (critical/standard/low) and legacy values
-            category_map = {
-                "critical": "urgent", "standard": "fyi", "low": "fyi",
-                "urgent": "urgent", "in_progress": "in_progress",
-                "completed": "completed", "watch": "watch", "fyi": "fyi",
-            }
-            raw_category = category
-            category = category_map.get(category, "fyi")
-            # Derive is_critical from category if not explicitly set
->>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
             if raw_category == "critical":
                 is_critical = True
 

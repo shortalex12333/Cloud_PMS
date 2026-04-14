@@ -709,58 +709,35 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     Required params:
         - yacht_id: UUID
         - entity_type: str (equipment, fault, work_order, part, document, note, purchase_order)
-<<<<<<< HEAD
-        - entity_id: UUID
-=======
         - entity_id: UUID (optional for notes)
->>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
         - summary: str (also accepts summary_text for backwards compat)
         - category: str (critical, standard, low, urgent, in_progress, completed, watch, fyi)
         - user_id: UUID (from JWT)
         - priority: str (optional: low, normal, high)
-<<<<<<< HEAD
         - section: str (optional: Engineering, Deck, Interior, Command)
         - entity_url: str (optional: deep link back to entity)
-=======
-        - section: str (optional)
-        - entity_url: str (optional)
->>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     """
     import uuid as uuid_lib
     supabase = get_supabase_client()
 
-<<<<<<< HEAD
     # Accept both "summary" (new frontend) and "summary_text" (legacy) field names
-=======
-    # Accept both "summary" (new frontend) and "summary_text" (legacy)
->>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     summary = params.get("summary") or params.get("summary_text", "")
     if not summary or len(summary.strip()) < 3:
         raise ValueError("summary must be at least 3 characters")
 
     # Normalise category — accept new UI values (critical/standard/low) and legacy values
-<<<<<<< HEAD
     raw_category = params.get("category", "standard")
-=======
->>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     category_map = {
         "critical": "urgent",
         "standard": "fyi",
         "low": "fyi",
-<<<<<<< HEAD
         # legacy values pass through unchanged
-=======
->>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
         "urgent": "urgent",
         "in_progress": "in_progress",
         "completed": "completed",
         "watch": "watch",
         "fyi": "fyi",
     }
-<<<<<<< HEAD
-=======
-    raw_category = params.get("category", "standard")
->>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     category = category_map.get(raw_category, "fyi")
 
     # SECURITY FIX P1-004: Verify entity belongs to yacht before INSERT
@@ -790,18 +767,11 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     if entity_type == "note" and not entity_id:
         entity_id = str(uuid_lib.uuid4())
 
-<<<<<<< HEAD
     # Map priority to integer
     priority_value = {"low": 1, "normal": 2, "high": 3, "urgent": 4}.get(
         params.get("priority", "normal"), 2
     )
     # critical category always gets high priority
-=======
-    # Map priority to integer; critical category always gets high priority
-    priority_value = {"low": 1, "normal": 2, "high": 3, "urgent": 4}.get(
-        params.get("priority", "normal"), 2
-    )
->>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
     if raw_category == "critical":
         priority_value = 3
 
@@ -819,11 +789,7 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
         "priority": priority_value,
         "status": "pending",
         "export_status": "pending",
-<<<<<<< HEAD
-        "is_critical": raw_category == "critical",
-=======
         "is_critical": is_critical,
->>>>>>> 147efad3 (feat(ledger): close warranty + handover ledger and notification gaps)
         "requires_action": params.get("requires_action", False),
         "action_summary": params.get("action_summary"),
         "section": params.get("section"),

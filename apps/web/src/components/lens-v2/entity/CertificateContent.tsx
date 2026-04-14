@@ -11,9 +11,6 @@
  *
  * Sections: Identity → Holder Certs → Coverage → Equipment → Renewal History → History → Audit Trail → Related Certs → Notes → Attachments
  *
- * TODO notes for next engineer:
- * - Upload Document handler not wired
- * - Add Note handler not wired
  */
 
 import * as React from 'react';

@@ -73,6 +73,11 @@ def _make_adapter(action_id: str) -> Callable:
     return _adapted
 
 
+# SYNC INVARIANT: Every action_id in this list MUST exist as a key in
+# INTERNAL_HANDLERS (internal_dispatcher.py). If you add to one, add to both.
+# Missing from _ACTIONS_TO_ADAPT → action unreachable from /v1/actions/execute.
+# Missing from INTERNAL_HANDLERS → KeyError at dispatch time.
+
 # All actions that exist in INTERNAL_HANDLERS but NOT in Phase 4 routes/handlers/
 _ACTIONS_TO_ADAPT = [
     "accept_receiving",

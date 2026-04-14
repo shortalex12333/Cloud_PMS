@@ -8,6 +8,25 @@ suspend, revoke, add_note) are handled by internal_adapter → internal_dispatch
 Routing priority (from __init__.py):
     CERT_HANDLERS (this file) > ADAPTER_HANDLERS (internal_adapter)
 """
+# ============================================================================
+# ARCHITECTURAL BOUNDARY — READ BEFORE ADDING ANYTHING HERE
+# ============================================================================
+# This is a Phase 4 ROUTE SHIM. It handles ONLY 5 native Phase 4 actions:
+#   create_vessel_certificate, create_crew_certificate, update_certificate,
+#   link_document_to_certificate, supersede_certificate
+#
+# ALL OTHER certificate actions (renew, archive, suspend, revoke, add_note)
+# are handled by the internal_adapter → internal_dispatcher → certificate_handlers
+# pipeline. Do NOT add new actions here unless they are Phase 4 native.
+#
+# To add a new certificate action:
+#   1. Add it to ACTION_REGISTRY in action_router/registry.py
+#   2. Add handler in handlers/certificate_handlers.py (get_certificate_handlers)
+#   3. Add wrapper in action_router/dispatchers/internal_dispatcher.py (_cert_*)
+#   4. Add to INTERNAL_HANDLERS dict in internal_dispatcher.py
+#   5. Add to _ACTIONS_TO_ADAPT in routes/handlers/internal_adapter.py
+#   6. Add to ACTION_METADATA in action_router/ledger_metadata.py
+# ============================================================================
 import logging
 
 from fastapi import HTTPException
@@ -65,11 +84,8 @@ async def link_document_to_certificate(payload, context, yacht_id, user_id, user
     doc_id = payload.get("document_id")
     if not doc_id:
         raise HTTPException(400, detail="document_id is required")
-    try:
-        dm = db_client.table("doc_metadata").select("id").eq("id", doc_id).maybe_single().execute()
-    except Exception:
-        dm = None
-    if not getattr(dm, "data", None):
+    result = db_client.table("doc_metadata").select("id").eq("id", doc_id).limit(1).execute()
+    if not result.data:
         raise HTTPException(404, detail="document_id not found")
     return await _delegate("link_document_to_certificate", db_client, payload, yacht_id, user_id, user_context, context)
 

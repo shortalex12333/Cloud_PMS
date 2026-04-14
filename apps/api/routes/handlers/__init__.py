@@ -18,7 +18,7 @@ from .purchase_order_handler import HANDLERS as PO_HANDLERS
 from .receiving_handler import HANDLERS as REC_HANDLERS
 from .crew_handler import HANDLERS as CREW_HANDLERS
 from .hours_of_rest_handler import HANDLERS as HOR_HANDLERS
-from .certificate_handler import HANDLERS as CERT_HANDLERS
+from .certificate_phase4_handler import HANDLERS as CERT_HANDLERS
 from .document_handler import HANDLERS as DOC_HANDLERS
 from .handover_handler import HANDLERS as HAND_HANDLERS
 from .shopping_handler import HANDLERS as SHOP_HANDLERS
