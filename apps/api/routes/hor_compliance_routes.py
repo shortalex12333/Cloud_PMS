@@ -159,7 +159,7 @@ async def get_my_week(
             "is_weekly_compliant, has_active_warnings, signoff_status, updated_at"
         ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
             "week_start", week_monday.isoformat()
-        ).maybe_single().execute()
+        ).limit(1).execute()
 
         # Rolling 24h rest: today's record rest hours
         rolling_24h = None
@@ -179,7 +179,7 @@ async def get_my_week(
             (r.get("total_rest_hours") or 0) for r in rolling_data
         ) if rolling_data else None
 
-        summary_data = summary_r.data if summary_r else None
+        summary_data = summary_r.data[0] if summary_r.data else None
         compliance = {
             **(summary_data if summary_data else {}),
             "rolling_24h_rest":  rolling_24h,
@@ -193,9 +193,9 @@ async def get_my_week(
             "id, month, status"
         ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
             "month", current_month
-        ).maybe_single().execute()
+        ).limit(1).execute()
 
-        signoff_data = signoff_r.data if signoff_r else None
+        signoff_data = signoff_r.data[0] if signoff_r.data else None
         if signoff_data:
             pending_signoff = {
                 "month":      signoff_data["month"],
@@ -214,9 +214,9 @@ async def get_my_week(
             "id, status, correction_requested, correction_note"
         ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
             "period_type", "weekly"
-        ).eq("week_start", week_monday.isoformat()).maybe_single().execute()
+        ).eq("week_start", week_monday.isoformat()).limit(1).execute()
 
-        weekly_signoff_data = weekly_signoff_r.data if weekly_signoff_r else None
+        weekly_signoff_data = weekly_signoff_r.data[0] if weekly_signoff_r.data else None
         signoff_status = weekly_signoff_data.get("status") if weekly_signoff_data else None
 
         # ------------------------------------------------------------------

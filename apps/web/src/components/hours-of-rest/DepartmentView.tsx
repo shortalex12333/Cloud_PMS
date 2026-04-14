@@ -122,48 +122,72 @@ const MLC_HOD_DECLARATION =
 function normalizeDepStatus(raw: any, ws: string): DepartmentStatus {
   const comp = raw.compliance ?? {};
   const ps = raw.pending_signoffs ?? {};
+  const crewRaw: any[] = raw.crew ?? [];
+
+  // Name lookup from crew array (backend sends signoff_ids + crew_user_ids, not crew_names)
+  const nameByUserId: Record<string, string> = {};
+  for (const m of crewRaw) {
+    if (m.user_id && m.name) nameByUserId[m.user_id] = m.name;
+  }
 
   const pending_counter_signs: PendingSignoff[] = [];
   const signoffIds: string[] = Array.isArray(ps.signoff_ids) ? ps.signoff_ids : [];
-  const crewNames: string[] = Array.isArray(ps.crew_names) ? ps.crew_names : [];
   const crewUserIds: string[] = Array.isArray(ps.crew_user_ids) ? ps.crew_user_ids : [];
   signoffIds.forEach((id: string, i: number) => {
+    const uid = crewUserIds[i] ?? '';
     pending_counter_signs.push({
       signoff_id: id,
-      crew_user_id: crewUserIds[i] ?? '',
-      crew_name: crewNames[i] ?? `Crew member ${i + 1}`,
+      crew_user_id: uid,
+      crew_name: nameByUserId[uid] ?? `Crew member ${i + 1}`,
       week_label: formatWeekLabel(ws),
       submitted_at: new Date().toISOString(),
     });
   });
 
-  const crew: CrewMember[] = (raw.crew ?? []).map((m: any) => ({
+  const crew: CrewMember[] = crewRaw.map((m: any) => ({
     user_id: m.user_id ?? m.id ?? String(Math.random()),
     name: m.name ?? '—',
     role: m.role ?? '',
     is_weekly_compliant: m.is_weekly_compliant ?? null,
-    // real: daily[], mock: days[]
+    // Backend sends daily[] with {date, rest_hours, work_hours, submitted, compliant}
     days: (m.daily ?? m.days ?? []).map((d: any) => ({
       date: d.date,
       rest_hours: d.rest_hours ?? d.total_rest_hours ?? null,
-      status: (d.status ?? 'missing') as CrewDay['status'],
+      // Backend sends submitted:bool, not status string
+      status: d.submitted ? 'submitted' : ((d.status ?? 'missing') as CrewDay['status']),
     })),
   }));
+
+  // Compute compliance summary from crew aggregate fields (backend doesn't nest these under compliance{})
+  let totalCompliantDays = 0;
+  let totalSubmittedDays = 0;
+  let totalViolations = 0;
+  let totalRestHours = 0;
+  for (const m of crewRaw) {
+    totalCompliantDays += m.days_compliant ?? 0;
+    totalSubmittedDays += m.days_submitted ?? 0;
+    if (m.has_active_warnings) totalViolations++;
+    if (m.total_rest_hours != null) totalRestHours += m.total_rest_hours;
+  }
+  // avg_rest_hours = daily average across all submitted crew-days
+  const avgRestHours = totalSubmittedDays > 0
+    ? parseFloat((totalRestHours / totalSubmittedDays).toFixed(1))
+    : 0;
 
   return {
     week_start: raw.week_start ?? ws,
     department: raw.department ?? '',
-    today_submitted: comp.today_submitted ?? raw.today_submitted ?? 0,
-    today_total: comp.today_total ?? raw.today_total ?? 0,
-    // real: compliance.missing_today[], mock: top-level today_missing[]
+    // Backend sends submitted_count and total_crew at top level, not inside compliance{}
+    today_submitted: raw.submitted_count ?? 0,
+    today_total: raw.total_crew ?? 0,
     today_missing: comp.missing_today ?? raw.today_missing ?? [],
     pending_counter_signs,
     crew,
     compliance: {
-      compliant_days: comp.compliant_days ?? 0,
-      total_days: comp.total_days ?? 0,
-      violations: comp.violations ?? 0,
-      avg_rest_hours: comp.avg_rest_hours ?? 0,
+      compliant_days: totalCompliantDays,
+      total_days: totalSubmittedDays,
+      violations: totalViolations,
+      avg_rest_hours: avgRestHours,
     },
   };
 }

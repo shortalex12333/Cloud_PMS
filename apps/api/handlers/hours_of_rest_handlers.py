@@ -355,11 +355,11 @@ class HoursOfRestHandlers:
             try:
                 existing = self.db.table("pms_hours_of_rest").select("id").eq(
                     "yacht_id", yacht_id
-                ).eq("user_id", user_id).eq("record_date", record_date).maybe_single().execute()
+                ).eq("user_id", user_id).eq("record_date", record_date).limit(1).execute()
 
                 if existing and existing.data:
                     record_exists = True
-                    existing_id = existing.data["id"]
+                    existing_id = existing.data[0]["id"]
             except Exception as check_err:
                 # 406/RLS errors mean no existing record or no permission
                 # Safe to attempt INSERT (will fail with 403 if not allowed)
@@ -657,13 +657,12 @@ class HoursOfRestHandlers:
         try:
             result = self.db.table("pms_hor_monthly_signoffs").select(
                 "*, user:user_id(email, name)"
-            ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("id", entity_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not result.data:
+            signoff = result.data[0] if result.data else None
+            if not signoff:
                 builder.set_error("NOT_FOUND", f"Sign-off not found: {entity_id}")
                 return builder.build()
-
-            signoff = result.data
 
             # Calculate month completeness
             month_complete_check = self.db.rpc(
@@ -1514,7 +1513,7 @@ class HoursOfRestHandlers:
             # Verify warning exists and belongs to this crew member before updating
             existing = self.db.table("pms_crew_hours_warnings").select("id").eq(
                 "id", warning_id
-            ).eq("yacht_id", yacht_id).eq("user_id", user_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).eq("user_id", user_id).limit(1).execute()
 
             if not existing.data:
                 builder.set_error("NOT_FOUND", f"Warning not found or not accessible: {warning_id}")
@@ -1533,8 +1532,8 @@ class HoursOfRestHandlers:
             ).eq("yacht_id", yacht_id).eq("user_id", user_id).execute()
             result = self.db.table("pms_crew_hours_warnings").select("*").eq(
                 "id", warning_id
-            ).maybe_single().execute()
-            warning = result.data if result and result.data else None
+            ).limit(1).execute()
+            warning = result.data[0] if result.data else None
 
             # Write audit log
             _write_hor_audit_log(self.db, {
@@ -1592,9 +1591,9 @@ class HoursOfRestHandlers:
             # Verify warning exists before updating
             existing = self.db.table("pms_crew_hours_warnings").select("id").eq(
                 "id", warning_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if existing is None or not existing.data:
+            if not existing.data:
                 builder.set_error("NOT_FOUND", f"Warning not found: {warning_id}")
                 return builder.build()
 
@@ -1678,13 +1677,13 @@ class HoursOfRestHandlers:
             # Fetch the record to undo
             result = self.db.table("pms_hours_of_rest").select("*").eq(
                 "id", record_id
-            ).eq("yacht_id", yacht_id).eq("user_id", user_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).eq("user_id", user_id).limit(1).execute()
 
-            if result is None or not result.data:
+            if not result.data:
                 builder.set_error("NOT_FOUND", "Record not found or not owned by you")
                 return builder.build()
 
-            record = result.data
+            record = result.data[0]
             record_date = record.get("record_date")
 
             # Block undo if HOD has signed the week containing this record
@@ -1698,9 +1697,9 @@ class HoursOfRestHandlers:
                 "yacht_id", yacht_id
             ).eq("user_id", user_id).eq("period_type", "weekly").eq(
                 "week_start", week_monday
-            ).maybe_single().execute()
+            ).limit(1).execute()
 
-            if hod_sign_check and hod_sign_check.data and hod_sign_check.data.get("status") in ("hod_signed", "finalized"):
+            if hod_sign_check.data and hod_sign_check.data[0].get("status") in ("hod_signed", "finalized"):
                 builder.set_error(
                     "LOCKED",
                     "Cannot undo: HOD has already signed this week. Request a correction through your HOD."
@@ -1725,6 +1724,7 @@ class HoursOfRestHandlers:
 
             # Reset the HoR record to unsubmitted state
             reset_data = {
+                "work_periods": [],
                 "rest_periods": [],
                 "total_rest_hours": 0,
                 "total_work_hours": 0,
@@ -1811,13 +1811,13 @@ class HoursOfRestHandlers:
             # Fetch original record
             orig_result = self.db.table("pms_hours_of_rest").select("*").eq(
                 "id", original_record_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not orig_result.data:
                 builder.set_error("NOT_FOUND", "Original record not found")
                 return builder.build()
 
-            original = orig_result.data
+            original = orig_result.data[0]
             original_owner_id = original.get("user_id")
             record_date = original.get("record_date")
 
@@ -2000,13 +2000,13 @@ class HoursOfRestHandlers:
             # Fetch signoff
             signoff_result = self.db.table("pms_hor_monthly_signoffs").select("*").eq(
                 "id", signoff_id
-            ).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not signoff_result.data:
                 builder.set_error("NOT_FOUND", "Sign-off not found")
                 return builder.build()
 
-            signoff = signoff_result.data
+            signoff = signoff_result.data[0]
             current_status = signoff.get("status")
 
             # Auth: HOD can only request correction on hod_signed records
@@ -2039,9 +2039,10 @@ class HoursOfRestHandlers:
             notification_type = "correction_notice"
             role_label = "HOD" if requester_role == "hod" else "Captain"
 
-            self.db.table("pms_notifications").insert({
+            self.db.table("pms_notifications").upsert({
                 "yacht_id": yacht_id,
                 "user_id": target_user_id,
+                "title": "HoR Correction Requested",
                 "notification_type": notification_type,
                 "entity_type": "hours_of_rest",
                 "entity_id": signoff_id,
@@ -2055,9 +2056,10 @@ class HoursOfRestHandlers:
                     "week_start": signoff.get("week_start"),
                     "month": signoff.get("month"),
                 },
+                "idempotency_key": f"correction_notice:{signoff_id}:{target_user_id}",
                 "triggered_by": user_id,
                 "created_at": datetime.now(timezone.utc).isoformat(),
-            }).execute()
+            }, on_conflict="idempotency_key").execute()
 
             # Ledger event
             try:
