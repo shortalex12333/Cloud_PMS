@@ -637,6 +637,14 @@ _WARRANTY_ACTIONS = frozenset({
     "add_warranty_note",
 })
 
+_CERT_ACTIONS = frozenset({
+    "create_vessel_certificate", "create_crew_certificate",
+    "update_certificate", "link_document_to_certificate",
+    "supersede_certificate", "renew_certificate",
+    "suspend_certificate", "revoke_certificate",
+    "archive_certificate", "add_certificate_note",
+})
+
 
 def resolve_entity_context(action: str, context: dict) -> dict:
     """
@@ -671,6 +679,8 @@ def resolve_entity_context(action: str, context: dict) -> dict:
             ctx.setdefault("handover_id", entity_id)
         elif action in _WARRANTY_ACTIONS:
             ctx.setdefault("warranty_id", entity_id)
+        elif action in _CERT_ACTIONS:
+            ctx.setdefault("certificate_id", entity_id)
 
     return ctx
 
@@ -893,9 +903,11 @@ async def execute_action(
     }
 
     if action in REQUIRED_FIELDS:
-        missing = [f for f in REQUIRED_FIELDS[action] if not payload.get(f)]
+        # Merge context + payload: context holds entity_id/certificate_id, payload holds user fields
+        merged_for_check = {**request.context, **payload}
+        missing = [f for f in REQUIRED_FIELDS[action] if not merged_for_check.get(f)]
         # Allow task_description OR description for add_worklist_task
-        if action == "add_worklist_task" and not payload.get("task_description") and payload.get("description"):
+        if action == "add_worklist_task" and not merged_for_check.get("task_description") and merged_for_check.get("description"):
             missing = [f for f in missing if f != "task_description"]
         if missing:
             raise HTTPException(

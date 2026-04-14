@@ -105,6 +105,12 @@ class CertificateHandlers:
             status_filter = params.get("status")
             cert_type_filter = params.get("certificate_type")
 
+            # Refresh expired status before listing (lazy expiry evaluation)
+            try:
+                self.db.rpc("refresh_certificate_expiry", {"p_yacht_id": yacht_id}).execute()
+            except Exception:
+                pass
+
             # Build query
             query = self.db.table(get_table("vessel_certificates")).select(
                 map_vessel_certificate_select(),
@@ -180,6 +186,12 @@ class CertificateHandlers:
             limit = params.get("limit", 50)
             person_filter = params.get("person_name")
             cert_type_filter = params.get("certificate_type")
+
+            # Refresh expired status before listing (lazy expiry evaluation)
+            try:
+                self.db.rpc("refresh_certificate_expiry", {"p_yacht_id": yacht_id}).execute()
+            except Exception:
+                pass
 
             # Build query
             query = self.db.table(get_table("crew_certificates")).select(
@@ -652,6 +664,9 @@ def get_certificate_handlers(supabase_client) -> Dict[str, callable]:
     """Get certificate handler functions for registration."""
     handlers = CertificateHandlers(supabase_client)
 
+    _suspend = _change_certificate_status_adapter("suspended")(handlers)
+    _revoke = _change_certificate_status_adapter("revoked")(handlers)
+
     return {
         # READ handlers
         "list_vessel_certificates": handlers.list_vessel_certificates,
@@ -666,6 +681,10 @@ def get_certificate_handlers(supabase_client) -> Dict[str, callable]:
         "update_certificate": _update_certificate_adapter(handlers),
         "link_document_to_certificate": _link_document_to_certificate_adapter(handlers),
         "supersede_certificate": _supersede_certificate_adapter(handlers),
+        "renew_certificate": _renew_certificate_adapter(handlers),
+        "suspend_certificate": _suspend,
+        "revoke_certificate": _revoke,
+        "archive_certificate": _archive_certificate_adapter(handlers),
     }
 
 
@@ -1138,5 +1157,244 @@ def _supersede_certificate_adapter(handlers: CertificateHandlers):
             "reason": reason,
             "is_signed": True,
         }
+
+    return _fn
+
+
+def _resolve_cert_domain(db, yacht_id: str, cert_id: str) -> tuple:
+    """
+    Auto-detect which table a certificate belongs to.
+    Returns (domain, table_key, row_data) or raises ValueError if not found.
+
+    Uses .execute() with limit(1) instead of maybe_single() because
+    maybe_single() returns None (not a response object) when no row matches
+    in this supabase client version, causing AttributeError on .data access.
+    """
+    for domain, table_key in [("vessel", "vessel_certificates"), ("crew", "crew_certificates")]:
+        result = db.table(get_table(table_key)).select("*").eq("yacht_id", yacht_id).eq("id", cert_id).limit(1).execute()
+        rows = getattr(result, "data", None) or []
+        if rows:
+            return domain, table_key, rows[0]
+    raise ValueError(f"Certificate {cert_id} not found or access denied")
+
+
+def _renew_certificate_adapter(handlers: "CertificateHandlers"):
+    async def _fn(**params):
+        """
+        Renew a certificate: mark old as superseded, create new with updated dates.
+
+        Expected params:
+        - yacht_id (str)
+        - user_id (str)
+        - certificate_id (str) — the certificate being renewed
+        - new_issue_date (str, ISO date)
+        - new_expiry_date (str, ISO date)
+        - new_certificate_number (str, optional)
+        - new_issuing_authority (str, optional)
+        """
+        db = handlers.db
+        yacht_id = params["yacht_id"]
+        user_id = params["user_id"]
+        cert_id = params["certificate_id"]
+        new_issue_date = params.get("new_issue_date")
+        new_expiry_date = params.get("new_expiry_date")
+
+        if not new_issue_date or not new_expiry_date:
+            raise ValueError("new_issue_date and new_expiry_date are required")
+        if new_expiry_date <= new_issue_date:
+            raise ValueError("new_expiry_date must be after new_issue_date")
+
+        domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
+        table = get_table(table_key)
+
+        if old_cert.get("status") in ("superseded", "revoked"):
+            raise ValueError(f"Cannot renew a certificate with status '{old_cert.get('status')}'")
+
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Build new cert payload — copy all non-date fields from old cert
+        exclude = {"id", "created_at", "updated_at", "status", "deleted_at", "deleted_by",
+                   "issue_date", "expiry_date", "certificate_number", "issuing_authority",
+                   "last_survey_date", "next_survey_due", "is_seed", "source_id",
+                   "imported_at", "import_session_id"}
+        new_payload = {k: v for k, v in old_cert.items() if k not in exclude and v is not None}
+        new_payload.update({
+            "yacht_id": yacht_id,
+            "status": "valid",
+            "issue_date": new_issue_date,
+            "expiry_date": new_expiry_date,
+            "certificate_number": params.get("new_certificate_number") or old_cert.get("certificate_number"),
+            "issuing_authority": params.get("new_issuing_authority") or old_cert.get("issuing_authority"),
+            "source": "manual",
+            "is_seed": False,
+            "created_at": now,
+            "properties": {
+                **(old_cert.get("properties") or {}),
+                "renews": cert_id,
+                "renewed_at": now,
+            },
+        })
+        if domain == "vessel":
+            new_payload["last_survey_date"] = params.get("new_last_survey_date")
+            new_payload["next_survey_due"] = params.get("new_next_survey_due")
+
+        ins = db.table(table).insert(new_payload).execute()
+        new_id = (ins.data or [{}])[0].get("id")
+        if not new_id:
+            raise ValueError("Renewal insert did not return id")
+
+        # Mark old cert as superseded
+        db.table(table).update({
+            "status": "superseded",
+            "properties": {
+                **(old_cert.get("properties") or {}),
+                "superseded_at": now,
+                "superseded_by_renewal": new_id,
+            },
+        }).eq("yacht_id", yacht_id).eq("id", cert_id).execute()
+
+        # Audit log
+        try:
+            db.table("pms_audit_log").insert({
+                "yacht_id": yacht_id,
+                "entity_type": "certificate",
+                "entity_id": cert_id,
+                "action": "renew_certificate",
+                "user_id": user_id,
+                "old_values": {"status": old_cert.get("status"), "expiry_date": old_cert.get("expiry_date")},
+                "new_values": {"status": "superseded", "renewed_by": new_id, "new_expiry_date": new_expiry_date},
+                "signature": {},
+                "metadata": {"source": "certificate_lens", "domain": domain, "new_certificate_id": new_id},
+                "created_at": now,
+            }).execute()
+        except Exception:
+            pass
+
+        return {
+            "status": "success",
+            "renewed_certificate_id": new_id,
+            "superseded_certificate_id": cert_id,
+            "new_expiry_date": new_expiry_date,
+        }
+
+    return _fn
+
+
+def _change_certificate_status_adapter(new_status: str):
+    """
+    Factory that returns a handler for suspend/revoke — both are status-change operations.
+    new_status: 'suspended' | 'revoked'
+    """
+    def _make(handlers: "CertificateHandlers"):
+        async def _fn(**params):
+            db = handlers.db
+            yacht_id = params["yacht_id"]
+            user_id = params["user_id"]
+            # entity_id is the canonical key from the action router for archive/suspend/revoke
+            cert_id = params.get("entity_id") or params.get("certificate_id")
+            reason = params.get("reason", "")
+            signature = params.get("signature", {})
+
+            if not cert_id:
+                raise ValueError("entity_id (certificate id) is required")
+
+            domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
+            table = get_table(table_key)
+
+            current_status = old_cert.get("status")
+            if current_status in ("superseded", "revoked"):
+                raise ValueError(f"Cannot change status of a certificate in terminal state '{current_status}'")
+            if current_status == new_status:
+                raise ValueError(f"Certificate is already '{new_status}'")
+
+            now = datetime.now(timezone.utc).isoformat()
+            db.table(table).update({
+                "status": new_status,
+                "properties": {
+                    **(old_cert.get("properties") or {}),
+                    f"{new_status}_at": now,
+                    f"{new_status}_by": user_id,
+                    f"{new_status}_reason": reason,
+                },
+            }).eq("yacht_id", yacht_id).eq("id", cert_id).execute()
+
+            try:
+                db.table("pms_audit_log").insert({
+                    "yacht_id": yacht_id,
+                    "entity_type": "certificate",
+                    "entity_id": cert_id,
+                    "action": f"{new_status}_certificate",
+                    "user_id": user_id,
+                    "old_values": {"status": current_status},
+                    "new_values": {"status": new_status, "reason": reason},
+                    "signature": signature if signature else {},
+                    "metadata": {"source": "certificate_lens", "domain": domain, "is_signed_action": bool(signature)},
+                    "created_at": now,
+                }).execute()
+            except Exception:
+                pass
+
+            return {
+                "status": "success",
+                "certificate_id": cert_id,
+                "new_status": new_status,
+                "reason": reason,
+            }
+
+        return _fn
+    return _make
+
+
+def _archive_certificate_adapter(handlers: "CertificateHandlers"):
+    async def _fn(**params):
+        """
+        Archive a certificate (soft-delete). Works for both vessel and crew.
+
+        Expected params:
+        - yacht_id (str)
+        - user_id (str)
+        - entity_id (str) — the certificate UUID
+        """
+        db = handlers.db
+        yacht_id = params["yacht_id"]
+        user_id = params["user_id"]
+        cert_id = params.get("entity_id") or params.get("certificate_id")
+        signature = params.get("signature", {})
+
+        if not cert_id:
+            raise ValueError("entity_id (certificate id) is required")
+
+        domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
+        table = get_table(table_key)
+
+        now = datetime.now(timezone.utc).isoformat()
+        db.table(table).update({
+            "deleted_at": now,
+            "deleted_by": user_id,
+        }).eq("yacht_id", yacht_id).eq("id", cert_id).execute()
+
+        try:
+            db.table("pms_audit_log").insert({
+                "yacht_id": yacht_id,
+                "entity_type": "certificate",
+                "entity_id": cert_id,
+                "action": "archive_certificate",
+                "user_id": user_id,
+                "old_values": {"deleted_at": None},
+                "new_values": {"deleted_at": now},
+                "signature": signature if signature else {},
+                "metadata": {"source": "certificate_lens", "domain": domain},
+                "created_at": now,
+            }).execute()
+        except Exception:
+            pass
+
+        return {
+            "status": "success",
+            "certificate_id": cert_id,
+            "archived_at": now,
+        }
+
+    return _fn
 
     return _fn
