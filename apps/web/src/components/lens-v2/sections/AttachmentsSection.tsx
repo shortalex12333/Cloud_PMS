@@ -15,6 +15,7 @@ export interface AttachmentItem {
   caption?: string;
   size?: string;
   kind: 'image' | 'document';
+  url?: string;
 }
 
 export interface AttachmentsSectionProps {
@@ -39,23 +40,41 @@ export function AttachmentsSection({ attachments, onAddFile, canAddFile }: Attac
       {attachments.length === 0 ? (
         <div className={styles.emptyState}>No attachments.</div>
       ) : (
-        attachments.map((att) => (
-          <div key={att.id} className={styles.attachRow}>
-            <div className={`${styles.attachThumb} ${att.kind === 'image' ? styles.attachThumbImg : styles.attachThumbDoc}`}>
-              {att.kind === 'document' && (
-                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-                  <path d="M9 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V5L9 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                  <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                </svg>
-              )}
+        attachments.map((att) => {
+          const inner = (
+            <>
+              <div className={`${styles.attachThumb} ${att.kind === 'image' ? styles.attachThumbImg : styles.attachThumbDoc}`}>
+                {att.kind === 'document' && (
+                  <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                    <path d="M9 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V5L9 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                    <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+              <div className={styles.attachInfo}>
+                <div className={styles.attachName}>{att.name}</div>
+                {att.caption && <div className={styles.attachCaption}>{att.caption}</div>}
+              </div>
+              {att.size && <span className={styles.attachSize}>{att.size}</span>}
+            </>
+          );
+          return att.url ? (
+            <a
+              key={att.id}
+              href={att.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.attachRow}
+              style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
+            >
+              {inner}
+            </a>
+          ) : (
+            <div key={att.id} className={styles.attachRow}>
+              {inner}
             </div>
-            <div className={styles.attachInfo}>
-              <div className={styles.attachName}>{att.name}</div>
-              {att.caption && <div className={styles.attachCaption}>{att.caption}</div>}
-            </div>
-            {att.size && <span className={styles.attachSize}>{att.size}</span>}
-          </div>
-        ))
+          );
+        })
       )}
     </CollapsibleSection>
   );

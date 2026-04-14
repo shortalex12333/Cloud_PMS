@@ -2598,7 +2598,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id", "equipment_id", "note_text"],
+        required_fields=["yacht_id", "warranty_id", "note_text"],
         domain="warranty",
         variant=ActionVariant.MUTATE,
     ),

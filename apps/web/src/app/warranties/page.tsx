@@ -27,7 +27,7 @@ interface Warranty {
 function warrantyAdapter(w: Warranty): EntityListResult {
   const statusVariant: EntityListResult['statusVariant'] =
     w.status === 'rejected'     ? 'critical' :
-    w.status === 'submitted' || w.status === 'under_review' ? 'warning' :
+    w.status === 'submitted' ? 'warning' :
     w.status === 'approved'     ? 'open' :
     w.status === 'closed'       ? 'neutral' :
     'open'; // draft
@@ -61,7 +61,8 @@ function WarrantiesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { session } = useAuth();
+  const { session, user } = useAuth();
+  const canFileClaim = user && ['chief_engineer', 'chief_officer', 'captain', 'manager'].includes(user.role);
   const selectedId = searchParams.get('id');
 
   const [newClaimOpen, setNewClaimOpen] = React.useState(false);
@@ -117,21 +118,23 @@ function WarrantiesPageContent() {
   return (
     <div className="h-full bg-surface-base" style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 20px 0', flexShrink: 0 }}>
-        <button
-          style={{
-            padding: '8px 16px',
-            fontSize: '13px',
-            fontWeight: 600,
-            borderRadius: '6px',
-            background: 'var(--mark)',
-            color: 'var(--mark-fg, #000)',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-          onClick={() => setNewClaimOpen(true)}
-        >
-          File New Claim
-        </button>
+        {canFileClaim && (
+          <button
+            style={{
+              padding: '8px 16px',
+              fontSize: '13px',
+              fontWeight: 600,
+              borderRadius: '6px',
+              background: 'var(--mark)',
+              color: 'var(--mark-fg, #000)',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onClick={() => setNewClaimOpen(true)}
+          >
+            File New Claim
+          </button>
+        )}
       </div>
 
       {newClaimOpen && (
@@ -182,7 +185,6 @@ function WarrantiesPageContent() {
             options: [
               { value: 'draft',        label: 'Draft' },
               { value: 'submitted',    label: 'Submitted' },
-              { value: 'under_review', label: 'Under Review' },
               { value: 'approved',     label: 'Approved' },
               { value: 'rejected',     label: 'Rejected' },
               { value: 'closed',       label: 'Closed' },

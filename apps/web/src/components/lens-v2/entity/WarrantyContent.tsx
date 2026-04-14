@@ -29,16 +29,16 @@ import {
   AttachmentsSection,
   DocRowsSection,
   KVSection,
-  HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
   type DocRowItem,
   type KVItem,
-  type HistoryPeriod,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { WarrantyUploadModal } from '@/components/lens-v2/actions/WarrantyUploadModal';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Helpers ───
 
@@ -47,7 +47,6 @@ function statusToPillVariant(status: string): PillDef['variant'] {
     case 'approved':
       return 'green';
     case 'submitted':
-    case 'under_review':
       return 'amber';
     case 'rejected':
     case 'closed':
@@ -65,7 +64,8 @@ function formatLabel(str: string): string {
 
 export function WarrantyContent() {
   const router = useRouter();
-  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading, entityId, refetch } = useEntityLensContext();
+  const { user } = useAuth();
 
   // ── Extract entity fields ──
   const title = ((entity?.title ?? entity?.name) as string | undefined) ?? 'Warranty Claim';
@@ -91,7 +91,6 @@ export function WarrantyContent() {
   const attachments = (entity?.attachments as Array<Record<string, unknown>>) ?? [];
   const related_entities = (entity?.related_entities as Array<Record<string, unknown>>) ?? [];
   const auditTrail = ((entity?.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
-  const priorPeriods = ((entity?.prior_periods ?? entity?.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action popup state ──
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
@@ -114,7 +113,7 @@ export function WarrantyContent() {
   }, [actionFeedback]);
 
   // ── Status-aware action gates ──
-  // Real DB statuses: draft | submitted | under_review | approved | rejected | closed
+  // Real DB statuses: draft | submitted | approved | rejected | closed
   const submitAction   = getAction('submit_warranty_claim');
   const approveAction  = getAction('approve_warranty_claim');
   const rejectAction   = getAction('reject_warranty_claim');
@@ -127,7 +126,6 @@ export function WarrantyContent() {
   const primaryConfig: PrimaryConfig | null = (() => {
     if (status === 'draft'        && submitAction)  return { label: 'Submit Claim',       action: submitAction };
     if (status === 'submitted'    && approveAction) return { label: 'Approve',            action: approveAction };
-    if (status === 'under_review' && approveAction) return { label: 'Approve Claim',      action: approveAction };
     if (status === 'approved'     && closeAction)   return { label: 'Close Claim',        action: closeAction };
     if (status === 'rejected'     && submitAction)  return { label: 'Revise & Resubmit',  action: submitAction };
     return null;
@@ -183,7 +181,7 @@ export function WarrantyContent() {
 
   // ── Split button dropdown ──
   const dropdownItems: DropdownItem[] = [
-    ...(rejectAction && (status === 'submitted' || status === 'under_review') ? [{
+    ...(rejectAction && status === 'submitted' ? [{
       label: 'Reject Claim',
       onClick: () => openActionPopup(rejectAction as any),
       danger: true,
@@ -215,17 +213,8 @@ export function WarrantyContent() {
   const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
     id: (h.id as string) ?? `audit-${i}`,
     action: (h.action ?? h.description ?? h.event) as string ?? '',
-    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
+    actor: (h.actor ?? h.user_name ?? h.performed_by ?? h.user_id) as string | undefined,
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
-  }));
-
-  // ── History periods ──
-  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
-    id: (p.id as string) ?? `period-${i}`,
-    year: (p.year ?? p.period_year) as string ?? '',
-    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
-    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
-    summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
   // ── Related equipment row (from single reference) ──
@@ -266,9 +255,11 @@ export function WarrantyContent() {
     caption: (a.caption ?? a.description) as string | undefined,
     size: (a.size ?? a.file_size) as string | undefined,
     kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
+    url: (a.url) as string | undefined,
   }));
 
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
   const handleNoteSubmit = React.useCallback(
     async (noteText: string) => {
       const result = await executeAction('add_warranty_note', { note_text: noteText });
@@ -363,9 +354,6 @@ export function WarrantyContent() {
         </ScrollReveal>
       )}
 
-      {/* History */}
-      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
-
       {/* Audit Trail */}
       <ScrollReveal><AuditTrailSection events={auditEvents} defaultCollapsed /></ScrollReveal>
 
@@ -382,7 +370,7 @@ export function WarrantyContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
+          onAddFile={() => setUploadModalOpen(true)}
           canAddFile
         />
       </ScrollReveal>
@@ -401,6 +389,15 @@ export function WarrantyContent() {
           />
         </ScrollReveal>
       )}
+
+      <WarrantyUploadModal
+        open={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        entityId={entityId}
+        yachtId={(entity?.yacht_id as string) ?? user?.yachtId ?? ''}
+        userId={user?.id ?? ''}
+        onComplete={() => { refetch(); }}
+      />
 
       {actionPopupConfig && (
         <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
