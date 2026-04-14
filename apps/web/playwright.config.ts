@@ -349,13 +349,19 @@ export default defineConfig({
     },
     // =========================================================================
     // SHARD 49: Handover Export E2E (Phases A/B — microservice delegation)
+    // Higher timeouts required: LLM pipeline (classify→group→merge) takes up to
+    // 120s. Global actionTimeout (15s) is too short for POST /handover/export.
     // =========================================================================
     {
       name: 'shard-49-handover-export-e2e',
       testDir: './e2e/shard-49-handover-export-e2e',
       testMatch: '**/*.spec.ts',
       dependencies: ['setup'],
-      use: { ...devices['Desktop Chrome'] },
+      timeout: 180_000,  // 3 min per test — LLM pipeline can take up to 120s
+      use: {
+        ...devices['Desktop Chrome'],
+        actionTimeout: 150_000,  // 2.5 min for API calls (LLM pipeline)
+      },
     },
     // =========================================================================
     // SHARD 50: Interface Pivot — Vessel Surface, Sidebar, Scope Tag, Auth
