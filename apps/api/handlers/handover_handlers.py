@@ -281,11 +281,11 @@ class HandoverHandlers:
                 )
 
             # Validate summary text
-            if not summary or len(summary) < 10:
+            if not summary or len(summary.strip()) < 3:
                 return ResponseBuilder.error(
                     action="add_to_handover",
                     error_code="VALIDATION_ERROR",
-                    message="Summary must be at least 10 characters"
+                    message="Summary must be at least 3 characters"
                 )
 
             if len(summary) > 2000:
@@ -295,14 +295,22 @@ class HandoverHandlers:
                     message="Summary must be less than 2000 characters"
                 )
 
-            # Validate category (must match DB constraint)
-            valid_categories = ["urgent", "in_progress", "completed", "watch", "fyi"]
-            if category not in valid_categories:
-                return ResponseBuilder.error(
-                    action="add_to_handover",
-                    error_code="VALIDATION_ERROR",
-                    message=f"Invalid category: {category}. Must be one of: {', '.join(valid_categories)}"
-                )
+            # Normalise category — accept new UI values and legacy values
+            category_map = {
+                "critical": "urgent",
+                "standard": "fyi",
+                "low": "fyi",
+                "urgent": "urgent",
+                "in_progress": "in_progress",
+                "completed": "completed",
+                "watch": "watch",
+                "fyi": "fyi",
+            }
+            raw_category = category
+            category = category_map.get(category, "fyi")
+            # Derive is_critical from raw_category if not explicitly set
+            if raw_category == "critical":
+                is_critical = True
 
             # Check for duplicate entry (optional - allow override) - only if entity_id present
             if entity_id:

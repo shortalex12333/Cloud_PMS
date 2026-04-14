@@ -708,33 +708,44 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
 
     Required params:
         - yacht_id: UUID
-        - entity_type: str (equipment, fault, work_order, part, document)
+        - entity_type: str (equipment, fault, work_order, part, document, note, purchase_order)
         - entity_id: UUID
-        - summary_text: str
-        - category: str (urgent, in_progress, completed, watch, fyi)
+        - summary: str (also accepts summary_text for backwards compat)
+        - category: str (critical, standard, low, urgent, in_progress, completed, watch, fyi)
         - user_id: UUID (from JWT)
         - priority: str (optional: low, normal, high)
+        - section: str (optional: Engineering, Deck, Interior, Command)
+        - entity_url: str (optional: deep link back to entity)
     """
     import uuid as uuid_lib
     supabase = get_supabase_client()
 
-    # Validate category
-    valid_categories = ["urgent", "in_progress", "completed", "watch", "fyi"]
-    category = params.get("category", "fyi")
-    if category not in valid_categories:
-        raise ValueError(f"Invalid category: {category}. Must be one of: {', '.join(valid_categories)}")
+    # Accept both "summary" (new frontend) and "summary_text" (legacy) field names
+    summary = params.get("summary") or params.get("summary_text", "")
+    if not summary or len(summary.strip()) < 3:
+        raise ValueError("summary must be at least 3 characters")
 
-    # Validate summary text
-    summary_text = params.get("summary_text", "")
-    if not summary_text or len(summary_text) < 10:
-        raise ValueError("summary_text must be at least 10 characters")
+    # Normalise category — accept new UI values (critical/standard/low) and legacy values
+    raw_category = params.get("category", "standard")
+    category_map = {
+        "critical": "urgent",
+        "standard": "fyi",
+        "low": "fyi",
+        # legacy values pass through unchanged
+        "urgent": "urgent",
+        "in_progress": "in_progress",
+        "completed": "completed",
+        "watch": "watch",
+        "fyi": "fyi",
+    }
+    category = category_map.get(raw_category, "fyi")
 
     # SECURITY FIX P1-004: Verify entity belongs to yacht before INSERT
+    # Notes (entity_type='note') and purchase_orders are exempt from entity lookup
     entity_id = params.get("entity_id") or params.get("equipment_id")
     entity_type = params.get("entity_type", "equipment")
     yacht_id = params["yacht_id"]
 
-    # Map entity_type to table name for ownership verification
     entity_table_map = {
         "equipment": "pms_equipment",
         "fault": "pms_faults",
@@ -752,10 +763,17 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
         if not entity_result.data:
             raise ValueError(f"{entity_type.capitalize()} {entity_id} not found or access denied")
 
+    # For note type, generate a stable UUID if entity_id not provided
+    if entity_type == "note" and not entity_id:
+        entity_id = str(uuid_lib.uuid4())
+
     # Map priority to integer
     priority_value = {"low": 1, "normal": 2, "high": 3, "urgent": 4}.get(
         params.get("priority", "normal"), 2
     )
+    # critical category always gets high priority
+    if raw_category == "critical":
+        priority_value = 3
 
     # Create handover entry
     handover_id = str(uuid_lib.uuid4())
@@ -764,11 +782,17 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
         "yacht_id": yacht_id,
         "entity_type": entity_type,
         "entity_id": entity_id,
-        "summary_text": summary_text,
+        "summary": summary.strip(),
         "category": category,
         "priority": priority_value,
+        "status": "pending",
+        "export_status": "pending",
+        "is_critical": raw_category == "critical",
+        "requires_action": params.get("requires_action", False),
+        "action_summary": params.get("action_summary"),
+        "section": params.get("section"),
+        "entity_url": params.get("entity_url"),
         "added_by": params["user_id"],
-        "added_at": datetime.utcnow().isoformat(),
     }
 
     result = supabase.table("handover_items").insert(handover_entry).execute()
@@ -799,10 +823,9 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
         "handover_id": handover_id,
         "entity_type": entity_type,
         "entity_id": entity_id,
-        "summary_text": summary_text,
+        "summary": summary.strip(),
         "category": category,
         "priority": params.get("priority", "normal"),
-        "added_at": handover_entry["added_at"],
         "added_by": params["user_id"],
     }
 
