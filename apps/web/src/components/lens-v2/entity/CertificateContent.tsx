@@ -204,9 +204,9 @@ export function CertificateContent() {
   const primaryDisabled = renewAction?.disabled ?? false;
   const primaryDisabledReason = renewAction?.disabled_reason;
 
-  const handlePrimary = React.useCallback(async () => {
-    await executeAction('renew_certificate', {});
-  }, [executeAction]);
+  const handlePrimary = React.useCallback(() => {
+    if (renewAction) openActionPopup(renewAction as any);
+  }, [renewAction]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
   const DANGER_ACTIONS = new Set(['suspend_certificate', 'archive_certificate', 'revoke_certificate']);

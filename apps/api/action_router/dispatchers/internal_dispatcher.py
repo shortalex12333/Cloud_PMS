@@ -419,6 +419,38 @@ async def _cert_supersede_certificate(params: Dict[str, Any]) -> Dict[str, Any]:
     return await fn(**params)
 
 
+async def _cert_renew(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("renew_certificate")
+    if not fn:
+        raise ValueError("renew_certificate handler not registered")
+    return await fn(**params)
+
+
+async def _cert_archive(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("archive_certificate")
+    if not fn:
+        raise ValueError("archive_certificate handler not registered")
+    return await fn(**params)
+
+
+async def _cert_suspend(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("suspend_certificate")
+    if not fn:
+        raise ValueError("suspend_certificate handler not registered")
+    return await fn(**params)
+
+
+async def _cert_revoke(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("revoke_certificate")
+    if not fn:
+        raise ValueError("revoke_certificate handler not registered")
+    return await fn(**params)
+
+
 # ============================================================================
 # DOCUMENT WRAPPERS (bridge to document handlers - Document Lens v2)
 # ============================================================================
@@ -3917,9 +3949,9 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "delete_work_order": _soft_delete_entity,
     "archive_fault": _soft_delete_entity,
     "delete_fault": _soft_delete_entity,
-    "archive_certificate": _soft_delete_entity,
-    "suspend_certificate": _soft_delete_entity,
-    "revoke_certificate": _soft_delete_entity,
+    "archive_certificate": _cert_archive,
+    "suspend_certificate": _cert_suspend,
+    "revoke_certificate": _cert_revoke,
     "archive_part": _soft_delete_entity,
     "delete_part": _soft_delete_entity,
     "cancel_po": _soft_delete_entity,
@@ -3935,7 +3967,7 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     # =========================================================================
     # Task 5: Stub Handlers (not yet implemented)
     # =========================================================================
-    "renew_certificate": _not_yet_implemented,
+    "renew_certificate": _cert_renew,
     "reorder_part": _part_add_to_shopping_list,
     "confirm_receiving": _recv_accept,
     "convert_to_po": _convert_to_po,

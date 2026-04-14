@@ -37,7 +37,7 @@ import {
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
-import { WarrantyUploadModal } from '@/components/lens-v2/actions/WarrantyUploadModal';
+import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
 import { useAuth } from '@/hooks/useAuth';
 
 // ─── Helpers ───
@@ -390,10 +390,13 @@ export function WarrantyContent() {
         </ScrollReveal>
       )}
 
-      <WarrantyUploadModal
+      <AttachmentUploadModal
         open={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
+        entityType="warranty"
         entityId={entityId}
+        bucket="pms-warranty-documents"
+        category="claim_document"
         yachtId={(entity?.yacht_id as string) ?? user?.yachtId ?? ''}
         userId={user?.id ?? ''}
         onComplete={() => { refetch(); }}
