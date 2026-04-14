@@ -234,7 +234,7 @@ function QueueSection({
                       fontSize: 11, fontWeight: 600, flexShrink: 0,
                       cursor: queued ? 'default' : 'pointer',
                       border: queued
-                        ? '1px solid rgba(90,171,204,0.2)'
+                        ? '1px solid var(--mark-underline)'
                         : '1px solid var(--border-sub)',
                       background: queued ? 'var(--teal-bg)' : 'none',
                       color: queued ? 'var(--mark)' : 'var(--txt2)',

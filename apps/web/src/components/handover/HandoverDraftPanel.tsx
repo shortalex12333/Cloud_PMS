@@ -150,14 +150,14 @@ function statusLabel(s: string): string {
 
 const S = {
   backdrop: {
-    position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.45)',
+    position: 'fixed' as const, inset: 0, background: 'var(--overlay-bg)',
     zIndex: 90, transition: 'opacity 200ms ease',
   },
   drawer: {
     position: 'fixed' as const, top: 0, right: 0, bottom: 0,
     width: 460, background: 'var(--surface)',
     borderLeft: '1px solid var(--border-side)',
-    boxShadow: '-20px 0 80px rgba(0,0,0,0.50), -4px 0 20px rgba(0,0,0,0.30)',
+    boxShadow: 'var(--shadow-panel)',
     display: 'flex', flexDirection: 'column' as const, zIndex: 100,
     transition: 'transform 250ms cubic-bezier(0.16,1,0.3,1), opacity 180ms ease',
     overflow: 'hidden',
@@ -186,10 +186,10 @@ const S = {
   },
   dayCard: {
     background: 'var(--surface)',
-    borderTop: '1px solid rgba(255,255,255,0.09)',
-    borderRight: '1px solid rgba(255,255,255,0.05)',
-    borderBottom: '1px solid rgba(255,255,255,0.03)',
-    borderLeft: '1px solid rgba(255,255,255,0.05)',
+    borderTop: '1px solid var(--border-top)',
+    borderRight: '1px solid var(--border-side)',
+    borderBottom: '1px solid var(--border-bottom)',
+    borderLeft: '1px solid var(--border-side)',
     borderRadius: 4, overflow: 'hidden', marginBottom: 6,
   },
   dayHdr: {
@@ -203,14 +203,14 @@ const S = {
     padding: '10px 12px', cursor: 'pointer', minHeight: 44,
     transition: 'background 60ms', position: 'relative' as const,
   },
-  itemBorder: { borderTop: '1px solid rgba(255,255,255,0.04)' },
+  itemBorder: { borderTop: '1px solid var(--border-faint)' },
   popupOverlay: {
     position: 'fixed' as const, inset: 0, zIndex: 200,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     transition: 'opacity 180ms ease',
   },
-  popupBg: { position: 'absolute' as const, inset: 0, background: 'rgba(0,0,0,0.45)' },
-  popupBgDelete: { position: 'absolute' as const, inset: 0, background: 'rgba(0,0,0,0.60)' },
+  popupBg: { position: 'absolute' as const, inset: 0, background: 'var(--overlay-bg)' },
+  popupBgDelete: { position: 'absolute' as const, inset: 0, background: 'rgba(0,0,0,0.60)' /* intentionally darker than --overlay-bg for delete confirm */ },
   popup: {
     position: 'relative' as const, width: '100%', maxWidth: 520,
     background: 'var(--surface-el)', borderRadius: 12,
@@ -218,7 +218,7 @@ const S = {
     borderRight: '1px solid var(--border-side)',
     borderBottom: '1px solid var(--border-bottom)',
     borderLeft: '1px solid var(--border-side)',
-    boxShadow: '0 0 0 1px rgba(0,0,0,0.50), 0 32px 100px rgba(0,0,0,0.70)',
+    boxShadow: 'var(--shadow-panel)',
     overflow: 'hidden',
   },
   field: {
@@ -251,7 +251,7 @@ const S = {
   radioItem: (selected: boolean) => ({
     display: 'flex', alignItems: 'center', gap: 6,
     padding: '6px 12px', borderRadius: 6, cursor: 'pointer', userSelect: 'none' as const,
-    border: `1px solid ${selected ? 'rgba(90,171,204,0.3)' : 'var(--border-sub)'}`,
+    border: `1px solid ${selected ? 'var(--mark-underline)' : 'var(--border-sub)'}`,
     background: selected ? 'var(--teal-bg)' : 'none',
     fontSize: 13, color: selected ? 'var(--mark)' : 'var(--txt2)',
     fontWeight: selected ? 500 : 400, transition: 'all 60ms',
@@ -259,7 +259,7 @@ const S = {
   btnPrimary: {
     display: 'flex', alignItems: 'center', gap: 6,
     padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-    cursor: 'pointer', border: '1px solid rgba(90,171,204,0.2)',
+    cursor: 'pointer', border: '1px solid var(--mark-underline)',
     background: 'var(--teal-bg)', color: 'var(--mark)',
     fontFamily: 'var(--font-sans)', minHeight: 40,
   },
@@ -281,7 +281,7 @@ const S = {
     display: 'flex', alignItems: 'center', gap: 6,
     padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
     cursor: 'pointer', border: 'none',
-    background: 'var(--red)', color: '#fff', fontFamily: 'var(--font-sans)',
+    background: 'var(--red)', color: 'var(--on-status)', fontFamily: 'var(--font-sans)',
   },
   catBadge: (cat: string | null) => {
     const map: Record<string, { bg: string; color: string; border: string }> = {
@@ -707,7 +707,7 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '7px 14px', borderRadius: 6,
               background: 'var(--teal-bg)', color: 'var(--mark)',
-              fontSize: 12, fontWeight: 600, border: '1px solid rgba(90,171,204,0.2)',
+              fontSize: 12, fontWeight: 600, border: '1px solid var(--mark-underline)',
               cursor: items.length === 0 ? 'not-allowed' : 'pointer',
               fontFamily: 'var(--font-sans)', opacity: (exporting || items.length === 0) ? 0.5 : 1,
             }}
@@ -768,7 +768,7 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
                           ...S.item,
                           ...(idx > 0 ? S.itemBorder : {}),
                         }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-hover)'; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = ''; }}
                       >
                         {/* Critical left edge */}
