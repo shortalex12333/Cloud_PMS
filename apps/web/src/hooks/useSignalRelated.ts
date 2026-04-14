@@ -77,7 +77,6 @@ const SIGNAL_SUPPORTED_TYPES = [
 // Frontend route names → backend serializer keys.
 const TYPE_ALIASES: Record<string, string> = {
   shopping_list: 'shopping_item',
-  warranty: 'certificate',       // warranties table = certificates table
 };
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────

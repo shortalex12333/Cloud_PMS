@@ -387,6 +387,32 @@ async def _serialize_shopping_item(
     return "; ".join(parts)
 
 
+async def _serialize_warranty(
+    conn, entity_id: str, yacht_id: str
+) -> Optional[str]:
+    row = await conn.fetchrow(
+        "SELECT title, description, claim_number, status, vendor_name, manufacturer "
+        "FROM pms_warranty_claims WHERE id = $1 AND yacht_id = $2",
+        entity_id, yacht_id,
+    )
+    if not row:
+        return None
+    parts: list[str] = []
+    if row["title"]:
+        parts.append(f"Warranty: {row['title']}")
+    if row["claim_number"]:
+        parts.append(f"ref: {row['claim_number']}")
+    if row["status"]:
+        parts.append(f"status: {row['status']}")
+    if row["vendor_name"]:
+        parts.append(f"vendor: {row['vendor_name']}")
+    elif row["manufacturer"]:
+        parts.append(f"manufacturer: {row['manufacturer']}")
+    if row["description"]:
+        parts.append(row["description"][:200])
+    return " | ".join(parts) if parts else "Warranty claim"
+
+
 async def _serialize_email(
     entity_id: str, conn: asyncpg.Connection, yacht_id: str
 ) -> Optional[str]:
@@ -426,6 +452,7 @@ _SERIALIZERS: Dict[str, Callable] = {
     "purchase_order": _serialize_purchase_order,
     "handover_item": _serialize_handover_item,
     "shopping_item": _serialize_shopping_item,
+    "warranty": _serialize_warranty,
     "email": _serialize_email,
 }
 
