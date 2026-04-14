@@ -14,6 +14,7 @@ shopping_list, warranty, handover_export, purchase_order.
 from fastapi import APIRouter, HTTPException, Depends, Query
 import logging
 from typing import List, Dict, Optional
+from datetime import datetime, timezone
 
 from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
@@ -457,6 +458,29 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             raise HTTPException(status_code=404, detail="Warranty not found")
 
         data = r.data
+
+        # Fire-and-forget view event — never blocks the read response
+        try:
+            import hashlib as _hl
+            _view_now = datetime.now(timezone.utc).isoformat()
+            _proof = _hl.sha256(f"{yacht_id}{warranty_id}view_warranty_claim{_view_now}".encode()).hexdigest()
+            get_supabase_client().table("ledger_events").insert({
+                "yacht_id": yacht_id,
+                "event_type": "view",
+                "entity_type": "warranty",
+                "entity_id": warranty_id,
+                "action": "view_warranty_claim",
+                "user_id": auth.get("user_id") or auth.get("sub") or "00000000-0000-0000-0000-000000000000",
+                "user_role": auth.get("role") or "unknown",
+                "change_summary": f"Viewed warranty claim",
+                "source_context": "microaction",
+                "proof_hash": _proof,
+                "event_timestamp": _view_now,
+                "created_at": _view_now,
+            }).execute()
+        except Exception:
+            pass
+
         title = data.get("title") or data.get("claim_number") or (data.get("id", "")[:8])
 
         attachments = _get_attachments(supabase, "warranty", warranty_id, yacht_id)

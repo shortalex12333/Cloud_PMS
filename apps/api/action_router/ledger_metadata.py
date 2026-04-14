@@ -65,9 +65,14 @@ ACTION_METADATA: dict = {
     # ── Certificates ─────────────────────────────────────────────────────────
     "add_certificate_note":              {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "archive_certificate":               {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "entity_id"},
+    "create_vessel_certificate":         {"event_type": "create",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
+    "create_crew_certificate":           {"event_type": "create",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
+    "link_document_to_certificate":      {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "renew_certificate":                 {"event_type": "create",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "revoke_certificate":                {"event_type": "status_change", "entity_type": "certificate",   "entity_id_field": "entity_id"},
+    "supersede_certificate":             {"event_type": "status_change", "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "suspend_certificate":               {"event_type": "status_change", "entity_type": "certificate",   "entity_id_field": "entity_id"},
+    "update_certificate":                {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
 
     # ── Parts / Inventory ────────────────────────────────────────────────────
     "add_part_note":                     {"event_type": "update",        "entity_type": "part",          "entity_id_field": "part_id"},

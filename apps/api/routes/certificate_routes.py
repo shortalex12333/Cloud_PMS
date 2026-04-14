@@ -134,6 +134,8 @@ async def list_vessel_certificates(
                 "limit": limit,
                 "status": status,
                 "certificate_type": certificate_type,
+                "user_id": auth.get("user_id"),
+                "user_role": auth.get("role"),
             }
         )
         return result
@@ -172,6 +174,8 @@ async def list_crew_certificates(
                 "limit": limit,
                 "person_name": person_name,
                 "certificate_type": certificate_type,
+                "user_id": auth.get("user_id"),
+                "user_role": auth.get("role"),
             }
         )
         return result
@@ -206,6 +210,8 @@ async def find_expiring_certificates(
             params={
                 "days_ahead": days_ahead,
                 "domain": domain,
+                "user_id": auth.get("user_id"),
+                "user_role": auth.get("role"),
             }
         )
         return result
@@ -239,7 +245,7 @@ async def get_certificate_details(
         result = await handlers["get_certificate_details"](
             entity_id=str(certificate_id),
             yacht_id=resolve_yacht_id(auth, yacht_id),
-            params={"domain": domain}
+            params={"domain": domain, "user_id": auth.get("user_id"), "user_role": auth.get("role")}
         )
         return result
 
@@ -277,6 +283,8 @@ async def view_certificate_history(
                 "domain": domain,
                 "offset": offset,
                 "limit": limit,
+                "user_id": auth.get("user_id"),
+                "user_role": auth.get("role"),
             }
         )
         return result

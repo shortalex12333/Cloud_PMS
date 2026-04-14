@@ -79,6 +79,34 @@ class CertificateHandlers:
         self.db = supabase_client
         self.url_generator = SignedUrlGenerator(supabase_client) if supabase_client else None
 
+    def _ledger_read(self, yacht_id: str, user_id: str, user_role: str,
+                     action: str, entity_id: str = None, summary: str = None) -> None:
+        """
+        Write a view-type ledger event for certificate read operations.
+        Fire-and-forget — never raises, never blocks the read response.
+        """
+        try:
+            import hashlib
+            now = datetime.now(timezone.utc).isoformat()
+            proof_input = f"{yacht_id}{entity_id or ''}{action}{now}"
+            proof_hash = hashlib.sha256(proof_input.encode()).hexdigest()
+            self.db.table("ledger_events").insert({
+                "yacht_id": yacht_id,
+                "event_type": "view",
+                "entity_type": "certificate",
+                "entity_id": entity_id or yacht_id,
+                "action": action,
+                "user_id": user_id or "00000000-0000-0000-0000-000000000000",
+                "user_role": user_role or "unknown",
+                "change_summary": summary or action.replace("_", " ").capitalize(),
+                "source_context": "microaction",
+                "proof_hash": proof_hash,
+                "event_timestamp": now,
+                "created_at": now,
+            }).execute()
+        except Exception:
+            pass  # Never block a read because of a ledger write failure
+
     # =========================================================================
     # READ HANDLERS
     # =========================================================================
@@ -104,6 +132,10 @@ class CertificateHandlers:
             limit = params.get("limit", 50)
             status_filter = params.get("status")
             cert_type_filter = params.get("certificate_type")
+
+            self._ledger_read(yacht_id, params.get("user_id"), params.get("user_role"),
+                               "list_vessel_certificates", entity_id or yacht_id,
+                               "Viewed vessel certificate list")
 
             # Refresh expired status before listing (lazy expiry evaluation)
             try:
@@ -187,6 +219,10 @@ class CertificateHandlers:
             person_filter = params.get("person_name")
             cert_type_filter = params.get("certificate_type")
 
+            self._ledger_read(yacht_id, params.get("user_id"), params.get("user_role"),
+                               "list_crew_certificates", entity_id or yacht_id,
+                               "Viewed crew certificate list")
+
             # Refresh expired status before listing (lazy expiry evaluation)
             try:
                 self.db.rpc("refresh_certificate_expiry", {"p_yacht_id": yacht_id}).execute()
@@ -261,6 +297,10 @@ class CertificateHandlers:
         """
         params = params or {}
         cert_domain = params.get("domain", "vessel")  # "vessel" or "crew"
+
+        self._ledger_read(yacht_id, params.get("user_id"), params.get("user_role"),
+                           "get_certificate_details", entity_id,
+                           f"Viewed {cert_domain} certificate detail")
 
         if cert_domain == "crew":
             return await self._get_crew_certificate_details(entity_id, yacht_id, params)
@@ -373,6 +413,10 @@ class CertificateHandlers:
         cert_domain = params.get("domain", "vessel")
         entity_type = "vessel_certificate" if cert_domain == "vessel" else "crew_certificate"
 
+        self._ledger_read(yacht_id, params.get("user_id"), params.get("user_role"),
+                           "view_certificate_history", entity_id,
+                           f"Viewed {cert_domain} certificate audit history")
+
         builder = ResponseBuilder("view_certificate_history", entity_id, entity_type, yacht_id)
 
         try:
@@ -440,6 +484,10 @@ class CertificateHandlers:
             params = params or {}
             days_ahead = params.get("days_ahead", 90)
             domain = params.get("domain", "all")
+
+            self._ledger_read(yacht_id, params.get("user_id"), params.get("user_role"),
+                               "find_expiring_certificates", entity_id or yacht_id,
+                               f"Queried expiring certificates ({days_ahead}d, domain={domain})")
 
             now = datetime.now(timezone.utc)
             cutoff_date = now + timedelta(days=days_ahead)

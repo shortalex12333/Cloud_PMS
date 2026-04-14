@@ -822,6 +822,47 @@ class HoursOfRestHandlers:
                     "signature": {},  # Not a signed action
                 })
 
+                # Write ledger event for signoff creation
+                try:
+                    self.db.table("ledger_events").insert(build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="create",
+                        entity_type="pms_hor_monthly_signoffs",
+                        entity_id=str(signoff["id"]),
+                        action="create_monthly_signoff",
+                        change_summary=f"HoR signoff period opened for {month}, department {department}",
+                        metadata={
+                            "month": month,
+                            "department": department,
+                            "period_type": period_type,
+                            "target_user_id": target_user_id,
+                        },
+                        event_category="write",
+                    )).execute()
+                except Exception as le:
+                    logger.warning(f"Ledger insert failed on signoff creation (non-fatal): {le}")
+
+                # Notify crew member (target_user_id) that their signoff period is now open —
+                # only when HOD creates it on their behalf (skip self-creation to avoid noise)
+                if target_user_id != user_id:
+                    try:
+                        self.db.table("pms_notifications").upsert({
+                            "yacht_id": yacht_id,
+                            "user_id": target_user_id,
+                            "notification_type": "hor_signoff_opened",
+                            "title": "HoR Sign-Off Period Open",
+                            "body": f"Your {month} hours of rest sign-off is now open for your signature.",
+                            "entity_type": "pms_hor_monthly_signoffs",
+                            "entity_id": str(signoff["id"]),
+                            "idempotency_key": f"hor_signoff_opened:{signoff['id']}:{target_user_id}",
+                            "triggered_by": user_id,
+                            "is_read": False,
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        }, on_conflict="idempotency_key").execute()
+                    except Exception as notif_err:
+                        logger.warning(f"Failed to notify crew of signoff opening (non-fatal): {notif_err}")
+
             builder.set_data({
                 "signoff": signoff,
                 "summary": summary,
@@ -1298,6 +1339,22 @@ class HoursOfRestHandlers:
                     "signature": {},  # Not a signed action
                 })
 
+                # Write ledger event for template creation
+                try:
+                    self.db.table("ledger_events").insert(build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="create",
+                        entity_type="crew_template",
+                        entity_id=str(template["id"]),
+                        action="create_crew_template",
+                        change_summary=f"Schedule template '{schedule_name}' created",
+                        metadata={"schedule_name": schedule_name, "applies_to": applies_to},
+                        event_category="write",
+                    )).execute()
+                except Exception as le:
+                    logger.warning(f"Ledger insert failed on template creation (non-fatal): {le}")
+
             builder.set_data({
                 "template": template,
             })
@@ -1366,6 +1423,22 @@ class HoursOfRestHandlers:
                 "new_values": {"week_start_date": week_start_date, "created": created_count, "skipped": skipped_count},
                 "signature": {},  # Not a signed action
             })
+
+            # Write ledger event for template application
+            try:
+                self.db.table("ledger_events").insert(build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="update",
+                    entity_type="crew_template",
+                    entity_id=template_id or "active_template",
+                    action="apply_crew_template",
+                    change_summary=f"Template applied to week of {week_start_date}: {created_count} records created, {skipped_count} skipped",
+                    metadata={"week_start_date": week_start_date, "created": created_count, "skipped": skipped_count},
+                    event_category="write",
+                )).execute()
+            except Exception as le:
+                logger.warning(f"Ledger insert failed on template application (non-fatal): {le}")
 
             builder.set_data({
                 "application_results": application_results,
@@ -1546,6 +1619,68 @@ class HoursOfRestHandlers:
                 "signature": {},  # Not a signed action
             })
 
+            # Write ledger event — crew acknowledgement is legally significant
+            try:
+                self.db.table("ledger_events").insert(build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="status_change",
+                    entity_type="crew_warning",
+                    entity_id=warning_id,
+                    action="acknowledge_warning",
+                    change_summary=f"Crew acknowledged compliance warning: {crew_reason or 'no reason given'}",
+                    metadata={"status": "acknowledged", "crew_reason": crew_reason, "warning_id": warning_id},
+                    event_category="write",
+                )).execute()
+            except Exception as le:
+                logger.warning(f"Ledger insert failed on warning acknowledgement (non-fatal): {le}")
+
+            # Notify HOD that crew has acknowledged their violation (compliance chain visibility)
+            try:
+                ack_dept_r = self.db.table("auth_users_roles").select("department").eq(
+                    "yacht_id", yacht_id
+                ).eq("user_id", user_id).limit(1).execute()
+                ack_dept = (ack_dept_r.data[0] if ack_dept_r.data else {}).get("department")
+
+                ack_name_r = self.db.table("auth_users_profiles").select("name").eq(
+                    "yacht_id", yacht_id
+                ).eq("id", user_id).limit(1).execute()
+                ack_crew_name = (ack_name_r.data[0] if ack_name_r.data else {}).get("name") or "Crew member"
+
+                hod_q = self.db.table("auth_users_roles").select("user_id").eq(
+                    "yacht_id", yacht_id
+                ).in_("role", ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"])
+                if ack_dept:
+                    hod_q = hod_q.eq("department", ack_dept)
+                hod_r = hod_q.execute()
+
+                seen_ack: set = set()
+                ack_notifs = []
+                for row in (hod_r.data or []):
+                    hid = row["user_id"]
+                    if hid in seen_ack or hid == user_id:
+                        continue
+                    seen_ack.add(hid)
+                    ack_notifs.append({
+                        "yacht_id": yacht_id,
+                        "user_id": hid,
+                        "notification_type": "hor_warning_acknowledged",
+                        "title": f"HoR Warning Acknowledged — {ack_crew_name}",
+                        "body": f"{ack_crew_name} has acknowledged their compliance warning: {crew_reason or 'No reason given'}",
+                        "entity_type": "crew_warning",
+                        "entity_id": warning_id,
+                        "idempotency_key": f"hor_ack:{warning_id}:{hid}",
+                        "triggered_by": user_id,
+                        "is_read": False,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                if ack_notifs:
+                    self.db.table("pms_notifications").upsert(
+                        ack_notifs, on_conflict="yacht_id,user_id,idempotency_key"
+                    ).execute()
+            except Exception as notif_err:
+                logger.warning(f"Failed to notify HOD of warning acknowledgement (non-fatal): {notif_err}")
+
             builder.set_data({
                 "warning": warning,
             })
@@ -1629,6 +1764,50 @@ class HoursOfRestHandlers:
                 },
                 "signature": {},  # Not a SIGNED action, but justification is recorded
             })
+
+            # Write ledger event — HOD/Captain justification for dismissal is legally significant
+            try:
+                self.db.table("ledger_events").insert(build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="status_change",
+                    entity_type="crew_warning",
+                    entity_id=warning_id,
+                    action="dismiss_warning",
+                    change_summary=f"{dismissed_by_role.upper()} dismissed compliance warning: {hod_justification}",
+                    metadata={
+                        "status": "dismissed",
+                        "dismissed_by_role": dismissed_by_role,
+                        "hod_justification": hod_justification,
+                        "warning_id": warning_id,
+                    },
+                    event_category="write",
+                )).execute()
+            except Exception as le:
+                logger.warning(f"Ledger insert failed on warning dismissal (non-fatal): {le}")
+
+            # Notify crew member their warning has been dismissed
+            try:
+                crew_uid = (warning or {}).get("user_id")
+                if crew_uid and crew_uid != user_id:
+                    self.db.table("pms_notifications").upsert({
+                        "yacht_id": yacht_id,
+                        "user_id": crew_uid,
+                        "notification_type": "hor_warning_dismissed",
+                        "title": "HoR Warning Dismissed",
+                        "body": (
+                            f"Your compliance warning has been reviewed and dismissed "
+                            f"by {dismissed_by_role}: {hod_justification}"
+                        ),
+                        "entity_type": "crew_warning",
+                        "entity_id": warning_id,
+                        "idempotency_key": f"hor_dismiss:{warning_id}:{crew_uid}",
+                        "triggered_by": user_id,
+                        "is_read": False,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }, on_conflict="idempotency_key").execute()
+            except Exception as notif_err:
+                logger.warning(f"Failed to notify crew of warning dismissal (non-fatal): {notif_err}")
 
             builder.set_data({
                 "warning": warning,
@@ -1750,6 +1929,68 @@ class HoursOfRestHandlers:
                 )).execute()
             except Exception as le:
                 logger.warning(f"Ledger insert failed on undo (non-fatal): {le}")
+
+            # Write audit log (ledger_events above; audit_log for immutable trail)
+            _write_hor_audit_log(self.db, {
+                "yacht_id": yacht_id,
+                "entity_type": "hours_of_rest",
+                "entity_id": record_id,
+                "action": "undo_hours_of_rest",
+                "user_id": user_id,
+                "old_values": {
+                    "record_date": record_date,
+                    "total_rest_hours": record.get("total_rest_hours"),
+                    "work_periods": record.get("work_periods"),
+                },
+                "new_values": {"work_periods": [], "rest_periods": [], "total_rest_hours": 0},
+                "signature": {},
+            })
+
+            # Notify HOD that crew has undone their submission (weekly tally changed)
+            try:
+                undo_dept_r = self.db.table("auth_users_roles").select("department").eq(
+                    "yacht_id", yacht_id
+                ).eq("user_id", user_id).limit(1).execute()
+                undo_dept = (undo_dept_r.data[0] if undo_dept_r.data else {}).get("department")
+
+                undo_name_r = self.db.table("auth_users_profiles").select("name").eq(
+                    "yacht_id", yacht_id
+                ).eq("id", user_id).limit(1).execute()
+                undo_crew_name = (undo_name_r.data[0] if undo_name_r.data else {}).get("name") or "Crew member"
+
+                hod_q = self.db.table("auth_users_roles").select("user_id").eq(
+                    "yacht_id", yacht_id
+                ).in_("role", ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"])
+                if undo_dept:
+                    hod_q = hod_q.eq("department", undo_dept)
+                hod_r = hod_q.execute()
+
+                seen_undo: set = set()
+                undo_notifs = []
+                for row in (hod_r.data or []):
+                    hid = row["user_id"]
+                    if hid in seen_undo or hid == user_id:
+                        continue
+                    seen_undo.add(hid)
+                    undo_notifs.append({
+                        "yacht_id": yacht_id,
+                        "user_id": hid,
+                        "notification_type": "hor_record_undone",
+                        "title": f"HoR Record Undone — {undo_crew_name}",
+                        "body": f"{undo_crew_name} has undone their hours of rest submission for {record_date}.",
+                        "entity_type": "hours_of_rest",
+                        "entity_id": record_id,
+                        "idempotency_key": f"hor_undo:{record_id}:{hid}",
+                        "triggered_by": user_id,
+                        "is_read": False,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                if undo_notifs:
+                    self.db.table("pms_notifications").upsert(
+                        undo_notifs, on_conflict="yacht_id,user_id,idempotency_key"
+                    ).execute()
+            except Exception as notif_err:
+                logger.warning(f"Failed to notify HOD of HoR undo (non-fatal): {notif_err}")
 
             builder.set_data({
                 "record_id": record_id,
@@ -1944,6 +2185,52 @@ class HoursOfRestHandlers:
                 )).execute()
             except Exception as le:
                 logger.warning(f"Ledger insert failed on correction (non-fatal): {le}")
+
+            # Write audit log (ledger_events above; audit_log for immutable trail)
+            _write_hor_audit_log(self.db, {
+                "yacht_id": yacht_id,
+                "entity_type": "hours_of_rest",
+                "entity_id": original_record_id,
+                "action": "create_hor_correction",
+                "user_id": user_id,
+                "old_values": {
+                    "rest_periods": original.get("rest_periods", []),
+                    "total_rest_hours": original.get("total_rest_hours"),
+                },
+                "new_values": {
+                    "corrected_record_id": corrected_record_id,
+                    "reason": reason,
+                    "is_time_change": corrected_rest_periods is not None,
+                },
+                "signature": {},
+            })
+
+            # Notify original record owner when HOD/Captain adds a note to their record
+            # (note-only = corrected_rest_periods is None and corrector is not the owner)
+            try:
+                if original_owner_id and original_owner_id != user_id and corrected_rest_periods is None:
+                    corrector_name_r = self.db.table("auth_users_profiles").select("name").eq(
+                        "yacht_id", yacht_id
+                    ).eq("id", user_id).limit(1).execute()
+                    corrector_name = (corrector_name_r.data[0] if corrector_name_r.data else {}).get("name") or "HOD"
+                    self.db.table("pms_notifications").upsert({
+                        "yacht_id": yacht_id,
+                        "user_id": original_owner_id,
+                        "notification_type": "hor_correction_note_added",
+                        "title": "Note Added to Your HoR Record",
+                        "body": (
+                            f"{corrector_name} has added a note to your hours of rest "
+                            f"for {record_date}: {reason}"
+                        ),
+                        "entity_type": "hours_of_rest",
+                        "entity_id": original_record_id,
+                        "idempotency_key": f"hor_note:{original_record_id}:{user_id}",
+                        "triggered_by": user_id,
+                        "is_read": False,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }, on_conflict="idempotency_key").execute()
+            except Exception as notif_err:
+                logger.warning(f"Failed to notify crew of correction note (non-fatal): {notif_err}")
 
             builder.set_data({
                 "original_record_id": original_record_id,
