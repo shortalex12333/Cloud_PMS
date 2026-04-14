@@ -18,6 +18,8 @@ interface Certificate {
   issue_date?: string;
   expiry_date?: string;
   status?: string;
+  domain?: 'vessel' | 'crew';
+  person_name?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -25,12 +27,15 @@ interface Certificate {
 function certAdapter(c: Certificate): EntityListResult {
   const status = c.status?.replace(/_/g, ' ') || 'Valid';
   const daysLeft = c.expiry_date ? Math.ceil((new Date(c.expiry_date).getTime() - Date.now()) / 86_400_000) : null;
+  const title = c.domain === 'crew'
+    ? (c.person_name ? `${c.person_name} — ${c.certificate_type || 'Certificate'}` : c.certificate_type || 'Certificate')
+    : (c.certificate_name || c.certificate_number || 'Certificate');
   return {
     id: c.id,
-    type: 'pms_vessel_certificates',
-    title: c.certificate_name || c.certificate_number || 'Certificate',
+    type: c.domain === 'crew' ? 'pms_crew_certificates' : 'pms_vessel_certificates',
+    title,
     subtitle: `${c.certificate_type || ''} · ${c.issuing_authority || ''}`.replace(/^ · |· $/g, ''),
-    entityRef: c.certificate_number || 'Certificate',
+    entityRef: c.certificate_number || (c.domain === 'crew' ? 'Crew' : 'Vessel'),
     status,
     statusVariant: c.status === 'expired' ? 'critical' : c.status === 'expiring_soon' ? 'warning' : 'open',
     severity: c.status === 'expired' ? 'critical' : c.status === 'expiring_soon' ? 'warning' : null,
@@ -70,9 +75,32 @@ function CertificatesPageContent() {
         domain="certificates"
         queryKey={['certificates']}
         table="v_certificates_enriched"
-        columns="*"
+        columns="id,certificate_name,certificate_number,certificate_type,issuing_authority,issue_date,expiry_date,status,domain,person_name,created_at"
         adapter={certAdapter}
-        filterConfig={[]}
+        filterConfig={[
+          {
+            key: 'domain',
+            label: 'Type',
+            type: 'select' as const,
+            options: [
+              { label: 'All', value: '' },
+              { label: 'Vessel', value: 'vessel' },
+              { label: 'Crew', value: 'crew' },
+            ],
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            type: 'select' as const,
+            options: [
+              { label: 'All', value: '' },
+              { label: 'Valid', value: 'valid' },
+              { label: 'Expired', value: 'expired' },
+              { label: 'Revoked', value: 'revoked' },
+              { label: 'Superseded', value: 'superseded' },
+            ],
+          },
+        ]}
         selectedId={selectedId}
         onSelect={handleSelect}
         emptyMessage="No certificates recorded"
