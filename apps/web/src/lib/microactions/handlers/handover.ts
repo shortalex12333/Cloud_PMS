@@ -39,30 +39,47 @@ async function addToHandover(
   }
 
   try {
-    // Insert directly into handover_items (standalone, no parent container)
-    const { data: item, error: itemError } = await supabase
-      .from('handover_items')
-      .insert({
-        yacht_id: context.yacht_id,
-        entity_id: params.entity_id,
-        entity_type: params.entity_type,
-        section: params.section,
-        summary: params.summary,
-        category: params.category || 'fyi',
-        is_critical: params.is_critical || false,
-        requires_action: params.requires_action || false,
-        action_summary: params.action_summary,
-        added_by: context.user_id,
-      })
-      .select()
-      .single();
-
-    if (itemError) {
+    // Route through Render API action router — direct supabase inserts hit MASTER DB
+    // (handover_items lives in TENANT DB, only accessible via Render service_role)
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
       return {
         success: false,
         action_name: 'add_to_handover',
         data: null,
-        error: { code: 'INTERNAL_ERROR', message: itemError.message },
+        error: { code: 'FORBIDDEN', message: 'Authentication required' },
+        confirmation_required: false,
+      };
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+    const res = await fetch(`${apiUrl}/v1/actions/execute`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add_to_handover',
+        context: { yacht_id: context.yacht_id },
+        payload: {
+          entity_id: params.entity_id,
+          entity_type: params.entity_type,
+          section: params.section,
+          summary: params.summary,
+          category: params.category || 'standard',
+          is_critical: params.is_critical || false,
+          requires_action: params.requires_action || false,
+          action_summary: params.action_summary,
+        },
+      }),
+    });
+
+    const result = await res.json();
+    if (!res.ok || result.status === 'error') {
+      return {
+        success: false,
+        action_name: 'add_to_handover',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: result.message || `Failed (${res.status})` },
         confirmation_required: false,
       };
     }
@@ -70,10 +87,7 @@ async function addToHandover(
     return {
       success: true,
       action_name: 'add_to_handover',
-      data: {
-        item_id: item.id,
-        item,
-      },
+      data: { item_id: result.result?.item_id, item: result.result?.handover_item },
       error: null,
       confirmation_required: false,
     };
@@ -206,32 +220,32 @@ async function editHandoverSection(
   }
 
   try {
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-      updated_by: context.user_id,
-    };
+    // Route through Render API — PATCH /v1/handover/items/{id}
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
+      return { success: false, action_name: 'edit_handover_section', data: null,
+        error: { code: 'FORBIDDEN', message: 'Authentication required' }, confirmation_required: false };
+    }
 
-    if (params.content !== undefined) updateData.summary = params.content;
-    if (params.category !== undefined) updateData.category = params.category;
-    if (params.is_critical !== undefined) updateData.is_critical = params.is_critical;
-    if (params.requires_action !== undefined) updateData.requires_action = params.requires_action;
-    if (params.action_summary !== undefined) updateData.action_summary = params.action_summary;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+    const body: Record<string, unknown> = {};
+    if (params.content !== undefined) body.summary = params.content;
+    if (params.category !== undefined) body.category = params.category;
 
-    const { data: item, error } = await supabase
-      .from('handover_items')
-      .update(updateData)
-      .eq('id', params.item_id)
-      .eq('yacht_id', context.yacht_id)
-      .is('deleted_at', null)
-      .select()
-      .single();
+    const res = await fetch(`${apiUrl}/v1/handover/items/${params.item_id}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await res.json();
 
-    if (error) {
+    if (!res.ok || result.status === 'error') {
       return {
         success: false,
         action_name: 'edit_handover_section',
         data: null,
-        error: { code: 'INTERNAL_ERROR', message: error.message },
+        error: { code: 'INTERNAL_ERROR', message: result.detail || `Failed (${res.status})` },
         confirmation_required: false,
       };
     }
@@ -239,7 +253,7 @@ async function editHandoverSection(
     return {
       success: true,
       action_name: 'edit_handover_section',
-      data: { item },
+      data: { item: result.item },
       error: null,
       confirmation_required: false,
     };
@@ -431,25 +445,34 @@ async function regenerateHandoverSummary(
   params?: { department?: string }
 ): Promise<ActionResult> {
   try {
-    // Get handover items for this yacht
-    let query = supabase
-      .from('handover_items')
-      .select('*')
-      .eq('yacht_id', context.yacht_id)
-      .is('deleted_at', null);
-
-    if (params?.department) {
-      query = query.eq('section', params.department);
+    // Route through Render API — GET /v1/handover/items
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
+      return { success: false, action_name: 'regenerate_handover_summary', data: null,
+        error: { code: 'FORBIDDEN', message: 'Authentication required' }, confirmation_required: false };
     }
 
-    const { data: items, error: itemsError } = await query;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+    const res = await fetch(`${apiUrl}/v1/handover/items`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      return { success: false, action_name: 'regenerate_handover_summary', data: null,
+        error: { code: 'INTERNAL_ERROR', message: `Failed to fetch items (${res.status})` }, confirmation_required: false };
+    }
+    const json = await res.json();
+    let items = (json.items || []) as Record<string, unknown>[];
+    if (params?.department) {
+      items = items.filter(i => i.section === params.department);
+    }
 
-    if (itemsError) {
+    if (!items) {
       return {
         success: false,
         action_name: 'regenerate_handover_summary',
         data: null,
-        error: { code: 'INTERNAL_ERROR', message: itemsError.message },
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch handover items' },
         confirmation_required: false,
       };
     }
