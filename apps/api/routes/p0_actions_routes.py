@@ -1147,7 +1147,15 @@ async def execute_action(
                             "add_checklist_item": "Checklist item added",
                             "complete_checklist_item": "Checklist item completed",
                         }
-                        entity_id = payload.get(meta["entity_id_field"]) or yacht_id
+                        # For create actions the entity_id comes from the handler
+                        # result, not the payload. Fallback chain:
+                        #   payload[field] → result[field] → result.id → yacht_id
+                        _id_field = meta["entity_id_field"]
+                        entity_id = (
+                            payload.get(_id_field)
+                            or (isinstance(result, dict) and (result.get(_id_field) or result.get("id")))
+                            or yacht_id
+                        )
                         _summary = _ACTION_SUMMARY.get(action) or action.replace("_", " ").capitalize()
                         _entity_name = result.get("entity_name") if isinstance(result, dict) else None
                         ledger_event = build_ledger_event(
@@ -1822,7 +1830,8 @@ async def list_actions_endpoint(
     Returns:
         List of actions the user can perform, with storage options where applicable.
     """
-    from action_router.registry import search_actions, get_storage_options
+    from action_router.registry import search_actions, get_storage_options, ACTION_REGISTRY
+    from action_router.entity_actions import _build_field_schema
 
     user_role = auth.get("role")
     yacht_id = auth["yacht_id"]
@@ -1830,8 +1839,12 @@ async def list_actions_endpoint(
     # Search actions with role-gating
     actions = search_actions(query=q, role=user_role, domain=domain)
 
-    # Enrich with storage options
+    # Enrich with storage options AND field_schema so the frontend can
+    # render forms directly without needing to re-query per action.
     for action in actions:
+        action_def = ACTION_REGISTRY.get(action["action_id"])
+        if action_def:
+            action["field_schema"] = _build_field_schema(action_def)
         storage_opts = get_storage_options(
             action["action_id"],
             yacht_id=yacht_id,

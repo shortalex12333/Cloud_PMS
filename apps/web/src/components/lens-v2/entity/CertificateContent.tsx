@@ -40,6 +40,8 @@ import {
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Colour mapping helpers ───
 
@@ -76,7 +78,8 @@ function formatLabel(str: string): string {
 
 export function CertificateContent() {
   const router = useRouter();
-  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, entityId, availableActions, executeAction, getAction, isLoading, refetch } = useEntityLensContext();
+  const { user } = useAuth();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -316,6 +319,7 @@ export function CertificateContent() {
   }));
 
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const [uploadOpen, setUploadOpen] = React.useState(false);
   const handleNoteSubmit = React.useCallback(
     async (noteText: string) => {
       const result = await executeAction('add_certificate_note', { note_text: noteText });
@@ -416,8 +420,8 @@ export function CertificateContent() {
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
-          canAddFile
+          onAddFile={user?.yachtId ? () => setUploadOpen(true) : undefined}
+          canAddFile={!!user?.yachtId}
         />
       </ScrollReveal>
 
@@ -433,6 +437,19 @@ export function CertificateContent() {
         onSubmit={handleNoteSubmit}
         isLoading={isLoading}
       />
+      {user?.yachtId && user?.id && (
+        <AttachmentUploadModal
+          open={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          entityType="certificate"
+          entityId={entityId}
+          bucket="pms-certificate-documents"
+          category="certificate"
+          yachtId={user.yachtId}
+          userId={user.id}
+          onComplete={() => { setUploadOpen(false); refetch(); }}
+        />
+      )}
     </>
   );
 }
