@@ -388,7 +388,7 @@ async def _serialize_shopping_item(
 
 
 async def _serialize_warranty(
-    conn, entity_id: str, yacht_id: str
+    entity_id: str, conn: asyncpg.Connection, yacht_id: str
 ) -> Optional[str]:
     row = await conn.fetchrow(
         "SELECT title, description, claim_number, status, vendor_name, manufacturer "
