@@ -1,11 +1,23 @@
 'use client';
 
 /**
- * WarrantyUploadModal — Warranty lens file upload action modal
+ * AttachmentUploadModal — Generic file upload modal for any entity lens.
  *
- * Uploads a document directly to Supabase storage bucket `pms-warranty-documents`,
- * then inserts a row to `pms_attachments`. Uses design system tokens exclusively.
- * Shows loading state during upload, handles errors via Toast.
+ * Uploads directly to the specified Supabase storage bucket, then inserts
+ * a row to pms_attachments. Reusable across all entity types.
+ *
+ * Usage:
+ *   <AttachmentUploadModal
+ *     open={open}
+ *     onClose={onClose}
+ *     entityType="warranty"
+ *     entityId={id}
+ *     bucket="pms-warranty-documents"
+ *     category="claim_document"
+ *     yachtId={yachtId}
+ *     userId={userId}
+ *     onComplete={refetch}
+ *   />
  */
 
 import * as React from 'react';
@@ -56,10 +68,16 @@ function sanitizeFilename(name: string): string {
 // Types
 // ---------------------------------------------------------------------------
 
-export interface WarrantyUploadModalProps {
+export interface AttachmentUploadModalProps {
   open: boolean;
   onClose: () => void;
+  /** Entity type written to pms_attachments.entity_type */
+  entityType: string;
   entityId: string;
+  /** Supabase storage bucket name */
+  bucket: string;
+  /** pms_attachments.category value */
+  category: string;
   yachtId: string;
   userId: string;
   onComplete: () => void;
@@ -69,20 +87,17 @@ export interface WarrantyUploadModalProps {
 // Component
 // ---------------------------------------------------------------------------
 
-/**
- * WarrantyUploadModal
- *
- * Modal overlay for uploading a document to a warranty claim.
- * Escape key dismisses. Cancel clears file selection.
- */
-export function WarrantyUploadModal({
+export function AttachmentUploadModal({
   open,
   onClose,
+  entityType,
   entityId,
+  bucket,
+  category,
   yachtId,
   userId,
   onComplete,
-}: WarrantyUploadModalProps) {
+}: AttachmentUploadModalProps) {
   const [file, setFile] = React.useState<File | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [toast, setToast] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -129,12 +144,12 @@ export function WarrantyUploadModal({
 
     setLoading(true);
     try {
-      // Build storage path
-      const path = `warranty/${entityId}/${Date.now()}-${sanitizeFilename(file.name)}`;
+      // Build storage path: {entityType}/{entityId}/{timestamp}-{filename}
+      const path = `${entityType}/${entityId}/${Date.now()}-${sanitizeFilename(file.name)}`;
 
       // Upload to Supabase storage
       const { error: uploadError } = await supabase.storage
-        .from('pms-warranty-documents')
+        .from(bucket)
         .upload(path, file, { contentType: file.type });
 
       if (uploadError) {
@@ -146,20 +161,20 @@ export function WarrantyUploadModal({
       const { error: insertError } = await supabase
         .from('pms_attachments')
         .insert({
-          entity_type: 'warranty',
+          entity_type: entityType,
           entity_id: entityId,
-          storage_bucket: 'pms-warranty-documents',
+          storage_bucket: bucket,
           storage_path: path,
           filename: file.name,
           mime_type: file.type,
           file_size: file.size,
-          category: 'claim_document',
+          category,
           uploaded_by: userId,
           yacht_id: yachtId,
         });
 
       if (insertError) {
-        // File is uploaded but metadata insert failed — partial state, still close
+        // File uploaded but metadata insert failed — partial state, still trigger refetch
         setToast({ type: 'error', message: insertError.message ?? 'Failed to save attachment record' });
         setTimeout(() => {
           onComplete();
@@ -193,45 +208,41 @@ export function WarrantyUploadModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="warranty-upload-title"
+        aria-labelledby="attachment-upload-title"
         className={cn(
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
           'z-modal',
-          // Surface tokens
           'bg-surface-elevated border border-surface-border',
-          // Shape
           'rounded-lg shadow-modal',
-          // Width
           'w-full max-w-md mx-4'
         )}
       >
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-surface-border">
           <h2
-            id="warranty-upload-title"
+            id="attachment-upload-title"
             className="text-heading text-txt-primary"
           >
             Upload Document
           </h2>
           <p className="mt-1 text-label text-txt-secondary">
-            Attach a file to this warranty claim.
+            Attach a file to this record.
           </p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleUpload}>
           <div className="px-6 py-4 space-y-3">
-            {/* File input */}
             <div>
               <label
-                htmlFor="warranty-file-input"
+                htmlFor="attachment-file-input"
                 className="block text-label text-txt-primary mb-2"
               >
                 Select File
               </label>
               <input
                 ref={inputRef}
-                id="warranty-file-input"
+                id="attachment-file-input"
                 type="file"
                 accept={ACCEPTED_MIME_TYPES}
                 onChange={handleFileChange}
@@ -249,7 +260,6 @@ export function WarrantyUploadModal({
               />
             </div>
 
-            {/* File info / error */}
             {file && (
               <div className="space-y-1">
                 <p className="text-label text-txt-secondary truncate">
@@ -265,27 +275,18 @@ export function WarrantyUploadModal({
             )}
           </div>
 
-          {/* Footer buttons */}
+          {/* Footer */}
           <div className="px-6 pb-6 flex justify-end gap-3">
-            <GhostButton
-              type="button"
-              onClick={handleCancel}
-              disabled={loading}
-            >
+            <GhostButton type="button" onClick={handleCancel} disabled={loading}>
               Cancel
             </GhostButton>
-            <PrimaryButton
-              type="submit"
-              disabled={!canUpload}
-              aria-busy={loading}
-            >
+            <PrimaryButton type="submit" disabled={!canUpload} aria-busy={loading}>
               {loading ? 'Uploading…' : 'Upload'}
             </PrimaryButton>
           </div>
         </form>
       </div>
 
-      {/* Toast notification */}
       {toast && (
         <Toast
           type={toast.type}

@@ -77,6 +77,7 @@ def _make_adapter(action_id: str) -> Callable:
 _ACTIONS_TO_ADAPT = [
     "accept_receiving",
     "add_certificate_note",
+    "renew_certificate",
     "add_document_comment",
     "add_document_note",
     "add_entity_link",

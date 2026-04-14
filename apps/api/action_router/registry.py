@@ -2550,7 +2550,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["chief_engineer", "captain", "manager"],
-        required_fields=["yacht_id", "equipment_id", "note_text"],
+        required_fields=["yacht_id", "certificate_id", "note_text"],
         domain="certificates",
         variant=ActionVariant.MUTATE,
     ),
@@ -3463,10 +3463,13 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id", "entity_id"],
+        allowed_roles=["captain", "manager"],
+        required_fields=["yacht_id", "entity_id", "reason"],
         domain="certificates",
         variant=ActionVariant.SIGNED,
+        field_metadata={
+            "reason": {"name": "reason", "type": "text-area", "label": "Reason for suspension", "placeholder": "State the reason this certificate is being suspended..."},
+        },
     ),
 
     "revoke_certificate": ActionDefinition(
@@ -3475,10 +3478,13 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id", "entity_id"],
+        allowed_roles=["captain", "manager"],
+        required_fields=["yacht_id", "entity_id", "reason"],
         domain="certificates",
         variant=ActionVariant.SIGNED,
+        field_metadata={
+            "reason": {"name": "reason", "type": "text-area", "label": "Reason for revocation", "placeholder": "State the reason this certificate is being revoked..."},
+        },
     ),
 
     "archive_part": ActionDefinition(
@@ -3624,9 +3630,15 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["chief_engineer", "captain", "manager"],
-        required_fields=["yacht_id", "certificate_id"],
+        required_fields=["yacht_id", "certificate_id", "new_issue_date", "new_expiry_date"],
         domain="certificates",
         variant=ActionVariant.MUTATE,
+        field_metadata={
+            "new_issue_date": {"name": "new_issue_date", "type": "date", "label": "New Issue Date", "placeholder": "YYYY-MM-DD"},
+            "new_expiry_date": {"name": "new_expiry_date", "type": "date", "label": "New Expiry Date", "placeholder": "YYYY-MM-DD"},
+            "new_certificate_number": {"name": "new_certificate_number", "type": "text", "label": "New Certificate Number (optional)", "placeholder": "e.g. ISM-2026-001"},
+            "new_issuing_authority": {"name": "new_issuing_authority", "type": "text", "label": "Issuing Authority (if changed)", "placeholder": "e.g. DNV GL"},
+        },
     ),
 
     "reorder_part": ActionDefinition(
