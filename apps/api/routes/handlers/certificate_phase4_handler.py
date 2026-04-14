@@ -84,11 +84,8 @@ async def link_document_to_certificate(payload, context, yacht_id, user_id, user
     doc_id = payload.get("document_id")
     if not doc_id:
         raise HTTPException(400, detail="document_id is required")
-    try:
-        dm = db_client.table("doc_metadata").select("id").eq("id", doc_id).maybe_single().execute()
-    except Exception:
-        dm = None
-    if not getattr(dm, "data", None):
+    result = db_client.table("doc_metadata").select("id").eq("id", doc_id).limit(1).execute()
+    if not result.data:
         raise HTTPException(404, detail="document_id not found")
     return await _delegate("link_document_to_certificate", db_client, payload, yacht_id, user_id, user_context, context)
 
