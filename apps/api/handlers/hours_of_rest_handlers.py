@@ -889,10 +889,12 @@ class HoursOfRestHandlers:
             _MASTER_ROLES_SIGN = {"captain", "manager"}
 
             if signature_level in ("hod", "master"):
-                role_check = self.db.table("auth_users_roles").select("role").eq(
+                # Use list-mode — .maybe_single() throws APIError(204) on 0 rows in supabase-py 2.12.x.
+                # A user may also hold multiple roles; take the first.
+                role_rows = self.db.table("auth_users_roles").select("role").eq(
                     "yacht_id", yacht_id
-                ).eq("user_id", user_id).maybe_single().execute()
-                caller_role = (role_check.data or {}).get("role") if role_check else None
+                ).eq("user_id", user_id).limit(1).execute()
+                caller_role = (role_rows.data[0] if role_rows.data else {}).get("role")
 
                 if signature_level == "hod" and caller_role not in _HOD_ROLES_SIGN:
                     builder.set_error(
@@ -908,20 +910,81 @@ class HoursOfRestHandlers:
                     )
                     return builder.build()
 
-            # Enforce sequential signing workflow: crew → hod → master
+            # Enforce sequential signing workflow: crew → [hod if dept has a HOD] → master
             current_status = signoff.get("status", "draft")
+            signoff_dept   = signoff.get("department", "")
+
             if signature_level == "hod" and current_status != "crew_signed":
                 builder.set_error(
                     "VALIDATION_ERROR",
                     f"HOD can only sign after crew. Current status: {current_status}"
                 )
                 return builder.build()
-            elif signature_level == "master" and current_status != "hod_signed":
-                builder.set_error(
-                    "VALIDATION_ERROR",
-                    f"Master can only sign after HOD. Current status: {current_status}"
-                )
-                return builder.build()
+
+            elif signature_level == "master":
+                if current_status == "hod_signed":
+                    # Normal path. Block same-person signing — MLC requires independent HOD + master.
+                    hod_signed_by = signoff.get("hod_signed_by")
+                    if hod_signed_by and hod_signed_by == user_id:
+                        builder.set_error(
+                            "FORBIDDEN",
+                            "Master cannot finalise a signoff they counter-signed as HOD. MLC 2006 requires independent verification at each level."
+                        )
+                        return builder.build()
+
+                elif current_status == "crew_signed":
+                    # HOD step not yet completed — only permitted if no designated HOD
+                    # exists for this department (pure dept roles, not captain/manager).
+                    _DEPT_HOD_ROLES = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser"]
+                    dept_hod_q = self.db.table("auth_users_roles").select("user_id").eq(
+                        "yacht_id", yacht_id
+                    ).in_("role", _DEPT_HOD_ROLES)
+                    if signoff_dept:
+                        dept_hod_q = dept_hod_q.eq("department", signoff_dept)
+                    dept_hod_result = dept_hod_q.limit(1).execute()
+
+                    if dept_hod_result.data:
+                        # A designated HOD exists — they must sign before master.
+                        builder.set_error(
+                            "VALIDATION_ERROR",
+                            f"Master can only sign after HOD. Department '{signoff_dept}' has a designated HOD who must countersign first. Current status: {current_status}"
+                        )
+                        return builder.build()
+                    else:
+                        # No dept HOD — captain may bypass. Notify vessel-wide HOD-role users.
+                        try:
+                            vessel_hods = self.db.table("auth_users_roles").select("user_id").eq(
+                                "yacht_id", yacht_id
+                            ).in_("role", _DEPT_HOD_ROLES).execute()
+                            _seen_hod: set = set()
+                            bypass_notifs = []
+                            for r in (vessel_hods.data or []):
+                                uid = r["user_id"]
+                                if uid in _seen_hod:
+                                    continue
+                                _seen_hod.add(uid)
+                                bypass_notifs.append({
+                                    "yacht_id":           yacht_id,
+                                    "user_id":            uid,
+                                    "notification_type":  "hor_hod_step_bypassed",
+                                    "title":              "HoR HOD Step Bypassed",
+                                    "body":               f"No HOD found for department '{signoff_dept}'. Master signed directly. Please review.",
+                                    "entity_type":        "pms_hor_monthly_signoffs",
+                                    "entity_id":          signoff_id,
+                                    "idempotency_key":    f"hor_hod_bypass_{signoff_id}",
+                                })
+                            if bypass_notifs:
+                                self.db.table("pms_notifications").upsert(
+                                    bypass_notifs, on_conflict="yacht_id,user_id,idempotency_key"
+                                ).execute()
+                        except Exception as bypass_notif_err:
+                            logger.warning(f"Failed to send HOD-bypass notification (non-fatal): {bypass_notif_err}")
+                else:
+                    builder.set_error(
+                        "VALIDATION_ERROR",
+                        f"Master can only sign from hod_signed (or crew_signed when no dept HOD exists). Current status: {current_status}"
+                    )
+                    return builder.build()
 
             # Determine update based on signature level
             update_data = {
