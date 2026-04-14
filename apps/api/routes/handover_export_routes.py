@@ -1034,4 +1034,137 @@ def _trigger_indexing(supabase, export_id: str, yacht_id: str, sections: list):
         logger.warning(f"Failed to index handover_export {export_id}: {e}")
 
 
+# ============================================================================
+# HANDOVER ITEMS CRUD  — /v1/handover/items/*
+# All calls go through Render API (correct TENANT DB path via service_role).
+# Frontend must NEVER call Supabase directly for handover_items.
+# ============================================================================
+
+class HandoverItemUpdateBody(BaseModel):
+    summary: str
+    category: str
+    status: str
+    section: Optional[str] = None
+
+
+class MarkExportedBody(BaseModel):
+    item_ids: List[str]
+
+
+@router.get("/items")
+async def list_handover_items(
+    auth: dict = Depends(get_authenticated_user),
+    limit: int = Query(200, le=500),
+):
+    """
+    Return all pending (not exported, not deleted) handover draft items
+    for the requesting user on their yacht.
+    """
+    from integrations.supabase import get_supabase_client
+    db = get_supabase_client()
+    yacht_id = resolve_yacht_id(auth, None)
+    user_id = auth["user_id"]
+
+    try:
+        result = db.table("handover_items").select("*") \
+            .eq("yacht_id", yacht_id) \
+            .eq("added_by", user_id) \
+            .is_("deleted_at", None) \
+            .neq("export_status", "exported") \
+            .order("created_at", desc=True) \
+            .limit(limit) \
+            .execute()
+        items = result.data or []
+        return {"status": "success", "items": items, "count": len(items)}
+    except Exception as e:
+        logger.error(f"list_handover_items failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/items/{item_id}")
+async def update_handover_item(
+    item_id: str,
+    body: HandoverItemUpdateBody,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """Update summary/category/section of a handover draft item (owner only)."""
+    from integrations.supabase import get_supabase_client
+    db = get_supabase_client()
+    yacht_id = resolve_yacht_id(auth, None)
+    user_id = auth["user_id"]
+
+    try:
+        result = db.table("handover_items").update({
+            "summary": body.summary.strip(),
+            "category": body.category,
+            "section": body.section,
+            "is_critical": body.category == "critical",
+            "requires_action": body.status == "requires_parts",
+            "metadata": {"ui_status": body.status},
+            "updated_at": datetime.utcnow().isoformat(),
+            "updated_by": user_id,
+        }).eq("id", item_id).eq("added_by", user_id).eq("yacht_id", yacht_id).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Item not found or not owned by you")
+        return {"status": "ok", "item": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"update_handover_item {item_id} failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/items/{item_id}")
+async def delete_handover_item(
+    item_id: str,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """Soft-delete a handover draft item (owner only)."""
+    from integrations.supabase import get_supabase_client
+    db = get_supabase_client()
+    yacht_id = resolve_yacht_id(auth, None)
+    user_id = auth["user_id"]
+
+    try:
+        result = db.table("handover_items").update({
+            "deleted_at": datetime.utcnow().isoformat(),
+            "deleted_by": user_id,
+            "deletion_reason": "User deleted from draft panel",
+        }).eq("id", item_id).eq("added_by", user_id).eq("yacht_id", yacht_id).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Item not found or not owned by you")
+        return {"status": "ok"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"delete_handover_item {item_id} failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/items/mark-exported")
+async def mark_handover_items_exported(
+    body: MarkExportedBody,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """Bulk-mark handover items as exported after a successful export run."""
+    from integrations.supabase import get_supabase_client
+    db = get_supabase_client()
+    yacht_id = resolve_yacht_id(auth, None)
+
+    if not body.item_ids:
+        return {"status": "ok", "updated": 0}
+
+    try:
+        result = db.table("handover_items").update({
+            "export_status": "exported",
+            "status": "completed",
+        }).in_("id", body.item_ids).eq("yacht_id", yacht_id).execute()
+        return {"status": "ok", "updated": len(result.data or [])}
+    except Exception as e:
+        logger.error(f"mark_handover_items_exported failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 __all__ = ["router"]

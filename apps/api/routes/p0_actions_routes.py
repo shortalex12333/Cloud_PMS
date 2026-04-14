@@ -1760,81 +1760,44 @@ async def list_inventory_endpoint(
 
 @router.get("/handover")
 async def get_handover_items(
-    limit: int = 20,
+    limit: int = 200,
     category: Optional[str] = None,
     auth: dict = Depends(get_authenticated_user),
 ):
     """
-    Get handover items for a yacht, sorted by priority and recency.
+    Get handover draft items for the requesting user (not yet exported).
 
-    Query Parameters:
-    - limit: Maximum number of items to return (default: 20)
-    - category: Optional filter by category
-
-    Returns:
-    - List of handover items with user names
-    - Sorted by priority (desc) and added_at (desc)
-
-    Note: yacht_id is always from JWT auth context (invariant #1).
+    Returns full row data scoped to:
+    - yacht_id from JWT
+    - added_by = requesting user
+    - deleted_at IS NULL
+    - export_status != 'exported'
     """
     yacht_id = auth["yacht_id"]
+    user_id = auth["user_id"]
     db_client = get_tenant_supabase_client(auth["tenant_key_alias"])
 
     try:
-        # Build query
-        # Note: Removed users:added_by join as it requires explicit FK relationship
-        # User names can be resolved separately if needed
-        query = db_client.table("handover_items").select(
-            "id, yacht_id, entity_type, entity_id, summary, category, priority, "
-            "created_at, added_by"
-        ).eq("yacht_id", yacht_id)
+        query = db_client.table("handover_items").select("*") \
+            .eq("yacht_id", yacht_id) \
+            .eq("added_by", user_id) \
+            .is_("deleted_at", None) \
+            .neq("export_status", "exported") \
+            .order("created_at", desc=True) \
+            .limit(limit)
 
-        # Apply category filter if provided
         if category:
             query = query.eq("category", category)
 
-        # Order by priority (desc) and created_at (desc)
-        query = query.order("priority", desc=True).order("created_at", desc=True)
-
-        # Apply limit
-        query = query.limit(limit)
-
-        # Execute query
         result = query.execute()
-
-        if not result.data:
-            return {
-                "status": "success",
-                "items": [],
-                "count": 0
-            }
-
-        # Transform results to include user names
-        items = []
-        for item in result.data:
-            user_info = item.get("users", {})
-            items.append({
-                "id": item["id"],
-                "entity_type": item["entity_type"],
-                "entity_id": item["entity_id"],
-                "title": None,  # TODO: Could be fetched from entity if needed
-                "summary_text": item["summary"],
-                "category": item["category"],
-                "priority": item["priority"],
-                "added_by": item["added_by"],
-                "added_by_name": user_info.get("full_name", "Unknown") if user_info else "Unknown",
-                "added_at": item["created_at"]
-            })
-
-        return {
-            "status": "success",
-            "items": items,
-            "count": len(items)
-        }
+        items = result.data or []
+        return {"status": "success", "items": items, "count": len(items)}
 
     except Exception as e:
         logger.error(f"Failed to fetch handover items: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch handover items: {str(e)}")
+
+
 
 
 # ============================================================================

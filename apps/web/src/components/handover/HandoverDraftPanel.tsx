@@ -504,99 +504,96 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [popup, setPopup] = useState<PopupMode>(null);
 
-  // ── Fetch ──
+  // ── Fetch — all calls go through Render API (TENANT DB, correct path) ──
   const fetchItems = useCallback(async () => {
-    if (!user?.id || !(activeVesselId || user?.yachtId)) return;
+    if (!user?.id) return;
     setLoading(true);
     try {
-      const { data: exports } = await supabase
-        .from('handover_exports')
-        .select('edited_content')
-        .eq('yacht_id', activeVesselId || user.yachtId)
-        .not('export_status', 'eq', 'failed');
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) { toast.error('Not authenticated'); return; }
 
-      const exportedIds = new Set<string>();
-      exports?.forEach(exp => {
-        ((exp.edited_content as any)?.item_ids || []).forEach((id: string) => exportedIds.add(id));
+      const res = await fetch(`${RENDER_API_URL}/v1/handover/items`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      const { data, error } = await supabase
-        .from('handover_items')
-        .select('*')
-        .eq('yacht_id', activeVesselId || user.yachtId)
-        .eq('added_by', user.id)
-        .is('deleted_at', null)
-        .neq('export_status', 'exported')
-        .order('created_at', { ascending: false });
-
-      if (error) { toast.error('Failed to load handover items'); return; }
-      setItems((data || []).filter(i => !exportedIds.has(i.id)));
+      if (!res.ok) { toast.error('Failed to load handover items'); return; }
+      const { items: fetched } = await res.json();
+      setItems(fetched || []);
       setExpandedDays(new Set([new Date().toISOString().split('T')[0]]));
     } catch {
       toast.error('Failed to load handover items');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, activeVesselId || user?.yachtId]);
+  }, [user?.id]);
 
   useEffect(() => { if (isOpen) fetchItems(); }, [isOpen, fetchItems]);
 
-  // ── Save (Create + Update) ──
+  // ── Save (Create + Update) — routed through Render API ──
   const handleSave = useCallback(async (data: { id?: string; summary: string; category: string; status: string; section: string }) => {
-    if (!user?.id || !(activeVesselId || user?.yachtId)) return;
+    if (!user?.id) return;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('Not authenticated');
 
     if (data.id) {
-      // Update — ui_status stored in metadata (DB status has check constraint: pending/acknowledged/completed/deferred)
-      const { error } = await supabase
-        .from('handover_items')
-        .update({
+      // Update via new PATCH endpoint
+      const res = await fetch(`${RENDER_API_URL}/v1/handover/items/${data.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           summary: data.summary,
           category: data.category,
+          status: data.status,
           section: data.section,
-          is_critical: data.category === 'critical',
-          requires_action: data.status === 'requires_parts',
-          metadata: { ui_status: data.status },
-          updated_at: new Date().toISOString(),
-          updated_by: user.id,
-        })
-        .eq('id', data.id)
-        .eq('added_by', user.id);
-      if (error) throw error;
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Update failed (${res.status})`);
+      }
       toast.success('Handover note updated');
     } else {
-      // Create
-      const { error } = await supabase
-        .from('handover_items')
-        .insert({
-          yacht_id: activeVesselId || user.yachtId,
-          added_by: user.id,
-          entity_type: 'note',
-          entity_id: crypto.randomUUID(),
-          summary: data.summary,
-          category: data.category,
-          status: 'pending',
-          section: data.section,
-          priority: data.category === 'critical' ? 2 : data.category === 'low' ? 0 : 1,
-          is_critical: data.category === 'critical',
-          requires_action: data.status === 'requires_parts',
-          metadata: { ui_status: data.status },
-          export_status: 'pending',
-        });
-      if (error) throw error;
+      // Create via action router (same path as Queue + Add)
+      const res = await fetch(`${RENDER_API_URL}/v1/actions/execute`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add_to_handover',
+          context: { yacht_id: activeVesselId || user.yachtId },
+          payload: {
+            entity_type: 'note',
+            summary: data.summary,
+            category: data.category,
+            section: data.section,
+            requires_action: data.status === 'requires_parts',
+          },
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.detail || `Add failed (${res.status})`);
+      }
       toast.success('Handover note added');
     }
     fetchItems();
-  }, [user?.id, activeVesselId || user?.yachtId, fetchItems]);
+  }, [user?.id, activeVesselId, user?.yachtId, fetchItems]);
 
-  // ── Delete (soft) ──
+  // ── Delete (soft) — routed through Render API ──
   const handleDelete = useCallback(async (id: string) => {
     if (!user?.id) return;
-    const { error } = await supabase
-      .from('handover_items')
-      .update({ deleted_at: new Date().toISOString(), deleted_by: user.id, deletion_reason: 'User deleted from draft panel' })
-      .eq('id', id)
-      .eq('added_by', user.id);
-    if (error) throw error;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('Not authenticated');
+
+    const res = await fetch(`${RENDER_API_URL}/v1/handover/items/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Delete failed (${res.status})`);
+    }
     toast.success('Handover note deleted');
     fetchItems();
   }, [user?.id, fetchItems]);
@@ -621,7 +618,12 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
       }
 
       const result = await response.json();
-      await supabase.from('handover_items').update({ export_status: 'exported', status: 'completed' }).in('id', items.map(i => i.id));
+      // Mark items exported via Render API (not direct supabase — wrong DB)
+      await fetch(`${RENDER_API_URL}/v1/handover/items/mark-exported`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_ids: items.map(i => i.id) }),
+      });
 
       toast.success(`Handover exported — ${result.total_items} items`, {
         action: { label: 'View', onClick: () => router.push(`/handover-export/${result.export_id}`) },
