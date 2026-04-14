@@ -223,7 +223,14 @@ def _build_field_schema(action_def) -> List[Dict[str, Any]]:
             field_type = "entity-search"
         elif "description" in fm.name or "notes" in fm.name or "reason" in fm.name or "draft" in fm.name:
             field_type = "text-area"
-        elif "date" in fm.name or fm.name.endswith("_at") or "expiry" in fm.name:
+        elif (
+            "date" in fm.name
+            or fm.name.endswith("_at")
+            or fm.name.endswith("_due")
+            or fm.name.endswith("_on")
+            or "expiry" in fm.name
+            or "survey" in fm.name
+        ):
             field_type = "date-pick"
         elif "amount" in fm.name or "minutes" in fm.name or "quantity" in fm.name or "cost" in fm.name or "total" in fm.name:
             field_type = "number"
