@@ -27,6 +27,7 @@ import { useBreakpoint } from './useBreakpoint';
 import SettingsModal from '@/components/SettingsModal';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
+import { FileWarrantyClaimModal } from '@/components/lens-v2/actions/FileWarrantyClaimModal';
 import { LedgerPanel } from '@/components/ledger';
 
 /** Map URL pathnames to domain IDs */
@@ -132,6 +133,7 @@ export function AppShell({ children }: AppShellProps) {
   // Create modal state for primary action buttons
   const [createWOOpen, setCreateWOOpen] = React.useState(false);
   const [reportFaultOpen, setReportFaultOpen] = React.useState(false);
+  const [fileWarrantyOpen, setFileWarrantyOpen] = React.useState(false);
 
   // Topbar menu handlers
   const handleEmailClick = React.useCallback(() => {
@@ -151,6 +153,9 @@ export function AppShell({ children }: AppShellProps) {
         break;
       case 'faults':
         setReportFaultOpen(true);
+        break;
+      case 'warranties':
+        setFileWarrantyOpen(true);
         break;
       default:
         // Domains without a create modal — navigate to domain (already there, but no-op is fine)
@@ -184,6 +189,7 @@ export function AppShell({ children }: AppShellProps) {
       <LedgerPanel isOpen={ledgerOpen} onClose={() => setLedgerOpen(false)} />
       <CreateWorkOrderModal open={createWOOpen} onOpenChange={setCreateWOOpen} />
       <ReportFaultModal open={reportFaultOpen} onOpenChange={setReportFaultOpen} />
+      <FileWarrantyClaimModal open={fileWarrantyOpen} onOpenChange={setFileWarrantyOpen} />
     </ShellProvider>
   );
 }
@@ -294,6 +300,7 @@ function AppShellInner({
           display: 'grid',
           gridTemplateColumns: showSidebar ? `${sidebarWidth}px 1fr` : '1fr',
           overflow: 'hidden',
+          minHeight: 0,
         }}
       >
         {/* Left sidebar */}
@@ -312,6 +319,7 @@ function AppShellInner({
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            minHeight: 0,
           }}
         >
           {children}
