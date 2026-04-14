@@ -553,8 +553,12 @@ async def list_actions_endpoint(
     # Search actions with role-gating and entity context filtering
     actions = search_actions(query=q, role=user_role, domain=domain, has_entity_context=bool(entity_id))
 
-    # Enrich with storage options
+    # Enrich with storage options AND field_schema (for frontend form rendering)
+    from action_router.entity_actions import _build_field_schema
     for action in actions:
+        action_def = ACTION_REGISTRY.get(action["action_id"])
+        if action_def:
+            action["field_schema"] = _build_field_schema(action_def)
         storage_opts = get_storage_options(
             action["action_id"],
             yacht_id=yacht_id,
