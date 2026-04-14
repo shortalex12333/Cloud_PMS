@@ -835,8 +835,9 @@ async def countersign_export(
     from integrations.supabase import get_tenant_client
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
-    # Verify user is HOD (role comes from auth context, already validated)
-    if auth['role'] not in ["hod", "captain", "manager"]:
+    # Verify user is HOD+ — must match actual DB role values from auth_users_roles
+    # "hod" is not a real DB role — actual values are chief_engineer, chief_officer
+    if auth['role'] not in ["chief_engineer", "chief_officer", "captain", "manager"]:
         raise HTTPException(status_code=403, detail="Only HOD+ can countersign")
 
     # Fetch export
