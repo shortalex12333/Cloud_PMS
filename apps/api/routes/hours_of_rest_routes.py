@@ -705,7 +705,7 @@ async def apply_crew_template_route(
 
 @router.get("/warnings")
 async def list_crew_warnings_route(
-    yacht_id: str,
+    yacht_id: Optional[str] = None,
     user_id: Optional[str] = None,
     status: Optional[str] = None,
     warning_type: Optional[str] = None,
