@@ -17,42 +17,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { TimeSlider, invertToRestPeriods, type RestPeriod } from './TimeSlider';
 import { ActionPopup, type ActionPopupField } from '@/components/lens-v2/ActionPopup';
 
-// ── Mock data (used until ENGINEER02 endpoints land) ──────────────────────────
-
-const MOCK_MY_WEEK = {
-  week_start: '2026-04-07',
-  days: [
-    { date: '2026-04-07', label: 'Mon', rest_periods: [{ start: '00:00', end: '05:00' }, { start: '14:00', end: '22:00' }], total_rest_hours: 13, total_work_hours: 11, is_compliant: true, submitted: true, warnings: [] },
-    { date: '2026-04-08', label: 'Tue', rest_periods: [{ start: '00:00', end: '04:00' }, { start: '14:00', end: '22:00' }], total_rest_hours: 12, total_work_hours: 12, is_compliant: true, submitted: true, warnings: [] },
-    { date: '2026-04-09', label: 'Wed', rest_periods: [{ start: '00:00', end: '04:00' }, { start: '14:00', end: '22:00' }], total_rest_hours: 12, total_work_hours: 12, is_compliant: true, submitted: true, warnings: [] },
-    { date: '2026-04-10', label: 'Thu', rest_periods: [{ start: '00:00', end: '04:00' }, { start: '15:00', end: '22:00' }], total_rest_hours: 11, total_work_hours: 13, is_compliant: true, submitted: true, warnings: [] },
-    { date: '2026-04-11', label: 'Fri', rest_periods: [], total_rest_hours: 0, total_work_hours: 0, is_compliant: null, submitted: false, warnings: [] },
-    { date: '2026-04-12', label: 'Sat', rest_periods: [], total_rest_hours: 0, total_work_hours: 0, is_compliant: null, submitted: false, warnings: [] },
-    { date: '2026-04-13', label: 'Sun', rest_periods: [], total_rest_hours: 0, total_work_hours: 0, is_compliant: null, submitted: false, warnings: [] },
-  ],
-  compliance: {
-    rolling_24h_rest: 13,
-    rolling_7day_rest: 48,
-    rolling_7d_work: 48,
-    mlc_status: 'COMPLIANT',
-    min_24h: 10,
-    min_7d: 77,
-    violations_this_month: 0,
-  },
-  pending_signoff: {
-    id: 'mock-signoff-1',
-    month: '2026-03',
-    month_label: 'March 2026',
-    status: 'draft',
-  },
-  templates: [
-    { id: 'tpl-1', name: '4-on/8-off Watch System' },
-  ],
-  prior_weeks: [
-    { week_start: '2026-03-31', label: 'Mar 31 – Apr 6', total_rest_hours: 85, is_compliant: true },
-    { week_start: '2026-03-24', label: 'Mar 24 – Mar 30', total_rest_hours: 82, is_compliant: true },
-  ],
-};
+// (mock removed — all data comes from GET /v1/hours-of-rest/my-week)
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -232,7 +197,7 @@ interface MyTimeViewProps {
 }
 
 export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeViewProps = {}) {
-  const [data, setData] = React.useState<typeof MOCK_MY_WEEK | null>(null);
+  const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -264,6 +229,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
 
   // Unsigned alert
   const [unsignedAlert, setUnsignedAlert] = React.useState(false);
+
+  // Active warnings from backend
+  const [warnings, setWarnings] = React.useState<any[]>([]);
+  const [acknowledging, setAcknowledging] = React.useState<Record<string, boolean>>({});
 
   // Week navigation — null = current week (backend defaults)
   const [viewWeekStart, setViewWeekStart] = React.useState<string | null>(null);
@@ -353,9 +322,43 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     }
   }
 
+  async function loadWarnings() {
+    try {
+      const auth = await getAuthHeader();
+      const resp = await fetch('/api/v1/hours-of-rest/warnings', {
+        headers: { 'Authorization': auth },
+      });
+      if (resp.ok) {
+        const json = await resp.json();
+        const list = json.data ?? json.warnings ?? [];
+        setWarnings(list.filter((w: any) => w.status === 'active'));
+      }
+    } catch {
+      // non-critical
+    }
+  }
+
+  async function acknowledgeWarning(warningId: string) {
+    setAcknowledging(prev => ({ ...prev, [warningId]: true }));
+    try {
+      const auth = await getAuthHeader();
+      await fetch('/api/v1/hours-of-rest/warnings/acknowledge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+        body: JSON.stringify({ warning_id: warningId }),
+      });
+      setWarnings(prev => prev.filter(w => w.id !== warningId));
+    } catch {
+      // non-critical
+    } finally {
+      setAcknowledging(prev => { const n = { ...prev }; delete n[warningId]; return n; });
+    }
+  }
+
   React.useEffect(() => {
     loadWeekData(viewWeekStart);
     checkUnsignedAlert();
+    loadWarnings();
   }, [viewWeekStart]);
 
   // ── Submit single day ──
@@ -554,8 +557,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   const comp = data.compliance;
   const signoff = data.pending_signoff;
   const isReadOnly = forceReadOnly || weekLocked;
-  const allSubmitted = data.days.filter(Boolean).every(d => d.submitted || !!submittedDays[d.date]);
-  const anyUnsubmitted = data.days.filter(Boolean).some(d => !d.submitted && !submittedDays[d.date] && (draftPeriods[d.date]?.length ?? 0) > 0);
+  const allSubmitted = data.days.filter(Boolean).every((d: any) => d.submitted || !!submittedDays[d.date]);
+  const anyUnsubmitted = data.days.filter(Boolean).some((d: any) => !d.submitted && !submittedDays[d.date] && (draftPeriods[d.date]?.length ?? 0) > 0);
   const signoffStatus: string | null = (data as any).signoff_status ?? null;
   const correctionRequested: boolean = (data as any).correction_requested ?? false;
   const correctionNote: string | null = (data as any).correction_note ?? null;
@@ -715,7 +718,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         )}
 
         <div style={{ padding: '4px 0' }}>
-          {data.days.filter(Boolean).map((day, idx) => {
+          {data.days.filter(Boolean).map((day: any, idx: number) => {
             const localSubmit = submittedDays[day.date];
             const isSubmittedLocally = !!localSubmit;
             const isSubmitted = day.submitted || isSubmittedLocally || isReadOnly;
@@ -883,7 +886,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               }}
             >
               <option value="">Select a template…</option>
-              {data.templates.map(t => (
+              {data.templates.map((t: any) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
@@ -994,6 +997,50 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         </SectionCard>
       )}
 
+      {/* ── ACTIVE WARNINGS ── */}
+      {warnings.length > 0 && (
+        <SectionCard>
+          <SectionHeader label="Active Warnings" />
+          <div style={{ padding: '4px 0' }}>
+            {warnings.map((w: any) => (
+              <div key={w.id} style={{
+                display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 12,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, color: w.severity === 'critical' ? 'var(--red, #C0503A)' : 'rgba(245,158,11,0.85)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      ⚠ {w.severity ?? 'warning'}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>
+                      {w.record_date ?? ''}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.45 }}>
+                    {w.message ?? w.warning_type ?? 'Compliance rule breached'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => acknowledgeWarning(w.id)}
+                  disabled={acknowledging[w.id]}
+                  style={{
+                    flexShrink: 0, padding: '4px 10px',
+                    background: 'none', border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 4, color: 'rgba(255,255,255,0.40)',
+                    fontFamily: 'var(--font-mono)', fontSize: 9,
+                    cursor: acknowledging[w.id] ? 'wait' : 'pointer',
+                    letterSpacing: '0.06em', textTransform: 'uppercase',
+                    opacity: acknowledging[w.id] ? 0.5 : 1,
+                  }}
+                >
+                  {acknowledging[w.id] ? '…' : 'Acknowledge'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
       {/* ── HISTORY ── */}
       {data.prior_weeks.length > 0 && (
         <SectionCard>
@@ -1014,9 +1061,16 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           </div>
           {historyOpen && (
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              {data.prior_weeks.map(w => (
+              {data.prior_weeks.map((w: any) => (
                 <div key={w.week_start} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>Week of {w.label}</span>
+                  <div>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{w.label}</span>
+                    {w.days_filed < 7 && (
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', marginLeft: 8 }}>
+                        {w.days_filed}/7 days filed
+                      </span>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{w.total_rest_hours}h rest</span>
                     <StatusBadge ok={w.is_compliant} />
@@ -1024,7 +1078,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 </div>
               ))}
               <div style={{ padding: '8px 16px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>
-                Avg {((data.prior_weeks.reduce((s, w) => s + (w.total_rest_hours || 0), 0) / data.prior_weeks.length) || 0).toFixed(1)}h rest/week
+                Avg {((data.prior_weeks.reduce((s: number, w: any) => s + (w.total_rest_hours || 0), 0) / data.prior_weeks.length) || 0).toFixed(1)}h rest/week
               </div>
             </div>
           )}

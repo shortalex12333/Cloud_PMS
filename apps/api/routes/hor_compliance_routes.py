@@ -236,6 +236,59 @@ async def get_my_week(
             for t in (tmpl_r.data or [])
         ]
 
+        # ------------------------------------------------------------------
+        # 7. Prior weeks — last 8 weeks before current, aggregated
+        # ------------------------------------------------------------------
+        prior_start = week_monday - timedelta(weeks=8)
+        prior_end   = week_monday - timedelta(days=1)
+        prior_r = supabase.table("pms_hours_of_rest").select(
+            "record_date, total_rest_hours, total_work_hours, is_daily_compliant"
+        ).eq("yacht_id", yacht_id).eq("user_id", user_id).gte(
+            "record_date", prior_start.isoformat()
+        ).lte("record_date", prior_end.isoformat()).order("record_date").execute()
+
+        prior_records = prior_r.data or []
+
+        # Group records by week_start (Monday)
+        prior_by_week: Dict[str, list] = {}
+        for rec in prior_records:
+            try:
+                rd = date.fromisoformat(rec["record_date"])
+                day_of_week = rd.weekday()  # Monday=0
+                wstart = (rd - timedelta(days=day_of_week)).isoformat()
+                prior_by_week.setdefault(wstart, []).append(rec)
+            except (ValueError, KeyError):
+                continue
+
+        prior_weeks = []
+        for ws in sorted(prior_by_week.keys(), reverse=True):
+            week_recs = prior_by_week[ws]
+            total_rest = sum((r.get("total_rest_hours") or 0) for r in week_recs)
+            total_work = sum((r.get("total_work_hours") or 0) for r in week_recs)
+            days_filed  = len(week_recs)
+            compliant_days = sum(1 for r in week_recs if r.get("is_daily_compliant") is True)
+            is_compliant = (
+                compliant_days == days_filed and days_filed > 0
+                and total_rest >= 77  # MLC 2006: 77h/week minimum
+            ) if days_filed > 0 else None
+
+            # Build human label: "Apr 7 – Apr 13"
+            try:
+                ws_date = date.fromisoformat(ws)
+                we_date = ws_date + timedelta(days=6)
+                label = f"{ws_date.strftime('%b %-d')} – {we_date.strftime('%b %-d')}"
+            except ValueError:
+                label = ws
+
+            prior_weeks.append({
+                "week_start":       ws,
+                "label":            label,
+                "total_rest_hours": round(total_rest, 1),
+                "total_work_hours": round(total_work, 1),
+                "days_filed":       days_filed,
+                "is_compliant":     is_compliant,
+            })
+
         return JSONResponse(content={
             "status":         "success",
             "week_start":     week_monday.isoformat(),
@@ -246,6 +299,7 @@ async def get_my_week(
             "compliance":     compliance,
             "pending_signoff": pending_signoff,
             "templates":      templates,
+            "prior_weeks":    prior_weeks,
             # Phase 7: weekly sign-off status for lock signal
             # null = no weekly signoff exists yet (editable)
             # "finalized" or "locked" = read-only, TimeSlider hidden
