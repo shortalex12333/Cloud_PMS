@@ -474,6 +474,63 @@ The Render extraction_worker stays running. It has already marked all 100 `extra
 
 ---
 
+## 13. Post-merge production verification (2026-04-15 evening)
+
+**PR #538 merged at ~16:50.** Render backend deployed within ~2 min. Vercel frontend **initially failed to deploy** because my `AttachmentUploadModal.tsx` refactor placed `React.useCallback` after `if (!open) return null` — violates `react-hooks/rules-of-hooks`, `next build` eslint caught it. Local `tsc --noEmit` does not run eslint, which is why I missed it pre-merge.
+
+Hotfix PR #539 (commit `8841bce5`) moved the useCallback before the early return and added an inline guard comment. Vercel deployed cleanly (1-minute real build, not cached). All subsequent grep checks against the deployed layout chunk confirm my Part C identifiers are live.
+
+### Render backend — verified with real JWT + real PDF
+- `POST /v1/documents/upload` — HTTP 200
+- Captain role (5af9d61d-9b2e-4db4-a54c-a3c95eec70e5 / `captain.tenant@alex-short.com`, signed with `MASTER_SUPABASE_JWT_SECRET`)
+- Storage upload → doc_metadata insert → F2 trigger → search_index `pending_extraction`
+- Extraction worker picked up, downloaded from `documents` bucket (F1 fix verified working), transitioned through `extracting → pending → processing → indexed` in ~9 seconds
+- Pre-existing extractor bug discovered: `_extract_pdf` returns 0 chars for some PDFs in production despite working locally against the same Docker image. Small PDFs (1.4 KB) sometimes reach `extraction_failed`; medium-sized PDFs reach `indexed` but with `chunks=0` and filename-only search_text. This is NOT my code — it's pre-existing in `apps/api/workers/extraction/extractor.py` and was masked by the F1 bucket bug until F1 shipped. Follow-up issue, out of F-series scope.
+
+### Vercel frontend — verified with Playwright browser test
+Test spec: `apps/web/e2e/shard-3-documents/f-series-upload.spec.ts`
+Browser: Chromium (Playwright), MASTER JWT minted for captain via global-setup.
+
+Results:
+- Navigated to `https://app.celeste7.ai/documents`
+- Found `Upload Document` primary action button (count=1)
+- Clicked → **modal opened** (role='dialog' mounted)
+- File input found → set a reportlab-generated PDF (620 bytes)
+- Clicked Upload submit
+- **Toast: "Document uploaded successfully"**
+- Modal auto-closed
+
+DB verification after test:
+- doc_metadata row: id=`16408a9a-fd0e-40b0-aaf5-13b4f32b4a86`, filename=`pw-1776274146890.pdf`, source=`document_lens`, bucket=`documents`, content_type=`application/pdf`, size=620 bytes
+- Storage blob: downloadable at HTTP 200, 620 bytes (matches exact upload)
+- search_index: `embedding_status=indexed`, org_id = yacht_id, payload.bucket=`documents`
+- Cleanup: row + blob + audit log deleted after verification
+
+### Full round-trip proof matrix (all verified against production this session)
+
+| Step | Verified |
+|---|---|
+| Vercel deploy fresh build (1m duration, new chunk hash) | ✓ |
+| Browser → click Upload Document button | ✓ |
+| Modal mount via AppShell handlePrimaryAction → documents case | ✓ |
+| File picker accepts PDF | ✓ |
+| FormData multipart POST → /v1/documents/upload | ✓ |
+| Auth headers via getAuthHeaders (JWT + X-Yacht-Signature) | ✓ |
+| Backend role gate (HOD+ pass, others 403) | ✓ (62/62 tests pre-merge) |
+| Backend MIME + size gates | ✓ |
+| Storage upload to documents bucket | ✓ |
+| doc_metadata insert with correct columns | ✓ |
+| F2 trigger → search_index pending_extraction | ✓ |
+| Extraction worker download (F1 fix) | ✓ (reaches pending/indexed) |
+| Pipeline cycles to `indexed` | ✓ |
+| Success toast visible in browser | ✓ |
+| Modal auto-close + query invalidation | ✓ |
+
+### Known limitation (pre-existing, out of scope)
+`_extract_pdf` / `_extract_plain_text` in `apps/api/workers/extraction/extractor.py` returns 0 chunks for uploaded files in production even when `embedding_status=indexed`. This is visible because F1 fixed the bucket bug and now extraction actually runs; the extractor's text extraction was broken BEFORE F1 too but was masked by every attempt 404ing. Needs a separate follow-up investigation (logs from Render worker, or add diagnostic telemetry to `_extract_pdf`). Does not affect metadata search (filename, doc_type, tags still searchable via tsv), only body-content search.
+
+---
+
 ## 12. Current honest status (after Parts A/B/C execution)
 
 ### Verified against TENANT
