@@ -155,6 +155,21 @@ def atomic_chunk_replacement(cur, doc_id: str, yacht_id: str, chunks: list) -> b
     Atomically replace all chunks for a document.
     DELETE old → INSERT new in one transaction.
     Pattern from projection_worker.py:484-521.
+
+    NOTE 2026-04-15 — `search_document_chunks.tsv` is a `GENERATED ALWAYS AS
+    (to_tsvector('english', COALESCE(content, ''))) STORED` column.
+    Generated columns cannot be written to directly — Postgres rejects
+    every INSERT that names them with `GeneratedAlways: cannot insert a
+    non-DEFAULT value into column "tsv"`.
+
+    Previous version of this function explicitly wrote `to_tsvector(...)`
+    into the `tsv` column, which silently failed for every chunk in
+    production. The exception was swallowed by the caller's non-fatal
+    handler, leaving search_document_chunks empty for every uploaded
+    document. Discovered via the diag patch in PR #541.
+
+    Fix: omit `tsv` from the INSERT column list. Postgres will populate
+    it from `content` automatically.
     """
     if not chunks:
         return False
@@ -165,15 +180,15 @@ def atomic_chunk_replacement(cur, doc_id: str, yacht_id: str, chunks: list) -> b
         (doc_id,),
     )
 
-    # Insert new chunks
+    # Insert new chunks — DO NOT write to `tsv` (generated column).
     for chunk in chunks:
         content_hash = compute_content_hash(chunk["content"])
         cur.execute(
             """
             INSERT INTO search_document_chunks
-                (document_id, yacht_id, chunk_index, content, content_hash, tsv)
+                (document_id, yacht_id, chunk_index, content, content_hash)
             VALUES
-                (%s, %s, %s, %s, %s, to_tsvector('english', %s))
+                (%s, %s, %s, %s, %s)
             """,
             (
                 doc_id,
@@ -181,7 +196,6 @@ def atomic_chunk_replacement(cur, doc_id: str, yacht_id: str, chunks: list) -> b
                 chunk["chunk_index"],
                 chunk["content"],
                 content_hash,
-                chunk["content"],
             ),
         )
 
