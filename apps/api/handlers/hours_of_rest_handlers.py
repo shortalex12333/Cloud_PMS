@@ -956,6 +956,16 @@ class HoursOfRestHandlers:
             current_status = signoff.get("status", "draft")
             signoff_dept   = signoff.get("department", "")
 
+            # Hard stop: finalized records are immutable — no further signatures at any level.
+            # MLC 2006 requires the signed record to be preserved exactly as certified by master.
+            if current_status == "finalized":
+                builder.set_error(
+                    "VALIDATION_ERROR",
+                    "This sign-off has been finalized by the Master and is now immutable. "
+                    "No further signatures can be added. Raise a correction request if changes are needed."
+                )
+                return builder.build()
+
             if signature_level == "hod" and current_status != "crew_signed":
                 builder.set_error(
                     "VALIDATION_ERROR",
