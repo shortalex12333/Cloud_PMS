@@ -3495,9 +3495,15 @@ async def _draft_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
     # Optional FK fields
     for field in ("equipment_id", "fault_id", "work_order_id",
                   "vendor_name", "manufacturer", "warranty_expiry",
-                  "claimed_amount"):
+                  "claimed_amount", "currency"):
         if params.get(field) is not None:
             claim_data[field] = params[field]
+    # Store structured metadata that doesn't have a dedicated DB column
+    metadata: dict = {}
+    if params.get("manufacturer_email"):
+        metadata["manufacturer_email"] = params["manufacturer_email"]
+    if metadata:
+        claim_data["metadata"] = metadata
     supabase.table("pms_warranty_claims").insert(claim_data).execute()
 
     return {

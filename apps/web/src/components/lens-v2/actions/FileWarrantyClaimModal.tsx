@@ -69,6 +69,7 @@ export function FileWarrantyClaimModal({ open, onOpenChange }: FileWarrantyClaim
   const [workOrderRef, setWorkOrderRef] = React.useState('');
   const [warrantyExpiry, setWarrantyExpiry] = React.useState('');
   const [claimedAmount, setClaimedAmount] = React.useState('');
+  const [currency, setCurrency] = React.useState('USD');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -84,6 +85,7 @@ export function FileWarrantyClaimModal({ open, onOpenChange }: FileWarrantyClaim
       setWorkOrderRef('');
       setWarrantyExpiry('');
       setClaimedAmount('');
+      setCurrency('USD');
       setLoading(false);
       setError(null);
     }
@@ -117,18 +119,18 @@ export function FileWarrantyClaimModal({ open, onOpenChange }: FileWarrantyClaim
       const payload: Record<string, unknown> = {
         title: title.trim(),
       };
-      if (description.trim() || contactEmail.trim()) {
-        const emailPrefix = contactEmail.trim()
-          ? `Manufacturer contact: ${contactEmail.trim()}\n`
-          : '';
-        payload.description = emailPrefix + description.trim();
-      }
+      if (description.trim()) payload.description = description.trim();
       if (vendor.trim()) payload.vendor_name = vendor.trim();
       if (manufacturer.trim()) payload.manufacturer = manufacturer.trim();
+      // Manufacturer contact email stored in metadata.manufacturer_email (not in description)
+      if (contactEmail.trim()) payload.manufacturer_email = contactEmail.trim();
       if (equipmentRef.trim()) payload.equipment_id = equipmentRef.trim();
       if (workOrderRef.trim()) payload.work_order_id = workOrderRef.trim();
       if (warrantyExpiry) payload.warranty_expiry = warrantyExpiry;
-      if (claimedAmount) payload.claimed_amount = parseFloat(claimedAmount);
+      if (claimedAmount) {
+        payload.claimed_amount = parseFloat(claimedAmount);
+        payload.currency = currency;
+      }
 
       const res = await fetch('/api/v1/actions/execute', {
         method: 'POST',
@@ -305,24 +307,45 @@ export function FileWarrantyClaimModal({ open, onOpenChange }: FileWarrantyClaim
               </div>
             </div>
 
-            {/* Row 6: Warranty Expiry Date + Claimed Amount (2-col) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* Row 6: Warranty Expiry Date (full width) */}
+            <div>
+              <label htmlFor="fwc-warranty-expiry" style={labelStyle}>
+                Warranty Expiry Date
+              </label>
+              <input
+                id="fwc-warranty-expiry"
+                type="date"
+                value={warrantyExpiry}
+                onChange={e => setWarrantyExpiry(e.target.value)}
+                disabled={loading}
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Row 7: Currency + Claimed Amount (2-col) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '12px' }}>
               <div>
-                <label htmlFor="fwc-warranty-expiry" style={labelStyle}>
-                  Warranty Expiry Date
+                <label htmlFor="fwc-currency" style={labelStyle}>
+                  Currency
                 </label>
-                <input
-                  id="fwc-warranty-expiry"
-                  type="date"
-                  value={warrantyExpiry}
-                  onChange={e => setWarrantyExpiry(e.target.value)}
+                <select
+                  id="fwc-currency"
+                  value={currency}
+                  onChange={e => setCurrency(e.target.value)}
                   disabled={loading}
                   style={inputStyle}
-                />
+                >
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="NOK">NOK</option>
+                  <option value="AUD">AUD</option>
+                  <option value="SGD">SGD</option>
+                </select>
               </div>
               <div>
                 <label htmlFor="fwc-claimed-amount" style={labelStyle}>
-                  Claimed Amount (USD)
+                  Claimed Amount
                 </label>
                 <input
                   id="fwc-claimed-amount"

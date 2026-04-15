@@ -81,6 +81,8 @@ export function WarrantyContent() {
   const drafted_at = (entity?.drafted_at) as string | undefined;
   const rejection_reason = (entity?.rejection_reason) as string | undefined;
   const email_draft = entity?.email_draft as Record<string, string> | null | undefined;
+  const metadata = (entity?.metadata as Record<string, unknown> | null | undefined) ?? {};
+  const manufacturer_email = metadata?.manufacturer_email as string | undefined;
   const equipment_name = (entity?.equipment_name) as string | undefined;
   const equipment_id = (entity?.equipment_id) as string | undefined;
   const equipment_code = (entity?.equipment_code) as string | undefined;
@@ -169,6 +171,7 @@ export function WarrantyContent() {
   if (claim_type) claimItems.push({ label: 'Claim Type', value: formatLabel(claim_type) });
   if (vendor_name) claimItems.push({ label: 'Supplier / Vendor', value: vendor_name });
   if (entity?.manufacturer) claimItems.push({ label: 'Manufacturer', value: entity.manufacturer as string });
+  if (manufacturer_email) claimItems.push({ label: 'Manufacturer Email', value: manufacturer_email });
   if (entity?.serial_number) claimItems.push({ label: 'Serial Number', value: entity.serial_number as string, mono: true });
   if (entity?.part_number) claimItems.push({ label: 'Part Number', value: entity.part_number as string, mono: true });
   if (entity?.purchase_date) claimItems.push({ label: 'Purchase Date', value: entity.purchase_date as string, mono: true });
@@ -279,9 +282,9 @@ export function WarrantyContent() {
           marginBottom: '8px',
           borderRadius: '6px',
           fontSize: '13px',
-          background: actionFeedback.type === 'success' ? 'var(--teal-bg)' : 'rgba(239,68,68,0.1)',
-          color: actionFeedback.type === 'success' ? 'var(--mark)' : '#ef4444',
-          border: `1px solid ${actionFeedback.type === 'success' ? 'var(--mark)' : '#ef4444'}`,
+          background: actionFeedback.type === 'success' ? 'var(--teal-bg)' : 'var(--status-critical-bg)',
+          color: actionFeedback.type === 'success' ? 'var(--mark)' : 'var(--status-critical)',
+          border: `1px solid ${actionFeedback.type === 'success' ? 'var(--mark)' : 'var(--status-critical)'}`,
         }}>
           {actionFeedback.message}
         </div>

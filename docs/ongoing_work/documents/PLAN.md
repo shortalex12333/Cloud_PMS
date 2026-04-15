@@ -35,7 +35,9 @@ Full map: `/Users/celeste7/.claude/projects/-Users-celeste7/memory/project_docum
 | 10 | `pms_audit_log` on upload is unsigned (`signature: {}`). Delete is SIGNED. | ⬜ | (defer) | — |
 | 11 | `'chief_steward'` missing from `document_routes.py:63 LINK_MANAGE_ROLES` — chief_steward cannot link a provision invoice | 🟦 | F4 | Code change on branch |
 | 12 | No `fleet_id` on docs. Strict yacht scope. Future fleet manual library is a separate story. | ⬜ | (future) | — |
-| 13 | **[upstream]** `_upload_document_adapter` never called `supabase.storage.upload()` — every lens upload produced a ghost row. Discovered during F-series verification. | 🟦 | Part A+B+C | Direct-DB 5/5 smoke tests pass, tsc 0 errors, backward-compat confirmed |
+| 13 | **[upstream]** `_upload_document_adapter` never called `supabase.storage.upload()` — every lens upload produced a ghost row. Discovered during F-series verification. | 🟩 | Part A+B+C | PR #538 + #539 + post-deploy browser e2e PASS |
+| 14 | **[upstream]** `atomic_chunk_replacement` writes to `tsv` which is a `GENERATED ALWAYS AS (to_tsvector('english', COALESCE(content, ''))) STORED` column. Postgres rejects with `GeneratedAlways`. | 🟩 | PR #542 | Fix landed; diag confirms the exception class changed |
+| 15 | **[upstream]** `atomic_chunk_replacement` doesn't set `org_id`. The AFTER INSERT trigger `trg_search_document_chunks_dataset_version` fires `f1_bump_dataset_version()` which cascades into `INSERT INTO search_dataset_version (org_id NOT NULL, ...)` and fails. Same swallow pattern → chunks=0. Discovered after #542 unmasked it. | 🟦 | PR #543 | First success captured by monitor task b7wdipdtr attempt 8: `chunks_written=1 exc=none`. Awaiting stability poll (2 consecutive successes) before final 🟩. |
 
 ---
 
@@ -360,6 +362,12 @@ WHERE dm.deleted_at IS NULL
 | 2026-04-15 | Part C1: refactored `AttachmentUploadModal.tsx` to accept an optional `onUpload: (file: File) => Promise<void>` strategy prop + optional `title` / `description`. Made all pms_attachments-specific props optional. Runtime assertion in the default path. Existing warranty + certificate call sites verified unchanged (all 6 required props still passed). Backward-compatible refactor — zero forking, zero duplicate components. | DOCUMENTS01 |
 | 2026-04-15 | Part C2: wired `AppShell.tsx` — added `documentUploadOpen` state, `documents` case to `handlePrimaryAction`, `handleDocumentUpload` callback that calls `getYachtId()` + `getAuthHeaders()` + POSTs multipart to `/v1/documents/upload` + invalidates `['documents']` query on success + surfaces FastAPI error detail in the Toast. Mounted `<AttachmentUploadModal>` in custom mode at shell level alongside `CreateWorkOrderModal`, `ReportFaultModal`, `FileWarrantyClaimModal`. | DOCUMENTS01 |
 | 2026-04-15 | `tsc --noEmit` on `apps/web`: exit 0, zero errors, zero mentions of any edited file. Parts C1 + C2 are type-safe and do not break any existing code. | DOCUMENTS01 |
+| 2026-04-15 | PR #538 merged via gh admin bypass. Render deployed within ~2 min (verified via /v1/documents/upload status flip 404→422). Vercel auto-deploy was triggered but **failed at eslint** because `AttachmentUploadModal` had `React.useCallback` after `if (!open) return null` — react-hooks/rules-of-hooks. Vercel silently fell back to a 6-hour-old deploy. Caught by browser test failing + `vercel inspect` showing 6h age vs 30m merge. | DOCUMENTS01 |
+| 2026-04-15 | Hotfix PR #539 moved the useCallback above the early return. Vercel deployed cleanly (1m real build, new chunk hash). | DOCUMENTS01 |
+| 2026-04-15 | Browser end-to-end via Playwright on production: captain JWT → click Upload Document → modal opens → file picker → submit → success toast → DB row verified → cleanup. 8.3s, PASS. | DOCUMENTS01 |
+| 2026-04-15 | Ghost cleanup: 100 extraction_failed rows (all whitelisted-source orphans, all probed truly missing from storage) atomically deleted. doc_metadata 3627→3519. | DOCUMENTS01 |
+| 2026-04-15 | Diagnostic patch PR #541: `extract_diag` JSONB written into `search_index.payload` capturing file_size, head bytes, fitz page counts, exceptions. Deployed to Render. | DOCUMENTS01 |
+| 2026-04-15 | **Bug surfaced via diag**: TXT upload diag shows `extract_text_len=81`, `extract_text_preview` contains real body, `chunks_written=0`, `chunk_write_exception="GeneratedAlways: cannot insert a non-DEFAULT value into column \"tsv\""`. Schema confirmed: `tsv is_generated=ALWAYS, gen_expr=to_tsvector('english', COALESCE(content, ''))`. Fix: omit `tsv` from chunk INSERT. PR #542. Pre-existing bug masked by F1 bucket-bug for all of history. | DOCUMENTS01 |
 
 ---
 
