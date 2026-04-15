@@ -41,7 +41,12 @@ DOMAIN_TABLE_MAP = {
     "faults": "pms_faults",
     "equipment": "pms_equipment",
     "parts": "pms_parts",
-    "certificates": "pms_vessel_certificates",
+    # v_certificates_enriched is a UNION of pms_vessel_certificates +
+    # pms_crew_certificates with a `domain` discriminator. Previously this
+    # pointed to pms_vessel_certificates directly, which made crew certs
+    # invisible to every caller of /api/vessel/{id}/domain/certificates/records
+    # including the certificate register page and the default list page fallback.
+    "certificates": "v_certificates_enriched",
     "documents": "doc_metadata",
     "handover": "handover_drafts",
     "hours_of_rest": "pms_hours_of_rest",
@@ -57,7 +62,9 @@ DOMAIN_SELECT = {
     "faults": "id, title, fault_code, status, severity, equipment_id, created_at, updated_at",
     "equipment": "id, name, code, system_type, location, status, manufacturer, model, serial_number, criticality, created_at, updated_at",
     "parts": "id, name, part_number, quantity_on_hand, minimum_quantity, location, unit_cost, manufacturer, category, is_critical, created_at, updated_at",
-    "certificates": "id, certificate_name, certificate_type, certificate_number, issuing_authority, issue_date, expiry_date, status, created_at",
+    # domain + person_name added so crew cert rows surface the owner name
+    # in the register and list views (v_certificates_enriched exposes both).
+    "certificates": "id, certificate_name, certificate_type, certificate_number, issuing_authority, issue_date, expiry_date, status, created_at, domain, person_name",
     "documents": "*",
     "handover": "id, title, state, department, generated_by_user_id, period_start, period_end, total_entries, critical_entries, created_at",
     "hours_of_rest": "*",
@@ -895,14 +902,25 @@ def _format_record(domain: str, record: dict) -> dict:
                 days_rem = (exp - now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)).days
             except Exception:
                 pass
+        cert_domain = record.get("domain") or "vessel"
+        person_name = record.get("person_name") or ""
+        cert_type = record.get("certificate_type") or ""
+        # Crew rows have empty certificate_name — synthesize from person+type
+        if cert_domain == "crew":
+            title = f"{person_name} — {cert_type}".strip(" —") if person_name else (cert_type or "Crew Certificate")
+        else:
+            title = record.get("certificate_name") or cert_type or "Certificate"
         base.update({
             "ref": record.get("certificate_number", f"C-{str(record.get('id', ''))[:6]}"),
-            "title": record.get("certificate_name", ""),
-            "certificate_type": record.get("certificate_type", ""),
+            "title": title,
+            "certificate_name": record.get("certificate_name", ""),
+            "certificate_type": cert_type,
+            "domain": cert_domain,
+            "person_name": person_name or None,
             "expiry_date": record.get("expiry_date"),
             "days_remaining": days_rem,
             "status": record.get("status", "valid"),
-            "meta": f"{record.get('certificate_type', '')} · Expires: {record.get('expiry_date', 'N/A')}",
+            "meta": f"{cert_type} · Expires: {record.get('expiry_date', 'N/A')}",
         })
     elif domain == "purchase_orders":
         base.update({
