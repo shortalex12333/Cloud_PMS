@@ -571,6 +571,7 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             "rejected_at": data.get("rejected_at"),
             "rejection_reason": data.get("rejection_reason"),
             "email_draft": data.get("email_draft"),
+            "metadata": data.get("metadata"),
             "attachments": attachments,
             "notes": warranty_notes,
             "audit_trail": warranty_audit,

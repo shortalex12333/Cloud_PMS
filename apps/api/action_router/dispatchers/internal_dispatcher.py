@@ -3844,10 +3844,14 @@ async def _compose_warranty_email(params: Dict[str, Any]) -> Dict[str, Any]:
     drafted_at_str = claim.get("drafted_at", "")
     drafted_date = drafted_at_str[:10] if drafted_at_str else "N/A"
 
+    # Prefer manufacturer_email from metadata; fall back to vendor_name (company name, not email)
+    _meta = claim.get("metadata") or {}
+    _to_address = _meta.get("manufacturer_email") or claim.get("vendor_name") or "Supplier"
+    _salutation = claim.get("vendor_name") or claim.get("manufacturer") or "Sir/Madam"
     email_draft = {
         "subject": f"Warranty Claim {claim['claim_number']} — {claim.get('title', '')}",
-        "to": claim.get("vendor_name", "Supplier"),
-        "body": f"""Dear {claim.get('vendor_name', 'Sir/Madam')},\n\nWe write regarding warranty claim {claim['claim_number']} filed on {drafted_date}.\n\nClaim Details:\n- Title: {claim.get('title', '')}\n- Claim Type: {claim.get('claim_type', '').replace('_', ' ').title()}\n- Serial Number: {claim.get('serial_number', 'N/A')}\n- Manufacturer: {claim.get('manufacturer', 'N/A')}\n- Claimed Amount: {claim.get('currency', 'USD')} {claim.get('claimed_amount', 0)}\n\nDescription:\n{claim.get('description', '')}\n\nPlease confirm receipt and advise on the warranty assessment process.\n\nKind regards""",
+        "to": _to_address,
+        "body": f"""Dear {_salutation},\n\nWe write regarding warranty claim {claim['claim_number']} filed on {drafted_date}.\n\nClaim Details:\n- Title: {claim.get('title', '')}\n- Claim Type: {claim.get('claim_type', '').replace('_', ' ').title()}\n- Serial Number: {claim.get('serial_number', 'N/A')}\n- Manufacturer: {claim.get('manufacturer', 'N/A')}\n- Claimed Amount: {claim.get('currency', 'USD')} {claim.get('claimed_amount', 0)}\n\nDescription:\n{claim.get('description', '')}\n\nPlease confirm receipt and advise on the warranty assessment process.\n\nKind regards""",
         "composed_at": datetime.utcnow().isoformat(),
         "composed_by": params.get("user_id"),
     }
