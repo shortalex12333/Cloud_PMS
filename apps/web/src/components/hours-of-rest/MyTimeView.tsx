@@ -234,6 +234,15 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   const [warnings, setWarnings] = React.useState<any[]>([]);
   const [acknowledging, setAcknowledging] = React.useState<Record<string, boolean>>({});
 
+  // Month calendar
+  const [calendarOpen, setCalendarOpen] = React.useState(false);
+  const [calendarMonth, setCalendarMonth] = React.useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [calendarDays, setCalendarDays] = React.useState<any[]>([]);
+  const [calendarLoading, setCalendarLoading] = React.useState(false);
+
   // Week navigation — null = current week (backend defaults)
   const [viewWeekStart, setViewWeekStart] = React.useState<string | null>(null);
   // Disable forward nav when we're already on current week
@@ -339,6 +348,24 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     }
   }
 
+  async function loadCalendar(month: string) {
+    setCalendarLoading(true);
+    try {
+      const auth = await getAuthHeader();
+      const resp = await fetch(`/api/v1/hours-of-rest/month-status?month=${month}`, {
+        headers: { 'Authorization': auth },
+      });
+      if (resp.ok) {
+        const json = await resp.json();
+        setCalendarDays(json.days ?? []);
+      }
+    } catch {
+      // non-critical
+    } finally {
+      setCalendarLoading(false);
+    }
+  }
+
   async function acknowledgeWarning(warningId: string) {
     setAcknowledging(prev => ({ ...prev, [warningId]: true }));
     try {
@@ -361,6 +388,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     checkUnsignedAlert();
     loadWarnings();
   }, [viewWeekStart]);
+
+  React.useEffect(() => {
+    if (calendarOpen) loadCalendar(calendarMonth);
+  }, [calendarOpen, calendarMonth]);
 
   // ── Submit single day ──
 
@@ -615,6 +646,20 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 style={{ background: 'none', border: 'none', color: isCurrentWeek ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.45)', cursor: isCurrentWeek ? 'default' : 'pointer', padding: '0 2px', fontSize: 12, lineHeight: 1 }}
                 title="Next week"
               >›</button>
+              {/* Calendar toggle */}
+              <button
+                onClick={() => setCalendarOpen(o => !o)}
+                title="Month calendar"
+                style={{
+                  background: calendarOpen ? 'rgba(90,171,204,0.12)' : 'none',
+                  border: calendarOpen ? '1px solid rgba(90,171,204,0.25)' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 4,
+                  color: calendarOpen ? 'var(--mark, #5AABCC)' : 'rgba(255,255,255,0.35)',
+                  cursor: 'pointer', padding: '2px 7px',
+                  fontFamily: 'var(--font-mono)', fontSize: 9,
+                  letterSpacing: '0.06em', marginLeft: 4,
+                }}
+              >CAL</button>
               {/* Day-status dots — green=compliant, amber=violation, grey=not filed */}
               <div style={{ display: 'flex', gap: 3, marginLeft: 6 }}>
                 {data.days.filter(Boolean).map((day: any) => {
@@ -665,6 +710,145 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.06em' }}>Past week — read only</span>
           )}
         />
+
+        {/* ── Month calendar ── */}
+        {calendarOpen && (
+          <div style={{
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            padding: '12px 16px',
+            background: 'rgba(0,0,0,0.15)',
+          }}>
+            {/* Month nav */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <button
+                onClick={() => {
+                  const [y, m] = calendarMonth.split('-').map(Number);
+                  const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+                  setCalendarMonth(prev);
+                }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: 12 }}
+              >‹</button>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.50)', flex: 1, textAlign: 'center' }}>
+                {(() => { const [y, m] = calendarMonth.split('-'); return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); })()}
+              </span>
+              <button
+                onClick={() => {
+                  const [y, m] = calendarMonth.split('-').map(Number);
+                  const now = new Date();
+                  const nowYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                  if (calendarMonth >= nowYM) return;
+                  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+                  setCalendarMonth(next);
+                }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: 12 }}
+              >›</button>
+            </div>
+
+            {/* Day-of-week headers */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+              {['M','T','W','T','F','S','S'].map((d, i) => (
+                <div key={i} style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(255,255,255,0.25)', padding: '2px 0' }}>{d}</div>
+              ))}
+            </div>
+
+            {/* Calendar grid */}
+            {calendarLoading ? (
+              <div style={{ textAlign: 'center', padding: '12px 0', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>Loading…</div>
+            ) : (() => {
+              const [cy, cm] = calendarMonth.split('-').map(Number);
+              const firstDay = new Date(cy, cm - 1, 1);
+              // Monday-based offset: 0=Mon…6=Sun
+              const startOffset = (firstDay.getDay() + 6) % 7;
+              const daysByDate: Record<string, any> = {};
+              for (const d of calendarDays) daysByDate[d.date] = d;
+
+              const cells: React.ReactNode[] = [];
+              // Empty cells before first day
+              for (let i = 0; i < startOffset; i++) {
+                cells.push(<div key={`e${i}`} />);
+              }
+
+              const daysInMonth = new Date(cy, cm, 0).getDate();
+              for (let day = 1; day <= daysInMonth; day++) {
+                const dstr = `${calendarMonth}-${String(day).padStart(2, '0')}`;
+                const rec = daysByDate[dstr];
+                const isToday = dstr === new Date().toISOString().slice(0, 10);
+                // Determine the Monday of this day's week
+                const dayDate = new Date(cy, cm - 1, day);
+                const dowOffset = (dayDate.getDay() + 6) % 7;
+                const mondayDate = new Date(dayDate);
+                mondayDate.setDate(dayDate.getDate() - dowOffset);
+                const weekMonday = mondayDate.toISOString().slice(0, 10);
+
+                let bg: string;
+                if (!rec || !rec.submitted) {
+                  bg = isToday ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.06)';
+                } else if (rec.is_compliant === false) {
+                  bg = 'rgba(192,80,58,0.70)';
+                } else {
+                  bg = 'rgba(74,148,104,0.70)';
+                }
+
+                const isViewedWeek = (() => {
+                  const activeMonday = viewWeekStart ?? data?.week_start;
+                  return activeMonday === weekMonday;
+                })();
+
+                cells.push(
+                  <button
+                    key={dstr}
+                    title={`${dstr}${rec?.submitted ? (rec.is_compliant === false ? ' — Violation' : ' — Compliant') : ' — Not filed'}`}
+                    onClick={() => {
+                      const nowYM = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+                      const todayMonday = (() => {
+                        const t = new Date();
+                        const diff = (t.getDay() + 6) % 7;
+                        t.setDate(t.getDate() - diff);
+                        return t.toISOString().slice(0, 10);
+                      })();
+                      setViewWeekStart(weekMonday === todayMonday ? null : weekMonday);
+                      setCalendarOpen(false);
+                    }}
+                    style={{
+                      background: bg,
+                      border: isViewedWeek ? '1px solid rgba(90,171,204,0.6)' : '1px solid transparent',
+                      borderRadius: 3,
+                      color: rec?.submitted ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.35)',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 9,
+                      cursor: 'pointer',
+                      padding: '4px 0',
+                      textAlign: 'center',
+                      transition: 'opacity 0.1s',
+                    }}
+                  >
+                    {day}
+                  </button>
+                );
+              }
+
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                  {cells}
+                </div>
+              );
+            })()}
+
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: 12, marginTop: 10, justifyContent: 'flex-end' }}>
+              {[
+                { color: 'rgba(74,148,104,0.70)', label: 'Compliant' },
+                { color: 'rgba(192,80,58,0.70)', label: 'Violation' },
+                { color: 'rgba(255,255,255,0.06)', label: 'Not filed' },
+              ].map(({ color, label }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(255,255,255,0.30)' }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Finalized banner */}
         {weekLocked && !forceReadOnly && (

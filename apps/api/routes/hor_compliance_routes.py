@@ -862,3 +862,102 @@ async def get_fleet_compliance(
     except Exception as e:
         logger.error(f"get_fleet_compliance error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+# ===========================================================================
+# GET /v1/hours-of-rest/month-status
+# ===========================================================================
+
+@router.get("/month-status")
+async def get_month_status(
+    month: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Lightweight day-level status for a calendar month.
+
+    Returns one entry per calendar day with submitted/compliant flags —
+    enough to render a month calendar (green / red / grey per day).
+
+    Query params:
+      month: YYYY-MM  (default: current month)
+
+    Response:
+      days: [ { date, submitted, is_compliant } ]
+      month: YYYY-MM
+    """
+    user_id = auth["user_id"]
+    yacht_id = auth["yacht_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+
+    today = date.today()
+
+    if month:
+        try:
+            y, m = month.split("-")
+            month_start = date(int(y), int(m), 1)
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail={"error": "BAD_MONTH", "message": "month must be YYYY-MM"})
+    else:
+        month_start = date(today.year, today.month, 1)
+
+    # End of month (last day)
+    if month_start.month == 12:
+        month_end = date(month_start.year + 1, 1, 1) - timedelta(days=1)
+    else:
+        month_end = date(month_start.year, month_start.month + 1, 1) - timedelta(days=1)
+
+    # Don't return future days
+    month_end = min(month_end, today)
+
+    supabase = get_tenant_client(tenant_key_alias)
+    if not supabase:
+        raise HTTPException(status_code=503, detail={"error": "DB_UNAVAILABLE"})
+
+    try:
+        r = supabase.table("pms_hours_of_rest").select(
+            "record_date, is_daily_compliant, total_rest_hours"
+        ).eq("yacht_id", yacht_id).eq("user_id", user_id).gte(
+            "record_date", month_start.isoformat()
+        ).lte("record_date", month_end.isoformat()).order("record_date").execute()
+
+        records_by_date = {
+            row["record_date"]: row for row in (r.data or [])
+        }
+
+        days = []
+        d = month_start
+        while d <= month_end:
+            dstr = d.isoformat()
+            rec = records_by_date.get(dstr)
+            if rec:
+                rest_h = rec.get("total_rest_hours") or 0
+                # is_daily_compliant may be null if backend check wasn't run yet —
+                # fall back to MLC 2006 rule: >= 10h rest per day
+                compliant = rec.get("is_daily_compliant")
+                if compliant is None and rest_h is not None:
+                    compliant = rest_h >= 10
+                days.append({
+                    "date":         dstr,
+                    "submitted":    True,
+                    "is_compliant": compliant,
+                })
+            else:
+                days.append({
+                    "date":         dstr,
+                    "submitted":    False,
+                    "is_compliant": None,
+                })
+            d += timedelta(days=1)
+
+        return JSONResponse(content={
+            "status": "success",
+            "month":  month_start.strftime("%Y-%m"),
+            "days":   days,
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_month_status error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
