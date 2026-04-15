@@ -24,14 +24,14 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 import logging
 
+logger = logging.getLogger(__name__)
+
 try:
     from cachetools import TTLCache
     HAS_CACHETOOLS = True
 except ImportError:
     HAS_CACHETOOLS = False
     logger.warning("[Auth] cachetools not installed - using dict cache without TTL")
-
-logger = logging.getLogger(__name__)
 
 # ============================================================================
 # INCIDENT MODE / KILL SWITCH CONFIGURATION
