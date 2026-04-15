@@ -95,6 +95,13 @@ export function CertificateContent() {
   const vessel_name = (entity?.vessel_name ?? payload.vessel_name) as string | undefined;
   const description = (entity?.description ?? payload.description) as string | undefined;
 
+  // Responsible officer — stored in properties.assigned_to / assigned_to_name
+  // by the assign_certificate action. Read-only on the lens; writes happen
+  // through ActionPopup('assign_certificate').
+  const certProperties = (entity?.properties ?? payload.properties ?? {}) as Record<string, unknown>;
+  const assigned_to = certProperties.assigned_to as string | undefined;
+  const assigned_to_name = certProperties.assigned_to_name as string | undefined;
+
   // Coverage / scope fields (prototype "Coverage Details" section)
   const scope = (entity?.scope ?? payload.scope) as string | undefined;
   const capacity = (entity?.capacity ?? payload.capacity) as string | undefined;
@@ -177,6 +184,12 @@ export function CertificateContent() {
   }
   if (vessel_name) {
     details.push({ label: 'Vessel', value: vessel_name });
+  }
+  if (assigned_to) {
+    details.push({
+      label: 'Responsible Officer',
+      value: assigned_to_name || assigned_to,
+    });
   }
 
   // Context line
