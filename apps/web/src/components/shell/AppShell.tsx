@@ -39,7 +39,10 @@ import SettingsModal from '@/components/SettingsModal';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
 import { FileWarrantyClaimModal } from '@/components/lens-v2/actions/FileWarrantyClaimModal';
+import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
 import { LedgerPanel } from '@/components/ledger';
+import { useQueryClient } from '@tanstack/react-query';
+import { getAuthHeaders, getYachtId } from '@/lib/authHelpers';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -145,6 +148,13 @@ export function AppShell({ children }: AppShellProps) {
   const [createWOOpen, setCreateWOOpen] = React.useState(false);
   const [reportFaultOpen, setReportFaultOpen] = React.useState(false);
   const [fileWarrantyOpen, setFileWarrantyOpen] = React.useState(false);
+  const [documentUploadOpen, setDocumentUploadOpen] = React.useState(false);
+
+  // React Query client — used to invalidate the documents list after an upload
+  // so the newly-uploaded document appears immediately. Mirrors the pattern
+  // in FileWarrantyClaimModal and matches the queryKey set in
+  // apps/web/src/app/documents/page.tsx FilteredEntityList (['documents']).
+  const queryClient = useQueryClient();
 
   // Topbar menu handlers
   const handleEmailClick = React.useCallback(() => {
@@ -168,11 +178,74 @@ export function AppShell({ children }: AppShellProps) {
       case 'warranties':
         setFileWarrantyOpen(true);
         break;
+      case 'documents':
+        setDocumentUploadOpen(true);
+        break;
       default:
         // Domains without a create modal — navigate to domain (already there, but no-op is fine)
         break;
     }
   }, [activeDomain]);
+
+  // ------------------------------------------------------------------
+  // Document upload handler passed to AttachmentUploadModal in custom mode.
+  //
+  // Flow:
+  //   1. Resolve yacht_id from the user profile (same helper apiClient uses)
+  //   2. Obtain secure auth headers (JWT + X-Yacht-Signature)
+  //   3. POST multipart/form-data to /v1/documents/upload
+  //   4. On success, invalidate the ['documents'] query so FilteredEntityList
+  //      refetches and the new document appears at the top of the list.
+  //
+  // Backend endpoint:
+  //   apps/api/routes/document_routes.py:upload_document
+  //
+  // Failure modes surfaced to the modal Toast via thrown errors:
+  //   - 401: auth missing / expired
+  //   - 403: role not in UPLOAD_DOCUMENT_ROLES
+  //   - 413: file > 15 MB
+  //   - 415: unsupported mime type
+  //   - 500: storage upload or doc_metadata insert failed (server-side rollback)
+  // ------------------------------------------------------------------
+  const handleDocumentUpload = React.useCallback(
+    async (file: File): Promise<void> => {
+      const yachtId = await getYachtId();
+      const authHeaders = await getAuthHeaders(yachtId);
+
+      const apiBaseUrl =
+        process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${apiBaseUrl}/v1/documents/upload`, {
+        method: 'POST',
+        headers: {
+          ...authHeaders,
+          // DO NOT set Content-Type — browser sets multipart boundary automatically
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        // Try to parse FastAPI error detail for a meaningful message
+        let message = `Upload failed (${response.status})`;
+        try {
+          const body = await response.json();
+          if (typeof body?.detail === 'string') {
+            message = body.detail;
+          }
+        } catch {
+          // body not JSON — keep generic message
+        }
+        throw new Error(message);
+      }
+
+      // Invalidate the documents list so the new upload appears immediately.
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+    },
+    [queryClient]
+  );
 
   // hours-of-rest has its own role-aware header — no Subbar needed
   const SUBBAR_EXCLUDED: DomainId[] = ['surface', 'hours-of-rest'];
@@ -201,6 +274,14 @@ export function AppShell({ children }: AppShellProps) {
       <CreateWorkOrderModal open={createWOOpen} onOpenChange={setCreateWOOpen} />
       <ReportFaultModal open={reportFaultOpen} onOpenChange={setReportFaultOpen} />
       <FileWarrantyClaimModal open={fileWarrantyOpen} onOpenChange={setFileWarrantyOpen} />
+      <AttachmentUploadModal
+        open={documentUploadOpen}
+        onClose={() => setDocumentUploadOpen(false)}
+        onComplete={() => setDocumentUploadOpen(false)}
+        title="Upload Document"
+        description="Add a document to the vessel library. Accepted: PDF, images, office docs; max 15 MB."
+        onUpload={handleDocumentUpload}
+      />
     </ShellProvider>
   );
 }

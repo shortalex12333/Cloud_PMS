@@ -35,7 +35,7 @@ BATCH_SIZE = int(os.environ.get("EXTRACTION_BATCH_SIZE", "5"))
 POLL_INTERVAL = int(os.environ.get("EXTRACTION_POLL_INTERVAL", "10"))
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 CHUNK_SIZE = 2000  # characters per chunk
-STORAGE_BUCKET = "yacht-documents"
+DEFAULT_STORAGE_BUCKET = "documents"  # fallback when payload.bucket is missing
 ORPHAN_TIMEOUT_MINUTES = 10
 
 # ── Logging ─────────────────────────────────────────────────────────────
@@ -116,12 +116,17 @@ def build_search_text(
     return search_text
 
 
-def download_from_storage(storage_path: str, dest_path: str) -> bool:
+def download_from_storage(storage_path: str, dest_path: str, bucket: str = DEFAULT_STORAGE_BUCKET) -> bool:
     """
     Download a file from Supabase Storage to a local path.
     Returns True on success.
+
+    The bucket is resolved per-row from the search_index payload (see process_row).
+    Callers should pass the bucket recorded on the doc_metadata row so that lens
+    uploads (bucket=documents), part labels (bucket=pms-label-pdfs), and any
+    future domain-specific buckets all route correctly.
     """
-    url = f"{SUPABASE_URL}/storage/v1/object/authenticated/{STORAGE_BUCKET}/{storage_path}"
+    url = f"{SUPABASE_URL}/storage/v1/object/authenticated/{bucket}/{storage_path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
         "apikey": SUPABASE_SERVICE_KEY,
@@ -130,8 +135,8 @@ def download_from_storage(storage_path: str, dest_path: str) -> bool:
         resp = requests.get(url, headers=headers, timeout=120, stream=True)
         if resp.status_code != 200:
             logger.error(
-                "Storage download failed %d for %s: %s",
-                resp.status_code, storage_path, resp.text[:200],
+                "Storage download failed %d for %s (bucket=%s): %s",
+                resp.status_code, storage_path, bucket, resp.text[:200],
             )
             return False
 
@@ -245,6 +250,7 @@ def process_row(conn, row: dict) -> bool:
     filename = payload.get("filename", "")
     doc_type = payload.get("doc_type", "")
     system_tag = payload.get("system_tag", "")
+    bucket = payload.get("bucket") or DEFAULT_STORAGE_BUCKET
 
     if not storage_path:
         logger.warning("Row %s has no storage_path in payload, marking pending", row_id)
@@ -263,7 +269,7 @@ def process_row(conn, row: dict) -> bool:
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
         tmp_path = tmp.name
 
-        if not download_from_storage(storage_path, tmp_path):
+        if not download_from_storage(storage_path, tmp_path, bucket=bucket):
             # Download failed — mark as extraction_failed
             with conn.cursor() as cur:
                 cur.execute(
