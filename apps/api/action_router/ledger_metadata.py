@@ -65,6 +65,7 @@ ACTION_METADATA: dict = {
     # ── Certificates ─────────────────────────────────────────────────────────
     "add_certificate_note":              {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "archive_certificate":               {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "entity_id"},
+    "assign_certificate":                {"event_type": "assignment",    "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "create_vessel_certificate":         {"event_type": "create",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "create_crew_certificate":           {"event_type": "create",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "link_document_to_certificate":      {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},

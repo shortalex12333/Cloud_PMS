@@ -733,6 +733,7 @@ def get_certificate_handlers(supabase_client) -> Dict[str, callable]:
         "suspend_certificate": _suspend,
         "revoke_certificate": _revoke,
         "archive_certificate": _archive_certificate_adapter(handlers),
+        "assign_certificate": _assign_certificate_adapter(handlers),
     }
 
 
@@ -1444,5 +1445,80 @@ def _archive_certificate_adapter(handlers: "CertificateHandlers"):
         }
 
     return _fn
+
+
+def _assign_certificate_adapter(handlers: "CertificateHandlers"):
+    async def _fn(**params):
+        """
+        Assign a responsible officer to a certificate.
+
+        Stores assignment in `properties.assigned_to` on the cert row
+        (uses the existing jsonb column — no schema change). Writes an
+        audit log row and emits a ledger event via the safety-net path.
+
+        Expected params:
+        - yacht_id (str)
+        - user_id (str)            — actor (who is making the assignment)
+        - certificate_id (str)     — which cert to assign
+        - assigned_to (str)        — user UUID being assigned
+        - assigned_to_name (str, optional) — display name for audit trail
+        """
+        db = handlers.db
+        yacht_id = params["yacht_id"]
+        user_id = params["user_id"]
+        cert_id = params.get("certificate_id")
+        assigned_to = params.get("assigned_to")
+        assigned_to_name = params.get("assigned_to_name")
+
+        if not cert_id:
+            raise ValueError("certificate_id is required")
+        if not assigned_to:
+            raise ValueError("assigned_to is required")
+
+        # Find the cert (vessel or crew) — reuses domain resolver
+        domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
+        table = get_table(table_key)
+
+        now = datetime.now(timezone.utc).isoformat()
+        old_assignment = (old_cert.get("properties") or {}).get("assigned_to")
+        new_properties = {
+            **(old_cert.get("properties") or {}),
+            "assigned_to": assigned_to,
+            "assigned_to_name": assigned_to_name,
+            "assigned_at": now,
+            "assigned_by": user_id,
+        }
+
+        res = db.table(table).update({"properties": new_properties}).eq(
+            "yacht_id", yacht_id
+        ).eq("id", cert_id).execute()
+        if not res.data:
+            raise ValueError("Assignment update failed or not permitted by RLS")
+
+        try:
+            db.table("pms_audit_log").insert({
+                "yacht_id": yacht_id,
+                "entity_type": "certificate",
+                "entity_id": cert_id,
+                "action": "assign_certificate",
+                "user_id": user_id,
+                "old_values": {"assigned_to": old_assignment},
+                "new_values": {
+                    "assigned_to": assigned_to,
+                    "assigned_to_name": assigned_to_name,
+                },
+                "signature": {},
+                "metadata": {"source": "certificate_lens", "domain": domain},
+                "created_at": now,
+            }).execute()
+        except Exception:
+            pass
+
+        return {
+            "status": "success",
+            "certificate_id": cert_id,
+            "assigned_to": assigned_to,
+            "assigned_to_name": assigned_to_name,
+        }
 
     return _fn

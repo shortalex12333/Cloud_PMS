@@ -451,6 +451,14 @@ async def _cert_revoke(params: Dict[str, Any]) -> Dict[str, Any]:
     return await fn(**params)
 
 
+async def _cert_assign(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("assign_certificate")
+    if not fn:
+        raise ValueError("assign_certificate handler not registered")
+    return await fn(**params)
+
+
 # ============================================================================
 # DOCUMENT WRAPPERS (bridge to document handlers - Document Lens v2)
 # ============================================================================
@@ -4193,6 +4201,7 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "archive_certificate": _cert_archive,
     "suspend_certificate": _cert_suspend,
     "revoke_certificate": _cert_revoke,
+    "assign_certificate": _cert_assign,
     "archive_part": _soft_delete_entity,
     "delete_part": _soft_delete_entity,
     "cancel_po": _soft_delete_entity,
