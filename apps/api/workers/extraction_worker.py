@@ -154,22 +154,32 @@ def atomic_chunk_replacement(cur, doc_id: str, yacht_id: str, chunks: list) -> b
     """
     Atomically replace all chunks for a document.
     DELETE old → INSERT new in one transaction.
-    Pattern from projection_worker.py:484-521.
 
-    NOTE 2026-04-15 — `search_document_chunks.tsv` is a `GENERATED ALWAYS AS
-    (to_tsvector('english', COALESCE(content, ''))) STORED` column.
-    Generated columns cannot be written to directly — Postgres rejects
-    every INSERT that names them with `GeneratedAlways: cannot insert a
-    non-DEFAULT value into column "tsv"`.
+    Schema-drift fixes (2026-04-15, all discovered via diag patch in PR #541
+    after F1 unmasked extraction):
 
-    Previous version of this function explicitly wrote `to_tsvector(...)`
-    into the `tsv` column, which silently failed for every chunk in
-    production. The exception was swallowed by the caller's non-fatal
-    handler, leaving search_document_chunks empty for every uploaded
-    document. Discovered via the diag patch in PR #541.
+    1. `tsv` is `GENERATED ALWAYS AS (to_tsvector('english',
+       COALESCE(content, ''))) STORED`. Cannot be written directly.
+       FIX: omit `tsv` from the INSERT column list. Postgres populates it
+       from `content` automatically.
 
-    Fix: omit `tsv` from the INSERT column list. Postgres will populate
-    it from `content` automatically.
+    2. `org_id` must be set explicitly. Without it, the AFTER INSERT
+       trigger `trg_search_document_chunks_dataset_version` fires
+       `f1_bump_dataset_version()` which tries to insert
+       `(NULL, yacht_id, ...)` into `search_dataset_version` and fails
+       with `NotNullViolation: null value in column "org_id"`. The error
+       cascades back, the chunk INSERT rolls back, and the non-fatal
+       handler in process_row swallows the exception, leaving
+       search_document_chunks empty.
+
+       Per the org_id = yacht_id invariant verified across all 14,068
+       search_index rows (and confirmed by the F2 trigger
+       f1_enqueue_document_extraction which sets `org_id := NEW.yacht_id`),
+       we set both columns to the same yacht_id value.
+
+    Both bugs pre-date F1 (PR #538). They were masked because pre-F1
+    every storage download 404'd against the wrong bucket constant, so
+    the chunk INSERT was never reached.
     """
     if not chunks:
         return False
@@ -180,19 +190,22 @@ def atomic_chunk_replacement(cur, doc_id: str, yacht_id: str, chunks: list) -> b
         (doc_id,),
     )
 
-    # Insert new chunks — DO NOT write to `tsv` (generated column).
+    # Insert new chunks.
+    # - DO NOT write to `tsv` (generated column).
+    # - DO write `org_id` (downstream f1_bump_dataset_version trigger needs it).
     for chunk in chunks:
         content_hash = compute_content_hash(chunk["content"])
         cur.execute(
             """
             INSERT INTO search_document_chunks
-                (document_id, yacht_id, chunk_index, content, content_hash)
+                (document_id, yacht_id, org_id, chunk_index, content, content_hash)
             VALUES
-                (%s, %s, %s, %s, %s)
+                (%s, %s, %s, %s, %s, %s)
             """,
             (
                 doc_id,
                 yacht_id,
+                yacht_id,            # org_id = yacht_id invariant
                 chunk["chunk_index"],
                 chunk["content"],
                 content_hash,
