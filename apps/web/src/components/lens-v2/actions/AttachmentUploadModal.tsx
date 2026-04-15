@@ -169,27 +169,16 @@ export function AttachmentUploadModal({
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  if (!open) return null;
-
-  const fileTooLarge = file !== null && file.size > MAX_SIZE_BYTES;
-  const canUpload = file !== null && !fileTooLarge && !loading;
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0] ?? null;
-    setFile(selected);
-    setToast(null);
-  };
-
-  const handleCancel = () => {
-    setFile(null);
-    onClose();
-  };
-
   // ---------------------------------------------------------------------
   // Default upload strategy: direct-to-Supabase + pms_attachments insert.
   // Used when the caller did NOT supply a custom `onUpload` prop.
   // Closes over entityType/entityId/bucket/category/yachtId/userId from props.
   // Throws on any failure so the unified handler below can surface the error.
+  //
+  // IMPORTANT: this useCallback MUST sit before the `if (!open)` early
+  // return below. React's rules-of-hooks require hooks to be called in the
+  // same order on every render — putting this after an early return
+  // triggers `react-hooks/rules-of-hooks` and fails `next build` in CI.
   // ---------------------------------------------------------------------
   const defaultPmsAttachmentUpload = React.useCallback(
     async (selected: File): Promise<void> => {
@@ -232,6 +221,22 @@ export function AttachmentUploadModal({
     },
     [entityType, entityId, bucket, category, yachtId, userId]
   );
+
+  if (!open) return null;
+
+  const fileTooLarge = file !== null && file.size > MAX_SIZE_BYTES;
+  const canUpload = file !== null && !fileTooLarge && !loading;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] ?? null;
+    setFile(selected);
+    setToast(null);
+  };
+
+  const handleCancel = () => {
+    setFile(null);
+    onClose();
+  };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
