@@ -325,13 +325,14 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   async function loadWarnings() {
     try {
       const auth = await getAuthHeader();
-      const resp = await fetch('/api/v1/hours-of-rest/warnings', {
+      const resp = await fetch('/api/v1/hours-of-rest/warnings?status=active', {
         headers: { 'Authorization': auth },
       });
       if (resp.ok) {
         const json = await resp.json();
-        const list = json.data ?? json.warnings ?? [];
-        setWarnings(list.filter((w: any) => w.status === 'active'));
+        // Response: { data: { warnings: [...], summary: {...} } }
+        const list: any[] = json.data?.warnings ?? json.warnings ?? [];
+        setWarnings(list);
       }
     } catch {
       // non-critical
@@ -1062,7 +1063,17 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           {historyOpen && (
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
               {data.prior_weeks.map((w: any) => (
-                <div key={w.week_start} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                <div
+                  key={w.week_start}
+                  onClick={() => setViewWeekStart(w.week_start)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '9px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    cursor: 'pointer', transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
                   <div>
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{w.label}</span>
                     {w.days_filed < 7 && (
@@ -1074,6 +1085,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{w.total_rest_hours}h rest</span>
                     <StatusBadge ok={w.is_compliant} />
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.20)' }}>›</span>
                   </div>
                 </div>
               ))}
