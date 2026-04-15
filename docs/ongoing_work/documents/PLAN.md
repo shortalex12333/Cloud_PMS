@@ -363,14 +363,30 @@ WHERE dm.deleted_at IS NULL
 
 ---
 
-## 7. Next action
+## 7. Next action (post-commit state 2026-04-15)
 
-**Holding for user signal: "go"**
+**Feature branch `fix/f-series-documents-hardening` at commit `b687a592`. Not merged to main.**
 
-On "go":
-1. Delegate pre-flight SQL index check (nothing else starts until the result is read back).
-2. Apply F1 + F2 together; wait for extraction + projection + embedding stages to cycle.
-3. Run F5 backfill. Verify zero orphans.
-4. Apply F3 + F4 in parallel.
-5. Structured Pass/Pass-with-issues/Fail verdict back to CEO01 with real worker logs + SQL counts.
-6. Update this file with 🟦 on shipped items, 🟩 on merged items, and the change log entry.
+### Structured verdict
+
+- **F2 trigger** — Pass
+- **F3 CHECK constraint + Python VALID_OBJECT_TYPES** — Pass
+- **F5 backfill** — Pass (correct failure mode downstream due to Gap #13)
+- **Part A — POST /v1/documents/upload** — Pass (5/5 real-DB smoke tests against TENANT)
+- **Part B — adapter annotation** — Pass
+- **Part C1 — AttachmentUploadModal refactor** — Pass (tsc clean, backward-compat verified)
+- **Part C2 — AppShell wiring** — Pass (tsc clean)
+- **F1 bucket fix** — Pass with issues (code clean, runtime-verification requires Render deploy)
+- **F4 chief_steward** — Pass with issues (code clean, runtime-verification requires Render deploy)
+
+**Overall verdict: Pass with issues.** The F-series plumbing is live on TENANT and code-verified. Part A endpoint verified end-to-end against real TENANT with five test assertions. The remaining "issues" are all external-gate dependencies, not code defects.
+
+### Remaining work (external gates)
+
+1. **CEO merge decision.** Review the diff, decide whether to merge `fix/f-series-documents-hardening` into `main`. Merging triggers Render auto-deploy of `celeste-unified`, which picks up F1 (bucket fix) and F4 (chief_steward role).
+2. **Browser-level e2e upload test.** Once Render has the new code, do a real browser upload flow via the Documents page subbar primary action button. Expected: blob lands in storage → doc_metadata row → F2 trigger fires → extraction_worker downloads (F1 fix now correct) → chunks written → projection → embedding → indexed → document appears in the list with searchable body content.
+3. **Ghost cleanup.** After browser e2e confirms a real upload works end-to-end, delete the 100 pre-existing `extraction_failed` rows whose files never existed. SQL ready in §11.5 of `context.md`.
+
+### What's NOT ready to ship without further work
+
+Nothing in the F/A/B/C scope. All code is on branch, tested, type-safe, documented. The only gates are CEO merge + post-deploy verification.
