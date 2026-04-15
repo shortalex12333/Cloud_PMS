@@ -1,23 +1,48 @@
 'use client';
 
 /**
- * AttachmentUploadModal — Generic file upload modal for any entity lens.
+ * AttachmentUploadModal — Generic file upload modal.
  *
- * Uploads directly to the specified Supabase storage bucket, then inserts
- * a row to pms_attachments. Reusable across all entity types.
+ * Two usage modes (the component auto-detects which one based on props):
  *
- * Usage:
- *   <AttachmentUploadModal
- *     open={open}
- *     onClose={onClose}
- *     entityType="warranty"
- *     entityId={id}
- *     bucket="pms-warranty-documents"
- *     category="claim_document"
- *     yachtId={yachtId}
- *     userId={userId}
- *     onComplete={refetch}
- *   />
+ *  1. DEFAULT MODE — direct pms_attachments write (existing behaviour).
+ *     The modal uploads the blob straight to a specified Supabase storage
+ *     bucket via the browser client, then inserts a row to pms_attachments.
+ *     Used by WarrantyContent, CertificateContent, etc.
+ *
+ *     Required props: entityType, entityId, bucket, category, yachtId, userId
+ *
+ *     <AttachmentUploadModal
+ *       open={open}
+ *       onClose={onClose}
+ *       entityType="warranty"
+ *       entityId={id}
+ *       bucket="pms-warranty-documents"
+ *       category="claim_document"
+ *       yachtId={yachtId}
+ *       userId={userId}
+ *       onComplete={refetch}
+ *     />
+ *
+ *  2. CUSTOM MODE — caller-provided upload strategy.
+ *     Used when the target is NOT pms_attachments. The caller supplies an
+ *     `onUpload(file)` function that does the actual upload work. The modal
+ *     still handles the file picker, MIME/size validation, and toast UX.
+ *     All pms_attachments-specific props become unused.
+ *
+ *     Added 2026-04-15 to support POST /v1/documents/upload (document lens),
+ *     which writes to doc_metadata (not pms_attachments) and routes through
+ *     the F2 trigger → extraction pipeline. See
+ *     apps/api/routes/document_routes.py:upload_document for the endpoint.
+ *
+ *     <AttachmentUploadModal
+ *       open={open}
+ *       onClose={onClose}
+ *       onUpload={async (file) => { ... POST multipart ... }}
+ *       title="Upload Document"
+ *       description="Add a document to the vessel library."
+ *       onComplete={refetch}
+ *     />
  */
 
 import * as React from 'react';
@@ -71,16 +96,35 @@ function sanitizeFilename(name: string): string {
 export interface AttachmentUploadModalProps {
   open: boolean;
   onClose: () => void;
-  /** Entity type written to pms_attachments.entity_type */
-  entityType: string;
-  entityId: string;
-  /** Supabase storage bucket name */
-  bucket: string;
-  /** pms_attachments.category value */
-  category: string;
-  yachtId: string;
-  userId: string;
   onComplete: () => void;
+
+  // Presentation (optional — default to "Upload Document" / "Attach a file…")
+  title?: string;
+  description?: string;
+
+  // ----- DEFAULT MODE: pms_attachments direct write -----
+  // All optional — required as a group only when `onUpload` is not provided.
+  /** Entity type written to pms_attachments.entity_type */
+  entityType?: string;
+  entityId?: string;
+  /** Supabase storage bucket name */
+  bucket?: string;
+  /** pms_attachments.category value */
+  category?: string;
+  yachtId?: string;
+  userId?: string;
+
+  // ----- CUSTOM MODE: caller-provided upload strategy -----
+  /**
+   * When provided, this function replaces the default pms_attachments write.
+   * Called with the validated File after MIME/size checks pass. Throw on
+   * failure so the modal can surface the error via the Toast.
+   *
+   * When supplied, the pms_attachments-specific props above become unused
+   * (the caller is responsible for where the file lands and how it is
+   * recorded).
+   */
+  onUpload?: (file: File) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -90,13 +134,16 @@ export interface AttachmentUploadModalProps {
 export function AttachmentUploadModal({
   open,
   onClose,
+  onComplete,
+  title = 'Upload Document',
+  description = 'Attach a file to this record.',
   entityType,
   entityId,
   bucket,
   category,
   yachtId,
   userId,
-  onComplete,
+  onUpload,
 }: AttachmentUploadModalProps) {
   const [file, setFile] = React.useState<File | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -138,57 +185,74 @@ export function AttachmentUploadModal({
     onClose();
   };
 
+  // ---------------------------------------------------------------------
+  // Default upload strategy: direct-to-Supabase + pms_attachments insert.
+  // Used when the caller did NOT supply a custom `onUpload` prop.
+  // Closes over entityType/entityId/bucket/category/yachtId/userId from props.
+  // Throws on any failure so the unified handler below can surface the error.
+  // ---------------------------------------------------------------------
+  const defaultPmsAttachmentUpload = React.useCallback(
+    async (selected: File): Promise<void> => {
+      if (!entityType || !entityId || !bucket || !category || !yachtId || !userId) {
+        // Developer error — caller must pass all pms_attachments props when
+        // not providing a custom onUpload. Fail loud so this is obvious in dev.
+        throw new Error(
+          'AttachmentUploadModal: default mode requires entityType, entityId, bucket, category, yachtId, userId. ' +
+            'Pass all six, or provide a custom `onUpload` prop.'
+        );
+      }
+
+      // Path: {entityType}/{entityId}/{timestamp}-{filename}
+      const path = `${entityType}/${entityId}/${Date.now()}-${sanitizeFilename(selected.name)}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(path, selected, { contentType: selected.type });
+
+      if (uploadError) {
+        throw new Error(uploadError.message ?? 'Upload failed');
+      }
+
+      const { error: insertError } = await supabase.from('pms_attachments').insert({
+        entity_type: entityType,
+        entity_id: entityId,
+        storage_bucket: bucket,
+        storage_path: path,
+        filename: selected.name,
+        mime_type: selected.type,
+        file_size: selected.size,
+        category,
+        uploaded_by: userId,
+        yacht_id: yachtId,
+      });
+
+      if (insertError) {
+        throw new Error(insertError.message ?? 'Failed to save attachment record');
+      }
+    },
+    [entityType, entityId, bucket, category, yachtId, userId]
+  );
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || fileTooLarge) return;
 
+    const uploader = onUpload ?? defaultPmsAttachmentUpload;
+
     setLoading(true);
     try {
-      // Build storage path: {entityType}/{entityId}/{timestamp}-{filename}
-      const path = `${entityType}/${entityId}/${Date.now()}-${sanitizeFilename(file.name)}`;
+      await uploader(file);
 
-      // Upload to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(path, file, { contentType: file.type });
-
-      if (uploadError) {
-        setToast({ type: 'error', message: uploadError.message ?? 'Upload failed' });
-        return;
-      }
-
-      // Insert row to pms_attachments
-      const { error: insertError } = await supabase
-        .from('pms_attachments')
-        .insert({
-          entity_type: entityType,
-          entity_id: entityId,
-          storage_bucket: bucket,
-          storage_path: path,
-          filename: file.name,
-          mime_type: file.type,
-          file_size: file.size,
-          category,
-          uploaded_by: userId,
-          yacht_id: yachtId,
-        });
-
-      if (insertError) {
-        // File uploaded but metadata insert failed — partial state, still trigger refetch
-        setToast({ type: 'error', message: insertError.message ?? 'Failed to save attachment record' });
-        setTimeout(() => {
-          onComplete();
-          onClose();
-        }, 1200);
-        return;
-      }
-
-      // Success
+      // Success — same UX regardless of which upload strategy ran.
       setToast({ type: 'success', message: 'Document uploaded successfully' });
       setTimeout(() => {
         onComplete();
         onClose();
       }, 800);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Upload failed';
+      setToast({ type: 'error', message });
     } finally {
       setLoading(false);
     }
@@ -223,10 +287,10 @@ export function AttachmentUploadModal({
             id="attachment-upload-title"
             className="text-heading text-txt-primary"
           >
-            Upload Document
+            {title}
           </h2>
           <p className="mt-1 text-label text-txt-secondary">
-            Attach a file to this record.
+            {description}
           </p>
         </div>
 

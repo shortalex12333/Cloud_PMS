@@ -14,16 +14,18 @@ SOC-2 Compliance:
 - Idempotent operations
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 import logging
 import os
+import uuid
 
 from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
 from supabase import create_client
+from utils.filenames import sanitize_storage_filename
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +58,48 @@ router = APIRouter(prefix="/v1/documents", tags=["documents"])
 # CONSTANTS
 # ============================================================================
 
-# Valid object types for document links
-VALID_OBJECT_TYPES = ['work_order', 'equipment', 'handover', 'fault', 'part', 'receiving', 'purchase_order']
+# Valid object types for document links.
+# IMPORTANT: this list must stay in sync with the DB CHECK constraint
+# `email_attachment_object_links_object_type_check`. See migration
+# 20260415_f3_warranty_claim_constraint.sql for the matching ALTER.
+VALID_OBJECT_TYPES = ['work_order', 'equipment', 'handover', 'fault', 'part', 'receiving', 'purchase_order', 'warranty_claim']
 
-# Roles that can link/unlink documents
-LINK_MANAGE_ROLES = ['admin', 'captain', 'chief_engineer', 'chief_officer', 'crew_member', 'engineer', 'purser']
+# Roles that can link/unlink documents.
+# chief_steward added 2026-04-15 so provisions invoices can be attached to POs.
+LINK_MANAGE_ROLES = ['admin', 'captain', 'chief_engineer', 'chief_officer', 'chief_steward', 'crew_member', 'engineer', 'purser']
+
+# Roles that can upload new documents via POST /v1/documents/upload.
+# Matches the action_router registry entry for `upload_document` (HOD+).
+UPLOAD_DOCUMENT_ROLES = [
+    'chief_engineer', 'chief_officer', 'chief_steward',
+    'purser', 'captain', 'manager',
+]
+
+# Upload constraints (must mirror frontend AttachmentUploadModal).
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
+ACCEPTED_UPLOAD_MIME_TYPES = {
+    'application/pdf',
+    'image/jpeg', 'image/png', 'image/heic', 'image/webp', 'image/tiff',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'application/zip',
+    'application/octet-stream',
+}
+
+# Storage bucket for lens-uploaded documents. Matches doc_metadata.storage_bucket
+# distribution (2,940 rows) and the path convention used by existing doc_metadata rows.
+DOCUMENTS_BUCKET = 'documents'
+
+
+def _split_csv(value: Optional[str]) -> Optional[List[str]]:
+    """Parse a CSV form field into a list. Empty/None returns None."""
+    if not value:
+        return None
+    parts = [p.strip() for p in value.split(',') if p.strip()]
+    return parts or None
 
 
 # ============================================================================
@@ -495,3 +534,268 @@ async def get_documents_for_object(
     except Exception as e:
         logger.error(f"[documents/for-object] Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to get documents for object")
+
+
+# ============================================================================
+# POST /v1/documents/upload  — multipart
+# ============================================================================
+#
+# This is the REAL upload endpoint. It receives actual file bytes (multipart/
+# form-data), writes them to Supabase Storage, then inserts a row into
+# doc_metadata. The F2 trigger `trg_doc_metadata_extraction_enqueue` fires on
+# that insert and enqueues a search_index row with `embedding_status =
+# 'pending_extraction'` so the extraction_worker picks it up, extracts text,
+# and flips to `pending` for the projection/embedding pipeline.
+#
+# This replaces the broken flow where the frontend called the action_router
+# `upload_document` action, which only inserted a doc_metadata row without
+# uploading file bytes — producing ghost records that 404 on every download.
+# The legacy `_upload_document_adapter` stays callable for programmatic
+# metadata-only use (tests, re-ingest) but MUST NOT be called from the UI.
+#
+# Multi-tenant safety:
+# - yacht_id and tenant_key_alias come from the authenticated user context,
+#   never from the request body.
+# - The tenant-scoped Supabase client is used exclusively (no default client).
+# - The storage path embeds yacht_id as its first segment, matching the
+#   existing convention enforced by internal_dispatcher.py:342.
+#
+# Failure handling:
+# - If storage upload fails → 500, no doc_metadata row written (no ghost).
+# - If doc_metadata insert fails → compensating delete of the just-uploaded
+#   blob, then 500. The compensating delete is wrapped so that a rollback
+#   failure still surfaces the original error and logs the orphaned blob.
+# ============================================================================
+
+
+class DocumentUploadResponse(BaseModel):
+    success: bool
+    document_id: str
+    storage_path: str
+    storage_bucket: str
+    filename: str
+    size_bytes: int
+    content_type: str
+
+
+@router.post("/upload", response_model=DocumentUploadResponse)
+async def upload_document(
+    file: UploadFile = File(..., description="Document file (PDF, image, or office doc; ≤15 MB)"),
+    title: Optional[str] = Form(None, description="Human-readable title (defaults to filename)"),
+    doc_type: Optional[str] = Form(None, description="Classification: manual, drawing, certificate, report, photo, spec_sheet, schematic, other"),
+    oem: Optional[str] = Form(None, description="Manufacturer"),
+    model: Optional[str] = Form(None, description="Model number"),
+    system_path: Optional[str] = Form(None, description="Hierarchical system path (e.g. ENGINE_ROOM/MAIN_ENGINE)"),
+    description: Optional[str] = Form(None, description="Longer description"),
+    tags_csv: Optional[str] = Form(None, description="Comma-separated tags"),
+    equipment_ids_csv: Optional[str] = Form(None, description="Comma-separated equipment UUIDs"),
+    notes: Optional[str] = Form(None, description="Upload notes"),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
+    auth: dict = Depends(get_authenticated_user),
+):
+    """Upload a new document.
+
+    Accepts multipart/form-data with an actual file. Writes the blob to the
+    `documents` Supabase Storage bucket at
+    `{yacht_id}/documents/{document_id}/{filename}`, then inserts a row into
+    `doc_metadata`. The F2 DB trigger auto-enqueues the new row for
+    extraction.
+
+    SOC-2 compliance:
+    - Yacht isolation enforced (yacht_id from auth context only)
+    - Role-based access control (HOD+ only)
+    - Audit logged (non-signed — matches upload_document action parity)
+    - Storage and metadata writes roll back together on any failure
+    """
+    yacht_id = resolve_yacht_id(auth, yacht_id)
+    user_id = auth['user_id']
+    user_role = auth.get('role', '')
+
+    # -----------------------------------------------------------------------
+    # Role gate
+    # -----------------------------------------------------------------------
+    if user_role not in UPLOAD_DOCUMENT_ROLES:
+        logger.warning(
+            f"[documents/upload] Forbidden: role={user_role} user={user_id[:8] if user_id else 'unknown'}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Insufficient permissions to upload documents (role '{user_role}' is not in HOD+)"
+        )
+
+    # -----------------------------------------------------------------------
+    # MIME type gate
+    # -----------------------------------------------------------------------
+    content_type = (file.content_type or 'application/octet-stream').lower()
+    if content_type not in ACCEPTED_UPLOAD_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported file type: {content_type}"
+        )
+
+    # -----------------------------------------------------------------------
+    # Read file bytes and validate size
+    # -----------------------------------------------------------------------
+    # UploadFile doesn't expose size until we read — read, then check.
+    # The 15 MB cap keeps memory pressure bounded per request.
+    try:
+        file_content = await file.read()
+    except Exception as e:
+        logger.error(f"[documents/upload] Failed to read upload stream: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to read uploaded file"
+        )
+
+    size_bytes = len(file_content)
+    if size_bytes == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty"
+        )
+    if size_bytes > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds maximum size of {MAX_UPLOAD_BYTES // (1024 * 1024)} MB"
+        )
+
+    # -----------------------------------------------------------------------
+    # Build document identity + storage path
+    # -----------------------------------------------------------------------
+    doc_id = str(uuid.uuid4())
+    raw_filename = file.filename or 'document'
+    filename = sanitize_storage_filename(raw_filename)
+    storage_path = f"{yacht_id}/documents/{doc_id}/{filename}"
+
+    supabase = _get_tenant_client(auth['tenant_key_alias'])
+
+    # -----------------------------------------------------------------------
+    # Step 1 — upload the blob to Supabase Storage FIRST.
+    # If this fails, no doc_metadata row is written (no ghost).
+    # -----------------------------------------------------------------------
+    try:
+        supabase.storage.from_(DOCUMENTS_BUCKET).upload(
+            path=storage_path,
+            file=file_content,
+            file_options={
+                'content-type': content_type,
+                'upsert': 'false',
+            },
+        )
+    except Exception as e:
+        logger.error(
+            f"[documents/upload] Storage upload failed: yacht={yacht_id[:8]} "
+            f"path={storage_path} err={e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to upload file to storage"
+        )
+
+    # -----------------------------------------------------------------------
+    # Step 2 — insert doc_metadata. The F2 trigger fires AFTER this INSERT
+    # and writes search_index(pending_extraction, payload={bucket, path, ...}).
+    # -----------------------------------------------------------------------
+    doc_metadata_row = {
+        'id': doc_id,
+        'yacht_id': yacht_id,
+        'source': 'document_lens',
+        'filename': filename,
+        'storage_path': storage_path,
+        'storage_bucket': DOCUMENTS_BUCKET,
+        'content_type': content_type,
+        'size_bytes': size_bytes,
+    }
+    # Optional columns — only add if the caller supplied them.
+    if title:
+        doc_metadata_row['metadata'] = {'title': title}
+    if doc_type:
+        doc_metadata_row['doc_type'] = doc_type
+    if oem:
+        doc_metadata_row['oem'] = oem
+    if model:
+        doc_metadata_row['model'] = model
+    if system_path:
+        doc_metadata_row['system_path'] = system_path
+    if description:
+        doc_metadata_row['description'] = description
+
+    tags_list = _split_csv(tags_csv)
+    if tags_list:
+        doc_metadata_row['tags'] = tags_list
+
+    equipment_ids = _split_csv(equipment_ids_csv)
+    if equipment_ids:
+        doc_metadata_row['equipment_ids'] = equipment_ids
+
+    try:
+        ins = supabase.table('doc_metadata').insert(doc_metadata_row).execute()
+        if not ins.data:
+            raise ValueError("doc_metadata insert returned no data")
+        inserted_id = ins.data[0].get('id', doc_id)
+    except Exception as e:
+        logger.error(
+            f"[documents/upload] doc_metadata insert failed — rolling back storage blob: "
+            f"yacht={yacht_id[:8]} path={storage_path} err={e}"
+        )
+        # Compensating delete — best-effort. If this fails, we've leaked a blob
+        # but we still surface the original error to the caller.
+        try:
+            supabase.storage.from_(DOCUMENTS_BUCKET).remove([storage_path])
+            logger.info(f"[documents/upload] rolled back storage blob {storage_path}")
+        except Exception as rollback_err:
+            logger.error(
+                f"[documents/upload] ROLLBACK FAILED — orphan blob: "
+                f"bucket={DOCUMENTS_BUCKET} path={storage_path} err={rollback_err}"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to record document metadata"
+        )
+
+    # -----------------------------------------------------------------------
+    # Step 3 — audit log (non-signed, matches upload_document action parity)
+    # -----------------------------------------------------------------------
+    audit = {
+        'yacht_id': yacht_id,
+        'entity_type': 'document',
+        'entity_id': inserted_id,
+        'action': 'upload_document',
+        'user_id': user_id,
+        'old_values': None,
+        'new_values': {
+            'filename': filename,
+            'doc_type': doc_type,
+            'title': title,
+            'size_bytes': size_bytes,
+            'storage_bucket': DOCUMENTS_BUCKET,
+        },
+        'signature': {
+            'timestamp': datetime.utcnow().isoformat(),
+            'action_version': 'M1',
+            'user_role': user_role,
+            'source': 'multipart_upload',
+        },
+        'metadata': {'source': 'document_lens', 'route': '/v1/documents/upload'},
+        'created_at': datetime.utcnow().isoformat(),
+    }
+    try:
+        supabase.table('pms_audit_log').insert(audit).execute()
+    except Exception as audit_err:
+        # Non-fatal — the document is already uploaded and recorded.
+        logger.warning(f"[documents/upload] audit log insert failed (non-fatal): {audit_err}")
+
+    logger.info(
+        f"[documents/upload] OK: doc_id={inserted_id[:8]} yacht={yacht_id[:8]} "
+        f"size={size_bytes} user={user_id[:8] if user_id else 'unknown'} role={user_role}"
+    )
+
+    return DocumentUploadResponse(
+        success=True,
+        document_id=inserted_id,
+        storage_path=storage_path,
+        storage_bucket=DOCUMENTS_BUCKET,
+        filename=filename,
+        size_bytes=size_bytes,
+        content_type=content_type,
+    )

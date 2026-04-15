@@ -1,131 +1,41 @@
-# CelesteOS Progress Log
+# ⚠ DEPRECATED — do not rely on this file
 
-**Scope**: Frontend UX Engineering — 1-URL Single Surface Architecture
-**Status**: REMEDIATION COMPLETE
+**Deprecated:** 2026-04-15
 
----
+This file previously recorded a "1-URL Single Surface Architecture" remediation
+dated 2026-02-17, which prescribed a single-URL product rendered via
+`ContextPanel` + `LensRenderer` with all fragmented routes deleted. **That
+architecture has since been reversed.** The product now uses normal Next.js App
+Router conventions with one route per entity endpoint (e.g. `/documents`,
+`/work-orders/[id]`, `/faults/[id]`).
 
-## Architecture: 1-URL Philosophy
+Any claim in this file that:
 
-Per `rules.md`:
-> "We operate on a 1-url philosophy. Any fragmented frontend URLS are strictly forbidden."
+- "1-URL philosophy" is current
+- `ContextPanel` is the rendering strategy
+- `LensRenderer` maps entity types to lens content
+- Fragmented routes are forbidden
 
-**Single URL**: `app.celeste7.ai` (renders at `/`)
-**All entities**: Render inside ContextPanel via LensRenderer
-**NO separate routes**: No `/work-orders/[id]`, `/faults/[id]`, etc.
+…is **stale and must not be followed**. The ContextPanel, SurfaceContext,
+NavigationContext, SituationRouter, and all legacy lens components have been
+deleted from the codebase.
 
----
+## Current canonical architecture reference
 
-## FE-REMEDIATION (2026-02-17)
+Read `docs/frontend/README.md` for the CEO-level summary of the legacy removal
+and the current fragmented-URL architecture. It lists exactly which files were
+deleted during the re-migration and what replaced them.
 
-### Critical Fix: Deleted Fragmented Routes
+## Why this file still exists
 
-**BEFORE** (violation of rules.md):
-- 11 page routes at `/work-orders/[id]`, `/faults/[id]`, `/equipment/[id]`, etc.
-- Old `Lens.tsx` files with hardcoded URL navigation
-- `useDocumentNavigation` using `router.push` to deleted routes
+Kept as a historical deprecation marker rather than deleted outright, so any
+future agent or engineer searching for "1-URL" or "ContextPanel" in the repo
+lands here first, sees the deprecation notice, and is redirected to the current
+source of truth. Removing the file entirely would leave the stale rule
+unchallenged in anyone's local git history or cached documentation.
 
-**AFTER** (compliant):
-- All 11 fragmented routes **DELETED**
-- 11 `LensContent.tsx` components render inside ContextPanel
-- LensRenderer maps entity types to LensContent components
-- `useDocumentNavigation` uses `showContext()` from SurfaceContext
-- Shared `types.ts` for lens data types
+## Related memory
 
-### Files Deleted
-
-```
-apps/web/src/app/certificates/[id]/page.tsx
-apps/web/src/app/documents/[id]/page.tsx
-apps/web/src/app/equipment/[id]/page.tsx
-apps/web/src/app/faults/[id]/page.tsx
-apps/web/src/app/handover/[id]/page.tsx
-apps/web/src/app/hours-of-rest/[id]/page.tsx
-apps/web/src/app/parts/[id]/page.tsx
-apps/web/src/app/receiving/[id]/page.tsx
-apps/web/src/app/shopping-list/[id]/page.tsx
-apps/web/src/app/warranty/[id]/page.tsx
-apps/web/src/app/work-orders/[id]/page.tsx
-
-apps/web/src/components/lens/CertificateLens.tsx
-apps/web/src/components/lens/DocumentLens.tsx
-apps/web/src/components/lens/EquipmentLens.tsx
-apps/web/src/components/lens/FaultLens.tsx
-apps/web/src/components/lens/HandoverLens.tsx
-apps/web/src/components/lens/HoursOfRestLens.tsx
-apps/web/src/components/lens/PartsLens.tsx
-apps/web/src/components/lens/ReceivingLens.tsx
-apps/web/src/components/lens/ShoppingListLens.tsx
-apps/web/src/components/lens/WarrantyLens.tsx
-apps/web/src/components/lens/WorkOrderLens.tsx
-```
-
-### Files Created/Updated
-
-```
-apps/web/src/components/lens/types.ts           # Shared lens data types
-apps/web/src/hooks/useDocumentNavigation.ts     # Uses showContext() now
-apps/web/src/app/email/inbox/page.tsx           # Fixed hardcoded colors
-```
-
----
-
-## Current Architecture
-
-### Routing
-
-| URL | Purpose |
-|-----|---------|
-| `/` | Root surface - redirects to `/app` or handles auth |
-| `/app` | Single surface with SpotlightSearch + ContextPanel |
-| `/login` | Authentication |
-| `/open?t=<token>` | Handover link resolution (redirects to `/app`) |
-| `/email/inbox` | Legacy redirect to `/app?openEmail=true` |
-
-### LensContent Components (ContextPanel Rendering)
-
-| Component | Entity Type | Located At |
-|-----------|-------------|------------|
-| WorkOrderLensContent | `work_order` | `components/lens/` |
-| FaultLensContent | `fault` | `components/lens/` |
-| EquipmentLensContent | `equipment` | `components/lens/` |
-| PartsLensContent | `part`, `inventory` | `components/lens/` |
-| CertificateLensContent | `certificate` | `components/lens/` |
-| ReceivingLensContent | `receiving` | `components/lens/` |
-| HandoverLensContent | `handover` | `components/lens/` |
-| HoursOfRestLensContent | `hours_of_rest` | `components/lens/` |
-| WarrantyLensContent | `warranty` | `components/lens/` |
-| ShoppingListLensContent | `shopping_list` | `components/lens/` |
-| DocumentLensContent | `document` | `components/lens/` |
-
-### Navigation Flow
-
-```
-User clicks entity -> showContext(type, id) ->
-  SurfaceContext updates -> ContextPanel renders ->
-  LensRenderer maps to LensContent -> Entity displayed
-```
-
----
-
-## Build Status
-
-```
-TypeScript: 0 errors
-Routes: /app, /login, /open (single surface architecture)
-Fragmented routes: DELETED
-```
-
----
-
-## Known Issues (Non-Blocking)
-
-1. **282 hardcoded hex colors** in 19 files - should use design tokens
-2. **35 inline style={{}}** blocks - should use Tailwind classes
-3. **6 !important** declarations in CSS
-4. **7 z-index** inconsistencies (mix of hardcoded + CSS variables)
-
----
-
-*Last Updated: 2026-02-17*
-*FE-REMEDIATION: 1-URL architecture enforced*
+- `/Users/celeste7/.claude/projects/-Users-celeste7/memory/feedback_url_philosophy.md`
+  — standing rule that the 1-URL philosophy is dead and any mention of it
+  should be deleted on sight.

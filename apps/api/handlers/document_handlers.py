@@ -266,34 +266,35 @@ def _list_documents_adapter(handlers: DocumentHandlers):
 # MUTATION ADAPTERS (thin wrappers that align with Action Router param shape)
 # =============================================================================
 
-def _sanitize_filename(filename: str) -> str:
-    """
-    Sanitize filename to prevent path traversal and other issues.
-    - Removes path separators (/, \\)
-    - Strips leading/trailing whitespace
-    - Limits length to 255 chars
-    - Falls back to 'document' if empty after sanitization
-    """
-    import re
-    # Remove path separators and null bytes
-    safe = re.sub(r'[/\\:\x00]', '_', filename.strip())
-    # Remove leading dots (hidden files)
-    safe = safe.lstrip('.')
-    # Limit length
-    if len(safe) > 255:
-        # Preserve extension
-        if '.' in safe:
-            name, ext = safe.rsplit('.', 1)
-            safe = name[:255 - len(ext) - 1] + '.' + ext
-        else:
-            safe = safe[:255]
-    return safe or 'document'
+# Shared with routes/document_routes.py — single source of truth at
+# apps/api/utils/filenames.py (extracted 2026-04-15).
+from utils.filenames import sanitize_storage_filename as _sanitize_filename  # noqa: E402
 
 
 def _upload_document_adapter(handlers: DocumentHandlers):
     async def _fn(**params):
         """
-        Upload a new document.
+        Upload a new document — METADATA-ONLY LEGACY ADAPTER.
+
+        ⚠  DO NOT USE FROM THE UI. This adapter only inserts a row into
+           ``doc_metadata``; it does NOT upload file bytes to storage. The
+           result is a ghost record whose storage_path returns 404 on every
+           download.
+
+           Between 2026-01-30 and 2026-04-15 every row created through this
+           path became an orphan (no search_index row; once F2 shipped, they
+           were enqueued but extraction_worker correctly reported
+           ``extraction_failed`` because the bytes never existed).
+
+        Real user uploads MUST use ``POST /v1/documents/upload`` (multipart)
+        in ``apps/api/routes/document_routes.py``. That endpoint uploads
+        file bytes to the ``documents`` bucket first, then inserts
+        ``doc_metadata``, with a compensating delete on any failure.
+
+        This adapter remains callable via the action router strictly for
+        programmatic / test-fixture use where the file already exists in
+        storage (e.g. metadata-only re-ingest, shard-34 smoke tests). It is
+        NOT a user-facing code path and should not be exposed from any UI.
 
         Expected params:
         - yacht_id (str)
