@@ -188,3 +188,33 @@ services:
         value: "100"
       - key: LOG_LEVEL
         value: "INFO"
+
+  # ============================================================================
+  # Nightly Certificate Expiry Check
+  # ============================================================================
+  #
+  # Walks every yacht in yacht_registry and calls refresh_certificate_expiry()
+  # which flips vessel + crew certs from 'valid' to 'expired' when expiry_date
+  # has passed. Each flip writes a status_change ledger event with
+  # source_context=system. Closes the gap where a cert expiring overnight
+  # stayed 'valid' until someone next loaded the list page.
+  #
+  # Runs at 02:15 UTC daily — well before the feedback loop at 03:00 UTC
+  # so the two don't compete for the same worker slot.
+  #
+  - type: cron
+    name: nightly-certificate-expiry
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    schedule: "15 2 * * *"  # 02:15 UTC daily
+    buildCommand: cd apps/api && pip install psycopg2-binary
+    startCommand: cd apps/api && python -m workers.nightly_certificate_expiry
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.6"
+      - key: DATABASE_URL
+        sync: false  # Set in Render dashboard
+      - key: LOG_LEVEL
+        value: "INFO"
