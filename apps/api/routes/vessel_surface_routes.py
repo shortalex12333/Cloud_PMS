@@ -541,36 +541,70 @@ async def get_vessel_surface(vessel_id: str, auth: dict = Depends(get_authentica
         logger.error(f"[VesselSurface] Recent activity query failed: {e}")
         result["recent_activity"] = []
 
-    # ── Certificates Expiring (within 45 days) ───────────────────────────────
+    # ── Certificates Expiring (already-expired + within 90 days) ─────────────
+    #
+    # Fixes 4 bugs in the original widget query:
+    #   1. Used `pms_vessel_certificates` → crew certs invisible. Now uses
+    #      v_certificates_enriched which UNIONs vessel + crew.
+    #   2. Backend emitted `certificate_name` but frontend reads `c.name` from
+    #      SurfaceCertItem. Widget showed empty names. Fixed: emit both, with
+    #      `name` formatted for display (person — cert_type for crew).
+    #   3. `.gte(expiry_date, today)` filtered out already-expired certs —
+    #      the most operationally urgent ones. Removed that filter.
+    #   4. Expired certs excluded via the gte filter AND only valid statuses
+    #      considered. Now: status IN ('valid','expired') only (terminal states
+    #      superseded/revoked/suspended excluded).
+    #
+    # Window: 90 days (industry standard for planning) instead of 45.
     try:
-        cutoff = (datetime.now(timezone.utc) + timedelta(days=45)).strftime("%Y-%m-%d")
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        cutoff = (datetime.now(timezone.utc) + timedelta(days=90)).strftime("%Y-%m-%d")
 
-        cert_select = "id, certificate_name, certificate_type, expiry_date, status"
+        cert_select = "id, certificate_name, certificate_type, expiry_date, status, domain, person_name"
         if is_overview:
             cert_select = "yacht_id, " + cert_select
-        cert_q = supabase.table("pms_vessel_certificates").select(cert_select)
-        cert_r = _scope_query(cert_q, yacht_ids).gte(
-            "expiry_date", today
-        ).lte(
+        cert_q = supabase.table("v_certificates_enriched").select(cert_select)
+        cert_r = _scope_query(cert_q, yacht_ids).lte(
             "expiry_date", cutoff
-        ).order("expiry_date").execute()
+        ).in_(
+            "status", ["valid", "expired"]
+        ).order("expiry_date").limit(50).execute()
 
         cert_items = cert_r.data or []
+
+        def _cert_display_name(c: dict) -> str:
+            """Build a name the frontend can render — crew certs embed the person."""
+            if c.get("domain") == "crew":
+                person = c.get("person_name") or ""
+                cert_type = c.get("certificate_type") or "Certificate"
+                return f"{person} — {cert_type}".strip(" —") if person else cert_type
+            return c.get("certificate_name") or c.get("certificate_type") or "Certificate"
+
+        def _days_remaining(expiry):
+            if not expiry:
+                return None
+            try:
+                return (
+                    datetime.strptime(expiry, "%Y-%m-%d")
+                    - datetime.now(timezone.utc).replace(
+                        hour=0, minute=0, second=0, microsecond=0, tzinfo=None
+                    )
+                ).days
+            except Exception:
+                return None
+
         result["certificates_expiring"] = {
             "count": len(cert_items),
             "items": [
                 {
                     "id": c.get("id"),
                     **({"yacht_id": c.get("yacht_id")} if is_overview else {}),
+                    # `name` matches the SurfaceCertItem contract on the frontend
+                    "name": _cert_display_name(c),
                     "certificate_name": c.get("certificate_name", ""),
                     "certificate_type": c.get("certificate_type", ""),
+                    "domain": c.get("domain", "vessel"),
                     "expiry_date": c.get("expiry_date"),
-                    "days_remaining": (
-                        datetime.strptime(c["expiry_date"], "%Y-%m-%d") - datetime.now(timezone.utc).replace(
-                            hour=0, minute=0, second=0, microsecond=0
-                        )
-                    ).days if c.get("expiry_date") else None,
+                    "days_remaining": _days_remaining(c.get("expiry_date")),
                     "status": c.get("status", "valid"),
                 }
                 for c in cert_items
