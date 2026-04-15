@@ -2761,6 +2761,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             FieldMetadata("currency", FieldClassification.OPTIONAL,
                           options=["EUR", "USD", "GBP", "AUD", "SGD"],
                           description="Currency"),
+            FieldMetadata("manufacturer_email", FieldClassification.OPTIONAL,
+                          description="Manufacturer warranty contact email"),
         ],
     ),
 
