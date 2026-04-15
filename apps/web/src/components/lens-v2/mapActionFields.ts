@@ -28,6 +28,8 @@ interface ActionDef {
   action_id: string;
   label: string;
   required_fields: string[];
+  /** Optional (non-blocking) fields the backend accepts but doesn't require */
+  optional_fields?: string[];
   prefill: Record<string, unknown>;
   requires_signature: boolean;
   /** Legacy keyed-by-name format */
@@ -53,9 +55,20 @@ export function mapActionFields(action: ActionDef): ActionPopupField[] {
     }
   }
 
-  return action.required_fields
-    .filter((f) => !BACKEND_AUTO.has(f) && !(f in action.prefill))
-    .map((f) => {
+  // Build deduplicated ordered list: required fields first, then optional fields.
+  // Both lists exclude backend-auto fields and pre-filled fields.
+  const requiredNames = action.required_fields.filter(
+    (f) => !BACKEND_AUTO.has(f) && !(f in action.prefill)
+  );
+  const optionalNames = (action.optional_fields ?? []).filter(
+    (f) => !BACKEND_AUTO.has(f) && !(f in action.prefill) && !requiredNames.includes(f)
+  );
+  const allFields = [
+    ...requiredNames.map((f) => ({ name: f, isRequired: true })),
+    ...optionalNames.map((f) => ({ name: f, isRequired: false })),
+  ];
+
+  return allFields.map(({ name: f, isRequired }) => {
       const meta = schemaLookup[f];
 
       // Map backend field type to ActionPopup field type
@@ -80,7 +93,7 @@ export function mapActionFields(action: ActionDef): ActionPopupField[] {
 
       return {
         name: f,
-        label: meta?.label || f.replace(/_/g, ' '),
+        label: (meta?.label || f.replace(/_/g, ' ')) + (!isRequired ? ' (optional)' : ''),
         type: fieldType,
         options,
         placeholder: meta?.placeholder || `Enter ${f.replace(/_/g, ' ')}...`,
@@ -89,9 +102,11 @@ export function mapActionFields(action: ActionDef): ActionPopupField[] {
     });
 }
 
-/** Check if an action has user-facing fields (not just backend-auto fields) */
+/** Check if an action has user-facing fields (required or optional, excluding backend-auto) */
 export function actionHasFields(action: ActionDef): boolean {
-  return action.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in action.prefill));
+  const hasRequired = action.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in action.prefill));
+  const hasOptional = (action.optional_fields ?? []).some((f) => !BACKEND_AUTO.has(f) && !(f in action.prefill));
+  return hasRequired || hasOptional;
 }
 
 /** Get signature level from action definition */
