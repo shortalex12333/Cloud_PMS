@@ -1588,6 +1588,34 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         search_keywords=["update", "edit", "modify", "change", "certificate", "cert", "expiry", "renewal"],
     ),
 
+    "assign_certificate": ActionDefinition(
+        action_id="assign_certificate",
+        label="Assign Responsible Officer",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "captain", "manager"],
+        required_fields=["yacht_id", "certificate_id", "assigned_to"],
+        domain="certificates",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["assign", "reassign", "owner", "responsible", "officer", "certificate"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("certificate_id", FieldClassification.CONTEXT),
+            FieldMetadata(
+                "assigned_to",
+                FieldClassification.REQUIRED,
+                description="Responsible Officer",
+                lookup_required=True,  # entity-search via crew domain
+            ),
+            FieldMetadata(
+                "assigned_to_name",
+                FieldClassification.OPTIONAL,
+                description="Officer Display Name",
+            ),
+        ],
+    ),
+
     "link_document_to_certificate": ActionDefinition(
         action_id="link_document_to_certificate",
         label="Link Document to Certificate",
@@ -2733,6 +2761,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             FieldMetadata("currency", FieldClassification.OPTIONAL,
                           options=["EUR", "USD", "GBP", "AUD", "SGD"],
                           description="Currency"),
+            FieldMetadata("manufacturer_email", FieldClassification.OPTIONAL,
+                          description="Manufacturer warranty contact email"),
         ],
     ),
 
