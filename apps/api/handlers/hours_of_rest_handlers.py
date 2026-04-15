@@ -574,7 +574,8 @@ class HoursOfRestHandlers:
             limit = params.get("limit", 50)
             offset = params.get("offset", 0)
 
-            # Build query
+            # Build query — join user profile for display names so the list
+            # doesn't show raw UUIDs. Mirrors what get_monthly_signoff does.
             query = self.db.table("pms_hor_monthly_signoffs").select(
                 "id, user_id, department, month, status, "
                 "period_type, week_start, "
@@ -584,7 +585,8 @@ class HoursOfRestHandlers:
                 "master_signature, master_signed_at, master_signed_by, "
                 "fleet_manager_signed_by, fleet_manager_signed_at, "
                 "total_rest_hours, total_work_hours, violation_count, "
-                "created_at, updated_at",
+                "created_at, updated_at, "
+                "user:user_id(name, email)",
                 count="exact"
             ).eq("yacht_id", yacht_id)
 
