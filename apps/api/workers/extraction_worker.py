@@ -264,28 +264,93 @@ def process_row(conn, row: dict) -> bool:
 
     logger.info("Extracting: %s (object_id=%s)", filename or storage_path, object_id)
 
+    # ------------------------------------------------------------------
+    # Diagnostic block — captures everything the worker observes during
+    # extraction and writes it into search_index.payload.extract_diag so
+    # the post-deploy investigation can read it from the DB without
+    # needing Render shell or log access.
+    # ------------------------------------------------------------------
+    from datetime import datetime as _dt
+    diag = {
+        "ts": _dt.utcnow().isoformat(),
+        "bucket": bucket,
+        "filename": filename,
+        "ext": os.path.splitext(filename)[1].lower() if filename else "",
+    }
+
     # Download to temp file
     suffix = os.path.splitext(filename)[1] if filename else ".bin"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
         tmp_path = tmp.name
 
         if not download_from_storage(storage_path, tmp_path, bucket=bucket):
-            # Download failed — mark as extraction_failed
+            diag["download_ok"] = False
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     UPDATE search_index
                     SET embedding_status = 'extraction_failed',
+                        payload = COALESCE(payload, '{}'::jsonb)
+                                  || jsonb_build_object('extract_diag', %s::jsonb),
                         updated_at = now()
                     WHERE id = %s
                     """,
-                    (row_id,),
+                    (json.dumps(diag), row_id),
                 )
                 conn.commit()
             return False
 
-        # Extract text
-        extracted_text = extract_text(tmp_path)
+        diag["download_ok"] = True
+
+        # Capture file diagnostics — what does the worker actually have on disk?
+        try:
+            file_size = os.path.getsize(tmp_path)
+            diag["file_size"] = file_size
+            with open(tmp_path, "rb") as fh:
+                head = fh.read(32)
+            diag["file_head_hex"] = head.hex()
+            diag["file_head_ascii"] = "".join(
+                chr(b) if 32 <= b < 127 else "." for b in head
+            )
+        except Exception as e:
+            diag["file_inspect_error"] = f"{type(e).__name__}: {e}"
+
+        # Try the production extract_text + capture what it returned.
+        try:
+            extracted_text = extract_text(tmp_path)
+            diag["extract_text_len"] = len(extracted_text or "")
+            diag["extract_text_preview"] = (extracted_text or "")[:120]
+        except Exception as e:
+            extracted_text = ""
+            diag["extract_text_exception"] = f"{type(e).__name__}: {e}"
+
+        # If PDF: also try fitz directly to bypass extract_text wrapper +
+        # capture per-page byte counts. Isolates whether the bug is in
+        # _extract_pdf or in fitz itself in the Render container.
+        if diag["ext"] == ".pdf":
+            try:
+                import fitz  # pymupdf
+                diag["fitz_available"] = True
+                doc = fitz.open(tmp_path)
+                diag["fitz_page_count"] = len(doc)
+                page_lens = []
+                for i in range(min(len(doc), 5)):
+                    try:
+                        t = doc[i].get_text("text") or ""
+                    except Exception as pe:
+                        t = ""
+                        diag.setdefault("fitz_page_errors", []).append(
+                            f"p{i}:{type(pe).__name__}:{pe}"
+                        )
+                    page_lens.append(len(t))
+                doc.close()
+                diag["fitz_page_text_lens"] = page_lens
+                diag["fitz_total_chars"] = sum(page_lens)
+            except ImportError as e:
+                diag["fitz_available"] = False
+                diag["fitz_import_error"] = str(e)
+            except Exception as e:
+                diag["fitz_exception"] = f"{type(e).__name__}: {e}"
 
     # Build enriched search_text
     enriched = build_search_text(
@@ -295,9 +360,11 @@ def process_row(conn, row: dict) -> bool:
         system_tag=system_tag,
         extracted_text=extracted_text,
     )
+    diag["enriched_len"] = len(enriched)
 
     with conn.cursor() as cur:
         # Write chunks if we have extracted text
+        chunks_written = 0
         if extracted_text:
             chunks = []
             clean = extracted_text.strip()
@@ -309,29 +376,37 @@ def process_row(conn, row: dict) -> bool:
             if chunks:
                 try:
                     atomic_chunk_replacement(cur, object_id, yacht_id, chunks)
+                    chunks_written = len(chunks)
                     logger.info("Wrote %d chunks for %s", len(chunks), filename or object_id)
                 except Exception as exc:
-                    logger.warning("Chunk write failed for %s: %s (non-fatal)", object_id, exc)
+                    logger.warning(
+                        "Chunk write failed for %s: %s (non-fatal)", object_id, exc
+                    )
                     conn.rollback()
+                    diag["chunk_write_exception"] = f"{type(exc).__name__}: {exc}"
+        diag["chunks_written"] = chunks_written
 
-        # Update search_index: enriched search_text + status → pending
+        # Update search_index: enriched search_text + status → pending + diag
         cur.execute(
             """
             UPDATE search_index
             SET search_text = %s,
                 embedding_status = 'pending',
+                payload = COALESCE(payload, '{}'::jsonb)
+                          || jsonb_build_object('extract_diag', %s::jsonb),
                 updated_at = now()
             WHERE id = %s
             """,
-            (enriched, row_id),
+            (enriched, json.dumps(diag), row_id),
         )
         conn.commit()
 
     logger.info(
-        "Extracted: %s → %d chars text, search_text=%d chars",
+        "Extracted: %s → text=%d enriched=%d fitz=%s",
         filename or storage_path,
         len(extracted_text),
         len(enriched),
+        diag.get("fitz_total_chars", "n/a"),
     )
     return True
 
