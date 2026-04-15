@@ -526,8 +526,45 @@ DB verification after test:
 | Success toast visible in browser | ✓ |
 | Modal auto-close + query invalidation | ✓ |
 
-### Known limitation (pre-existing, out of scope)
-`_extract_pdf` / `_extract_plain_text` in `apps/api/workers/extraction/extractor.py` returns 0 chunks for uploaded files in production even when `embedding_status=indexed`. This is visible because F1 fixed the bucket bug and now extraction actually runs; the extractor's text extraction was broken BEFORE F1 too but was masked by every attempt 404ing. Needs a separate follow-up investigation (logs from Render worker, or add diagnostic telemetry to `_extract_pdf`). Does not affect metadata search (filename, doc_type, tags still searchable via tsv), only body-content search.
+### Update — extractor bug fully diagnosed (2026-04-15 evening)
+
+The "extractor returns 0 chunks" was NOT a bug in `_extract_pdf`. The diag patch in PR #541 captured `extract_text_len=81` with the actual body text in the preview — proving extraction works correctly. The chunks failure was downstream in `atomic_chunk_replacement`. Two stacked schema-drift bugs:
+
+**Bug 1 — `tsv` is a generated column (PR #542)**
+```
+chunk_write_exception: GeneratedAlways: cannot insert a non-DEFAULT value
+                       into column "tsv"
+                       DETAIL: Column "tsv" is a generated column.
+```
+`search_document_chunks.tsv` is `GENERATED ALWAYS AS (to_tsvector('english', COALESCE(content, ''))) STORED`. The extraction worker was explicitly writing to it. Fix: omit `tsv` from the INSERT column list.
+
+**Bug 2 — `org_id` cascade through dataset version trigger (PR #543)**
+After fixing #542, the next exception surfaced:
+```
+NotNullViolation: null value in column "org_id" of relation
+                  "search_dataset_version"
+CONTEXT: SQL statement "INSERT INTO search_dataset_version
+                        (org_id, yacht_id, version, last_change)
+                        VALUES (v_org_id, v_yacht_id, ...)"
+PL/pgSQL function f1_bump_dataset_version() line 22
+```
+The AFTER INSERT trigger `trg_search_document_chunks_dataset_version` fires `f1_bump_dataset_version()` which inserts into `search_dataset_version` requiring `org_id NOT NULL`. The trigger function reads `org_id` from the just-inserted chunk row. Our INSERT didn't set it. Cascade fails, chunk INSERT rolls back, non-fatal handler swallows it, chunks=0. Fix: include `org_id = yacht_id` in the chunk INSERT (per the org_id=yacht_id invariant verified across 14,068 search_index rows).
+
+**Both bugs pre-date F1.** They were masked because pre-F1 every storage download 404'd against the wrong bucket constant — the chunk INSERT was never reached. F1 unmasked the chain. Each fix exposed the next layer until the diag patch caught both.
+
+Both fixes shipped. PR chain: #538 (F-series + Parts A/B/C) → #539 (eslint hotfix) → #540 (docs) → #541 (diag patch) → #542 (tsv fix) → #543 (org_id fix). All merged 2026-04-15 between ~16:50 and ~20:52 UTC.
+
+### Post-#543 verification status
+
+- `/version` endpoint returns `git_commit: e3bd9e5a` = PR #543 confirmed deployed.
+- Monitor task `b7wdipdtr` attempt 8: `chunks_written=1` — first proof the chain works end-to-end.
+- Stability monitor `b81ndzuh7` showed alternating success/fail across rolling-deploy window (Render runs the old container in parallel with the new container during deploy until the old is killed).
+- Extra deploy hook accidentally fired during testing extended the rollover window; lesson recorded.
+- Stability not yet confirmed across consecutive attempts pending the natural rollover completion.
+
+### Lessons captured to memory
+- `feedback_eslint_vs_tsc.md` — `tsc --noEmit` does NOT run eslint; run `npm run build` pre-merge
+- (pending) Render deploy hook should not be triggered manually during stability testing
 
 ---
 
