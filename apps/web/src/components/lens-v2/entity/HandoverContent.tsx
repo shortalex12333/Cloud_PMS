@@ -17,13 +17,17 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import styles from '../lens.module.css';
 import { IdentityStrip, type PillDef, type DetailLine } from '../IdentityStrip';
 import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActionFields';
 import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
+import { useAuth } from '@/hooks/useAuth';
 import { getEntityRoute } from '@/lib/entityRoutes';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 import {
   NotesSection,
@@ -69,7 +73,8 @@ function formatLabel(str: string): string {
 
 export function HandoverContent() {
   const router = useRouter();
-  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, entityId, availableActions, executeAction, getAction, refetch, isLoading } = useEntityLensContext();
+  const { user, session } = useAuth();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -100,7 +105,18 @@ export function HandoverContent() {
   const summary_stats = (entity?.summary_stats ?? payload.summary_stats) as Record<string, unknown> | undefined;
 
   // ── Action gates ──
-  const signAction = getAction('sign_handover');
+  // Signing happens via direct HTTP route (/submit or /countersign), not action router.
+  // These routes handle full flow: signed HTML generation + ledger events + HOD notification.
+  const review_status = (entity?.review_status ?? status) as string;
+  const isHodOrAbove = ['chief_engineer', 'chief_officer', 'captain', 'manager'].includes(user?.role ?? '');
+
+  // State-driven buttons:
+  //   pending_review         → outgoing user signs (any crew can sign their own draft)
+  //   pending_hod_signature  → HOD+ countersigns
+  //   complete               → read-only, no sign actions
+  const canSignOutgoing = review_status === 'pending_review';
+  const canCountersign = review_status === 'pending_hod_signature' && isHodOrAbove;
+  const signAction = (canSignOutgoing || canCountersign) ? { disabled: false, disabled_reason: null } : null;
 
   // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
@@ -159,19 +175,98 @@ export function HandoverContent() {
   ) : undefined;
 
   // ── Split button config ──
-  const canSign = signAction !== null && ['draft', 'pending_review', 'pending_signature', 'pending'].includes(status);
+  const canSign = canSignOutgoing || canCountersign;
+  const signButtonLabel = canCountersign ? 'Countersign Handover' : 'Sign Handover';
 
   const handlePrimary = React.useCallback(() => {
     setShowSignModal(true);
   }, []);
 
+  // Sign via direct HTTP routes (not action router) — these routes handle full flow:
+  // signed HTML generation, ledger events, HOD notification cascade.
   const handleSignConfirm = React.useCallback(async () => {
     const canvas = signCanvasRef.current;
     if (!canvas) return;
-    const signatureData = canvas.toDataURL('image/png');
-    await executeAction('sign_handover', { signature: signatureData });
-    setShowSignModal(false);
-  }, [executeAction]);
+
+    const token = session?.access_token;
+    if (!token) {
+      toast.error('Not authenticated');
+      return;
+    }
+    if (!entityId) {
+      toast.error('No export ID');
+      return;
+    }
+
+    const imageBase64 = canvas.toDataURL('image/png');
+    const nowIso = new Date().toISOString();
+    const signerName = user?.displayName || user?.email || user?.id || 'Unknown';
+    const signerId = user?.id || '';
+
+    // Use the current visible sections as the source of truth for the submit.
+    // Pydantic Section schema: { id, title, content, items, is_critical, order }
+    const currentSections = ((entity?.sections ?? []) as Array<Record<string, unknown>>).map((s, idx) => ({
+      id: (s.id as string) || `sec-${idx}`,
+      title: (s.title as string) || '',
+      content: (s.content as string) || '',
+      items: ((s.items as Array<Record<string, unknown>>) || []).map((it, j) => ({
+        id: (it.id as string) || `item-${idx}-${j}`,
+        content: (it.content as string) || '',
+        entity_type: it.entity_type as string | undefined,
+        entity_id: it.entity_id as string | undefined,
+        priority: it.priority as string | undefined,
+      })),
+      is_critical: Boolean(s.is_critical),
+      order: typeof s.order === 'number' ? s.order : idx,
+    }));
+
+    try {
+      if (canCountersign) {
+        // HOD countersign — /v1/handover/export/{id}/countersign
+        const res = await fetch(`${API_URL}/v1/handover/export/${entityId}/countersign`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            hodSignature: {
+              image_base64: imageBase64,
+              signed_at: nowIso,
+              signer_name: signerName,
+              signer_id: signerId,
+            },
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Countersign failed (${res.status})`);
+        }
+        toast.success('Handover countersigned — rotation complete');
+      } else {
+        // Outgoing user sign — /v1/handover/export/{id}/submit
+        const res = await fetch(`${API_URL}/v1/handover/export/${entityId}/submit`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sections: currentSections,
+            userSignature: {
+              image_base64: imageBase64,
+              signed_at: nowIso,
+              signer_name: signerName,
+              signer_id: signerId,
+            },
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Sign failed (${res.status})`);
+        }
+        toast.success('Handover signed — HOD notified for countersignature');
+      }
+      setShowSignModal(false);
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to sign');
+    }
+  }, [entityId, entity, canCountersign, user, session, refetch]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
   const DANGER_ACTIONS = new Set(['archive_handover', 'delete_handover']);
@@ -311,7 +406,7 @@ export function HandoverContent() {
         actionSlot={
           canSign ? (
             <SplitButton
-              label="Sign Handover"
+              label={signButtonLabel}
               icon={
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -611,10 +706,12 @@ export function HandoverContent() {
             boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ fontSize: 16, fontWeight: 600, color: '#1A2332', marginBottom: 4 }}>
-              Sign Handover
+              {signButtonLabel}
             </div>
             <div style={{ fontSize: 12, color: '#8896A6', marginBottom: 20 }}>
-              Draw your signature below to confirm and submit this handover.
+              {canCountersign
+                ? 'Draw your signature to countersign and complete this handover.'
+                : 'Draw your signature to submit this handover for HOD review.'}
             </div>
             <canvas
               ref={signCanvasRef}

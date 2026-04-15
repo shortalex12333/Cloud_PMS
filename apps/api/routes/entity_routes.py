@@ -606,16 +606,61 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
 
         data = r.data
 
+        # Sections priority: user's edited content > generated draft content > empty
+        # 1. Try edited_content (user has saved draft edits via save-draft endpoint)
         edited_content = data.get("edited_content") or {}
         if isinstance(edited_content, str):
             import json as _j
-            edited_content = _j.loads(edited_content) if edited_content else {}
+            try:
+                edited_content = _j.loads(edited_content) if edited_content else {}
+            except Exception:
+                edited_content = {}
         if isinstance(edited_content, list):
             sections = edited_content
         elif isinstance(edited_content, dict):
             sections = edited_content.get("sections", [])
         else:
             sections = []
+
+        # 2. If no edited content, fall back to the LLM-generated draft sections
+        # via v_handover_draft_complete joined on draft_id. Map the DB shape into
+        # the frontend's expected Section schema.
+        if not sections:
+            draft_id = data.get("draft_id")
+            if draft_id:
+                try:
+                    dr = supabase.table("v_handover_draft_complete").select(
+                        "sections"
+                    ).eq("draft_id", draft_id).maybe_single().execute()
+                    if dr and dr.data and dr.data.get("sections"):
+                        raw_sections = dr.data["sections"] or []
+                        mapped = []
+                        for s in raw_sections:
+                            s_items = []
+                            for it in (s.get("items") or []):
+                                s_items.append({
+                                    "id": it.get("id", ""),
+                                    "content": it.get("summary_text", "") or "",
+                                    "priority": "critical" if it.get("is_critical") else "normal",
+                                    "entity_type": it.get("source_entity_type"),
+                                    "entity_id": it.get("source_entity_id"),
+                                    "entity_url": it.get("entity_url"),
+                                    "action_summary": it.get("action_summary"),
+                                })
+                            mapped.append({
+                                "id": s.get("id", ""),
+                                "title": s.get("display_title") or s.get("bucket_name") or "",
+                                "content": "",
+                                "items": s_items,
+                                "is_critical": (s.get("critical_count") or 0) > 0,
+                                "order": s.get("section_order") or 0,
+                            })
+                        sections = mapped
+                except Exception as _draft_err:
+                    logger.warning(
+                        "Fallback to v_handover_draft_complete failed for draft_id=%s: %s",
+                        draft_id, _draft_err
+                    )
 
         # Sign the export file URL — use original_storage_url path
         raw_storage_url = data.get("original_storage_url") or data.get("file_name") or ""
