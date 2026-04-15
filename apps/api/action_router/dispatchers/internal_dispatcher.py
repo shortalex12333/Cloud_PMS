@@ -3495,6 +3495,7 @@ async def _draft_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
         "title": params.get("title", ""),
         "description": params.get("description", ""),
         "status": "draft",
+        "is_seed": False,  # DB default is TRUE — override so real claims appear in v_warranty_enriched
         "drafted_by": user_id,
         "drafted_at": datetime.utcnow().isoformat(),
         "created_at": datetime.utcnow().isoformat(),
