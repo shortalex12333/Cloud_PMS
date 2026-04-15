@@ -429,13 +429,14 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         const warnings = json?.data?.warnings_created ?? [];
         const dayPatch = record ? {
           date,
+          record_id: record.id ?? null,  // stored so undoDay can call POST /undo
           work_periods: workPeriods,
           total_rest_hours: record.total_rest_hours ?? compliance?.total_rest_hours ?? null,
           total_work_hours: record.total_work_hours ?? null,
           is_compliant: record.is_daily_compliant ?? compliance?.is_daily_compliant ?? null,
           submitted: true,
           warnings,
-        } : { date, work_periods: workPeriods, submitted: true, warnings: [] };
+        } : { date, record_id: null, work_periods: workPeriods, submitted: true, warnings: [] };
         setSubmittedDays(prev => ({ ...prev, [date]: dayPatch }));
         setSubmitErrors(prev => { const n = { ...prev }; delete n[date]; return n; });
         setDraftPeriods(prev => { const n = { ...prev }; delete n[date]; return n; });
@@ -450,12 +451,32 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     }
   }
 
-  function undoDay(date: string) {
+  async function undoDay(date: string) {
     const submitted = submittedDays[date];
-    if (submitted?.rest_periods?.length) {
-      setDraftPeriods(prev => ({ ...prev, [date]: submitted.rest_periods }));
+    const recordId = submitted?.record_id ?? null;
+
+    // Restore work_periods (not rest_periods) — slider works with work blocks
+    if (submitted?.work_periods?.length) {
+      setDraftPeriods(prev => ({ ...prev, [date]: submitted.work_periods }));
     }
     setSubmittedDays(prev => { const n = { ...prev }; delete n[date]; return n; });
+
+    // Call backend to write MLC correction record and reset DB row to unsubmitted
+    if (recordId) {
+      try {
+        const auth = await getAuthHeader();
+        await fetch('/api/v1/hours-of-rest/undo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+          body: JSON.stringify({ record_id: recordId }),
+        });
+        // Errors are non-fatal — local state already reverted above.
+        // If backend undo fails (e.g. already signed), the user sees their day
+        // back as editable locally but it'll reload as submitted on next fetch.
+      } catch {
+        // non-critical: local state reverted, next loadWeekData will correct it
+      }
+    }
   }
 
   // ── Apply template ──
