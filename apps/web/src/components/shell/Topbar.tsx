@@ -15,6 +15,7 @@
 
 import * as React from 'react';
 import { Search, X, Menu, LogOut, User, Settings, ScrollText } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
@@ -291,6 +292,9 @@ export function Topbar({
           {roleName}
         </div>
       )}
+
+      {/* Notification bell */}
+      <NotificationBell />
 
       {/* Menu button + dropdown */}
       <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>

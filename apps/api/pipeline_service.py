@@ -523,6 +523,18 @@ except Exception as e:
     logger.error("Import endpoints will not be available")
 
 # ============================================================================
+# NOTIFICATION ROUTES
+# ============================================================================
+
+try:
+    from routes.notification_routes import router as notification_router
+    app.include_router(notification_router)
+    logger.info("✅ Notification routes registered at /v1/notifications/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Notification routes: {e}")
+    logger.error("Notification endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
