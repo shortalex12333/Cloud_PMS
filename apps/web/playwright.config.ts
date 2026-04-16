@@ -390,6 +390,15 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'] },
     },
+    // =========================================================================
+    // CERTIFICATE E2E — list, lens, actions, role gating, register, DB verification
+    // =========================================================================
+    {
+      name: 'shard-53-certificate-e2e',
+      testDir: './e2e/shard-53-certificate-e2e',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
 
   // Web server configuration (if running locally)
