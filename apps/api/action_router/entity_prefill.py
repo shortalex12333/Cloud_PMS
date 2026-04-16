@@ -116,11 +116,12 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("warranty", "add_to_handover"):        {"entity_id": "id", "title": "title"},
 
     # ── Document ──────────────────────────────────────────────────────────────
-    ("document", "update_document"):         {"document_id": "id"},
-    ("document", "add_document_comment"):    {"document_id": "id"},
-    ("document", "add_document_tags"):       {"document_id": "id"},
-    ("document", "delete_document"):         {"document_id": "id"},
-    ("document", "update_document_comment"): {"document_id": "id"},
+    ("document", "update_document"):              {"document_id": "id"},
+    ("document", "add_document_comment"):         {"document_id": "id"},
+    ("document", "add_document_tags"):            {"document_id": "id"},
+    ("document", "delete_document"):              {"document_id": "id"},
+    ("document", "update_document_comment"):      {"document_id": "id"},
+    ("document", "link_document_to_equipment"):   {"document_id": "id"},
 
     # ── Shopping List ─────────────────────────────────────────────────────────
     # shopping_list prefill intentionally empty for Phase 2 — add as needed

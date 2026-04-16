@@ -26,6 +26,7 @@ export interface ActionPopupField {
   required?: boolean;
   options?: { value: string; label: string }[];
   entityRef?: { type: string; id: string; label: string };
+  search_domain?: string;
 }
 
 export interface ActionPopupGate {
@@ -213,18 +214,134 @@ function FieldEntitySearch({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const [query, setQuery] = React.useState('');
+  const [displayLabel, setDisplayLabel] = React.useState('');
+  const [results, setResults] = React.useState<Array<{ id: string; title: string; object_type: string }>>([]);
+  const [showDropdown, setShowDropdown] = React.useState(false);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearch = React.useCallback(
+    (q: string) => {
+      setQuery(q);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (!q || q.length < 2) {
+        setResults([]);
+        setShowDropdown(false);
+        return;
+      }
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const yachtId =
+            typeof window !== 'undefined'
+              ? localStorage.getItem('celeste_yacht_id') || ''
+              : '';
+          const jwt =
+            typeof window !== 'undefined'
+              ? (() => {
+                  try {
+                    const raw = localStorage.getItem(
+                      Object.keys(localStorage).find((k) => k.includes('auth-token')) || ''
+                    );
+                    return raw ? JSON.parse(raw)?.access_token : '';
+                  } catch {
+                    return '';
+                  }
+                })()
+              : '';
+          const resp = await fetch('/api/search/fallback', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+            },
+            body: JSON.stringify({ query: q, yacht_id: yachtId, limit: 20 }),
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            const domain = field.search_domain || 'equipment';
+            const filtered = (data.results || []).filter(
+              (r: { object_type: string }) =>
+                r.object_type === domain || r.object_type === `pms_${domain}`
+            );
+            setResults(filtered.slice(0, 10));
+            setShowDropdown(filtered.length > 0);
+          }
+        } catch {
+          setResults([]);
+          setShowDropdown(false);
+        }
+      }, 250);
+    },
+    [field.search_domain]
+  );
+
+  const handleSelect = React.useCallback(
+    (item: { id: string; title: string }) => {
+      onChange(item.id);
+      setDisplayLabel(item.title);
+      setQuery(item.title);
+      setShowDropdown(false);
+    },
+    [onChange]
+  );
+
   return (
-    <div className={s.entitySearchWrap}>
+    <div className={s.entitySearchWrap} style={{ position: 'relative' }}>
       <svg className={s.entitySearchIcon} viewBox="0 0 16 16" fill="none">
         <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3" />
         <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       </svg>
       <input
         type="text"
-        value={value}
-        placeholder={field.placeholder ?? 'Search...'}
-        onChange={(e) => onChange(e.target.value)}
+        value={displayLabel || query}
+        placeholder={field.placeholder ?? `Search ${field.search_domain || 'entity'}...`}
+        onChange={(e) => {
+          setDisplayLabel('');
+          handleSearch(e.target.value);
+          if (!e.target.value) onChange('');
+        }}
+        onFocus={() => results.length > 0 && setShowDropdown(true)}
+        onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
       />
+      {showDropdown && results.length > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            maxHeight: 200,
+            overflowY: 'auto',
+            background: 'var(--surface-elevated, #1a1a2e)',
+            border: '1px solid var(--surface-border, #333)',
+            borderRadius: 6,
+            zIndex: 100,
+            marginTop: 2,
+          }}
+        >
+          {results.map((item) => (
+            <div
+              key={item.id}
+              onMouseDown={() => handleSelect(item)}
+              style={{
+                padding: '8px 12px',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: 'var(--txt-primary, #eee)',
+                borderBottom: '1px solid var(--surface-border, #222)',
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLElement).style.background = 'var(--surface-hover, #252540)';
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLElement).style.background = 'transparent';
+              }}
+            >
+              {item.title || item.id}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
