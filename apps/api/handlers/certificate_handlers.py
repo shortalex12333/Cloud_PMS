@@ -696,6 +696,60 @@ class CertificateHandlers:
                 icon="edit"
             ))
 
+        # Renew (not for terminal states)
+        if status not in ("superseded", "revoked"):
+            actions.append(AvailableAction(
+                action_id="renew_certificate",
+                label="Renew",
+                variant="MUTATE",
+                icon="refresh-cw"
+            ))
+
+        # Assign responsible officer
+        actions.append(AvailableAction(
+            action_id="assign_certificate",
+            label="Assign Officer",
+            variant="MUTATE",
+            icon="user-check"
+        ))
+
+        # Add note (always available)
+        actions.append(AvailableAction(
+            action_id="add_certificate_note",
+            label="Add Note",
+            variant="MUTATE",
+            icon="message-square"
+        ))
+
+        # Danger zone (not for terminal states)
+        if status not in ("superseded", "revoked"):
+            actions.append(AvailableAction(
+                action_id="suspend_certificate",
+                label="Suspend",
+                variant="SIGNED",
+                icon="pause-circle",
+                requires_signature=True,
+                confirmation_message="This will suspend this certificate. This action is logged."
+            ))
+            actions.append(AvailableAction(
+                action_id="revoke_certificate",
+                label="Revoke",
+                variant="SIGNED",
+                icon="x-circle",
+                requires_signature=True,
+                confirmation_message="This will permanently revoke this certificate. This action is logged and cannot be undone."
+            ))
+
+        # Archive (always available, soft-delete)
+        actions.append(AvailableAction(
+            action_id="archive_certificate",
+            label="Archive",
+            variant="SIGNED",
+            icon="archive",
+            requires_signature=True,
+            confirmation_message="This will archive this certificate record."
+        ))
+
         # Delete action (for draft or manager-only)
         if status == "draft":
             actions.append(AvailableAction(
@@ -778,6 +832,7 @@ def _create_vessel_certificate_adapter(handlers: CertificateHandlers):
             "status": "valid",
             "document_id": params.get("document_id"),
             "properties": params.get("properties") or {},
+            "created_by": user_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -847,9 +902,11 @@ def _link_document_to_certificate_adapter(handlers: CertificateHandlers):
         user_id = params["user_id"]
         cert_id = params["certificate_id"]
         document_id = params["document_id"]
-        domain = (params.get("domain") or "vessel").lower()
 
-        table = get_table("vessel_certificates" if domain == "vessel" else "crew_certificates")
+        # Auto-detect domain from the actual cert row (don't trust client)
+        domain, table_key, _cert_row = _resolve_cert_domain(db, yacht_id, cert_id)
+        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "link_document_to_certificate")
+        table = get_table(table_key)
 
         # Basic existence checks (defensive against client return shapes)
         try:
@@ -913,16 +970,11 @@ def _update_certificate_adapter(handlers: CertificateHandlers):
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         cert_id = params["certificate_id"]
-        domain = (params.get("domain") or "vessel").lower()
 
-        table = get_table("vessel_certificates" if domain == "vessel" else "crew_certificates")
-
-        # Get current values for audit
-        current = db.table(table).select("*").eq("yacht_id", yacht_id).eq("id", cert_id).maybe_single().execute()
-        if not current.data:
-            raise ValueError(f"Certificate not found or access denied: {cert_id}")
-
-        old_values = current.data
+        # Auto-detect domain from the actual cert row
+        domain, table_key, old_values = _resolve_cert_domain(db, yacht_id, cert_id)
+        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "update_certificate")
+        table = get_table(table_key)
 
         # Don't allow updates to superseded/revoked certificates
         if old_values.get("status") in ("superseded", "revoked"):
@@ -1026,6 +1078,7 @@ def _create_crew_certificate_adapter(handlers: CertificateHandlers):
             "expiry_date": params.get("expiry_date"),
             "document_id": params.get("document_id"),
             "properties": params.get("properties") or {},
+            "created_by": user_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -1236,6 +1289,26 @@ def _resolve_cert_domain(db, yacht_id: str, cert_id: str) -> tuple:
     raise ValueError(f"Certificate {cert_id} not found or access denied")
 
 
+# ── Domain-based role narrowing ──────────────────────────────────────────
+# The registry allows the full 8-HOD union so the action appears in the
+# dropdown for any HOD. This gate narrows at handler level: engineering
+# roles can only mutate vessel certs, interior roles can only mutate crew
+# certs. Captain + manager pass unconditionally.
+
+_VESSEL_CERT_ROLES = frozenset({"engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"})
+_CREW_CERT_ROLES = frozenset({"chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"})
+
+
+def _cert_mutation_gate(domain: str, user_role: str, action: str) -> None:
+    """Raise ValueError if user_role cannot mutate a cert in this domain."""
+    if user_role in ("captain", "manager"):
+        return  # always allowed
+    if domain == "vessel" and user_role not in _VESSEL_CERT_ROLES:
+        raise ValueError(f"Role '{user_role}' cannot modify vessel certificates")
+    if domain == "crew" and user_role not in _CREW_CERT_ROLES:
+        raise ValueError(f"Role '{user_role}' cannot modify crew certificates")
+
+
 def _renew_certificate_adapter(handlers: "CertificateHandlers"):
     async def _fn(**params):
         """
@@ -1263,6 +1336,7 @@ def _renew_certificate_adapter(handlers: "CertificateHandlers"):
             raise ValueError("new_expiry_date must be after new_issue_date")
 
         domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
+        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "renew_certificate")
         table = get_table(table_key)
 
         if old_cert.get("status") in ("superseded", "revoked"):
@@ -1357,6 +1431,7 @@ def _change_certificate_status_adapter(new_status: str):
                 raise ValueError("entity_id (certificate id) is required")
 
             domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
+            _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), f"{new_status}_certificate")
             table = get_table(table_key)
 
             current_status = old_cert.get("status")
@@ -1427,6 +1502,7 @@ def _archive_certificate_adapter(handlers: "CertificateHandlers"):
             raise ValueError("entity_id (certificate id) is required")
 
         domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
+        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "archive_certificate")
         table = get_table(table_key)
 
         now = datetime.now(timezone.utc).isoformat()
@@ -1494,6 +1570,7 @@ def _assign_certificate_adapter(handlers: "CertificateHandlers"):
 
         # Find the cert (vessel or crew) — reuses domain resolver
         domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
+        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "assign_certificate")
         table = get_table(table_key)
 
         now = datetime.now(timezone.utc).isoformat()
