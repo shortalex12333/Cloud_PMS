@@ -4330,6 +4330,30 @@ def get_actions_for_domain(domain: str, role: str = None) -> List[Dict[str, Any]
         if role and role not in action.allowed_roles:
             continue
 
+        # Build field_schema from field_metadata so frontends can render forms
+        field_schema = []
+        if action.field_metadata:
+            for fm in action.field_metadata:
+                cls = fm.classification
+                if cls in (FieldClassification.CONTEXT, FieldClassification.BACKEND_AUTO,
+                           "CONTEXT", "BACKEND_AUTO"):
+                    continue
+                is_required = cls in (FieldClassification.REQUIRED, "REQUIRED")
+                if fm.options:
+                    ft = "select"
+                elif getattr(fm, 'lookup_required', False):
+                    ft = "entity-search"
+                elif "date" in fm.name or fm.name.endswith("_at") or fm.name.endswith("_due"):
+                    ft = "date"
+                elif "description" in fm.name or "notes" in fm.name or "reason" in fm.name:
+                    ft = "text-area"
+                else:
+                    ft = "text"
+                entry = {"name": fm.name, "type": ft, "label": fm.description or fm.name.replace("_", " ").title(), "required": is_required}
+                if fm.options:
+                    entry["options"] = [{"value": o, "label": o.replace("_", " ").title()} for o in fm.options]
+                field_schema.append(entry)
+
         results.append({
             "action_id": action.action_id,
             "label": action.label,
@@ -4339,6 +4363,7 @@ def get_actions_for_domain(domain: str, role: str = None) -> List[Dict[str, Any]
             "has_prefill": action.prefill_endpoint is not None,
             "prefill_endpoint": action.prefill_endpoint,
             "context_required": action.context_required,
+            "field_schema": field_schema,
         })
 
     return results

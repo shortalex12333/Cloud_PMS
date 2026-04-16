@@ -438,7 +438,9 @@ export function ActionPopup({
   previewRows,
 }: ActionPopupProps) {
   // L0 = tap only — execute inline, no modal needed
-  const isL0 = mode === 'mutate' && signatureLevel === 0;
+  // L0 = fire-and-forget (no form, no signature). Only auto-submit if there
+  // are genuinely no fields to show — otherwise we'd skip the user's form.
+  const isL0 = mode === 'mutate' && signatureLevel === 0 && fields.length === 0;
 
   // Internal form state (hooks must be called unconditionally)
   const [values, setValues] = React.useState<Record<string, string>>(() => {
