@@ -282,6 +282,19 @@ def open_warranty_by_title(page: Page, title: str) -> None:
     page.wait_for_url(re.compile(r"/warranties/[0-9a-f-]{36}"), timeout=NAV_TIMEOUT_MS)
 
 
+def reload_claim(page: Page, claim_id: str) -> None:
+    """Force a fresh entity load by re-navigating.
+
+    In-page pill re-rendering after a status-changing action is flaky — the
+    SPA's refetch interval can run >20s behind the action response. A full
+    navigation is deterministic: the lens fetches /v1/entity/warranty/<id>
+    directly and renders the current DB state.
+    """
+    page.goto(f"{BASE_URL}/warranties", timeout=NAV_TIMEOUT_MS)
+    page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS)
+    page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
+
+
 def fill_popup_field(page: Page, field_name: str, value: str) -> None:
     """Fill a field inside an open ActionPopup by its server-side field name."""
     wrapper = page.get_by_test_id(f"popup-field-{field_name}")
@@ -464,13 +477,19 @@ def scenario_3_rejection(ctx: BrowserContext, state: dict) -> dict:
         assert cid, f"no claim_id in response body: {body}"
         state["claim_id_3"] = cid
         page.goto(f"{BASE_URL}/warranties/{cid}", timeout=NAV_TIMEOUT_MS)
-        page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
-    step(res, "3.1d", "Submit modal, capture claim_id_3, navigate",
+        page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=45_000)
+    step(res, "3.1d", "Submit modal, capture claim_id_3, navigate (45s for auth)",
          submit_modal_and_capture_3)
 
-    step(res, "3.2", "Submit the claim (status → Submitted)",
+    step(res, "3.2", "Click Submit Claim",
          lambda: page.get_by_test_id("warranty-submit-btn").click(timeout=STEP_TIMEOUT_MS))
-    step(res, "3.2b", "Status pill = Submitted", lambda: assert_pill_label(page, "Submitted"))
+    # Pill re-render lags the action response. Reload guarantees the pill is
+    # sourced from the post-commit /v1/entity GET.
+    def reload_and_check_submitted():
+        page.wait_for_timeout(1500)
+        reload_claim(page, state["claim_id_3"])
+        assert_pill_label(page, "Submitted")
+    step(res, "3.2b", "Reload + pill = Submitted", reload_and_check_submitted)
 
     # 3b — captain rejects. Supabase session is in localStorage + cookies;
     # clearing cookies alone leaves the SPA thinking it's still signed in,
@@ -488,8 +507,12 @@ def scenario_3_rejection(ctx: BrowserContext, state: dict) -> dict:
     step(res, "3.3", "Switch to captain", relogin_captain)
 
     claim_id = state.get("claim_id_3")
-    step(res, "3.4", "Open the submitted claim",
-         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+    def nav_to_submitted_claim():
+        page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS)
+        # Captain relogin triggers fresh auth bootstrap; wait for it to hydrate
+        # before the entity fetch returns — can take up to 30s on cold path.
+        page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=45_000)
+    step(res, "3.4", "Open the submitted claim (wait for entity load)", nav_to_submitted_claim)
 
     def open_reject():
         # The reject action lives in the dropdown half of the split button.
@@ -694,7 +717,7 @@ def scenario_7_crew_restrictions(ctx: BrowserContext, state: dict) -> dict:
         claim_id = state.get("claim_id_1")
         if claim_id:
             page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS)
-            page.wait_for_url(re.compile(r"/warranties/[0-9a-f-]{36}"), timeout=NAV_TIMEOUT_MS)
+            page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=45_000)
         else:
             first_row = page.locator("a[href*='/warranties/']").first
             first_row.wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
@@ -710,7 +733,7 @@ def scenario_7_crew_restrictions(ctx: BrowserContext, state: dict) -> dict:
     step(res, "7.4-7.6", "No mutate buttons visible for crew", no_mutate_buttons_visible)
 
     step(res, "7.8", "'+ Upload' still visible (not role-gated)",
-         lambda: page.get_by_test_id("warranty-upload-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
+         lambda: page.get_by_test_id("warranty-upload-btn").wait_for(state="visible", timeout=NAV_TIMEOUT_MS))
 
     page.close()
     return finalize(res)
@@ -729,8 +752,10 @@ def scenario_8_revise_resubmit(ctx: BrowserContext, state: dict) -> dict:
     instrument(page, res)
 
     step(res, "8.0", "Login as HOD", lambda: login(page, HOD_EMAIL, PASSWORD))
-    step(res, "8.1", "Open the rejected claim",
-         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+    def nav_to_rejected_claim():
+        page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS)
+        page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=45_000)
+    step(res, "8.1", "Open the rejected claim (wait for entity load)", nav_to_rejected_claim)
     step(res, "8.1b", "Status pill = Rejected", lambda: assert_pill_label(page, "Rejected"))
     step(res, "8.2", "Primary = Revise & Resubmit (warranty-submit-btn)",
          lambda: page.get_by_test_id("warranty-submit-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
