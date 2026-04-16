@@ -111,7 +111,7 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=LOCALHOST_ORIGIN_REGEX,
     allow_credentials=False,  # Bearer tokens in headers, no cookies
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=[
         "Authorization",        # JWT bearer token
         "Content-Type",
