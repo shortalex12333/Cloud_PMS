@@ -26,6 +26,7 @@ export interface ActionPopupField {
   required?: boolean;
   options?: { value: string; label: string }[];
   entityRef?: { type: string; id: string; label: string };
+  search_domain?: string;
 }
 
 export interface ActionPopupGate {
@@ -204,6 +205,34 @@ function FieldDatePick({
   );
 }
 
+function getSessionData(): { jwt: string; yachtId: string } {
+  if (typeof window === 'undefined') return { jwt: '', yachtId: '' };
+  try {
+    const authKey = Object.keys(localStorage).find((k) => k.includes('auth-token'));
+    if (!authKey) return { jwt: '', yachtId: '' };
+    const raw = localStorage.getItem(authKey);
+    if (!raw) return { jwt: '', yachtId: '' };
+    const parsed = JSON.parse(raw);
+    const jwt = parsed?.access_token || '';
+    // Decode JWT payload to extract yacht_id from user_metadata
+    let yachtId = '';
+    if (jwt) {
+      try {
+        const payload = JSON.parse(atob(jwt.split('.')[1]));
+        yachtId = payload?.user_metadata?.yacht_id || payload?.yacht_id || '';
+      } catch { /* malformed JWT */ }
+    }
+    // Fallback: check if bootstrap stored it
+    if (!yachtId) {
+      const user = parsed?.user;
+      yachtId = user?.user_metadata?.yacht_id || '';
+    }
+    return { jwt, yachtId };
+  } catch {
+    return { jwt: '', yachtId: '' };
+  }
+}
+
 function FieldEntitySearch({
   field,
   value,
@@ -213,18 +242,123 @@ function FieldEntitySearch({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const [query, setQuery] = React.useState('');
+  const [displayLabel, setDisplayLabel] = React.useState('');
+  const [results, setResults] = React.useState<Array<{ id: string; title: string }>>([]);
+  const [showDropdown, setShowDropdown] = React.useState(false);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearch = React.useCallback(
+    (q: string) => {
+      setQuery(q);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (!q || q.length < 2) {
+        setResults([]);
+        setShowDropdown(false);
+        return;
+      }
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const { jwt, yachtId } = getSessionData();
+          if (!yachtId) {
+            console.warn('[FieldEntitySearch] No yacht_id found in session');
+            return;
+          }
+          const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+          const domain = field.search_domain || 'equipment';
+          const resp = await fetch(
+            `${apiBase}/api/vessel/${yachtId}/domain/${domain}/records?search=${encodeURIComponent(q)}&limit=15`,
+            {
+              method: 'GET',
+              headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+            },
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            const records = data.records || data.results || [];
+            const mapped = records.map((r: Record<string, unknown>) => ({
+              id: (r.id || r.primary_id || '') as string,
+              title: (r.title || r.name || r.equipment_name || r.filename || r.id || '') as string,
+            }));
+            setResults(mapped.slice(0, 10));
+            setShowDropdown(mapped.length > 0);
+          }
+        } catch {
+          setResults([]);
+          setShowDropdown(false);
+        }
+      }, 250);
+    },
+    [field.search_domain]
+  );
+
+  const handleSelect = React.useCallback(
+    (item: { id: string; title: string }) => {
+      onChange(item.id);
+      setDisplayLabel(item.title);
+      setQuery(item.title);
+      setShowDropdown(false);
+    },
+    [onChange]
+  );
+
   return (
-    <div className={s.entitySearchWrap}>
+    <div className={s.entitySearchWrap} style={{ position: 'relative' }}>
       <svg className={s.entitySearchIcon} viewBox="0 0 16 16" fill="none">
         <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3" />
         <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       </svg>
       <input
         type="text"
-        value={value}
-        placeholder={field.placeholder ?? 'Search...'}
-        onChange={(e) => onChange(e.target.value)}
+        value={displayLabel || query}
+        placeholder={field.placeholder ?? `Search ${field.search_domain || 'entity'}...`}
+        onChange={(e) => {
+          setDisplayLabel('');
+          handleSearch(e.target.value);
+          if (!e.target.value) onChange('');
+        }}
+        onFocus={() => results.length > 0 && setShowDropdown(true)}
+        onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
       />
+      {showDropdown && results.length > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            maxHeight: 200,
+            overflowY: 'auto',
+            background: 'var(--surface-elevated, #1a1a2e)',
+            border: '1px solid var(--surface-border, #333)',
+            borderRadius: 6,
+            zIndex: 100,
+            marginTop: 2,
+          }}
+        >
+          {results.map((item) => (
+            <div
+              key={item.id}
+              onMouseDown={() => handleSelect(item)}
+              style={{
+                padding: '8px 12px',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: 'var(--txt-primary, #eee)',
+                borderBottom: '1px solid var(--surface-border, #222)',
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLElement).style.background = 'var(--surface-hover, #252540)';
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLElement).style.background = 'transparent';
+              }}
+            >
+              {item.title || item.id}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

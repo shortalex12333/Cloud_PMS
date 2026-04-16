@@ -98,6 +98,7 @@ export function mapActionFields(action: ActionDef): ActionPopupField[] {
         options,
         placeholder: meta?.placeholder || `Enter ${f.replace(/_/g, ' ')}...`,
         value: (action.prefill[f] as string) ?? '',
+        search_domain: meta?.search_domain,
       };
     });
 }
