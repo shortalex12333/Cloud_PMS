@@ -876,7 +876,13 @@ acknowledged_by=4a66036f-…  crew_reason='Tested ack by MCP02 2026-04-16'
 action=acknowledge_warning  entity_type=crew_warning  user_role=[EMPTY]  user_id=4a66036f  created_at=2026-04-16 17:07:37
 ```
 
-**⚠ PR #578 SCOPE GAP:** Ledger row for `acknowledge_warning` has `user_role = EMPTY` (same pre-fix pattern seen on the signoff actions before #578). PR #578 populated user_role on `hor_crew_signed` / `hor_hod_signed` / `hor_master_signed` but NOT on the warning handlers. Recommend extending the fix to `acknowledge_warning` + `dismiss_warning`.
+~~**⚠ PR #578 SCOPE GAP:** Ledger row for `acknowledge_warning` has `user_role = EMPTY`.~~
+
+**FIXED in PR #586. POST-DEPLOY VERIFIED 2026-04-16 20:24 UTC:**
+```
+acknowledge_warning  crew_warning  user_role=crew     4a66036f  2026-04-16 20:24:35  ✅
+```
+Pre-PR #586 rows (17:07 UTC) correctly show empty user_role — those are expected historic gaps. Any acknowledge_warning after PR #586 deploy now writes user_role correctly.
 
 ---
 
@@ -926,7 +932,13 @@ POST /v1/actions/execute dismiss_warning  warning_id=00000000-…
   message="Warning not found: 00000000-0000-4000-8000-000000000000"
 ```
 
-**⚠ PR #578 SCOPE GAP (same as Scenario 9):** ledger row for `dismiss_warning` has `user_role = EMPTY`. Extend #578 fix to warning handlers.
+~~**⚠ PR #578 SCOPE GAP (same as Scenario 9):** ledger row for `dismiss_warning` has `user_role = EMPTY`.~~
+
+**FIXED in PR #586. POST-DEPLOY VERIFIED 2026-04-16 20:24 UTC:**
+```
+dismiss_warning  crew_warning  user_role=captain  a35cad0b  2026-04-16 20:24:41  ✅
+```
+Independent DB verification (HOURSOFREST01 direct TENANT DB query) confirms MCP02 report.
 
 ---
 
@@ -992,36 +1004,38 @@ signoff 2d43cdd2-9969-4dcc-ac52-0fa0fc188c55
 
 Copy this section, mark each, add console errors for any N.
 
-**Last updated: 2026-04-16 by HOURSOFREST01 (post PR #596 merge)**
+**Last updated: 2026-04-16 by HOURSOFREST01 + MCP02 (final verification pass)**
 
 ```
-[Y] Layout fills full screen width (no 680px cap)         — PASS: Scenario 1 browser S1 (MCP02, 2026-04-16)
-[Y] Scroll area fills viewport height correctly            — PASS: Scenario 1 browser S1 (MCP02, 2026-04-16)
-[ ] Crew can enter hours (work periods) via slider/track   — NOT TESTED: all 7 days already submitted on test acct
-[ ] Rest hours auto-calculated (24h − work hours)          — NOT TESTED: blocked by above
-[ ] Compliance status shows green/red correctly            — PARTIAL: historical cells show ✓/✗ correctly
-[ ] Submit Day shows real error inline if it fails         — NOT TESTED: blocked by no unsubmitted day (PR #569(a) verified via route-mock only)
-[ ] Submit Day succeeds — cell updates, no page reload     — NOT TESTED: blocked by no unsubmitted day
-[ ] Crew can submit weekly signoff (create_monthly_signoff) — PARTIAL: API PASS (Scenario 2 API); UI NOT TESTED
-[ ] Crew can sign own signoff (status → crew_signed)       — PASS (API, Scenario 3); UI NOT TESTED
-[Y] HOD tab visible for HOD roles (ETO, chief_engineer)    — PASS: browser confirmed MY TIME + DEPARTMENT tabs only
-[Y] HOD can see department signoffs                        — PASS: browser confirmed ENGINEERING DEPT crew grid loads
-[N] HOD can countersign (status → hod_signed)              — API PASS (Scenario 4); UI FAIL: no Sign button visible on dept grid — department view shows crew-hours rows with "View" buttons, not signoff-level Sign buttons; needs crew_signed signoff + correct nav path. DATA STATE GAP, not a code bug.
-[Y] Captain can see All Departments tab                    — PASS: browser confirmed tab visible + clickable
-[ ] Captain can master-sign (status → finalized)           — API PASS (Scenario 5); UI NOT TESTED: no hod_signed record available to trigger button
-[Y] Finalized record blocks ALL further signatures         — PASS: API VALIDATION_ERROR + UI sign button hidden on finalized card (Captain browser check)
-[ ] Upsert on finalized month returns LOCKED inline        — API PASS (Scenario 8); UI inline-surfacing NOT TESTED (need unsubmitted day on finalized month to trigger)
-[ ] Signature popup appears inline below signoff card      — NOT TESTED: no available signoff to click Sign
-[Y] get_monthly_signoff with invalid ID → NOT_FOUND        — PASS (API, Scenario 8 + S3 error path)
-[Y] list_monthly_signoffs → success=true                   — PASS (API, multiple scenarios)
-[Y] Fleet manager can read signoff list                    — PASS: browser confirmed All Departments view loads vessel data
-[Y] Fleet manager cannot sign (write blocked)              — PASS: browser confirmed no Sign/Countersign/Finalize buttons visible; backend FORBIDDEN on create (PR #580)
-[?] Fleet manager cannot submit week (frontend hidden)     — PR #588 deployed (commit bfa59b59 < de7b9b10 = live). Code: canSubmitWeek = user?.role !== 'manager'. AWAITING BROWSER VERIFY by MCP02. Previously [N] — BUG-HOR-5b.
-[Y] MLC independence: same person cannot sign HOD + master — PASS (API, Scenario 11): FORBIDDEN error confirmed
-[ ] HOD bypass works when no dept HOD exists               — NOT TESTED
-[Y] Compliance warnings appear when daily rest < 10h       — PASS (API, Scenario 9): warnings listed
-[Y] Warnings can be acknowledged (crew) and dismissed (HOD) — PASS (API, Scenarios 9+10)
-[?] Ledger event written for each sign action              — PARTIAL: sign rows confirmed user_role+entity_type correct (PR #578, 7722c206 forensic chain). Warning rows (PR #586) AWAITING VERIFY — need post-deploy action trigger. create_monthly_signoff rows FIXED in PR #596 — AWAITING DEPLOY.
+[Y] Layout fills full screen width (no 680px cap)         — PASS: Scenario 1 browser (MCP02 headless, 2026-04-16)
+[Y] Scroll area fills viewport height correctly            — PASS: Scenario 1 browser (MCP02 headless, 2026-04-16)
+[ ] Crew can enter hours (work periods) via slider/track   — DATA STATE BLOCKER: all 7 days on engineer.test submitted. Cannot exercise this without an unsubmitted day.
+[ ] Rest hours auto-calculated (24h − work hours)          — DATA STATE BLOCKER: same
+[ ] Compliance status shows green/red correctly            — PARTIAL: historical cells show ✓/✗ correctly; compliant/non-compliant rendering confirmed via read.
+[ ] Submit Day shows real error inline if it fails         — ROUTE-MOCK PASS only (MCP02 S1.2 headless with 400 injected). Real-session browser blocked by DATA STATE. PR #569(a) proven via route-mock.
+[ ] Submit Day succeeds — cell updates, no page reload     — DATA STATE BLOCKER: same. API path confirmed working via action bus.
+[ ] Crew can submit weekly signoff (create_monthly_signoff) — API PASS (Scenario 2); UI NOT TESTED — DATA STATE (need a week with all days submitted but no signoff yet for current month).
+[ ] Crew can sign own signoff (status → crew_signed)       — API PASS (Scenario 3 + 7722c206 chain); UI NOT TESTED — DATA STATE (need draft signoff with Sign button visible).
+[Y] HOD tab visible for HOD roles (ETO, chief_engineer)    — PASS: browser MY TIME + DEPARTMENT tabs confirmed.
+[Y] HOD can see department signoffs                        — PASS: browser ENGINEERING DEPT crew-hours grid loads (48 rows, View buttons).
+[N] HOD can countersign (status → hod_signed)              — API PASS (Scenario 4). UI: Sign button NOT VISIBLE on dept crew-hours grid — that view shows daily hours rows, not signoff cards. Sign button lives on the SIGNOFF CARD inside individual crew View navigation. DATA STATE GAP: no crew_signed signoff in engineering dept at test time. NOT a code bug.
+[Y] Captain can see All Departments tab                    — PASS: browser tab visible + clickable; VESSEL OVERVIEW analytics strip renders.
+[ ] Captain can master-sign (status → finalized)           — API PASS (Scenario 5, 7722c206 chain). UI NOT TESTED: no hod_signed record available to trigger master-sign button. DATA STATE GAP.
+[Y] Finalized record blocks ALL further signatures         — PASS: API VALIDATION_ERROR + UI sign button hidden on finalized general-dept card (Captain browser check).
+[ ] Upsert on finalized month returns LOCKED inline        — API PASS (Scenario 8): LOCKED error returned. UI surfacing NOT TESTED (same code path as Submit Day error — proven via route-mock for 400 errors, but a live LOCKED requires an unsubmitted day on a finalized month).
+[ ] Signature popup appears inline below signoff card      — NOT TESTED: no draft or crew_signed signoff available to render Sign button. DATA STATE GAP.
+[Y] get_monthly_signoff with invalid ID → NOT_FOUND        — PASS (API, Scenario 8 + S3 error path).
+[Y] list_monthly_signoffs → success=true                   — PASS (API, multiple scenarios, all 4 roles).
+[Y] Fleet manager can read signoff list                    — PASS: browser All Departments vessel analytics view loads correctly.
+[Y] Fleet manager cannot sign (write blocked)              — PASS: browser zero Sign/Countersign/Finalize buttons; backend FORBIDDEN on create (PR #580).
+[Y] Fleet manager cannot submit week (frontend hidden)     — PASS: PR #588 live. MCP02 headless: submitWeekCount=0, zero write buttons in main. Captain positive control shows Submit Week For Approval (proves role-gate, not global suppression). BUG-HOR-5b FIXED.
+[Y] MLC independence: same person cannot sign HOD + master — PASS (API, Scenario 11): FORBIDDEN + MLC 2006 message confirmed.
+[ ] HOD bypass works when no dept HOD exists               — NOT TESTED: low priority.
+[Y] Compliance warnings appear when daily rest < 10h       — PASS (API, Scenario 9): 7 warnings returned, severity + violation_data present.
+[Y] Warnings can be acknowledged (crew) and dismissed (HOD) — PASS (API, Scenarios 9+10) + PASS (post-PR #586 live trigger, DB confirmed 20:24 UTC).
+[Y] Ledger event written for each sign action              — PASS (all 3 levels): 7722c206 forensic chain confirmed user_role+entity_type on crew/HOD/master rows (PR #578).
+[Y] Ledger event written for warning actions               — PASS (PR #586 LIVE VERIFIED): dismiss_warning=captain, acknowledge_warning=crew, DB rows at 20:24 UTC. Pre-#586 rows correctly have empty user_role.
+[ ] Ledger event for create_monthly_signoff                — FIXED in PR #596 (entity_type→hours_of_rest_signoff, user_role resolved). AWAITING RENDER DEPLOY. Trigger verify: POST create_monthly_signoff as crew, check ledger row has user_role=crew and entity_type=hours_of_rest_signoff.
 ```
 
 ---
