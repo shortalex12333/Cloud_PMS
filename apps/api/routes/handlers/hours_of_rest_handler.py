@@ -298,10 +298,11 @@ async def list_monthly_signoffs(
 
     hor = HoursOfRestHandlers(db_client)
 
+    params_with_role = {**(payload or {}), "_caller_role": user_context.get("role", "")}
     return await hor.list_monthly_signoffs(
         entity_id=user_id,
         yacht_id=yacht_id,
-        params=payload
+        params=params_with_role
     )
 
 
@@ -317,6 +318,18 @@ async def create_monthly_signoff(
     db_client: Client,
 ) -> dict:
     logger.info(f"[HOR_SIGNOFF] Dispatching 'create_monthly_signoff' - yacht_id={yacht_id}")
+
+    # BUG-HOR-5 fix: fleet manager is read-only for HoR — block at dispatcher level
+    if user_context.get("role") == "manager":
+        return {
+            "success": False,
+            "action_id": "create_monthly_signoff",
+            "error": {
+                "code": "FORBIDDEN",
+                "message": "Fleet manager has read-only access to hours of rest. Cannot create sign-offs.",
+                "status_code": 403,
+            }
+        }
 
     hor = HoursOfRestHandlers(db_client)
 

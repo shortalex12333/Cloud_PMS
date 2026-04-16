@@ -623,14 +623,16 @@ class HoursOfRestHandlers:
 
             builder.set_pagination(offset, limit, total_count)
 
-            # Available actions
-            builder.add_available_action(AvailableAction(
-                action_id="create_monthly_signoff",
-                label="Create Sign-off",
-                variant="MUTATE",
-                icon="file-signature",
-                is_primary=True
-            ))
+            # Available actions — fleet manager (role=manager) is read-only for HoR
+            caller_role = params.get("_caller_role", "")
+            if caller_role != "manager":
+                builder.add_available_action(AvailableAction(
+                    action_id="create_monthly_signoff",
+                    label="Create Sign-off",
+                    variant="MUTATE",
+                    icon="file-signature",
+                    is_primary=True
+                ))
 
             return builder.build()
 
