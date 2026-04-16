@@ -26,6 +26,7 @@ from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
 from supabase import create_client
 from utils.filenames import sanitize_storage_filename
+from routes.handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 
@@ -782,8 +783,50 @@ async def upload_document(
     try:
         supabase.table('pms_audit_log').insert(audit).execute()
     except Exception as audit_err:
-        # Non-fatal — the document is already uploaded and recorded.
         logger.warning(f"[documents/upload] audit log insert failed (non-fatal): {audit_err}")
+
+    # -----------------------------------------------------------------------
+    # Step 4 — ledger_events (required for receipt-layer sealing)
+    # -----------------------------------------------------------------------
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id,
+            user_id=user_id,
+            event_type="create",
+            entity_type="document",
+            entity_id=inserted_id,
+            action="upload_document",
+            user_role=user_role,
+            change_summary=f"Document uploaded: {filename}",
+        )
+        supabase.table('ledger_events').insert(ledger_event).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[documents/upload] ledger insert failed (non-fatal): {ledger_err}")
+
+    # -----------------------------------------------------------------------
+    # Step 5 — notification (non-fatal)
+    # -----------------------------------------------------------------------
+    try:
+        notif_key = f"doc_upload_{inserted_id}"
+        supabase.table('pms_notifications').insert({
+            'yacht_id': yacht_id,
+            'user_id': user_id,
+            'notification_type': 'document_uploaded',
+            'title': 'Document uploaded',
+            'body': f'{filename} uploaded to vessel documents',
+            'priority': 'normal',
+            'entity_type': 'document',
+            'entity_id': inserted_id,
+            'cta_action_id': 'get_document_url',
+            'cta_payload': {'document_id': inserted_id},
+            'idempotency_key': notif_key,
+            'is_read': False,
+            'triggered_by': user_id,
+            'metadata': {'source': 'document_lens', 'filename': filename, 'role': user_role},
+        }).execute()
+    except Exception as notif_err:
+        logger.warning(f"[documents/upload] notification insert failed (non-fatal): {notif_err}")
 
     logger.info(
         f"[documents/upload] OK: doc_id={inserted_id[:8]} yacht={yacht_id[:8]} "

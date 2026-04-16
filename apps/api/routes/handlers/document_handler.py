@@ -11,12 +11,44 @@ Block 3 (L5037-5078): upload_document, update_document, delete_document, add_doc
     get_document_url, list_documents — delegates to handlers.document_handlers via get_document_handlers().
 """
 import logging
+import uuid
 
 from fastapi import HTTPException
 from supabase import Client
 from routes.handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
+
+
+def _push_doc_notification(
+    db_client: Client,
+    yacht_id: str,
+    user_id: str,
+    action: str,
+    title: str,
+    body: str,
+    entity_id: str,
+    user_role: str = None,
+) -> None:
+    try:
+        db_client.table("pms_notifications").insert({
+            "yacht_id": yacht_id,
+            "user_id": user_id,
+            "notification_type": f"document_{action}",
+            "title": title,
+            "body": body,
+            "priority": "normal",
+            "entity_type": "document",
+            "entity_id": entity_id,
+            "cta_action_id": "get_document_url",
+            "cta_payload": {"document_id": entity_id},
+            "idempotency_key": f"doc_{action}_{entity_id}_{str(uuid.uuid4())[:8]}",
+            "is_read": False,
+            "triggered_by": user_id,
+            "metadata": {"source": "document_lens", "role": user_role or ""},
+        }).execute()
+    except Exception as notif_err:
+        logger.warning(f"[Notification] doc {action} failed (non-fatal): {notif_err}")
 
 # RBAC mapping for Document Lens v2 actions (from original L5040-5048)
 _DOC_V2_ALLOWED_ROLES = {
@@ -172,6 +204,13 @@ async def upload_document(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record upload_document: {ledger_err}")
+        _push_doc_notification(
+            db_client, yacht_id, user_id, "uploaded",
+            "Document uploaded",
+            f"{payload.get('file_name', 'document')} uploaded to vessel documents",
+            result.get("document_id") or result.get("id") or yacht_id,
+            user_context.get("role"),
+        )
         result["_ledger_written"] = True
     return result
 
@@ -181,7 +220,33 @@ async def update_document(
     user_context: dict, db_client: Client,
 ) -> dict:
     _enforce_doc_rbac("update_document", user_context)
-    return await _delegate_to_doc_handler("update_document", db_client, yacht_id, user_id, payload)
+    document_id = payload.get("document_id")
+    result = await _delegate_to_doc_handler("update_document", db_client, yacht_id, user_id, payload)
+    if isinstance(result, dict) and result.get("status") != "error":
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="update",
+                entity_type="document",
+                entity_id=document_id or yacht_id,
+                action="update_document",
+                user_role=user_context.get("role"),
+                change_summary=f"Document metadata updated: {', '.join(result.get('updated_fields', []))}",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record update_document: {ledger_err}")
+        _push_doc_notification(
+            db_client, yacht_id, user_id, "updated",
+            "Document updated",
+            f"Document metadata updated: {', '.join(result.get('updated_fields', []))}",
+            document_id or yacht_id,
+            user_context.get("role"),
+        )
+        result["_ledger_written"] = True
+    return result
 
 
 async def delete_document(
@@ -207,6 +272,13 @@ async def delete_document(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record delete_document: {ledger_err}")
+        _push_doc_notification(
+            db_client, yacht_id, user_id, "deleted",
+            "Document deleted",
+            f"Document deleted: {payload.get('reason', 'no reason given')}",
+            document_id or yacht_id,
+            user_context.get("role"),
+        )
         result["_ledger_written"] = True
     return result
 
@@ -216,7 +288,33 @@ async def add_document_tags(
     user_context: dict, db_client: Client,
 ) -> dict:
     _enforce_doc_rbac("add_document_tags", user_context)
-    return await _delegate_to_doc_handler("add_document_tags", db_client, yacht_id, user_id, payload)
+    document_id = payload.get("document_id")
+    result = await _delegate_to_doc_handler("add_document_tags", db_client, yacht_id, user_id, payload)
+    if isinstance(result, dict) and result.get("status") != "error":
+        try:
+            ledger_event = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="update",
+                entity_type="document",
+                entity_id=document_id or yacht_id,
+                action="add_document_tags",
+                user_role=user_context.get("role"),
+                change_summary=f"Tags updated: {payload.get('tags', [])}",
+            )
+            db_client.table("ledger_events").insert(ledger_event).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record add_document_tags: {ledger_err}")
+        _push_doc_notification(
+            db_client, yacht_id, user_id, "tags_updated",
+            "Document tags updated",
+            f"Tags updated: {payload.get('tags', [])}",
+            document_id or yacht_id,
+            user_context.get("role"),
+        )
+        result["_ledger_written"] = True
+    return result
 
 
 async def get_document_url(
