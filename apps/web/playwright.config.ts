@@ -408,6 +408,21 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'] },
     },
+    // =========================================================================
+    // SHARD 54: Handover UI (HANDOVER_TESTER) — MASTER-auth login path so
+    // app.celeste7.ai recognises the session; storageState undefined to avoid
+    // TENANT-signed JWTs from global-setup.
+    // =========================================================================
+    {
+      name: 'shard-54-handover-tester-ui',
+      testDir: './e2e/shard-54-handover-tester-ui',
+      dependencies: ['setup'],
+      timeout: 180_000,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: undefined,
+      },
+    },
   ],
 
   // Web server configuration (if running locally)
