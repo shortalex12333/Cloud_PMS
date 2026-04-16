@@ -470,8 +470,26 @@ def _add_document_tags_adapter(handlers: DocumentHandlers):
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         doc_id = params["document_id"]
-        new_tags = params["tags"]
+        raw_tags = params["tags"]
+        # Defensive: frontend auto-modals send a string ("critical") instead of
+        # a list (["critical"]). If we iterate a bare string, each character
+        # becomes a separate tag — e.g. "critical" → ["c","r","i","t",...].
+        if isinstance(raw_tags, str):
+            # Split on comma, strip whitespace, drop empties
+            new_tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
+        elif isinstance(raw_tags, list):
+            # Flatten: if the list contains comma-separated strings, split those too
+            new_tags = []
+            for item in raw_tags:
+                if isinstance(item, str):
+                    new_tags.extend(t.strip() for t in item.split(",") if t.strip())
+                else:
+                    new_tags.append(str(item))
+        else:
+            new_tags = [str(raw_tags)]
         replace_mode = params.get("replace", False)
+        if isinstance(replace_mode, str):
+            replace_mode = replace_mode.lower() in ("true", "1", "yes")
 
         # Get current document
         try:
