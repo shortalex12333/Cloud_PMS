@@ -391,6 +391,15 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     // =========================================================================
+    // SHARD 52b: Handover Browser E2E — queue, draft CRUD, document, sign flows
+    // =========================================================================
+    {
+      name: 'shard-52-handover-browser',
+      testDir: './e2e/shard-52-handover-browser',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // =========================================================================
     // CERTIFICATE E2E — list, lens, actions, role gating, register, DB verification
     // =========================================================================
     {
