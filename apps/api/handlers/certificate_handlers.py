@@ -1534,7 +1534,7 @@ def _archive_certificate_adapter(handlers: "CertificateHandlers"):
         return {
             "status": "success",
             "certificate_id": cert_id,
-            "archived_at": now,
+            "deleted_at": now,
         }
 
     return _fn

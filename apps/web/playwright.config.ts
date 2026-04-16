@@ -420,6 +420,7 @@ export default defineConfig({
       timeout: 180_000,
       use: {
         ...devices['Desktop Chrome'],
+        actionTimeout: 150_000,
         storageState: undefined,
       },
     },

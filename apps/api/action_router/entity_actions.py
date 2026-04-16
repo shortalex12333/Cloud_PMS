@@ -99,6 +99,15 @@ def get_available_actions(
         )
         requires_signature = (variant_str == "SIGNED")
 
+        # Confirmation text for SIGNED actions (destructive / irreversible)
+        _CONFIRMATION_MESSAGES = {
+            "archive_certificate": "This will archive this certificate record.",
+            "suspend_certificate": "This will suspend this certificate. This action is logged.",
+            "revoke_certificate": "This will permanently revoke this certificate. This action is logged and cannot be undone.",
+            "supersede_certificate": "This will mark the current certificate as superseded. This action is logged and cannot be undone.",
+        }
+        confirmation = _CONFIRMATION_MESSAGES.get(action_id)
+
         result.append({
             "action_id":            action_id,
             "label":                action_def.label,
@@ -106,7 +115,7 @@ def get_available_actions(
             "icon":                 "",
             "is_primary":           False,
             "requires_signature":   requires_signature,
-            "confirmation_message": None,
+            "confirmation_message": confirmation,
             "disabled":             disabled,
             "disabled_reason":      disabled_reason,
             "prefill":              prefill,

@@ -41,6 +41,7 @@ interface RegistryAction {
   label: string;
   variant: string;
   required_fields: string[];
+  optional_fields?: string[];
   field_schema?: Array<{
     name: string;
     type: string;
@@ -161,6 +162,7 @@ function CreateCertificateButton({ onCreated }: { onCreated: () => void }) {
         action_id: selected.action_id,
         label: selected.label,
         required_fields: selected.required_fields || [],
+        optional_fields: selected.optional_fields || [],
         prefill: {},
         requires_signature: false,
         field_schema: selected.field_schema,
