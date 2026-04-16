@@ -14,6 +14,7 @@
 
 import * as React from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/hooks/useAuth';
 import { TimeSlider, invertToRestPeriods, type RestPeriod } from './TimeSlider';
 import { ActionPopup, type ActionPopupField } from '@/components/lens-v2/ActionPopup';
 
@@ -197,6 +198,11 @@ interface MyTimeViewProps {
 }
 
 export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeViewProps = {}) {
+  const { user } = useAuth();
+  // Fleet manager (role=manager) is read-only for MLC submission — backend rejects writes,
+  // but we also suppress the CTA so they don't see a button that always fails (BUG-HOR-5b fix).
+  const canSubmitWeek = user?.role !== 'manager';
+
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -707,7 +713,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 {signoffStatus === 'hod_signed' ? 'Awaiting Captain' : signoffStatus === 'finalized' ? 'Finalized' : 'Read-only'}
               </span>
             ) : undefined
-          ) : isCurrentWeek ? (
+          ) : isCurrentWeek && canSubmitWeek ? (
             <button
               data-testid="hor-submit-week"
               onClick={() => setSignWeekOpen(true)}
