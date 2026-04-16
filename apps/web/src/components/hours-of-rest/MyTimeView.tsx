@@ -679,15 +679,19 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 onClick={() => setCalendarOpen(o => !o)}
                 title="Month calendar"
                 style={{
-                  background: calendarOpen ? 'rgba(90,171,204,0.12)' : 'none',
-                  border: calendarOpen ? '1px solid rgba(90,171,204,0.25)' : '1px solid rgba(255,255,255,0.08)',
+                  background: calendarOpen ? 'var(--teal-bg, rgba(58,124,157,0.14))' : 'rgba(255,255,255,0.04)',
+                  border: calendarOpen ? '1px solid var(--mark, #5AABCC)' : '1px solid rgba(255,255,255,0.10)',
                   borderRadius: 4,
-                  color: calendarOpen ? 'var(--mark, #5AABCC)' : 'rgba(255,255,255,0.35)',
-                  cursor: 'pointer', padding: '2px 7px',
-                  fontFamily: 'var(--font-mono)', fontSize: 9,
-                  letterSpacing: '0.06em', marginLeft: 4,
+                  color: calendarOpen ? 'var(--mark, #5AABCC)' : 'rgba(255,255,255,0.50)',
+                  cursor: 'pointer', padding: '3px 10px',
+                  fontFamily: 'var(--font-mono)', fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: '0.08em', marginLeft: 6,
+                  textTransform: 'uppercase',
+                  transition: 'background 0.12s, border-color 0.12s, color 0.12s',
+                  whiteSpace: 'nowrap',
                 }}
-              >CAL</button>
+              >Calendar</button>
               {/* Day-status dots — green=compliant, amber=violation, grey=not filed */}
               <div style={{ display: 'flex', gap: 3, marginLeft: 6 }}>
                 {data.days.filter(Boolean).map((day: any) => {

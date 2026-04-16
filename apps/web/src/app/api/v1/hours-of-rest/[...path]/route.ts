@@ -5,17 +5,23 @@
  *   /api/v1/hours-of-rest/my-week
  *   /api/v1/hours-of-rest/department-status
  *   /api/v1/hours-of-rest/vessel-compliance
+ *   /api/v1/hours-of-rest/month-status
  *   /api/v1/hours-of-rest/upsert
  *   /api/v1/hours-of-rest/signoffs/sign
  *   /api/v1/hours-of-rest/templates
  *   /api/v1/hours-of-rest/templates/apply
+ *   /api/v1/hours-of-rest/notifications/unread
+ *   /api/v1/hours-of-rest/warnings/*
  *
  * → ${RENDER_API_URL}/v1/hours-of-rest/...
+ *
+ * Timeout: 28s — enough for a cold Render service wake-up.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+const PROXY_TIMEOUT_MS = 28_000;
 
 async function proxy(request: NextRequest, method: 'GET' | 'POST', path: string[]): Promise<NextResponse> {
   const authHeader = request.headers.get('Authorization');
@@ -30,6 +36,7 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST', path: string[
   const options: RequestInit = {
     method,
     headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+    signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
   };
 
   if (method === 'POST') {
@@ -40,14 +47,31 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST', path: string[
     }
   }
 
+  let resp: Response;
   try {
-    const resp = await fetch(upstreamUrl, options);
-    const data = await resp.json();
-    return NextResponse.json(data, { status: resp.status });
-  } catch (err) {
-    console.error('[HoR Proxy]', err);
-    return NextResponse.json({ success: false, error: 'Proxy error' }, { status: 502 });
+    resp = await fetch(upstreamUrl, options);
+  } catch (err: unknown) {
+    const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    console.error(`[HoR Proxy] fetch failed (${segment}):`, err);
+    return NextResponse.json(
+      { success: false, error: isTimeout ? 'Upstream timeout — service may be cold-starting, retry in a moment' : 'Upstream unreachable', code: isTimeout ? 'TIMEOUT' : 'UPSTREAM_ERROR' },
+      { status: 503 },
+    );
   }
+
+  // Try JSON parse; if upstream returned HTML/empty on an error status, surface that status.
+  let data: unknown;
+  try {
+    data = await resp.json();
+  } catch {
+    console.error(`[HoR Proxy] non-JSON upstream response (${segment}) status=${resp.status}`);
+    return NextResponse.json(
+      { success: false, error: 'Upstream returned a non-JSON response', code: 'BAD_UPSTREAM', status: resp.status },
+      { status: resp.status >= 400 ? resp.status : 502 },
+    );
+  }
+
+  return NextResponse.json(data, { status: resp.status });
 }
 
 export async function GET(request: NextRequest, { params }: { params: { path: string[] } }) {

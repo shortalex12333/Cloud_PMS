@@ -399,7 +399,7 @@ html, body {
   font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  zoom: 0.8;
+  height: 100%;
 }
 
 /* Spotlight-inspired centered container */
