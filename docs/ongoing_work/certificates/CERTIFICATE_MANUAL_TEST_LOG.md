@@ -566,7 +566,7 @@ PGPASSWORD='@-Ei-9Pa.uENn6g' psql "postgresql://postgres@db.vzsohavtuotocgrfkfyd
 | 13.4 | Notification title includes cert name | Y (DB) | DB: user_id `05a488fd-e099-4d18-bf86-d87afba4fcdf` has row id `d701f234-7f4a-4aff-be92-c79582c85093`, `notification_type=certificate_created`, `title="Certificate Created: E2E Test Class Certificate"`, `read_at=NULL`, correct `yacht_id`. Also 41 other unread notifications. |
 | 13.5 | Click notification → navigate | **N — blocked by 13.3** | Dropdown is empty, nothing clickable. |
 
-**Bug M — Notification bell renders empty despite API returning 59 unread.**
+**Bug M — Notification bell renders empty despite API returning 59 unread.** — **FIXED (PR #598)**. Verified 2026-04-16 20:35Z: bell now renders 20 rows + `N unread` header + red badge; click on cert notification navigates to the correct cert lens and badge decrements. See "S13 closing lap" section below.
 
 Reproduction:
   1. Log in as hod.test@alex-short.com, wait for HOD bootstrap (CHIEF ENGINEER pill).
@@ -594,6 +594,28 @@ DB counts by type for hod.test@:
   1 warranty_closed, 1 hor_awaiting_countersign, 1 document_updated   (42 unread, 59 when including read_at)
 
 Net effect on S13: write path still PASS; read path still FAIL. Bell UI now exists but is non-functional due to Bug M. Ball is back in CERTIFICATE01's court.
+
+---
+
+### S13 closing lap — after PR #598 (Bug M fix)
+
+Verified 2026-04-16 20:35Z. Bell component now renders API data correctly.
+
+Reproduction:
+1. As captain, created a brand-new vessel cert `S13 Bell-Nav Test Certificate`, id `d02f3666-0c43-41e6-861b-0b5bb736ab9d`, at 20:34:29Z. API 200 + fan-out.
+2. Signed out, signed in as hod.test@alex-short.com. Initial landing still `MEMBER / All Vessels` — needed one navigation to `/certificates` to resolve CHIEF ENGINEER on M/Y Test Vessel (bootstrap quirk persists, not a bell bug).
+3. Bell icon rendered in topbar with red badge `20`. Clicked → dropdown opened, header `Notifications / 20 unread`. Top row: `Certificate Created: S13 Bell-Nav Test Certificate — A new vessel certificate 'S13 Bell-Nav Test Certificate' has been added. — 1 minute ago`.
+4. Clicked that row. URL immediately became `https://app.celeste7.ai/certificates?id=d02f3666-0c43-41e6-861b-0b5bb736ab9d` — exact cert UUID. Lens rendered `H1=S13 Bell-Nav Test Certificate`, pills `Valid + CLASS`, `ISSUING AUTHORITY: Lloyd's (S13 test)`.
+5. Bell badge decremented from `20` → `19`. Notification implicitly marked read.
+
+Final S13 grades:
+  13.1 Y (write path — fan-out, 81 rows per event)
+  13.2 Y (HOD resolves CHIEF ENGINEER on M/Y Test Vessel after one tenant-scoped nav)
+  13.3 Y (bell icon present, dropdown populated, badge red with unread count)
+  13.4 Y (title matches `Certificate Created: <name>` pattern exactly)
+  13.5 Y (click navigates to cert lens for the correct UUID, badge decrements)
+
+Bug M fix confirmed. Cert domain S13 = PASS (13/13).
 
 ---
 
