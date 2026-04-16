@@ -13,7 +13,7 @@ export interface CollapsibleSectionProps {
   title: string;
   icon?: React.ReactNode;
   count?: number;
-  action?: { label: string; onClick: () => void };
+  action?: { label: string; onClick: () => void; testid?: string };
   defaultCollapsed?: boolean;
   children: React.ReactNode;
   className?: string;
@@ -54,7 +54,11 @@ export function CollapsibleSection({
           <span className={styles.secCount}>{count}</span>
         )}
         {action && (
-          <button className={styles.secAction} onClick={handleActionClick}>
+          <button
+            className={styles.secAction}
+            onClick={handleActionClick}
+            data-testid={action.testid}
+          >
             {action.label}
           </button>
         )}

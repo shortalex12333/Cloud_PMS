@@ -15,6 +15,8 @@ export interface DropdownItem {
   danger?: boolean;
   disabled?: boolean;
   disabledReason?: string;
+  /** Optional data-testid applied to the rendered button */
+  testid?: string;
 }
 
 export interface SplitButtonProps {
@@ -30,6 +32,10 @@ export interface SplitButtonProps {
   disabledReason?: string;
   /** Dropdown items */
   items?: DropdownItem[];
+  /** Optional data-testid applied to the primary (main) button */
+  primaryTestId?: string;
+  /** Optional data-testid applied to the dropdown chevron toggle button */
+  toggleTestId?: string;
 }
 
 export function SplitButton({
@@ -39,6 +45,8 @@ export function SplitButton({
   disabled = false,
   disabledReason,
   items = [],
+  primaryTestId,
+  toggleTestId,
 }: SplitButtonProps) {
   const [open, setOpen] = React.useState(false);
   const wrapRef = React.useRef<HTMLDivElement>(null);
@@ -82,6 +90,7 @@ export function SplitButton({
           className={`${styles.splitMain} ${disabled ? styles.disabled : ''}`}
           onClick={disabled ? undefined : onClick}
           disabled={disabled}
+          data-testid={primaryTestId}
         >
           {icon}
           {label}
@@ -91,6 +100,7 @@ export function SplitButton({
             className={`${styles.splitToggle} ${disabled ? styles.disabled : ''}`}
             onClick={toggleDropdown}
             aria-label="More actions"
+            data-testid={toggleTestId}
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
               <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -116,6 +126,7 @@ export function SplitButton({
                 disabled={item.disabled}
                 title={item.disabledReason ?? undefined}
                 style={item.disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                data-testid={item.testid}
               >
                 {item.icon}
                 {item.label}
