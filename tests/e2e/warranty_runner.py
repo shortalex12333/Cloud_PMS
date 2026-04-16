@@ -411,8 +411,16 @@ def scenario_2_captain_approves(ctx: BrowserContext, state: dict) -> dict:
     step(res, "2.8", "Status pill = Approved", lambda: assert_pill_label(page, "Approved"))
     step(res, "2.9", "Primary = Close Claim",
          lambda: page.get_by_test_id("warranty-close-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
-    step(res, "2.10", "Click Close Claim",
-         lambda: page.get_by_test_id("warranty-close-btn").click(timeout=STEP_TIMEOUT_MS))
+    def click_close_and_handle_popup():
+        page.get_by_test_id("warranty-close-btn").click(timeout=STEP_TIMEOUT_MS)
+        # close_warranty_claim may require a signature popup (requires_signature=true).
+        # If the ActionPopup appears, confirm it; if action executes directly, skip.
+        try:
+            page.get_by_test_id("action-popup").wait_for(state="visible", timeout=3000)
+            page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS)
+        except Exception:
+            pass  # No popup = direct execution
+    step(res, "2.10", "Click Close Claim (confirm popup if required)", click_close_and_handle_popup)
     # The "closed" status renders as "Cancelled" in the UI (see WarrantyContent
     # + warranties/page.tsx: closed → 'cancelled'). The backend status is still
     # "closed" but the human-facing label differs. Accept either.
@@ -422,6 +430,7 @@ def scenario_2_captain_approves(ctx: BrowserContext, state: dict) -> dict:
     # either "Closed" or "Cancelled" (warranties/page.tsx displays closed as
     # "Cancelled", see memory project_receipt_layer_v0_reality.md + fix list).
     def pill_is_closed_or_cancelled():
+        page.wait_for_timeout(3000)  # Let close_warranty_claim propagate to DB
         reload_claim(page, claim_id)
         page.wait_for_function(
             """() => {
@@ -538,6 +547,8 @@ def scenario_3_rejection(ctx: BrowserContext, state: dict) -> dict:
                                   "Claim filed after 24-month warranty window expired"))
     def submit_reject_and_verify():
         page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS)
+        # Give the rejection action time to propagate to DB before reload.
+        page.wait_for_timeout(3000)
         # In-page refetch can take >20s; navigate-and-back gives a deterministic
         # fresh entity load so the pill shows the committed DB state.
         reload_claim(page, state.get("claim_id_3") or state.get("claim_id_1") or "")
@@ -604,8 +615,11 @@ def scenario_5_add_note(ctx: BrowserContext, state: dict) -> dict:
     instrument(page, res)
 
     step(res, "5.0", "Login as HOD", lambda: login(page, HOD_EMAIL, PASSWORD))
-    step(res, "5.1", "Open the claim",
-         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+    def open_and_wait_claim_5():
+        page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS)
+        # Auth bootstrap can take up to 30s; wait for entity to fully load.
+        page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=45_000)
+    step(res, "5.1", "Open the claim (wait for entity load)", open_and_wait_claim_5)
 
     # NotesSection "+ Add Note" carries testid warranty-add-note-btn; there's
     # also a dropdown item with the same testid, so first() is intentional.
