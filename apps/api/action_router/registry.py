@@ -809,8 +809,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         storage_path_template="{yacht_id}/equipment/{equipment_id}/{filename}",
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
-            FieldMetadata("equipment_id", FieldClassification.CONTEXT, auto_populate_from="equipment", lookup_required=True),
-            FieldMetadata("document_id", FieldClassification.REQUIRED, description="Document metadata ID"),
+            FieldMetadata("equipment_id", FieldClassification.REQUIRED, auto_populate_from="equipment", lookup_required=True, description="Target equipment"),
+            FieldMetadata("document_id", FieldClassification.CONTEXT, auto_populate_from="document", description="Document metadata ID"),
             FieldMetadata("description", FieldClassification.OPTIONAL, description="Link description"),
         ],
     ),
