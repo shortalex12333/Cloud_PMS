@@ -102,7 +102,7 @@ async def _get_redis():
         return None
     if _redis is None:
         try:
-            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=3)
+            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=10)
             await _redis.ping()
             logger.info("[Cortex] Redis connected for rewrite/embedding cache")
         except Exception as e:

@@ -51,7 +51,7 @@ async def ensure_redis_connected():
 
     if _redis is None:
         logger.info("Redis not initialized, attempting connection...")
-        _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=3)
+        _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=10)
 
     try:
         await _redis.ping()
@@ -65,7 +65,7 @@ async def ensure_redis_connected():
             pass
         _redis = None
         try:
-            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=3)
+            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=10)
             await _redis.ping()
             logger.info("Redis reconnected successfully")
             return True
@@ -164,8 +164,8 @@ async def listen_and_evict():
     )
 
     logger.info("Connecting to Redis...")
-    # max_connections=3 caps this worker's pool so parallel workers don't saturate Redis
-    _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=3)
+    # max_connections=10 caps this worker's pool so parallel workers don't saturate Redis
+    _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=10)
 
     # Test Redis connection
     try:
