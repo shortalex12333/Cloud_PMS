@@ -34,7 +34,8 @@ interface Notification {
 
 interface NotificationsResponse {
   status: string;
-  data: Notification[];
+  unread_count: number;
+  notifications: Notification[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -80,7 +81,7 @@ export function NotificationBell() {
       });
       if (!res.ok) return [];
       const json: NotificationsResponse = await res.json();
-      return json.data ?? [];
+      return json.notifications ?? [];
     },
     enabled: !!token,
     refetchInterval: 30_000,
