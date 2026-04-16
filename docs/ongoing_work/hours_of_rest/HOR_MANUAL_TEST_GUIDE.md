@@ -1004,7 +1004,7 @@ signoff 2d43cdd2-9969-4dcc-ac52-0fa0fc188c55
 
 Copy this section, mark each, add console errors for any N.
 
-**Last updated: 2026-04-16 by HOURSOFREST01 + MCP02 (final verification pass)**
+**Last updated: 2026-04-16 by HOURSOFREST01 + MCP02 (all 9 PRs live-verified — final state)**
 
 ```
 [Y] Layout fills full screen width (no 680px cap)         — PASS: Scenario 1 browser (MCP02 headless, 2026-04-16)
@@ -1035,7 +1035,7 @@ Copy this section, mark each, add console errors for any N.
 [Y] Warnings can be acknowledged (crew) and dismissed (HOD) — PASS (API, Scenarios 9+10) + PASS (post-PR #586 live trigger, DB confirmed 20:24 UTC).
 [Y] Ledger event written for each sign action              — PASS (all 3 levels): 7722c206 forensic chain confirmed user_role+entity_type on crew/HOD/master rows (PR #578).
 [Y] Ledger event written for warning actions               — PASS (PR #586 LIVE VERIFIED): dismiss_warning=captain, acknowledge_warning=crew, DB rows at 20:24 UTC. Pre-#586 rows correctly have empty user_role.
-[ ] Ledger event for create_monthly_signoff                — FIXED in PR #596 (entity_type→hours_of_rest_signoff, user_role resolved). AWAITING RENDER DEPLOY. Trigger verify: POST create_monthly_signoff as crew, check ledger row has user_role=crew and entity_type=hours_of_rest_signoff.
+[Y] Ledger event for create_monthly_signoff                — PASS (PR #596 LIVE VERIFIED 2026-04-16 20:36 UTC): entity_type=hours_of_rest_signoff, user_role=crew, entity_id=f11cb2fa (signoff UUID, not caller user_id). TENANT DB row confirmed. BUG-HOR-2 FIXED.
 ```
 
 ---
