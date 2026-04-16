@@ -444,8 +444,9 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         const msg = json?.message ?? `Submit failed (${resp.status})`;
         setSubmitErrors(prev => ({ ...prev, [date]: msg }));
       }
-    } catch {
-      // handle error
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Submit failed — check your connection';
+      setSubmitErrors(prev => ({ ...prev, [date]: msg }));
     } finally {
       setSubmitting(prev => ({ ...prev, [date]: false }));
     }
@@ -617,7 +618,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   const correctionNote: string | null = (data as any).correction_note ?? null;
 
   return (
-    <div style={{ maxWidth: 680 }}>
+    <div style={{ width: '100%', minWidth: 0 }}>
 
       {/* ── Unsigned alert banner ── */}
       {unsignedAlert && (

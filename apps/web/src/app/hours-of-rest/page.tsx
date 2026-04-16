@@ -199,7 +199,7 @@ function HoursOfRestContent() {
       </div>
 
       {/* ── Tab content ── */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '20px' }}>
         {activeTab === 'my-time'    && <MyTimeView />}
         {activeTab === 'department' && showDept   && <DepartmentView />}
         {activeTab === 'vessel'     && showVessel && <VesselComplianceView />}
