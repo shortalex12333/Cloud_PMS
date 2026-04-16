@@ -298,4 +298,17 @@ def _apply_state_gate(
         if status in _RECEIVING_TERMINAL_STATUSES and action_id in _RECEIVING_TERMINAL_DISABLED:
             return True, "Receiving record is finalised"
 
+    elif entity_type == "certificate":
+        _CERT_TERMINAL = {"superseded", "revoked"}
+        _CERT_TERMINAL_DISABLED = {
+            "update_certificate", "suspend_certificate", "revoke_certificate",
+            "supersede_certificate", "renew_certificate", "assign_certificate",
+            "link_document_to_certificate",
+        }
+        _CERT_SUSPENDED_DISABLED = {"suspend_certificate"}
+        if status in _CERT_TERMINAL and action_id in _CERT_TERMINAL_DISABLED:
+            return True, f"Certificate is {status} — no further mutations allowed"
+        if status == "suspended" and action_id in _CERT_SUSPENDED_DISABLED:
+            return True, "Certificate is already suspended"
+
     return False, None

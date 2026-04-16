@@ -1355,7 +1355,7 @@ def _renew_certificate_adapter(handlers: "CertificateHandlers"):
             "status": "valid",
             "issue_date": new_issue_date,
             "expiry_date": new_expiry_date,
-            "certificate_number": params.get("new_certificate_number") or old_cert.get("certificate_number"),
+            "certificate_number": params.get("new_certificate_number") or f"{old_cert.get('certificate_number', 'CERT')}-R{now[:10].replace('-', '')}",
             "issuing_authority": params.get("new_issuing_authority") or old_cert.get("issuing_authority"),
             "source": "manual",
             "is_seed": False,
