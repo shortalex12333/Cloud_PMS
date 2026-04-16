@@ -18,6 +18,8 @@ export interface DetailLine {
 export interface PillDef {
   label: string;
   variant: PillVariant;
+  /** Optional data-testid applied to the rendered pill */
+  testid?: string;
 }
 
 export interface IdentityStripProps {
@@ -66,7 +68,7 @@ export function IdentityStrip({
       {pills && pills.length > 0 && (
         <div className={styles.pills}>
           {pills.map((p, i) => (
-            <LensPill key={i} variant={p.variant} label={p.label} />
+            <LensPill key={i} variant={p.variant} label={p.label} testid={p.testid} />
           ))}
         </div>
       )}

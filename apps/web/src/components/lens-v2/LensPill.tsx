@@ -14,6 +14,8 @@ export interface LensPillProps {
   variant: PillVariant;
   label: string;
   showDot?: boolean;
+  /** Optional data-testid applied to the pill element */
+  testid?: string;
 }
 
 const variantMap: Record<PillVariant, string> = {
@@ -24,9 +26,9 @@ const variantMap: Record<PillVariant, string> = {
   blue: styles.pillBlue,
 };
 
-export function LensPill({ variant, label, showDot = true }: LensPillProps) {
+export function LensPill({ variant, label, showDot = true, testid }: LensPillProps) {
   return (
-    <span className={`${styles.pill} ${variantMap[variant]}`}>
+    <span className={`${styles.pill} ${variantMap[variant]}`} data-testid={testid}>
       {showDot && <span className={styles.dot} />}
       {label}
     </span>

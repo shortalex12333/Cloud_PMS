@@ -20,15 +20,17 @@ export interface NotesSectionProps {
   notes: NoteItem[];
   onAddNote?: () => void;
   canAddNote?: boolean;
+  /** Optional data-testid applied to the "+ Add Note" section action button */
+  addNoteTestId?: string;
 }
 
-export function NotesSection({ notes, onAddNote, canAddNote }: NotesSectionProps) {
+export function NotesSection({ notes, onAddNote, canAddNote, addNoteTestId }: NotesSectionProps) {
   return (
     <CollapsibleSection
       id="sec-notes"
       title="Notes"
       count={notes.length}
-      action={canAddNote && onAddNote ? { label: '+ Add Note', onClick: onAddNote } : undefined}
+      action={canAddNote && onAddNote ? { label: '+ Add Note', onClick: onAddNote, testid: addNoteTestId } : undefined}
       icon={
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M13 1H3a1 1 0 00-1 1v12l3-2h8a1 1 0 001-1V2a1 1 0 00-1-1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />

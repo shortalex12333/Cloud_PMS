@@ -152,8 +152,16 @@ export function WarrantyContent() {
 
   // ── Pills ──
   const pills: PillDef[] = [
-    { label: status_label, variant: statusToPillVariant(status) },
+    { label: status_label, variant: statusToPillVariant(status), testid: 'warranty-status-pill' },
   ];
+
+  // Primary button testid tracks the active action: submit_warranty_claim →
+  // warranty-submit-btn, approve_warranty_claim → warranty-approve-btn, etc.
+  const primaryTestId = primaryConfig?.action
+    ? `warranty-${primaryConfig.action.action_id
+        .replace(/_warranty(_claim)?$/, '')
+        .replace(/_/g, '-')}-btn`
+    : undefined;
 
   // ── Identity strip details ──
   const details: DetailLine[] = [];
@@ -189,6 +197,7 @@ export function WarrantyContent() {
       onClick: () => openActionPopup(rejectAction as any),
       danger: true,
       disabled: false,
+      testid: 'warranty-reject-btn',
     }] : []),
     ...(composeAction && status !== 'draft' ? [{
       label: 'Compose Email Draft',
@@ -198,17 +207,20 @@ export function WarrantyContent() {
         else executeAction('compose_warranty_email');
       },
       disabled: composeAction.disabled,
+      testid: 'warranty-compose-btn',
     }] : []),
     ...(addNoteAction ? [{
       label: 'Add Note',
       onClick: () => setAddNoteOpen(true),
       disabled: false,
+      testid: 'warranty-add-note-btn',
     }] : []),
     ...(archiveAction && (status === 'draft' || status === 'rejected') ? [{
       label: 'Archive',
       onClick: () => executeAction('archive_warranty'),
       danger: true,
       disabled: archiveAction.disabled,
+      testid: 'warranty-archive-btn',
     }] : []),
   ];
 
@@ -305,6 +317,7 @@ export function WarrantyContent() {
               disabled={primaryConfig.action?.disabled ?? false}
               disabledReason={primaryConfig.action?.disabled_reason ?? undefined}
               items={dropdownItems}
+              primaryTestId={primaryTestId}
             />
           ) : dropdownItems.length > 0 ? (
             <SplitButton
@@ -312,6 +325,7 @@ export function WarrantyContent() {
               onClick={() => {}}
               disabled={false}
               items={dropdownItems}
+              primaryTestId="warranty-actions-btn"
             />
           ) : undefined
         }
@@ -366,6 +380,7 @@ export function WarrantyContent() {
           notes={noteItems}
           onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
           canAddNote={!!addNoteAction}
+          addNoteTestId="warranty-add-note-btn"
         />
       </ScrollReveal>
 
@@ -375,6 +390,7 @@ export function WarrantyContent() {
           attachments={attachmentItems}
           onAddFile={() => setUploadModalOpen(true)}
           canAddFile
+          addFileTestId="warranty-upload-btn"
         />
       </ScrollReveal>
 

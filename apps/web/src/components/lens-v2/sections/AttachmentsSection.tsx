@@ -22,15 +22,17 @@ export interface AttachmentsSectionProps {
   attachments: AttachmentItem[];
   onAddFile?: () => void;
   canAddFile?: boolean;
+  /** Optional data-testid applied to the "+ Upload" section action button */
+  addFileTestId?: string;
 }
 
-export function AttachmentsSection({ attachments, onAddFile, canAddFile }: AttachmentsSectionProps) {
+export function AttachmentsSection({ attachments, onAddFile, canAddFile, addFileTestId }: AttachmentsSectionProps) {
   return (
     <CollapsibleSection
       id="sec-attachments"
       title="Attachments"
       count={attachments.length}
-      action={canAddFile && onAddFile ? { label: '+ Upload', onClick: onAddFile } : undefined}
+      action={canAddFile && onAddFile ? { label: '+ Upload', onClick: onAddFile, testid: addFileTestId } : undefined}
       icon={
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M14 10v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3M11 5l-3-3-3 3M8 2v9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />

@@ -545,7 +545,11 @@ export function ActionPopup({
         {/* Body — fields */}
         <div className={mode === 'read' ? s.popupBodyRead : s.popupBody}>
           {fields.map((field) => (
-            <div key={field.name} className={s.field}>
+            <div
+              key={field.name}
+              className={s.field}
+              data-testid={`popup-field-${field.name}`}
+            >
               <div className={s.fieldLabel}>{field.label}</div>
               {renderField(field, values[field.name] ?? '', (v) =>
                 setValue(field.name, v)
