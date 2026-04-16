@@ -56,10 +56,12 @@ ACTION_METADATA: dict = {
     # ── Documents ────────────────────────────────────────────────────────────
     "add_document_comment":              {"event_type": "update",        "entity_type": "document",      "entity_id_field": "document_id"},
     "add_document_note":                 {"event_type": "update",        "entity_type": "document",      "entity_id_field": "document_id"},
+    "add_document_tags":                 {"event_type": "update",        "entity_type": "document",      "entity_id_field": "document_id"},
     "add_entity_link":                   {"event_type": "update",        "entity_type": "document",      "entity_id_field": "document_id"},
     "archive_document":                  {"event_type": "update",        "entity_type": "document",      "entity_id_field": "document_id"},
     "delete_document_comment":           {"event_type": "update",        "entity_type": "document",      "entity_id_field": "document_id"},
     "link_invoice_document":             {"event_type": "update",        "entity_type": "document",      "entity_id_field": "document_id"},
+    "update_document":                   {"event_type": "update",        "entity_type": "document",      "entity_id_field": "document_id"},
     "update_document_comment":           {"event_type": "update",        "entity_type": "document",      "entity_id_field": "document_id"},
 
     # ── Certificates ─────────────────────────────────────────────────────────
