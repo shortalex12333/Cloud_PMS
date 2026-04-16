@@ -304,13 +304,14 @@ const S = {
 // ============================================================================
 
 function ItemPopup({
-  mode, onClose, onSave, onDelete, onSwitchToDelete,
+  mode, onClose, onSave, onDelete, onSwitchToDelete, userReady = true,
 }: {
   mode: NonNullable<PopupMode>;
   onClose: () => void;
   onSave: (data: { id?: string; summary: string; category: string; status: string; section: string }) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onSwitchToDelete?: (item: HandoverItem) => void;
+  userReady?: boolean;
 }) {
   const isEdit = mode.type === 'edit';
   const isAdd = mode.type === 'add';
@@ -368,7 +369,7 @@ function ItemPopup({
               {item.entity_type !== 'note' && <> The source <strong>{getEntityLabel(item.entity_type)}</strong> will not be affected.</>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-              <button style={S.btnDeleteConfirm} onClick={handleDelete} disabled={saving}>
+              <button style={S.btnDeleteConfirm} onClick={handleDelete} disabled={saving || !userReady}>
                 <Trash2 size={14} /> {saving ? 'Deleting...' : 'Delete Note'}
               </button>
               <button style={S.btnSecondary} onClick={onClose}>Cancel</button>
@@ -475,7 +476,7 @@ function ItemPopup({
           borderTop: '1px solid var(--border-sub)', padding: '16px 24px',
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <button style={{ ...S.btnPrimary, opacity: saving ? 0.5 : 1 }} onClick={handleSave} disabled={saving}>
+          <button style={{ ...S.btnPrimary, opacity: (saving || !userReady) ? 0.5 : 1 }} onClick={handleSave} disabled={saving || !userReady}>
             {isAdd ? <><Plus size={14} /> {saving ? 'Adding...' : 'Add to Handover'}</> : <><Save size={14} /> {saving ? 'Saving...' : 'Save Changes'}</>}
           </button>
           <button style={S.btnSecondary} onClick={onClose}>Cancel</button>
@@ -503,6 +504,9 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
   const [exporting, setExporting] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [popup, setPopup] = useState<PopupMode>(null);
+
+  // Auth readiness — buttons disabled until user context is loaded
+  const userReady = !!(user?.id);
 
   // ── Fetch — all calls go through Render API (TENANT DB, correct path) ──
   const fetchItems = useCallback(async () => {
@@ -654,7 +658,9 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
   const actionCount = items.filter(i => i.requires_action || i.status === 'requires_parts').length;
 
   const content = (
-    <div style={variant === 'page'
+    <div
+      data-user-ready={userReady ? 'true' : undefined}
+      style={variant === 'page'
       ? { display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }
       : { ...S.drawer, transform: 'translateX(0)', opacity: 1 }
     }>
@@ -832,6 +838,7 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
             onSave={handleSave}
             onDelete={handleDelete}
             onSwitchToDelete={(item) => setPopup({ type: 'delete', item })}
+            userReady={userReady}
           />
         )}
       </>

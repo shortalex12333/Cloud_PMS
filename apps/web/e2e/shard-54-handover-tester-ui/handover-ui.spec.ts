@@ -475,12 +475,18 @@ test.describe('HANDOVER_TESTER Scenario 5 — Delete UI', () => {
     // 5.1 confirmation copy
     await expect(page.getByText(/Delete this handover note\?/i)).toBeVisible({ timeout: 5_000 });
 
-    // 5.3: confirm. Durable proof = item disappears from list (toast is transient).
+    // 5.3: confirm. Wait for the DELETE response then verify item gone from list.
+    const deleteResponse = page.waitForResponse(
+      (r) => r.url().includes('/v1/handover/items/') && r.request().method() === 'DELETE',
+      { timeout: 30_000 }
+    );
     await page.getByRole('button', { name: 'Delete Note' }).click();
-    await expect(page.getByText(seed)).toHaveCount(0, { timeout: 20_000 });
+    await deleteResponse;
+    // Give fetchItems() time to re-render the list after the delete
+    await expect(page.getByText(seed)).toHaveCount(0, { timeout: 30_000 });
 
     // 5.4: item gone
-    await expect(page.getByText(seed)).not.toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(seed)).not.toBeVisible({ timeout: 15_000 });
 
     // 5.5: reload → stays gone
     await page.reload();
@@ -900,6 +906,8 @@ test.describe('HANDOVER_TESTER Scenario 12 — Popup rules matrix', () => {
     const pdf = await page.pdf({ format: 'A4', printBackground: true });
     expect(pdf.length).toBeGreaterThan(10_000);
     const p = testInfo.outputPath('scenario-12-8-export.pdf');
+    const fs = require('fs');
+    fs.writeFileSync(p, pdf);
     await testInfo.attach('scenario-12-8-export.pdf', { path: p, contentType: 'application/pdf' });
     await ctx.close();
   });
