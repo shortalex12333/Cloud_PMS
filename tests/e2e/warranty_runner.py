@@ -798,29 +798,102 @@ SCENARIOS: list[tuple[str, Callable[[BrowserContext, dict], dict]]] = [
 ]
 
 
+# Dependency graph for --retry-failed. Retrying a child re-runs its parents
+# first in the same process so shared state (claim_id_1, claim_id_3) is
+# re-seeded before the child re-executes.
+SCENARIO_DEPS: dict[str, list[str]] = {
+    "1": [],
+    "2": ["1"],
+    "3": [],
+    "4": ["1"],
+    "5": ["1"],
+    "6": ["1"],
+    "7": ["1"],
+    "8": ["3"],
+}
+
+
+def _scenarios_with_deps(targets: list[str]) -> list[str]:
+    """Return the transitive closure of `targets` under SCENARIO_DEPS,
+    ordered by the canonical SCENARIOS sequence (1..8)."""
+    needed: set[str] = set()
+
+    def add(sid: str) -> None:
+        if sid in needed:
+            return
+        for p in SCENARIO_DEPS.get(sid, []):
+            add(p)
+        needed.add(sid)
+
+    for t in targets:
+        add(t)
+    return [sid for sid, _ in SCENARIOS if sid in needed]
+
+
+def _run_one_scenario(browser: Browser, sid: str,
+                      fn: Callable[[BrowserContext, dict], dict],
+                      state: dict) -> dict:
+    """Run a single scenario in a fresh context and return its result doc."""
+    ctx = browser.new_context(
+        accept_downloads=True,
+        user_agent=BROWSER_UA,
+        locale="en-US",
+    )
+    ctx.add_init_script(
+        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    )
+    try:
+        result = fn(ctx, state)
+    except Exception as e:  # last-ditch guard
+        result = new_result(sid, f"error invoking scenario_{sid}", "unknown")
+        result["steps"].append({
+            "id": f"{sid}.X", "desc": "scenario invocation errored", "pass": False,
+            "error": f"{type(e).__name__}: {e}",
+        })
+        result["result"] = "error"
+        finalize(result)
+    ctx.close()
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scenario", help="Run only listed scenario ids (comma-separated, e.g. 1,2,5)")
     parser.add_argument("--headed", action="store_true", help="Run with a visible browser")
+    parser.add_argument(
+        "--retry-failed", type=int, default=0, metavar="N",
+        help="Re-run each failed/skipped/errored scenario up to N times "
+             "(default 0 = off). Each retry re-runs the scenario's deps in "
+             "the same process so shared state (claim_id_1, claim_id_3) is "
+             "re-seeded. Use on flaky environments; do not mask real regressions.",
+    )
     args = parser.parse_args()
+    max_retries = max(0, int(args.retry_failed))
 
     wanted: set[str] | None = None
     if args.scenario:
         wanted = {s.strip() for s in args.scenario.split(",") if s.strip()}
 
-    selected = [(sid, fn) for sid, fn in SCENARIOS if wanted is None or sid in wanted]
-    if not selected:
+    scenarios_by_id: dict[str, Callable[[BrowserContext, dict], dict]] = dict(SCENARIOS)
+    selected_ids = [sid for sid, _ in SCENARIOS if wanted is None or sid in wanted]
+    if not selected_ids:
         print(json.dumps({"error": "no scenarios matched", "requested": sorted(wanted or [])}),
               file=sys.stderr)
         return 2
 
     headless = False if args.headed else HEADLESS
-    state: dict = {}
-    results: list[dict] = []
 
     # Warm the Render API before spawning any browsers so the app's bootstrap
     # doesn't race against a cold-start.
     warmup_render_api()
+
+    # When --retry-failed=0 (default), stream each scenario's result as soon
+    # as it's known — preserves the original behavior byte-for-byte. When
+    # retries are enabled, buffer final results and emit at the end so each
+    # scenario is written out exactly once at its final state.
+    streaming = max_retries == 0
+    final: dict[str, dict] = {}
+    retry_counts: dict[str, int] = {sid: 0 for sid in selected_ids}
 
     with sync_playwright() as pw:
         browser: Browser = pw.chromium.launch(
@@ -829,42 +902,68 @@ def main() -> int:
             # detect headless Chrome and block auth fetches.
             args=["--disable-blink-features=AutomationControlled"],
         )
-        for sid, fn in selected:
-            ctx = browser.new_context(
-                accept_downloads=True,
-                user_agent=BROWSER_UA,
-                locale="en-US",
-            )
-            # Mask navigator.webdriver at the JS level too.
-            ctx.add_init_script(
-                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-            )
-            try:
-                result = fn(ctx, state)
-            except Exception as e:  # last-ditch guard
-                result = new_result(sid, f"error invoking scenario_{sid}", "unknown")
-                result["steps"].append({
-                    "id": f"{sid}.X", "desc": "scenario invocation errored", "pass": False,
-                    "error": f"{type(e).__name__}: {e}",
-                })
-                result["result"] = "error"
-                finalize(result)
-            ctx.close()
-            sys.stdout.write(json.dumps(result) + "\n")
-            sys.stdout.flush()
-            results.append(result)
+
+        # Initial pass — run every selected scenario in order.
+        state: dict = {}
+        for sid in selected_ids:
+            result = _run_one_scenario(browser, sid, scenarios_by_id[sid], state)
+            final[sid] = result
+            if streaming:
+                sys.stdout.write(json.dumps(result) + "\n")
+                sys.stdout.flush()
+
+        # Retry loop — only runs when --retry-failed > 0.
+        if max_retries > 0:
+            rank = {"pass": 3, "fail": 2, "skipped": 1, "error": 0}
+            for attempt in range(1, max_retries + 1):
+                failing = [sid for sid in selected_ids if final[sid]["result"] != "pass"]
+                if not failing:
+                    break
+                # Run each failing scenario's dep chain (parents first), in a
+                # fresh state dict, in a fresh browser context per scenario.
+                to_run_ids = _scenarios_with_deps(failing)
+                retry_state: dict = {}
+                retry_results: dict[str, dict] = {}
+                for sid in to_run_ids:
+                    retry_results[sid] = _run_one_scenario(
+                        browser, sid, scenarios_by_id[sid], retry_state,
+                    )
+                # Merge: overwrite a failing slot only if the retry ranks at
+                # least as high, and never regress a parent we only re-ran to
+                # seed state.
+                for sid in failing:
+                    doc = retry_results.get(sid)
+                    if doc is None:
+                        continue
+                    retry_counts[sid] += 1
+                    if rank.get(doc["result"], -1) >= rank.get(final[sid]["result"], -1):
+                        final[sid] = doc
+
+            # Attach retry metadata to each scenario that was retried.
+            for sid, count in retry_counts.items():
+                if count > 0:
+                    final[sid]["retry_attempts"] = count
+
         browser.close()
+
+    # Buffered emit — only when retries were enabled.
+    if not streaming:
+        for sid in selected_ids:
+            sys.stdout.write(json.dumps(final[sid]) + "\n")
 
     summary = {
         "summary": True,
-        "total": len(results),
-        "pass": sum(1 for r in results if r["result"] == "pass"),
-        "fail": sum(1 for r in results if r["result"] == "fail"),
-        "skipped": sum(1 for r in results if r["result"] == "skipped"),
-        "error": sum(1 for r in results if r["result"] == "error"),
-        "scenarios": [r["scenario_id"] for r in results],
+        "total": len(selected_ids),
+        "pass": sum(1 for sid in selected_ids if final[sid]["result"] == "pass"),
+        "fail": sum(1 for sid in selected_ids if final[sid]["result"] == "fail"),
+        "skipped": sum(1 for sid in selected_ids if final[sid]["result"] == "skipped"),
+        "error": sum(1 for sid in selected_ids if final[sid]["result"] == "error"),
+        "scenarios": selected_ids,
         "ran_at": _now_iso(),
     }
+    if max_retries > 0:
+        summary["retries_attempted"] = sum(retry_counts.values())
+        summary["max_retries_per_scenario"] = max_retries
     sys.stdout.write(json.dumps(summary) + "\n")
     return 0 if summary["fail"] == 0 and summary["error"] == 0 else 1
 
