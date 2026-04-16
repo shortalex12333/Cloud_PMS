@@ -329,6 +329,7 @@ export function CertificateContent() {
     caption: (a.caption ?? a.description) as string | undefined,
     size: (a.size ?? a.file_size) as string | undefined,
     kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
+    url: (a.url ?? a.signed_url) as string | undefined,
   }));
 
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);

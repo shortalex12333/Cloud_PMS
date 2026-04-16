@@ -89,10 +89,23 @@ async def get_signal_related(
     # 1. Serialize entity to text
     entity_text = await serialize_entity(entity_type, entity_id, conn, ctx.yacht_id)
     if not entity_text:
-        raise HTTPException(
-            status_code=404,
-            detail=f"{entity_type} '{entity_id}' not found or not serializable",
-        )
+        # Entity not found or not serializable (e.g. crew cert in a vessel-only
+        # table). Return empty result instead of 404 — the caller still gets a
+        # valid response and the related-panel renders "no results".
+        return {
+            "status": "success",
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "entity_text": None,
+            "items": [],
+            "count": 0,
+            "signal_source": "entity_embedding",
+            "metadata": {
+                "limit": effective_limit,
+                "embedding_generated": False,
+                "skipped_reason": "entity_not_serializable",
+            },
+        }
 
     # 2. Try cached embedding from search_index first (avoids ~4s OpenAI call)
     cached_embedding = None
@@ -214,10 +227,25 @@ async def get_signal_related_supabase(
         _serialize_entity_supabase_sync, entity_type, entity_id, supabase, ctx.yacht_id or ""
     )
     if not entity_text:
-        raise HTTPException(
-            status_code=404,
-            detail=f"{entity_type} '{entity_id}' not found or not serializable",
-        )
+        # Entity not found or not serializable (e.g. crew cert in a vessel-only
+        # table). Return empty result instead of 404 — the caller still gets a
+        # valid response and the related-panel renders "no results".
+        return {
+            "status": "success",
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "entity_text": None,
+            "items": [],
+            "count": 0,
+            "signal_source": "entity_embedding",
+            "metadata": {
+                "limit": effective_limit,
+                "embedding_generated": False,
+                "backend": "supabase_rpc",
+                "search_mode": "text",
+                "skipped_reason": "entity_not_serializable",
+            },
+        }
 
     # 2. Try cached embedding from search_index first (avoids ~4s OpenAI call)
     cached_embedding = None

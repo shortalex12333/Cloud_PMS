@@ -737,8 +737,14 @@ async def get_domain_records(
         if domain == "documents":
             query = query.is_("deleted_at", "null")
 
-        # Sort
-        query = query.order(sort_field, desc=sort_desc)
+        # Sort — map frontend field names to actual DB columns
+        _SORT_COLUMN_MAP = {
+            "certificates": {"title": "certificate_name", "name": "certificate_name", "priority": "expiry_date"},
+            "equipment": {"title": "name"},
+            "parts": {"title": "name"},
+        }
+        resolved_sort = _SORT_COLUMN_MAP.get(domain, {}).get(sort_field, sort_field)
+        query = query.order(resolved_sort, desc=sort_desc)
 
         # Paginate
         query = query.range(offset, offset + limit - 1)

@@ -64,8 +64,8 @@ function certAdapter(c: Certificate): EntityListResult {
     subtitle: `${c.certificate_type || ''} · ${c.issuing_authority || ''}`.replace(/^ · |· $/g, ''),
     entityRef: c.certificate_number || (c.domain === 'crew' ? 'Crew' : 'Vessel'),
     status,
-    statusVariant: c.status === 'expired' ? 'critical' : c.status === 'expiring_soon' ? 'warning' : 'open',
-    severity: c.status === 'expired' ? 'critical' : c.status === 'expiring_soon' ? 'warning' : null,
+    statusVariant: c.status === 'expired' ? 'critical' : c.status === 'revoked' ? 'critical' : c.status === 'suspended' ? 'warning' : c.status === 'expiring_soon' ? 'warning' : c.status === 'superseded' ? 'neutral' : c.status === 'valid' ? 'success' : 'open',
+    severity: c.status === 'expired' ? 'critical' : c.status === 'revoked' ? 'critical' : c.status === 'suspended' ? 'warning' : c.status === 'expiring_soon' ? 'warning' : null,
     age: daysLeft !== null ? (daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d`) : '\u2014',
   };
 }
@@ -182,12 +182,45 @@ function CreateCertificateButton({ onCreated }: { onCreated: () => void }) {
               className="fixed inset-0 z-40"
               onClick={() => setMenuOpen(false)}
             />
-            <div className="absolute right-0 mt-2 z-50 min-w-56 rounded-md border border-border-sub bg-surface-raised shadow-lg">
+            <div
+              className="absolute right-0 mt-2 z-50 min-w-56 rounded-md overflow-hidden"
+              style={{
+                background: 'var(--surface-el)',
+                borderTop: '1px solid var(--border-top)',
+                borderRight: '1px solid var(--border-side)',
+                borderBottom: '1px solid var(--border-bottom)',
+                borderLeft: '1px solid var(--border-side)',
+                boxShadow: 'var(--shadow-drop)',
+              }}
+            >
               {actions.map((a) => (
                 <button
                   key={a.action_id}
                   onClick={() => openAction(a)}
-                  className="block w-full px-4 py-3 text-left text-sm hover:bg-surface-hover first:rounded-t-md last:rounded-b-md"
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '10px 14px',
+                    textAlign: 'left',
+                    fontSize: 12,
+                    fontWeight: 400,
+                    color: 'var(--txt)',
+                    background: 'transparent',
+                    border: 'none',
+                    borderLeft: '2px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'background 80ms, border-color 80ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--teal-bg)';
+                    e.currentTarget.style.borderLeftColor = 'var(--mark)';
+                    e.currentTarget.style.color = 'var(--mark)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderLeftColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--txt)';
+                  }}
                 >
                   {a.label}
                 </button>

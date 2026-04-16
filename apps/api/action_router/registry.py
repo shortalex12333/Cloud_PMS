@@ -1567,6 +1567,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
                                    "AFF", "MEDICAL_CARE"]),
             FieldMetadata("issuing_authority", FieldClassification.REQUIRED,
                           description="Issuing Authority"),
+            FieldMetadata("certificate_name", FieldClassification.OPTIONAL,
+                          description="Certificate Name"),
             FieldMetadata("certificate_number", FieldClassification.OPTIONAL,
                           description="Certificate Number"),
             FieldMetadata("issue_date", FieldClassification.OPTIONAL,
