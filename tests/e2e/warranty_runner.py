@@ -1,0 +1,675 @@
+"""
+warranty_runner.py — standalone Playwright E2E runner for the warranty domain.
+
+Emits one JSON document per scenario to stdout (NDJSON), followed by a summary
+line. Designed to be consumed by a Claude instance that populates
+docs/ongoing_work/warranty/WARRANTY_MANUAL_TEST_LOG.md from the results.
+
+Target: https://app.celeste7.ai (live tenant — NOT localhost).
+
+Usage:
+    python tests/e2e/warranty_runner.py                  # all 8 scenarios
+    python tests/e2e/warranty_runner.py --scenario 1     # just one
+    python tests/e2e/warranty_runner.py --scenario 1,2,5 # subset
+    python tests/e2e/warranty_runner.py --headed         # watch run locally
+
+Prereqs:
+    pip install playwright
+    playwright install chromium
+
+Exit code: 0 if every selected scenario passes, 1 otherwise.
+
+Credentials note (2026-04-16): WARRANTY_MANUAL_TEST_LOG.md uses
+hod.test@/captain.tenant@/crew.test@; WARRANTY01's runner brief listed
+eto.test@/x@/engineer.test@. The MD is authoritative (that's what was
+actually exercised manually), so those are the defaults below. Override
+via env vars WARRANTY_HOD_EMAIL / WARRANTY_CAPTAIN_EMAIL / WARRANTY_CREW_EMAIL
+if the accounts change.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import os
+import re
+import sys
+import traceback
+from typing import Any, Callable
+
+from playwright.sync_api import (
+    Browser,
+    BrowserContext,
+    Error as PlaywrightError,
+    Page,
+    TimeoutError as PlaywrightTimeoutError,
+    sync_playwright,
+)
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+HEADLESS = True
+BASE_URL = os.environ.get("WARRANTY_BASE_URL", "https://app.celeste7.ai")
+
+STEP_TIMEOUT_MS = 10_000
+NAV_TIMEOUT_MS = 25_000
+POPUP_TIMEOUT_MS = 8_000
+
+HOD_EMAIL = os.environ.get("WARRANTY_HOD_EMAIL", "hod.test@alex-short.com")
+CAPTAIN_EMAIL = os.environ.get("WARRANTY_CAPTAIN_EMAIL", "captain.tenant@alex-short.com")
+CREW_EMAIL = os.environ.get("WARRANTY_CREW_EMAIL", "crew.test@alex-short.com")
+PASSWORD = os.environ.get("WARRANTY_PASSWORD", "Password2!")
+
+TEST_CLAIM_TITLE_PREFIX = "Runner — Compressor Warranty"
+TEST_CLAIM_TITLE_REJECT = "Runner — Rejection Seed"
+TEST_VENDOR = "Atlas Copco Marine"
+TEST_DESCRIPTION = "Compressor seized within warranty"
+TEST_MFG_EMAIL = "warranty@atlascopco.com"
+TEST_CURRENCY = "EUR"
+
+# Static asset shipped with the runner for the attachment scenario. Created
+# lazily at runtime so the repo doesn't carry a binary blob.
+UPLOAD_FILENAME = "runner-test.pdf"
+UPLOAD_BYTES = (
+    b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+    b"2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n"
+    b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n"
+    b"xref\n0 4\n0000000000 65535 f\ntrailer<</Size 4/Root 1 0 R>>\n%%EOF\n"
+)
+
+# Tracked interesting endpoints for network capture.
+NETWORK_PATTERNS = (
+    "/api/v1/",
+    "/v1/entity",
+    "/v1/actions",
+    "/v1/ledger",
+    "/v1/attachments",
+)
+
+
+# ---------------------------------------------------------------------------
+# Result helpers (plain dicts — matches the spec schema exactly)
+# ---------------------------------------------------------------------------
+
+
+def _now_iso() -> str:
+    return dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def new_result(scenario_id: str, name: str, role: str) -> dict:
+    return {
+        "scenario_id": scenario_id,
+        "scenario_name": name,
+        "role": role,
+        "steps": [],
+        "console_errors": [],
+        "network": [],
+        "result": "pending",
+        "ran_at": "",
+    }
+
+
+def finalize(res: dict) -> dict:
+    res["ran_at"] = _now_iso()
+    if res["result"] == "pending":
+        res["result"] = "pass" if all(s["pass"] for s in res["steps"]) else "fail"
+    return res
+
+
+# ---------------------------------------------------------------------------
+# Step wrapper — never raises, records pass/fail, preserves the error text.
+# ---------------------------------------------------------------------------
+
+
+def step(res: dict, step_id: str, desc: str, fn: Callable[[], Any]) -> bool:
+    try:
+        fn()
+        res["steps"].append({"id": step_id, "desc": desc, "pass": True, "error": None})
+        return True
+    except (PlaywrightTimeoutError, PlaywrightError, AssertionError) as e:
+        res["steps"].append({
+            "id": step_id, "desc": desc, "pass": False,
+            "error": f"{type(e).__name__}: {e}",
+        })
+        return False
+    except Exception as e:
+        res["steps"].append({
+            "id": step_id, "desc": desc, "pass": False,
+            "error": f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}",
+        })
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Instrumentation — captures console errors and filtered API responses.
+# ---------------------------------------------------------------------------
+
+
+def instrument(page: Page, res: dict) -> None:
+    def on_console(msg):
+        if msg.type in ("error", "warning"):
+            loc = msg.location or {}
+            res["console_errors"].append({
+                "type": msg.type,
+                "text": msg.text,
+                "url": loc.get("url"),
+                "line": loc.get("lineNumber"),
+            })
+
+    def on_response(response):
+        url = response.url
+        if not any(pat in url for pat in NETWORK_PATTERNS):
+            return
+        body: Any = None
+        try:
+            ct = (response.headers.get("content-type") or "").lower()
+            if "json" in ct:
+                body = response.json()
+        except Exception:
+            body = None
+        res["network"].append({
+            "url": url,
+            "status": response.status,
+            "method": response.request.method,
+            "body": body,
+        })
+
+    page.on("console", on_console)
+    page.on("response", on_response)
+
+
+# ---------------------------------------------------------------------------
+# Page interaction helpers
+# ---------------------------------------------------------------------------
+
+
+def login(page: Page, email: str, password: str) -> None:
+    page.goto(f"{BASE_URL}/login", timeout=NAV_TIMEOUT_MS)
+    # Field discovery: prefer input[type], fall back to label text.
+    email_input = page.locator("input[type='email'], input[name='email']").first
+    pw_input = page.locator("input[type='password'], input[name='password']").first
+    email_input.fill(email, timeout=STEP_TIMEOUT_MS)
+    pw_input.fill(password, timeout=STEP_TIMEOUT_MS)
+    submit = page.get_by_role("button", name=re.compile(r"(sign in|log in|login)", re.I))
+    submit.first.click(timeout=STEP_TIMEOUT_MS)
+    # Post-login the app redirects off /login (usually to /warranties or a dashboard).
+    page.wait_for_url(re.compile(r"(?!.*\/login)"), timeout=NAV_TIMEOUT_MS)
+
+
+def assert_pill_label(page: Page, expected: str) -> None:
+    pill = page.get_by_test_id("warranty-status-pill")
+    pill.wait_for(state="visible", timeout=STEP_TIMEOUT_MS)
+    text = pill.inner_text(timeout=STEP_TIMEOUT_MS).strip().lower()
+    assert expected.lower() in text, f"expected pill={expected!r}, got {text!r}"
+
+
+def extract_claim_id_from_url(page: Page) -> str | None:
+    m = re.search(r"/warranties/([0-9a-f-]{36})", page.url)
+    return m.group(1) if m else None
+
+
+def open_warranty_by_title(page: Page, title: str) -> None:
+    """From the warranties list, click the first row whose title matches."""
+    page.goto(f"{BASE_URL}/warranties", timeout=NAV_TIMEOUT_MS)
+    row = page.get_by_text(title, exact=False).first
+    row.wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
+    row.click(timeout=STEP_TIMEOUT_MS)
+    page.wait_for_url(re.compile(r"/warranties/[0-9a-f-]{36}"), timeout=NAV_TIMEOUT_MS)
+
+
+def fill_popup_field(page: Page, field_name: str, value: str) -> None:
+    """Fill a field inside an open ActionPopup by its server-side field name."""
+    wrapper = page.get_by_test_id(f"popup-field-{field_name}")
+    wrapper.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+    control = wrapper.locator("input, textarea, select").first
+    control.fill(value, timeout=STEP_TIMEOUT_MS)
+
+
+def fill_new_claim_modal(page: Page, title: str) -> None:
+    """Fill the '+ Add Warranty' modal. Tolerant to small label variations."""
+    def fill_by_label(patterns: tuple[str, ...], value: str) -> None:
+        for p in patterns:
+            loc = page.get_by_label(re.compile(p, re.I)).first
+            if loc.count() > 0:
+                loc.fill(value, timeout=STEP_TIMEOUT_MS)
+                return
+        raise AssertionError(f"no input matched any of {patterns}")
+
+    fill_by_label(("^title$", "claim title"), title)
+    fill_by_label(("vendor", "supplier"), TEST_VENDOR)
+    fill_by_label(("description",), TEST_DESCRIPTION)
+    # Currency + manufacturer email may or may not be present as labeled inputs;
+    # attempt best-effort, don't hard-fail if absent.
+    for loc in page.locator("input[name*='manufacturer'], input[name*='email']").all():
+        try:
+            loc.fill(TEST_MFG_EMAIL, timeout=2000)
+            break
+        except Exception:
+            continue
+
+
+# ---------------------------------------------------------------------------
+# Scenarios
+# ---------------------------------------------------------------------------
+
+
+def scenario_1_hod_files_claim(ctx: BrowserContext, state: dict) -> dict:
+    res = new_result("1", "HOD files a warranty claim (full lifecycle)", "chief_engineer")
+    page = ctx.new_page()
+    instrument(page, res)
+
+    step(res, "1.0", "Login as HOD", lambda: login(page, HOD_EMAIL, PASSWORD))
+    step(res, "1.1", "Navigate to /warranties",
+         lambda: page.goto(f"{BASE_URL}/warranties", timeout=NAV_TIMEOUT_MS))
+
+    step(res, "1.2", "Click '+ Add Warranty' in subbar",
+         lambda: page.get_by_test_id("subbar-warranties-primary-action").click(timeout=STEP_TIMEOUT_MS))
+
+    title = f"{TEST_CLAIM_TITLE_PREFIX} {dt.datetime.utcnow().strftime('%H%M%S')}"
+    state["test_claim_title"] = title
+    step(res, "1.3", "Fill new-claim modal",
+         lambda: fill_new_claim_modal(page, title))
+    step(res, "1.4", "Submit new-claim modal",
+         lambda: page.get_by_role("button", name=re.compile(r"(submit|create|save)", re.I)).first.click(timeout=STEP_TIMEOUT_MS))
+
+    step(res, "1.5", "Status pill = Draft", lambda: assert_pill_label(page, "Draft"))
+
+    def capture_id():
+        cid = extract_claim_id_from_url(page)
+        assert cid, f"claim id not in URL: {page.url}"
+        state["claim_id_1"] = cid
+    step(res, "1.5b", "Capture claim_id from URL", capture_id)
+
+    step(res, "1.7", "Primary button = Submit Claim",
+         lambda: page.get_by_test_id("warranty-submit-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
+    step(res, "1.8", "Click Submit Claim",
+         lambda: page.get_by_test_id("warranty-submit-btn").click(timeout=STEP_TIMEOUT_MS))
+    step(res, "1.9", "Status pill = Submitted", lambda: assert_pill_label(page, "Submitted"))
+
+    page.close()
+    return finalize(res)
+
+
+def scenario_2_captain_approves(ctx: BrowserContext, state: dict) -> dict:
+    res = new_result("2", "Captain approves the claim", "captain")
+    claim_id = state.get("claim_id_1")
+    if not claim_id:
+        res["result"] = "skipped"
+        res["steps"].append({"id": "2.0", "desc": "Scenario 1 did not produce a claim_id",
+                             "pass": False, "error": "prereq missing"})
+        return finalize(res)
+
+    page = ctx.new_page()
+    instrument(page, res)
+
+    step(res, "2.0", "Login as captain", lambda: login(page, CAPTAIN_EMAIL, PASSWORD))
+    step(res, "2.2", "Navigate to the claim",
+         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+    step(res, "2.3", "Primary = Approve visible",
+         lambda: page.get_by_test_id("warranty-approve-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
+
+    def click_and_await_popup():
+        page.get_by_test_id("warranty-approve-btn").click(timeout=STEP_TIMEOUT_MS)
+        page.get_by_test_id("action-popup").wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+    step(res, "2.4", "Click Approve — popup opens", click_and_await_popup)
+
+    step(res, "2.6", "Enter approved_amount 900",
+         lambda: fill_popup_field(page, "approved_amount", "900"))
+    step(res, "2.7", "Submit popup",
+         lambda: page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS))
+    step(res, "2.8", "Status pill = Approved", lambda: assert_pill_label(page, "Approved"))
+    step(res, "2.9", "Primary = Close Claim",
+         lambda: page.get_by_test_id("warranty-close-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
+    step(res, "2.10", "Click Close Claim",
+         lambda: page.get_by_test_id("warranty-close-btn").click(timeout=STEP_TIMEOUT_MS))
+    step(res, "2.11", "Status pill = Closed", lambda: assert_pill_label(page, "Closed"))
+
+    page.close()
+    return finalize(res)
+
+
+def scenario_3_rejection(ctx: BrowserContext, state: dict) -> dict:
+    res = new_result("3", "Rejection flow (HOD files, captain rejects)", "chief_engineer+captain")
+    page = ctx.new_page()
+    instrument(page, res)
+
+    # 3a — HOD files a second claim (seed for this scenario)
+    step(res, "3.0", "Login as HOD", lambda: login(page, HOD_EMAIL, PASSWORD))
+    step(res, "3.1a", "Navigate to /warranties",
+         lambda: page.goto(f"{BASE_URL}/warranties", timeout=NAV_TIMEOUT_MS))
+    step(res, "3.1b", "Click '+ Add Warranty'",
+         lambda: page.get_by_test_id("subbar-warranties-primary-action").click(timeout=STEP_TIMEOUT_MS))
+
+    title = f"{TEST_CLAIM_TITLE_REJECT} {dt.datetime.utcnow().strftime('%H%M%S')}"
+    step(res, "3.1c", "Fill new-claim modal", lambda: fill_new_claim_modal(page, title))
+    step(res, "3.1d", "Submit new-claim modal",
+         lambda: page.get_by_role("button", name=re.compile(r"(submit|create|save)", re.I)).first.click(timeout=STEP_TIMEOUT_MS))
+
+    def capture_id():
+        cid = extract_claim_id_from_url(page)
+        assert cid, f"claim id not in URL: {page.url}"
+        state["claim_id_3"] = cid
+    step(res, "3.1e", "Capture claim_id_3", capture_id)
+
+    step(res, "3.2", "Submit the claim (status → Submitted)",
+         lambda: page.get_by_test_id("warranty-submit-btn").click(timeout=STEP_TIMEOUT_MS))
+    step(res, "3.2b", "Status pill = Submitted", lambda: assert_pill_label(page, "Submitted"))
+
+    # 3b — captain rejects
+    def relogin_captain():
+        page.context.clear_cookies()
+        login(page, CAPTAIN_EMAIL, PASSWORD)
+    step(res, "3.3", "Switch to captain", relogin_captain)
+
+    claim_id = state.get("claim_id_3")
+    step(res, "3.4", "Open the submitted claim",
+         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+
+    def open_reject():
+        # The reject action lives in the dropdown half of the split button.
+        toggle = page.locator("[aria-label='More actions']").first
+        toggle.click(timeout=STEP_TIMEOUT_MS)
+        page.get_by_test_id("warranty-reject-btn").click(timeout=STEP_TIMEOUT_MS)
+        page.get_by_test_id("action-popup").wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+    step(res, "3.5", "Open dropdown → Reject Claim → popup opens", open_reject)
+
+    def submit_empty_blocked():
+        btn = page.get_by_test_id("signature-confirm-button")
+        # If required validation is on, the button should be disabled OR click should no-op.
+        is_disabled = btn.is_disabled(timeout=STEP_TIMEOUT_MS)
+        assert is_disabled, "empty rejection_reason should keep confirm disabled (required field)"
+    step(res, "3.8", "Empty rejection is blocked (required field gate)", submit_empty_blocked)
+
+    step(res, "3.9", "Enter rejection_reason",
+         lambda: fill_popup_field(page, "rejection_reason",
+                                  "Claim filed after 24-month warranty window expired"))
+    step(res, "3.10", "Submit → status = Rejected",
+         lambda: (page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS),
+                  assert_pill_label(page, "Rejected")))
+
+    page.close()
+    return finalize(res)
+
+
+def scenario_4_compose_email(ctx: BrowserContext, state: dict) -> dict:
+    res = new_result("4", "Compose email draft on approved claim", "chief_engineer")
+    claim_id = state.get("claim_id_1")
+    if not claim_id:
+        res["result"] = "skipped"
+        res["steps"].append({"id": "4.0", "desc": "Scenario 1 claim missing",
+                             "pass": False, "error": "prereq missing"})
+        return finalize(res)
+
+    page = ctx.new_page()
+    instrument(page, res)
+
+    step(res, "4.0", "Login as HOD", lambda: login(page, HOD_EMAIL, PASSWORD))
+    step(res, "4.1", "Navigate to the approved/closed claim",
+         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+
+    def open_compose():
+        toggle = page.locator("[aria-label='More actions']").first
+        toggle.click(timeout=STEP_TIMEOUT_MS)
+        page.get_by_test_id("warranty-compose-btn").click(timeout=STEP_TIMEOUT_MS)
+    step(res, "4.3", "Open dropdown → Compose Email Draft", open_compose)
+
+    def email_draft_visible():
+        # No reliable testid on the Email Draft section; probe for heading text.
+        page.get_by_text(re.compile(r"email draft", re.I)).first.wait_for(
+            state="visible", timeout=NAV_TIMEOUT_MS,
+        )
+    step(res, "4.4", "Email Draft section renders", email_draft_visible)
+
+    def to_is_manufacturer_email():
+        # "To" row should contain the manufacturer email, not the company name.
+        page.get_by_text(TEST_MFG_EMAIL, exact=False).first.wait_for(
+            state="visible", timeout=STEP_TIMEOUT_MS,
+        )
+    step(res, "4.5", "Email 'To' = manufacturer_email", to_is_manufacturer_email)
+
+    page.close()
+    return finalize(res)
+
+
+def scenario_5_add_note(ctx: BrowserContext, state: dict) -> dict:
+    res = new_result("5", "Add a note to a warranty claim", "chief_engineer")
+    claim_id = state.get("claim_id_1")
+    if not claim_id:
+        res["result"] = "skipped"
+        res["steps"].append({"id": "5.0", "desc": "Scenario 1 claim missing",
+                             "pass": False, "error": "prereq missing"})
+        return finalize(res)
+
+    page = ctx.new_page()
+    instrument(page, res)
+
+    step(res, "5.0", "Login as HOD", lambda: login(page, HOD_EMAIL, PASSWORD))
+    step(res, "5.1", "Open the claim",
+         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+
+    # NotesSection "+ Add Note" carries testid warranty-add-note-btn; there's
+    # also a dropdown item with the same testid, so first() is intentional.
+    step(res, "5.3", "Click '+ Add Note' in NotesSection",
+         lambda: page.get_by_test_id("warranty-add-note-btn").first.click(timeout=STEP_TIMEOUT_MS))
+
+    note_text = f"Runner note at {_now_iso()} — serial AT-2024-998877"
+    def fill_note():
+        ta = page.locator("textarea").first
+        ta.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+        ta.fill(note_text, timeout=STEP_TIMEOUT_MS)
+    step(res, "5.4", "Fill note text", fill_note)
+
+    step(res, "5.5", "Submit note",
+         lambda: page.get_by_role("button", name=re.compile(r"(save|add|submit)", re.I)).first.click(timeout=STEP_TIMEOUT_MS))
+
+    step(res, "5.6", "Note appears in Notes section",
+         lambda: page.get_by_text(note_text, exact=False).first.wait_for(state="visible", timeout=NAV_TIMEOUT_MS))
+
+    def note_author_not_raw_uuid():
+        # Regression probe for S5.6 known bug: author rendered as UUID.
+        uuid_re = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
+        section = page.locator("#sec-notes")
+        body = section.inner_text(timeout=STEP_TIMEOUT_MS) if section.count() > 0 else page.locator("body").inner_text()
+        assert not uuid_re.search(body), "note author rendered as raw UUID (known bug from S5.6)"
+    step(res, "5.7", "Note author is not a raw UUID", note_author_not_raw_uuid)
+
+    page.close()
+    return finalize(res)
+
+
+def scenario_6_upload_document(ctx: BrowserContext, state: dict) -> dict:
+    res = new_result("6", "Document upload via /v1/attachments/upload", "chief_engineer")
+    claim_id = state.get("claim_id_1")
+    if not claim_id:
+        res["result"] = "skipped"
+        res["steps"].append({"id": "6.0", "desc": "Scenario 1 claim missing",
+                             "pass": False, "error": "prereq missing"})
+        return finalize(res)
+
+    page = ctx.new_page()
+    instrument(page, res)
+
+    # Write the tiny test PDF to disk (the file input expects a real path).
+    upload_path = os.path.join("/tmp", UPLOAD_FILENAME)
+    with open(upload_path, "wb") as f:
+        f.write(UPLOAD_BYTES)
+
+    step(res, "6.0", "Login as HOD", lambda: login(page, HOD_EMAIL, PASSWORD))
+    step(res, "6.1", "Open the claim",
+         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+
+    step(res, "6.3", "'+ Upload' visible on attachments",
+         lambda: page.get_by_test_id("warranty-upload-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
+    step(res, "6.4", "Click upload button",
+         lambda: page.get_by_test_id("warranty-upload-btn").click(timeout=STEP_TIMEOUT_MS))
+
+    def attach_file():
+        file_input = page.locator("input[type='file']").first
+        file_input.wait_for(state="attached", timeout=POPUP_TIMEOUT_MS)
+        file_input.set_input_files(upload_path)
+    step(res, "6.5", "Attach test PDF", attach_file)
+
+    def submit_and_wait_for_render_api():
+        # The upload hits /v1/attachments/upload on Render. Click whatever the
+        # modal's confirm button is, then assert we saw a 2xx from the endpoint
+        # in the captured network log.
+        page.get_by_role("button", name=re.compile(r"(upload|submit|save|confirm)", re.I)).first.click(timeout=STEP_TIMEOUT_MS)
+        deadline = dt.datetime.utcnow() + dt.timedelta(seconds=20)
+        while dt.datetime.utcnow() < deadline:
+            for n in res["network"]:
+                if "/v1/attachments/upload" in n["url"] and 200 <= n["status"] < 300:
+                    return
+            page.wait_for_timeout(500)
+        raise AssertionError("no 2xx from /v1/attachments/upload within 20s")
+    step(res, "6.6", "Upload POST hits /v1/attachments/upload and returns 2xx",
+         submit_and_wait_for_render_api)
+
+    step(res, "6.7", "File appears in Attachments list",
+         lambda: page.get_by_text(UPLOAD_FILENAME, exact=False).first.wait_for(state="visible", timeout=NAV_TIMEOUT_MS))
+
+    page.close()
+    return finalize(res)
+
+
+def scenario_7_crew_restrictions(ctx: BrowserContext, state: dict) -> dict:
+    res = new_result("7", "Crew access restrictions", "crew_member")
+    page = ctx.new_page()
+    instrument(page, res)
+
+    step(res, "7.0", "Login as crew", lambda: login(page, CREW_EMAIL, PASSWORD))
+    step(res, "7.2", "Navigate to /warranties",
+         lambda: page.goto(f"{BASE_URL}/warranties", timeout=NAV_TIMEOUT_MS))
+
+    def add_warranty_is_disabled():
+        btn = page.get_by_test_id("subbar-warranties-primary-action")
+        btn.wait_for(state="visible", timeout=STEP_TIMEOUT_MS)
+        is_disabled = btn.is_disabled(timeout=STEP_TIMEOUT_MS)
+        assert is_disabled, "'+ Add Warranty' must be disabled for crew (role gate)"
+    step(res, "7.2b", "'+ Add Warranty' disabled for crew", add_warranty_is_disabled)
+
+    # Open the first visible claim (crew can view, not mutate).
+    def open_first_claim():
+        # The list rows aren't carrying testids yet — fall back to the first
+        # anchor that matches /warranties/<uuid>.
+        first_row = page.locator("a[href*='/warranties/']").first
+        first_row.wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
+        first_row.click(timeout=STEP_TIMEOUT_MS)
+        page.wait_for_url(re.compile(r"/warranties/[0-9a-f-]{36}"), timeout=NAV_TIMEOUT_MS)
+    step(res, "7.3", "Open an existing claim", open_first_claim)
+
+    def no_mutate_buttons_visible():
+        for hidden_id in ("warranty-submit-btn", "warranty-approve-btn",
+                          "warranty-reject-btn", "warranty-close-btn"):
+            count = page.get_by_test_id(hidden_id).count()
+            assert count == 0, f"crew should not see {hidden_id} (found {count})"
+    step(res, "7.4-7.6", "No mutate buttons visible for crew", no_mutate_buttons_visible)
+
+    step(res, "7.8", "'+ Upload' still visible (not role-gated)",
+         lambda: page.get_by_test_id("warranty-upload-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
+
+    page.close()
+    return finalize(res)
+
+
+def scenario_8_revise_resubmit(ctx: BrowserContext, state: dict) -> dict:
+    res = new_result("8", "Revise & Resubmit a rejected claim", "chief_engineer")
+    claim_id = state.get("claim_id_3")
+    if not claim_id:
+        res["result"] = "skipped"
+        res["steps"].append({"id": "8.0", "desc": "Scenario 3 rejected claim missing",
+                             "pass": False, "error": "prereq missing"})
+        return finalize(res)
+
+    page = ctx.new_page()
+    instrument(page, res)
+
+    step(res, "8.0", "Login as HOD", lambda: login(page, HOD_EMAIL, PASSWORD))
+    step(res, "8.1", "Open the rejected claim",
+         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+    step(res, "8.1b", "Status pill = Rejected", lambda: assert_pill_label(page, "Rejected"))
+    step(res, "8.2", "Primary = Revise & Resubmit (warranty-submit-btn)",
+         lambda: page.get_by_test_id("warranty-submit-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
+    step(res, "8.3", "Click Revise & Resubmit",
+         lambda: page.get_by_test_id("warranty-submit-btn").click(timeout=STEP_TIMEOUT_MS))
+    step(res, "8.4", "Status pill = Submitted", lambda: assert_pill_label(page, "Submitted"))
+
+    page.close()
+    return finalize(res)
+
+
+# ---------------------------------------------------------------------------
+# Registry + main
+# ---------------------------------------------------------------------------
+
+
+SCENARIOS: list[tuple[str, Callable[[BrowserContext, dict], dict]]] = [
+    ("1", scenario_1_hod_files_claim),
+    ("2", scenario_2_captain_approves),
+    ("3", scenario_3_rejection),
+    ("4", scenario_4_compose_email),
+    ("5", scenario_5_add_note),
+    ("6", scenario_6_upload_document),
+    ("7", scenario_7_crew_restrictions),
+    ("8", scenario_8_revise_resubmit),
+]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--scenario", help="Run only listed scenario ids (comma-separated, e.g. 1,2,5)")
+    parser.add_argument("--headed", action="store_true", help="Run with a visible browser")
+    args = parser.parse_args()
+
+    wanted: set[str] | None = None
+    if args.scenario:
+        wanted = {s.strip() for s in args.scenario.split(",") if s.strip()}
+
+    selected = [(sid, fn) for sid, fn in SCENARIOS if wanted is None or sid in wanted]
+    if not selected:
+        print(json.dumps({"error": "no scenarios matched", "requested": sorted(wanted or [])}),
+              file=sys.stderr)
+        return 2
+
+    headless = False if args.headed else HEADLESS
+    state: dict = {}
+    results: list[dict] = []
+
+    with sync_playwright() as pw:
+        browser: Browser = pw.chromium.launch(headless=headless)
+        for sid, fn in selected:
+            ctx = browser.new_context(accept_downloads=True)
+            try:
+                result = fn(ctx, state)
+            except Exception as e:  # last-ditch guard
+                result = new_result(sid, f"error invoking scenario_{sid}", "unknown")
+                result["steps"].append({
+                    "id": f"{sid}.X", "desc": "scenario invocation errored", "pass": False,
+                    "error": f"{type(e).__name__}: {e}",
+                })
+                result["result"] = "error"
+                finalize(result)
+            ctx.close()
+            sys.stdout.write(json.dumps(result) + "\n")
+            sys.stdout.flush()
+            results.append(result)
+        browser.close()
+
+    summary = {
+        "summary": True,
+        "total": len(results),
+        "pass": sum(1 for r in results if r["result"] == "pass"),
+        "fail": sum(1 for r in results if r["result"] == "fail"),
+        "skipped": sum(1 for r in results if r["result"] == "skipped"),
+        "error": sum(1 for r in results if r["result"] == "error"),
+        "scenarios": [r["scenario_id"] for r in results],
+        "ran_at": _now_iso(),
+    }
+    sys.stdout.write(json.dumps(summary) + "\n")
+    return 0 if summary["fail"] == 0 and summary["error"] == 0 else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
