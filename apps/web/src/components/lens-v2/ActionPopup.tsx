@@ -239,32 +239,39 @@ function FieldEntitySearch({
             typeof window !== 'undefined'
               ? (() => {
                   try {
-                    const raw = localStorage.getItem(
-                      Object.keys(localStorage).find((k) => k.includes('auth-token')) || ''
-                    );
+                    const authKey = Object.keys(localStorage).find((k) => k.includes('auth-token')) || '';
+                    const raw = localStorage.getItem(authKey);
                     return raw ? JSON.parse(raw)?.access_token : '';
                   } catch {
                     return '';
                   }
                 })()
               : '';
-          const resp = await fetch('/api/search/fallback', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+          // Call the Render backend search directly (has all tenant DB env vars).
+          // The Vercel /api/search/fallback route may not have TENANT_SUPABASE_SERVICE_KEY.
+          const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+          const domain = field.search_domain || 'equipment';
+          const resp = await fetch(
+            `${apiBase}/api/vessel/${yachtId}/domain/${domain}/records?search=${encodeURIComponent(q)}&limit=15`,
+            {
+              method: 'GET',
+              headers: {
+                ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+              },
             },
-            body: JSON.stringify({ query: q, yacht_id: yachtId, limit: 20 }),
-          });
+          );
           if (resp.ok) {
             const data = await resp.json();
-            const domain = field.search_domain || 'equipment';
-            const filtered = (data.results || []).filter(
-              (r: { object_type: string }) =>
-                r.object_type === domain || r.object_type === `pms_${domain}`
-            );
-            setResults(filtered.slice(0, 10));
-            setShowDropdown(filtered.length > 0);
+            // Domain records endpoint returns {records: [{id, title, ...}]}
+            // Fallback search returns {results: [{id, title, object_type, ...}]}
+            const records = data.records || data.results || [];
+            const mapped = records.map((r: Record<string, unknown>) => ({
+              id: (r.id || r.primary_id || '') as string,
+              title: (r.title || r.name || r.equipment_name || r.filename || r.id || '') as string,
+              object_type: (r.object_type || r.type || field.search_domain || '') as string,
+            }));
+            setResults(mapped.slice(0, 10));
+            setShowDropdown(mapped.length > 0);
           }
         } catch {
           setResults([]);
