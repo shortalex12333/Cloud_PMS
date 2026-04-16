@@ -50,9 +50,9 @@ import { cn } from '@/lib/utils';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
 import { Toast } from '@/components/ui/Toast';
-// Use the TENANT client for storage + pms_attachments — these live on the
-// TENANT Supabase project (vzsohavtuotocgrfkfyd), not the MASTER auth project.
-import { supabaseTenant as supabase } from '@/lib/supabaseTenantClient';
+// Attachment uploads go through the Render API (POST /v1/attachments/upload).
+// The API owns all TENANT Supabase writes — the browser never touches TENANT directly.
+import { getAuthHeaders } from '@/lib/authHelpers';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -184,44 +184,40 @@ export function AttachmentUploadModal({
   // ---------------------------------------------------------------------
   const defaultPmsAttachmentUpload = React.useCallback(
     async (selected: File): Promise<void> => {
-      if (!entityType || !entityId || !bucket || !category || !yachtId || !userId) {
-        // Developer error — caller must pass all pms_attachments props when
-        // not providing a custom onUpload. Fail loud so this is obvious in dev.
+      if (!entityType || !entityId || !bucket || !category) {
         throw new Error(
-          'AttachmentUploadModal: default mode requires entityType, entityId, bucket, category, yachtId, userId. ' +
-            'Pass all six, or provide a custom `onUpload` prop.'
+          'AttachmentUploadModal: default mode requires entityType, entityId, bucket, category. ' +
+            'Pass all four, or provide a custom `onUpload` prop.'
         );
       }
 
-      // Path: {entityType}/{entityId}/{timestamp}-{filename}
-      const path = `${entityType}/${entityId}/${Date.now()}-${sanitizeFilename(selected.name)}`;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+      const authHeaders = await getAuthHeaders();
 
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(path, selected, { contentType: selected.type });
+      const form = new FormData();
+      form.append('file', selected);
+      form.append('entity_type', entityType);
+      form.append('entity_id', entityId);
+      form.append('bucket', bucket);
+      form.append('category', category);
+      // yacht_id is resolved server-side from the JWT — no need to send from client
 
-      if (uploadError) {
-        throw new Error(uploadError.message ?? 'Upload failed');
-      }
-
-      const { error: insertError } = await supabase.from('pms_attachments').insert({
-        entity_type: entityType,
-        entity_id: entityId,
-        storage_bucket: bucket,
-        storage_path: path,
-        filename: selected.name,
-        mime_type: selected.type,
-        file_size: selected.size,
-        category,
-        uploaded_by: userId,
-        yacht_id: yachtId,
+      const res = await fetch(`${apiUrl}/v1/attachments/upload`, {
+        method: 'POST',
+        headers: authHeaders, // Authorization: Bearer <jwt> — no Content-Type, browser sets multipart boundary
+        body: form,
       });
 
-      if (insertError) {
-        throw new Error(insertError.message ?? 'Failed to save attachment record');
+      if (!res.ok) {
+        let detail = `Upload failed (${res.status})`;
+        try {
+          const body = await res.json();
+          detail = body.detail ?? detail;
+        } catch { /* non-JSON error body */ }
+        throw new Error(detail);
       }
     },
-    [entityType, entityId, bucket, category, yachtId, userId]
+    [entityType, entityId, bucket, category]
   );
 
   if (!open) return null;
