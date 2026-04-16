@@ -1666,6 +1666,14 @@ class HoursOfRestHandlers:
 
             # Write ledger event — crew acknowledgement is legally significant
             try:
+                # Resolve caller role for ledger (avoids NULL user_role — BUG-HOR-LEDGER-1 pattern)
+                try:
+                    _ack_role_r = self.db.table("auth_users_roles").select("role").eq(
+                        "user_id", user_id
+                    ).eq("yacht_id", yacht_id).limit(1).execute()
+                    _ack_role = _ack_role_r.data[0]["role"] if _ack_role_r.data else None
+                except Exception:
+                    _ack_role = None
                 self.db.table("ledger_events").insert(build_ledger_event(
                     yacht_id=yacht_id,
                     user_id=user_id,
@@ -1673,6 +1681,7 @@ class HoursOfRestHandlers:
                     entity_type="crew_warning",
                     entity_id=warning_id,
                     action="acknowledge_warning",
+                    user_role=_ack_role,
                     change_summary=f"Crew acknowledged compliance warning: {crew_reason or 'no reason given'}",
                     metadata={"status": "acknowledged", "crew_reason": crew_reason, "warning_id": warning_id},
                     event_category="write",
@@ -1819,6 +1828,7 @@ class HoursOfRestHandlers:
                     entity_type="crew_warning",
                     entity_id=warning_id,
                     action="dismiss_warning",
+                    user_role=dismissed_by_role,  # already resolved from payload + DB earlier
                     change_summary=f"{dismissed_by_role.upper()} dismissed compliance warning: {hod_justification}",
                     metadata={
                         "status": "dismissed",
