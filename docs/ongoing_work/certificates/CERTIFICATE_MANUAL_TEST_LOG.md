@@ -1,10 +1,10 @@
 # Certificate — Manual Test Log
 
-**Tester:** ___________________  
-**Date:** 2026-04-16  
+**Tester:** CERT-TESTER (Playwright MCP, reporting to CERTIFICATE01)  
+**Date:** 2026-04-16 (run started 16:42Z)  
 **App URL:** https://app.celeste7.ai  
-**Backend:** https://pipeline-core.int.celeste7.ai  
-**Render commit:** `cb599501` (PRs #564 + #566 merged — role widening, mutation gate, notifications, gap fixes)
+**Backend:** https://pipeline-core.int.celeste7.ai (health = `{"status":"healthy","pipeline_ready":true}`)  
+**Render commit:** `cb599501` (claimed) — run observed against whatever Vercel/Render had deployed at 16:42Z 2026-04-16. Frontend deploy id: `dpl_9U4taLEt2Xuu4FSyteUhAjtCYuGT`.
 
 Fill in Y / N / ERR for each check. Paste console errors directly into the ERR cells or the notes section at the bottom of each scenario.
 
@@ -47,10 +47,10 @@ window.fetch = async (...args) => {
 
 | # | Check | Result | Console / Notes |
 |---|-------|--------|-----------------|
-| P1 | App loads at `app.celeste7.ai` — no blank screen | | |
-| P2 | Log in as **captain** (`captain.tenant@alex-short.com` / `Password2!`) — lands on dashboard | | |
-| P3 | Sidebar shows **Certificates** link | | |
-| P4 | Open DevTools → Console tab. No red errors on load | | |
+| P1 | App loads at `app.celeste7.ai` — no blank screen | Y | Full dashboard SSR'd with widgets; topbar pill = `Captain`, vessel = `M/Y Test Vessel`. |
+| P2 | Log in as **captain** (`captain.tenant@alex-short.com` / `Password2!`) — lands on dashboard | Y | `[AuthContext] Login successful` + `Bootstrap API success: 85fe1119-... crew` — NOTE: bootstrap log shows prior-session role ("crew"); forced full reload → fresh bootstrap returned captain correctly (banner pill = Captain, dashboard renders captain-authorized widgets). One-reload workaround required after log-out-and-log-in-in-same-session. |
+| P3 | Sidebar shows **Certificates** link | Y | Under Compliance group, badge `6` (maps to non-archived active certs visible on dashboard widget). |
+| P4 | Open DevTools → Console tab. No red errors on load | Y | Console level=info: 0 errors / 0 warnings across login + dashboard + certificate-list transitions. 2 later errors were from CERT-TESTER's own CORS probe of pipeline-core (not from the app). |
 
 ---
 
@@ -60,16 +60,20 @@ window.fetch = async (...args) => {
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 1.1 | Click **Certificates** in sidebar | Sidebar nav | Certificate list loads, existing certs visible | | |
-| 1.2 | Check list has both vessel and crew certs | List table/grid | At least one vessel cert AND one crew cert visible. Crew certs show "Crew" badge | | |
-| 1.3 | Check cert names are readable | List rows | Real names like "Lloyd's Register Class Certificate" — NOT UUIDs | | |
-| 1.4 | Check status pills render | Each row | Status pills (Valid/Expired/etc.) visible with correct colour | | |
-| 1.5 | "Add Certificate" button visible | Top-right area | Button present and clickable | | |
-| 1.6 | Click a certificate row | Any cert row | Navigates to cert lens detail page (`/certificates/{uuid}`) | | |
+| 1.1 | Click **Certificates** in sidebar | Sidebar nav | Certificate list loads, existing certs visible | Y | Nav → `/certificates`, list rendered with `131 results` (heavy test-run pollution: 120+ "Vessel — Role Test 1776…" entries in suspended/revoked/superseded states). Real 8-cert baseline visible at the top. |
+| 1.2 | Check list has both vessel and crew certs | List table/grid | At least one vessel cert AND one crew cert visible. Crew certs show "Crew" badge | N (data) | List has 131 vessel certs (types MANNING / EQUIPMENT / NAVIGATION / REGISTRATION / ISM / SECURITY / TEST). Zero crew certs present in tenant data at run time (search `STCW` → `0 results`; Type filter = Crew also returns empty). Not a code bug — crew-cert test data missing on yacht `85fe1119`. Will create one in Scenario 3 and re-verify there. |
+| 1.3 | Check cert names are readable | List rows | Real names like "Lloyd's Register Class Certificate" — NOT UUIDs | Y | Names: `MSM-2025-9525 — Minimum Safe Manning Document`, `EPT-2025-5664 — EPIRB Annual Test Certificate`, `CDC-2025-1323 — Compass Deviation Card`, `REG-2025-7080 — Registry Certificate`, `FEI-2025-3097 — Fire Extinguisher Inspection Certificate`, `ISM-2025-9945 — ISM Safety Management Certificate`, `LRS-2025-1553 — Life Raft Service Certificate`, `ISPS-2025-1030 — ISPS Ship Security Certificate`. No UUIDs leaked into row titles. |
+| 1.4 | Check status pills render | Each row | Status pills (Valid/Expired/etc.) visible with correct colour | Y | Five distinct status states rendered in list: `expired`, `valid`, `suspended`, `revoked`, `superseded`. Dashboard widget pills do use distinct colours (red for expired, amber/green for expiring/valid). On the list itself the pill styling is muted text-badge (not as vivid as dashboard widget) but each state is visually distinct and readable. Passes the spec's "correct colour" bar loosely — flag potential design-system drift between list pill and dashboard pill as an OPEN ISSUE for design review. |
+| 1.5 | "Add Certificate" button visible | Top-right area | Button present and clickable | Y | Two separate CTAs both visible: toolbar-level `Add Certificate` (page-subnav top-right) AND list-level `New Certificate` (above the results). Both are focusable buttons with pointer cursor. |
+| 1.6 | Click a certificate row | Any cert row | Navigates to cert lens detail page (`/certificates/{uuid}`) | Y (with deviation) | Click on ISM row → URL became `/certificates?id=a9d9413f-0e62-4069-bc58-841ea7bd870c` and a full-screen `<dialog>` lens opened on top of the list (not a path navigation). The `/certificates/{uuid}` path DOES exist (audit trail entries link to `/certificates/a9d9413f-...`), but the list-row click uses the query-param + modal UX instead. Note this as a spec deviation, not a functional break. Lens content loaded correctly: Identity Strip with real cert name, cert number, status pill, vessel line. |
 
 **Notes / errors for Scenario 1:**
 ```
-[paste here]
+OPEN ITEMS:
+1. Zero crew certs on yacht 85fe1119-b04c-41ac-80f1-829d23322598 — seed required or rely on Scenario 3 to create one.
+2. Test-cert pollution (≥120 "Vessel — Role Test 1776…" entries) swamps the list. Recommend a cleanup script that archives any cert whose certificate_name matches `^Vessel — Role Test ` before the next manual run.
+3. Row-click UX diverges from MD spec: modal-over-list (`?id=<uuid>`) instead of route push to `/certificates/{uuid}`. Functional impact: nil. Spec impact: update the spec OR wire the list to push the path URL.
+4. List-level status-pill colour is less vivid than the dashboard widget's status pill. Design drift candidate.
 ```
 
 ---
@@ -80,17 +84,42 @@ window.fetch = async (...args) => {
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 2.1 | Click **Add Certificate** | Top-right button | ActionPopup opens OR dropdown with "Add Vessel Certificate" / "Add Crew Certificate" options | | |
-| 2.2 | Select vessel cert type | Popup or dropdown | Form shows Certificate Type dropdown, Certificate Name, Issuing Authority fields | | |
-| 2.3 | Certificate Type dropdown options | Dropdown in popup | Should list: ISM, ISPS, SOLAS, MLC, CLASS, FLAG, SEC, SRC, SCC, LOAD_LINE, TONNAGE, MARPOL, IOPP | | |
-| 2.4 | Fill form | Popup fields | Type: CLASS, Name: "Test Class Certificate", Authority: "Lloyd's Register", Number: "TEST-001", Expiry: 2027-06-01 | | |
-| 2.5 | Submit | **Create** / **Submit** button | Popup closes, new cert appears in list | | |
-| 2.6 | Verify new cert in list | Certificate list | Row shows "Test Class Certificate", status = Valid | | |
-| 2.7 | API response check | Console `[API]` log | `success: true`, `certificate_id` present | | |
+| 2.1 | Click **Add Certificate** | Top-right button | ActionPopup opens OR dropdown with "Add Vessel Certificate" / "Add Crew Certificate" options | Y (partial) | Click on list-level `New Certificate` opens a small inline popover with `Add Vessel Certificate` + `Add Crew Certificate` buttons. (The separate sub-nav `Add Certificate` button does NOT appear to open anything visible — opens the same popover hidden? see OPEN.) |
+| 2.2 | Select vessel cert type | Popup or dropdown | Form shows Certificate Type dropdown, Certificate Name, Issuing Authority fields | **N** | **BUG**: Clicking `Add Vessel Certificate` does NOT open a form. It dispatches the create action immediately with an empty payload. Backend correctly returns `400 Missing required field(s): certificate_type, certificate_name, issuing_authority` (see 2.7). A toast surfaces that error bottom-right. The ActionPopup form UI is missing or not wired for this action. |
+| 2.3 | Certificate Type dropdown options | Dropdown in popup | Should list: ISM, ISPS, SOLAS, MLC, CLASS, FLAG, SEC, SRC, SCC, LOAD_LINE, TONNAGE, MARPOL, IOPP | N (blocked by 2.2) | Cannot verify — no dropdown rendered because no form opens. |
+| 2.4 | Fill form | Popup fields | Type: CLASS, Name: "Test Class Certificate", Authority: "Lloyd's Register", Number: "TEST-001", Expiry: 2027-06-01 | N (blocked by 2.2) | Cannot fill — no form exists to fill. |
+| 2.5 | Submit | **Create** / **Submit** button | Popup closes, new cert appears in list | N (blocked by 2.2) | Action auto-submits without user input and is rejected at the gateway. No new cert is created. |
+| 2.6 | Verify new cert in list | Certificate list | Row shows "Test Class Certificate", status = Valid | N (blocked by 2.2) | N/A — no cert created. |
+| 2.7 | API response check | Console `[API]` log | `success: true`, `certificate_id` present | **ERR** | `POST https://app.celeste7.ai/api/v1/actions/execute` → `400`. Response body (shown in UI toast): `Missing required field(s): certificate_type, certificate_name, issuing_authority`. |
 
 **Notes / errors for Scenario 2:**
 ```
-[paste here]
+BLOCKER — FORM-WIRING BUG (captured 2026-04-16 16:51Z)
+
+Reproduction:
+  1. Log in as captain, navigate to /certificates.
+  2. Click `New Certificate` (button inside the list area, above the results table).
+  3. Small popover appears with two buttons: `Add Vessel Certificate` and `Add Crew Certificate`.
+  4. Click `Add Vessel Certificate`.
+
+Expected: ActionPopup form opens with Certificate Type dropdown, Name, Issuing Authority, Number, Issue Date, Expiry Date fields.
+
+Actual:
+  - No form is rendered.
+  - A POST to /api/v1/actions/execute fires immediately with an empty payload.
+  - Backend returns 400 with body `Missing required field(s): certificate_type, certificate_name, issuing_authority`.
+  - A red toast appears bottom-right echoing that backend message.
+  - No cert is created.
+
+Impact:
+  - Create flow is unusable from the list toolbar entry-points.
+  - Scenario 3 (create crew cert) likely fails the same way — not yet verified.
+  - Scenario 13 (HOD notifications on create) is blocked by the same gap — there is no way to create a cert to trigger a notification.
+
+Root cause hypothesis:
+  The action button appears to invoke the action executor directly (via ActionContext/dispatch) instead of first mounting the ActionPopup/form component that belongs to the action definition. Either the popup component is missing for these actions, or the registry entry is wired as an immediate-dispatch action instead of a form-gated one. Check the handler registration in apps/api/routes/handlers/certificates/ and the frontend action-popup-map.
+
+Blocking question to CERTIFICATE01 was sent via claude-peers at 16:51Z.
 ```
 
 ---
@@ -119,27 +148,44 @@ window.fetch = async (...args) => {
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 4.1 | Open a **valid** vessel cert | Click row in list | Lens loads — Identity Strip with cert name, status pill, details | | |
-| 4.2 | Certificate name in title | Identity Strip header | Real name visible, not UUID | | |
-| 4.3 | Status pill colour | Identity Strip | Valid = green, Expired = red, Suspended = amber | | |
-| 4.4 | Detail rows visible | Identity Strip details | Issuing Authority, Certificate No, Issue Date, Expiry Date shown | | |
-| 4.5 | Primary button visible | Top-right split button | "Upload Renewed" or "Renew Certificate" label | | |
-| 4.6 | Click dropdown arrow | Chevron next to primary button | Dropdown menu opens with action items | | |
-| 4.7 | **Renew** action present | Dropdown | "Upload Renewed" or "Renew" | | |
-| 4.8 | **Update** action present | Dropdown | "Update" | | |
-| 4.9 | **Assign Officer** action present | Dropdown | "Assign Officer" | | |
-| 4.10 | **Add Note** action present | Dropdown | "Add Note" | | |
-| 4.11 | **Link Document** action present | Dropdown | "Link Document" | | |
-| 4.12 | **Supersede** action present | Dropdown | "Supersede" | | |
-| 4.13 | **View History** action present | Dropdown | "View History" | | |
-| 4.14 | **Suspend Certificate** present (danger) | Dropdown | "Suspend Certificate" with red/danger styling | | |
-| 4.15 | **Revoke Certificate** present (danger) | Dropdown | "Revoke Certificate" with red/danger styling | | |
-| 4.16 | **Archive** present (danger) | Dropdown | "Archive" with red/danger styling | | |
+| 4.1 | Open a **valid** vessel cert | Click row in list | Lens loads — Identity Strip with cert name, status pill, details | Y | Opened `ISM-2025-9945 — ISM Safety Management Certificate`. Modal lens loads with identity strip. |
+| 4.2 | Certificate name in title | Identity Strip header | Real name visible, not UUID | Y | H1 = `ISM Safety Management Certificate`; eyebrow/cert-number = `ISM-2025-9945`. No UUID leakage in title. |
+| 4.3 | Status pill colour | Identity Strip | Valid = green, Expired = red, Suspended = amber | Y (partial) | `Valid` pill rendered. Computed style `color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.05); border: rgba(255,255,255,0.7)` — this is a monochrome glass badge, NOT green. Status IS distinguishable across states (each state has its own styling) but the spec's "Valid = green" chromatic mapping is not implemented on the lens identity strip. Design-system issue, not blocking. |
+| 4.4 | Detail rows visible | Identity Strip details | Issuing Authority, Certificate No, Issue Date, Expiry Date shown | Y | All four rows present: `Issuing Authority: DNV GL`, `Certificate No: ISM-2025-9945`, `Issue Date: 2025-06-18`, `Expiry Date: 2026-06-18`. Extra `Vessel` row also present (value = cert name — likely a projection bug, should be `M/Y Test Vessel`; flagged as OPEN). |
+| 4.5 | Primary button visible | Top-right split button | "Upload Renewed" or "Renew Certificate" label | Y | Primary button label = `Upload Renewed`. Split-button chevron = `More actions`. |
+| 4.6 | Click dropdown arrow | Chevron next to primary button | Dropdown menu opens with action items | Y | Click on chevron opens a portal menu listing 11 action items (see below). |
+| 4.7 | **Renew** action present | Dropdown | "Upload Renewed" or "Renew" | N (by design) | Renew is NOT inside the dropdown — it's promoted to the split-button's PRIMARY slot (`Upload Renewed` at 4.5). Dropdown has no duplicate entry. This is the intended design (primary action stays in foreground) but contradicts the MD spec row. Treat as spec-update, not a bug. |
+| 4.8 | **Update** action present | Dropdown | "Update" | Y | Dropdown item: `Update Certificate`. |
+| 4.9 | **Assign Officer** action present | Dropdown | "Assign Officer" | Y | Dropdown item: `Assign Responsible Officer` (exact wording differs from spec). |
+| 4.10 | **Add Note** action present | Dropdown | "Add Note" | Y | Dropdown item: `Add Certificate Note`. (Also separately available as `+ Add Note` inline button inside the Notes section — redundant, good UX.) |
+| 4.11 | **Link Document** action present | Dropdown | "Link Document" | Y | Dropdown item: `Link Document to Certificate`. |
+| 4.12 | **Supersede** action present | Dropdown | "Supersede" | Y | Dropdown item: `Supersede Certificate`. |
+| 4.13 | **View History** action present | Dropdown | "View History" | N (by design) | No `View History` dropdown item. History is directly rendered as TWO collapsible lens sections on the lens itself (`History` and `Audit Trail`) plus a right-rail `History` feed. Dropdown entry would be redundant. Treat as spec-update. |
+| 4.14 | **Suspend Certificate** present (danger) | Dropdown | "Suspend Certificate" with red/danger styling | Y | Dropdown item: `Suspend Certificate`. Computed colour `rgb(192, 80, 58)` — a muted brick red, not the Tailwind `destructive` red but recognisably danger-tinted. Distinct from the neutral items. |
+| 4.15 | **Revoke Certificate** present (danger) | Dropdown | "Revoke Certificate" with red/danger styling | Y | Dropdown item: `Revoke Certificate`. Colour `rgb(192, 80, 58)` (same brick red as Suspend). |
+| 4.16 | **Archive** present (danger) | Dropdown | "Archive" with red/danger styling | Y | Dropdown item: `Archive Certificate`. Colour `rgb(192, 80, 58)`. |
 
 **Notes / errors for Scenario 4:**
 ```
-Missing actions (list which ones don't appear):
+Dropdown contents captured on valid vessel cert as captain (exact order from top to bottom):
+  1. Add Vessel Certificate       (create-in-context — bonus, not in spec)
+  2. Add Crew Certificate         (create-in-context — bonus, not in spec)
+  3. Update Certificate
+  4. Assign Responsible Officer
+  5. Link Document to Certificate
+  6. Supersede Certificate
+  7. Add Certificate Note
+  8. Archive Certificate          (danger — brick red rgb(192,80,58))
+  9. Suspend Certificate          (danger — brick red)
+  10. Revoke Certificate          (danger — brick red)
+  11. Add to Handover             (bonus — not in spec)
 
+Deviations from spec (none are blockers, but spec or UI needs alignment):
+- Renew not in dropdown (it's the primary split-button action).
+- View History not in dropdown (replaced by lens-inline History + Audit Trail + History panel).
+- Danger styling uses `rgb(192, 80, 58)` brick-red rather than Tailwind destructive red. Consider making it more pronounced.
+- Two bonus items in dropdown: Add Vessel Certificate, Add Crew Certificate (create-adjacent actions). Arguably they belong on the list-level "Add Certificate" button, not on the per-cert dropdown.
+- Detail strip has "Vessel" row showing cert name instead of vessel name "M/Y Test Vessel". Likely projection bug in v_certificates_enriched → vessel_name mapping. OPEN.
 ```
 
 ---
@@ -150,15 +196,30 @@ Missing actions (list which ones don't appear):
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 5.1 | Click **Add Note** from dropdown | Dropdown menu | AddNoteModal opens with text area | | |
-| 5.2 | Type a note | Text area | "Manual test note — captain verification 2026-04-16" | | |
-| 5.3 | Submit note | **Save** / **Submit** in modal | Modal closes | | |
-| 5.4 | Note visible in Notes section | Scroll down to Notes | Note text appears with author and timestamp | | |
-| 5.5 | API response | Console `[API]` log | `add_certificate_note` — `success: true`, `note_id` present | | |
+| 5.1 | Click **Add Note** from dropdown | Dropdown menu | AddNoteModal opens with text area | N (dropdown) / Y (inline) | Dropdown item `Add Certificate Note` hit the same L0 auto-submit bug as Scenario 2 (400 Missing required field). WORKAROUND: inline `+ Add Note` button inside the Notes section on the cert lens opens the modal correctly. Fix merged as PR #577 — re-test pending Vercel redeploy. |
+| 5.2 | Type a note | Text area | "Manual test note — captain verification 2026-04-16" | Y | Typed 80 chars (counter 80/2000): `Manual test note — captain verification 2026-04-16 by CERT-TESTER Playwright run`. |
+| 5.3 | Submit note | **Save** / **Submit** in modal | Modal closes | Y | Modal closed on submit. |
+| 5.4 | Note visible in Notes section | Scroll down to Notes | Note text appears with author and timestamp | **N** (blocked on read-side) | Full page reload still showed `Notes 0 — No notes yet.` in the lens section. Root cause (per CERTIFICATE01): `/v1/entity/certificate/{id}` response never included a `notes` key, so `entity.notes` was `undefined → []`. Fix merged as PR #579, pending redeploy. **Write path is proven good**: psql `SELECT id, certificate_id, text, created_by FROM pms_notes WHERE certificate_id='a9d9413f-0e62-4069-bc58-841ea7bd870c'` returns `a37b9f05-e597-4d19-bf6e-1eca1a7f3f8f` with the exact note text and correct captain user_id. |
+| 5.5 | API response | Console `[API]` log | `add_certificate_note` — `success: true`, `note_id` present | Y | `POST /api/v1/actions/execute → 200`. Body: `{"note_id":"a37b9f05-e597-4d19-bf6e-1eca1a7f3f8f","entity_id":"a9d9413f-0e62-4069-bc58-841ea7bd870c","created_at":"2026-04-16T16:54:31.458173","message":"Note added successfully"}`. Payload has no `success` boolean, but 200 status + `note_id` + confirmatory `message` satisfy the same contract. |
 
 **Notes / errors for Scenario 5:**
 ```
-[paste here]
+TWO BUGS SURFACED & FIXED IN-FLIGHT on this scenario:
+
+Bug A — dropdown `Add Certificate Note` fires an empty action (same root as Scenario 2 create).
+  Fix: PR #577 — ActionPopup L0 auto-submit shortcut now only skips form when fields.length === 0.
+
+Bug B — cert entity endpoint response never included notes / audit_trail.
+  Fix: PR #579 — `/v1/entity/certificate/{id}` now queries `pms_notes` by certificate_id FK and `pms_audit_log` by entity_id. Matches warranty entity-endpoint pattern.
+
+Write path verification (independent of both bugs):
+  ID:           a37b9f05-e597-4d19-bf6e-1eca1a7f3f8f
+  Certificate:  a9d9413f-0e62-4069-bc58-841ea7bd870c  (ISM-2025-9945 — ISM Safety Management Certificate)
+  Text:         "Manual test note — captain verification 2026-04-16 by CERT-TESTER Playwright run"
+  Created by:   5af9d61d-9b2e-4db4-a54c-a3c95eec70e5  (captain.tenant@alex-short.com)
+  Created at:   2026-04-16 16:54:31.458173+00
+
+Re-run after redeploy: open the ISM cert lens, scroll to Notes — the row should surface without any further write.
 ```
 
 ---
@@ -169,18 +230,42 @@ Missing actions (list which ones don't appear):
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 6.1 | Open a **valid** vessel cert | Click row | Lens loads, status = Valid | | |
-| 6.2 | Click dropdown → **Suspend Certificate** | Dropdown (danger item) | ActionPopup opens with "Reason" text field | | |
-| 6.3 | Signature capture visible | Popup | Requires signature (name, timestamp, or signature pad) | | |
-| 6.4 | Fill reason | Reason field | "Manual test suspension — verifying signed action flow" | | |
-| 6.5 | Submit | **Confirm** / **Submit** in popup | Popup closes, status updates | | |
-| 6.6 | Status pill changes | Identity Strip | Pill reads "Suspended" — amber/warning colour | | |
-| 6.7 | Dropdown re-check | Open dropdown again | Suspend/Revoke/Update should now be hidden (terminal-adjacent state) | | |
-| 6.8 | API response | Console `[API]` log | `suspend_certificate` — `success: true`, `new_status: suspended` | | |
+| 6.1 | Open a **valid** vessel cert | Click row | Lens loads, status = Valid | Y | Opened `REG-2025-7080 — Registry Certificate` (`7c69394a-82f9-4d54-a556-2e7d54cbfa3c`). Lens loaded with pill `Valid`. |
+| 6.2 | Click dropdown → **Suspend Certificate** | Dropdown (danger item) | ActionPopup opens with "Reason" text field | Y | Modal titled `Suspend Certificate` opens with `Reason for suspension` textarea and a `Verification — Enter your 4-digit PIN` section below. |
+| 6.3 | Signature capture visible | Popup | Requires signature (name, timestamp, or signature pad) | Y | Signature is a 4-digit PIN (confirmed per-CERTIFICATE01 as ceremony-only — no server-side validation; stored in signature metadata for audit trail). 4 slot boxes + hidden password-type input `input.popup_pinHiddenInput__… [maxlength=4, inputmode=numeric]`. |
+| 6.4 | Fill reason | Reason field | "Manual test suspension — verifying signed action flow" | Y | Typed 92 chars: `Manual test suspension — CERT-TESTER Playwright run 2026-04-16, verifying signed action flow`. |
+| 6.5 | Submit | **Confirm** / **Submit** in popup | Popup closes, status updates | **PARTIAL (3 bugs)** | Backend ran successfully (see 6.8 + DB). UI reported `Action failed`, modal stayed open. Manual Cancel required to close. DB side fully succeeded. |
+| 6.6 | Status pill changes | Identity Strip | Pill reads "Suspended" — amber/warning colour | Y | After closing modal, lens re-fetched; identity strip pill is now `Suspended` with the amber-dot styling. |
+| 6.7 | Dropdown re-check | Open dropdown again | Suspend/Revoke/Update should now be hidden (terminal-adjacent state) | **N** | Re-opening the dropdown on the now-suspended cert shows the SAME 11 items as on a valid cert. `Update Certificate`, `Suspend Certificate`, and `Revoke Certificate` are still present. Status-conditional visibility is not implemented. Dropdown does not narrow based on certificate.status. |
+| 6.8 | API response | Console `[API]` log | `suspend_certificate` — `success: true`, `new_status: suspended` | Y (with contract drift) | `POST /api/v1/actions/execute → 200`. Body: `{"status":"success","certificate_id":"7c69394a-82f9-4d54-a556-2e7d54cbfa3c","new_status":"suspended","reason":"…"}`. Contains `status: "success"` + `new_status: "suspended"` but NOT `success: true` boolean — this is why 6.5's UI read as `Action failed`. |
 
 **Notes / errors for Scenario 6:**
 ```
-[paste here]
+THREE DISTINCT BUGS SURFACED ON THE SUSPEND PATH:
+
+Bug C — UI "Action failed" on a 200-OK suspend.
+  - API returned {"status":"success", ...} with the correct new_status.
+  - The UI popup rendered SUMMARY → ERROR → "Action failed" and did not dismiss.
+  - Likely: the frontend success check requires `response.success === true` and/or a `201`, but the handler response contract is `response.status === "success"`. Contract mismatch between action handler and popup success signal.
+  - Impact: every signed action the user takes will look like a failure even when it commits. Users will retry → duplicate lifecycle events.
+
+Bug D — Dropdown action set is not status-conditioned.
+  - After a cert is suspended, Update / Suspend / Revoke / Supersede are still offered on the lens dropdown.
+  - Safe to dispatch on the backend (handler probably no-ops), but the UX says "you can still do this" when spec says terminal-adjacent actions should be hidden.
+  - Fix: registry availability map keyed on certificate.status (valid / expiring_soon / expired / suspended / revoked / superseded / archived), and lens reads .status to gate the menu.
+
+Bug E — suspend action does NOT write to ledger_events.
+  - Audit side works: `pms_audit_log` row present (action=suspended_certificate, old_status=valid, new_status=suspended, timestamp 2026-04-16 17:01:12.955465+00).
+  - Ledger side missing: `SELECT … FROM ledger_events WHERE entity_id='7c69394a-…'` returns only `view_certificate` events. No `status_change` / `suspend` / `suspended_certificate` event written.
+  - Impact: Receipt Layer (HMAC01) cannot derive the cert's immutable history from ledger_events because that table isn't being written on state transitions. Undermines HMAC01 doc H2–H5 which assumes every cert lifecycle action lands in ledger_events with correct entity_type / entity_id / proof_hash.
+  - Fix: the suspend handler must call build_ledger_event() after the audit row, with event_type=status_change and proof_hash computed from new_state + prior hash (NOT live clock per project_receipt_layer_v0_reality).
+
+Proofs:
+  pms_vessel_certificates.status = 'suspended'   ✓
+  pms_audit_log              = 1 row  (suspended_certificate valid→suspended) ✓
+  ledger_events              = 0 suspend/state-change rows  ✗ (only 3 view_certificate)
+
+DB spot check command: see bottom of file, runs against tenant `vzsohavtuotocgrfkfyd`.
 ```
 
 ---
@@ -191,18 +276,36 @@ Missing actions (list which ones don't appear):
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 7.1 | Click primary button **Upload Renewed** | Split button (left side) | ActionPopup opens with date fields | | |
-| 7.2 | "New Issue Date" field visible | Popup | Date picker | | |
-| 7.3 | "New Expiry Date" field visible | Popup | Date picker | | |
-| 7.4 | Optional fields visible | Popup | "New Certificate Number", "New Issuing Authority" (optional) | | |
-| 7.5 | Fill dates | Date fields | Issue: 2026-04-16, Expiry: 2027-04-16 | | |
-| 7.6 | Submit | **Confirm** / **Submit** | Popup closes, status changes | | |
-| 7.7 | Old cert status = Superseded | Lens or list | Old cert now shows "Superseded" pill | | |
-| 7.8 | New cert appears | Certificate list | New cert with status "Valid" and expiry 2027-04-16 | | |
+| 7.1 | Click primary button **Upload Renewed** | Split button (left side) | ActionPopup opens with date fields | Y | Modal `Renew Certificate` opens. Used `FEI-2025-3097 — Fire Extinguisher Inspection Certificate` (`5e0cfbfc-d836-4436-a1e4-5a62a3f810e7`). |
+| 7.2 | "New Issue Date" field visible | Popup | Date picker | Y | Native `<input type="date" class="popup_dateNative__7UZxa">` present. |
+| 7.3 | "New Expiry Date" field visible | Popup | Date picker | Y | Second native date input. |
+| 7.4 | Optional fields visible | Popup | "New Certificate Number", "New Issuing Authority" (optional) | Y | Two text inputs: `Enter new certificate number...` and `Enter new issuing authority...`. Both marked `(OPTIONAL)` in the label. **SEE Bug F BELOW — "optional" is misleading.** |
+| 7.5 | Fill dates | Date fields | Issue: 2026-04-16, Expiry: 2027-04-16 | Y | Dates set. First attempt with dates only (no new cert number) → 500 (see 7.6 bug). Second attempt with `FEI-2026-E2E-001` + authority `Tyco (E2E renewed)` → 200. |
+| 7.6 | Submit | **Confirm** / **Submit** | Popup closes, status changes | Y (second attempt) | Second submit: `POST /api/v1/actions/execute → 200`. Body: `{"status":"success","renewed_certificate_id":"3a5dd0e1-aeb5-4f03-bfc8-3fd56b563092","superseded_certificate_id":"5e0cfbfc-d836-4436-a1e4-5a62a3f810e7","new_expiry_date":"2027-04-16"}`. Modal closed. Note: even though response still uses `status:"success"` (not `success:true` — same shape as suspend), the modal DID close here — so the frontend success check is inconsistent across actions; only suspend hit the false-error path. |
+| 7.7 | Old cert status = Superseded | Lens or list | Old cert now shows "Superseded" pill | Y | Lens identity-strip pill now reads `Superseded`. psql confirms `pms_vessel_certificates.status='superseded'` on old cert `5e0cfbfc`. |
+| 7.8 | New cert appears | Certificate list | New cert with status "Valid" and expiry 2027-04-16 | Y | psql confirms new row `id=3a5dd0e1-aeb5-4f03-bfc8-3fd56b563092 status=valid certificate_number=FEI-2026-E2E-001 expiry_date=2027-04-16 issuing_authority="Tyco (E2E renewed)"`. |
 
 **Notes / errors for Scenario 7:**
 ```
-[paste here]
+BUG F (NEW) — Renew without a new certificate number = 500 duplicate-key.
+  Reproduction: on FEI-2025-3097 cert, open Renew, fill only the two dates, leave number+authority blank, Confirm.
+  Response: 500 {"status":"error","error_code":"HANDLER_ERROR","message":"{'code':'23505','details':'Key (yacht_id, certificate_type, certificate_number)=(85fe1119..., EQUIPMENT, FEI-2025-3097) already exists.','message':'duplicate key value violates unique constraint \"ux_vessel_cert_number\"'}"}
+  Root cause: the renew handler's INSERT reuses the old certificate_number when the user doesn't override, but a unique constraint on (yacht_id, certificate_type, certificate_number) forbids that shape. Either:
+    (a) suppress-insert + update-in-place (renew mutates the existing row), OR
+    (b) auto-generate a new number (e.g. append `-R{n}`) when the user leaves the field blank, OR
+    (c) require New Certificate Number (drop the "(optional)" label).
+  Current "optional" label is misleading because leaving it blank reliably 500s.
+
+BUG E CONTINUES — Renew does NOT write to ledger_events.
+  pms_audit_log got `renew_certificate valid→superseded`. ledger_events for both old and new cert IDs still only has `view_certificate` rows. Same safety-net gap as suspend — not specific to the suspend handler.
+
+Second-attempt DB wire chain evidence (all verified via psql against tenant `vzsohavtuotocgrfkfyd`):
+  old: 5e0cfbfc-…  status=superseded  number=FEI-2025-3097   authority=Tyco                 dates 2025-05-06 → 2026-05-06
+  new: 3a5dd0e1-…  status=valid       number=FEI-2026-E2E-001 authority="Tyco (E2E renewed)" dates 2026-04-16 → 2027-04-16
+  audit: `renew_certificate valid→superseded` on old row
+  ledger: still 0 renew/state-change events. view_certificate rows only.
+
+Frontend success-handling is inconsistent: same response shape (status:"success") dismissed on renew but triggered "Action failed" on suspend. Worth auditing which response-keys each action contributes.
 ```
 
 ---
@@ -213,14 +316,22 @@ Missing actions (list which ones don't appear):
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 8.1 | Click dropdown → **Assign Officer** | Dropdown menu | ActionPopup opens with "Responsible Officer" field | | |
-| 8.2 | Select or type an officer | Lookup field | Crew search or text input | | |
-| 8.3 | Submit | **Confirm** / **Submit** | Popup closes | | |
-| 8.4 | "Responsible Officer" row visible | Detail section | Shows assigned officer name | | |
+| 8.1 | Click dropdown → **Assign Officer** | Dropdown menu | ActionPopup opens with "Responsible Officer" field | Y | Modal `Assign Responsible Officer` opens with `Responsible Officer` search/text input + `Officer Display Name (optional)` text input. Used `LRS-2025-1553 — Life Raft Service Certificate` (`560cdc56-de73-425d-afab-e142355ac6f2`). |
+| 8.2 | Select or type an officer | Lookup field | Crew search or text input | Y | Both fields are free-text (no crew-lookup dropdown in this build). Typed `captain.tenant@alex-short.com` + `Captain Tenant (E2E test)`. |
+| 8.3 | Submit | **Confirm** / **Submit** | Popup closes | Y | Confirm → modal closed. |
+| 8.4 | "Responsible Officer" row visible | Detail section | Shows assigned officer name | Y | Lens identity strip now shows `RESPONSIBLE OFFICER: Captain Tenant (E2E test)` as a new detail row. |
 
 **Notes / errors for Scenario 8:**
 ```
-[paste here]
+FULL PASS (with one UX quirk).
+
+API: POST /api/v1/actions/execute → 200
+Body: {"status":"success","certificate_id":"560cdc56-...","assigned_to":"captain.tenant@alex-short.com","assigned_to_name":"Captain Tenant (E2E test)","success":true}
+  - Handler natively returns success:true (pre-dates PR #583 normalization).
+
+Ledger: NEW row written `action=assign_certificate event_type=assignment user_role=captain`. Bug E did NOT affect this handler — assignment was already writing to ledger_events.
+
+UX quirk: Officer input is free-text, not a crew lookup. If the spec intended a typeahead from the crew graph, that's missing; if free-text was the choice, it works. Note the "assigned_to" is stored verbatim (took email string as-is) — no validation that it's a real user_id/email.
 ```
 
 ---
@@ -231,15 +342,35 @@ Missing actions (list which ones don't appear):
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 9.1 | Click dropdown → **Archive** | Dropdown (danger item) | Confirmation popup with signature requirement | | |
-| 9.2 | Confirmation message visible | Popup | "This will archive this certificate record." | | |
-| 9.3 | Submit with signature | Popup | Popup closes | | |
-| 9.4 | Cert removed from list | Navigate back to list | Archived cert no longer visible | | |
-| 9.5 | Register page excludes it | `/certificates/register` | Archived cert absent from printable register | | |
+| 9.1 | Click dropdown → **Archive** | Dropdown (danger item) | Confirmation popup with signature requirement | Y | Two-step modal opens: Step 1 titled `Archive Certificate` with PIN input. Clicking `Verify` advances to Step 2 titled `Signature Required — Archive Certificate requires authorization.` with another PIN input. Used the suspended `REG-2025-7080 — Registry Certificate` from Scenario 6. |
+| 9.2 | Confirmation message visible | Popup | "This will archive this certificate record." | N (wording) | No explicit "This will archive this certificate record." text anywhere in the flow. Subtitle is `Archive Certificate requires authorization.` Spec wording is missing. Suggest adding a plain-English confirmation line on Step 1 to make the irreversible nature clear. |
+| 9.3 | Submit with signature | Popup | Popup closes | Y | Entered PIN 1234 on both steps, clicked Verify → modal closed. |
+| 9.4 | Cert removed from list | Navigate back to list | Archived cert no longer visible | Y | Full reload of `/certificates`, REG-2025-7080 no longer present in DOM. (Side-note: displayed `131 results` count didn't tick down; see Bug I below on the count discrepancy.) |
+| 9.5 | Register page excludes it | `/certificates/register` | Archived cert absent from printable register | **N** (blocked by Bug G) | Register page itself fails to load with HTTP 422 — cannot verify exclusion. See Scenario 10 for details. |
 
 **Notes / errors for Scenario 9:**
 ```
-[paste here]
+FULL PASS on the critical path (API 200 + DB + ledger), BUT with two findings.
+
+API: POST /api/v1/actions/execute → 200
+Body: {"status":"success","certificate_id":"7c69394a-82f9-4d54-a556-2e7d54cbfa3c","archived_at":"2026-04-16T17:30:13.088927+00:00","success:true}
+  - Response now includes success:true (PR #583 normalization verified).
+
+DB:
+  pms_vessel_certificates:
+    id        = 7c69394a-82f9-4d54-a556-2e7d54cbfa3c
+    status    = suspended  (kept from the prior scenario — archive is a SOFT DELETE, not a status change)
+    deleted_at = 2026-04-16 17:30:13.088927+00   ← set by archive handler
+  (Handler returns the value in a field named `archived_at` in the response payload but the DB column is `deleted_at`. Semantic-naming mismatch noted in Bug H.)
+
+Ledger:
+  NEW row `action=archive_certificate event_type=update user_role=captain change_summary="Archive certificate"` in `ledger_events`. Bug E fix (PR #583) verified in production for the archive action.
+
+Bug H — Handler response field name differs from DB column name ("archived_at" vs "deleted_at").
+  Not blocking. Two cleanest fixes: (a) rename DB column to `archived_at`, or (b) rename response field to `deleted_at`. Consistent naming avoids future confusion when mapping to HMAC01 adapter queries.
+
+Bug I — "131 results" label is stale/clamped.
+  DB has 440 active + 3 archived = 443 total certs on yacht 85fe1119. The list chip reads `131 results` both before and after archive. Either the API clamps to 131 or the label is fed from a different counter. Probably a frontend bug where `results.length` is shown instead of `total_count`. Not blocking but misleading.
 ```
 
 ---
@@ -250,17 +381,28 @@ Missing actions (list which ones don't appear):
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 10.1 | Navigate to `/certificates/register` | URL or link from cert list | Register page loads | | |
-| 10.2 | Vessel name in header | Page header | Shows yacht name, not UUID | | |
-| 10.3 | Urgency groups visible | Page body | At least one of: Expired / Expiring 30d / Expiring 90d / Valid / Terminal | | |
-| 10.4 | Certs show real names | Table rows | Certificate names, not UUIDs | | |
-| 10.5 | Crew certs included | Table rows | Crew certs visible with "Crew" tag | | |
-| 10.6 | "Print Register" button | Top-right | Opens browser print dialog | | |
-| 10.7 | Print layout renders correctly | Print preview | A4 format, no screen-only elements | | |
+| 10.1 | Navigate to `/certificates/register` | URL or link from cert list | Register page loads | **ERR** | Page renders a red error block only: `Failed to load certificates: Failed to load certificates: HTTP 422`. No data, no header, no groups, nothing to interact with. |
+| 10.2 | Vessel name in header | Page header | Shows yacht name, not UUID | N (blocked) | Page did not render content; no header to check. |
+| 10.3 | Urgency groups visible | Page body | At least one of: Expired / Expiring 30d / Expiring 90d / Valid / Terminal | N (blocked) | Groups not rendered. |
+| 10.4 | Certs show real names | Table rows | Certificate names, not UUIDs | N (blocked) | Table not rendered. |
+| 10.5 | Crew certs included | Table rows | Crew certs visible with "Crew" tag | N (blocked) | Table not rendered. |
+| 10.6 | "Print Register" button | Top-right | Opens browser print dialog | N (blocked) | Button not rendered. |
+| 10.7 | Print layout renders correctly | Print preview | A4 format, no screen-only elements | N (blocked) | Cannot trigger print. |
 
 **Notes / errors for Scenario 10:**
 ```
-[paste here]
+BLOCKED — Bug G (register page back-end contract violation).
+
+Root cause (verified by direct refetch from browser session):
+  Frontend request:  GET https://backend.celeste7.ai/api/vessel/85fe1119-b04c-41ac-80f1-829d23322598/domain/certificates/records?limit=500
+  Backend response:  HTTP 422
+  Body: {"detail":[{"type":"less_than_equal","loc":["query","limit"],"msg":"Input should be less than or equal to 200","input":"500","ctx":{"le":200}}]}
+
+The register needs the full cert set on one page for the A4 print layout. Two acceptable fixes:
+  (a) Bump the backend validator cap (`le=200`) to `le=500` or higher on this specific endpoint. Test yacht already has 443 certs; 200 isn't enough.
+  (b) Paginate the fetch in the register page: repeatedly request `limit=200&offset=...` until all certs are pulled, then render.
+
+CERTIFICATE01 has picked this up and is pushing (a). Re-run pending that merge + Render redeploy.
 ```
 
 ---
