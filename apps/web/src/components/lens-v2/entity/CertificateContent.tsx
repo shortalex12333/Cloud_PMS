@@ -434,7 +434,7 @@ export function CertificateContent() {
         <AttachmentsSection
           attachments={attachmentItems}
           onAddFile={user?.yachtId ? () => setUploadOpen(true) : undefined}
-          canAddFile={!!user?.yachtId}
+          canAddFile={!!uploadDocAction}
         />
       </ScrollReveal>
 
