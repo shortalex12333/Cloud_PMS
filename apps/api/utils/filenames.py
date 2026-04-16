@@ -31,7 +31,13 @@ def sanitize_storage_filename(filename: str) -> str:
     if not filename:
         return 'document'
 
+    # Strip path separators, control chars, and characters Supabase Storage
+    # rejects in object paths (non-ASCII, parens, brackets, quotes, spaces).
     safe = re.sub(r'[/\\:\x00]', '_', filename.strip())
+    safe = re.sub(r'[^a-zA-Z0-9._\-]', '_', safe)
+    # Collapse multiple underscores
+    safe = re.sub(r'_+', '_', safe)
+    safe = safe.strip('_')
     safe = safe.lstrip('.')
 
     if len(safe) > 255:
