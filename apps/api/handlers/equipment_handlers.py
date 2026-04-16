@@ -2039,8 +2039,9 @@ def _link_document_to_equipment_adapter(handlers: EquipmentHandlers):
             }
 
         # Verify document exists
+        # doc_metadata uses content_type/size_bytes (not mime_type/file_size)
         doc_result = db.table("doc_metadata").select(
-            "id, filename, storage_path, mime_type, file_size"
+            "id, filename, storage_path, content_type, size_bytes"
         ).eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
         if not doc_result.data:
@@ -2072,8 +2073,8 @@ def _link_document_to_equipment_adapter(handlers: EquipmentHandlers):
             "storage_path": doc.get("storage_path"),
             "filename": doc.get("filename"),
             "original_filename": doc.get("filename"),
-            "mime_type": doc.get("mime_type"),
-            "file_size": doc.get("file_size"),
+            "mime_type": doc.get("content_type"),
+            "file_size": doc.get("size_bytes"),
             "document_type": "general",
             "description": description,
             "uploaded_by": user_id,
