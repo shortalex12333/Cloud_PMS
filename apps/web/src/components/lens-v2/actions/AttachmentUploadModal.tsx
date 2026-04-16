@@ -126,7 +126,9 @@ export interface AttachmentUploadModalProps {
    * (the caller is responsible for where the file lands and how it is
    * recorded).
    */
-  onUpload?: (file: File) => Promise<void>;
+  onUpload?: (file: File, metadata?: { title?: string; doc_type?: string; tags_csv?: string }) => Promise<void>;
+  /** When true, show title / doc_type / tags fields (document lens upload). */
+  showMetadataFields?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,11 +148,15 @@ export function AttachmentUploadModal({
   yachtId,
   userId,
   onUpload,
+  showMetadataFields = false,
 }: AttachmentUploadModalProps) {
   const [file, setFile] = React.useState<File | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [toast, setToast] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const [docTitle, setDocTitle] = React.useState('');
+  const [docType, setDocType] = React.useState('');
+  const [docTags, setDocTags] = React.useState('');
 
   // Reset state when modal opens
   React.useEffect(() => {
@@ -158,6 +164,9 @@ export function AttachmentUploadModal({
       setFile(null);
       setLoading(false);
       setToast(null);
+      setDocTitle('');
+      setDocType('');
+      setDocTags('');
     }
   }, [open]);
 
@@ -241,10 +250,13 @@ export function AttachmentUploadModal({
     if (!file || fileTooLarge) return;
 
     const uploader = onUpload ?? defaultPmsAttachmentUpload;
+    const metadata = showMetadataFields
+      ? { title: docTitle || undefined, doc_type: docType || undefined, tags_csv: docTags || undefined }
+      : undefined;
 
     setLoading(true);
     try {
-      await uploader(file);
+      await uploader(file, metadata);
 
       // Success — same UX regardless of which upload strategy ran.
       setToast({ type: 'success', message: 'Document uploaded successfully' });
@@ -339,6 +351,56 @@ export function AttachmentUploadModal({
                   </p>
                 )}
               </div>
+            )}
+
+            {showMetadataFields && (
+              <>
+                <div>
+                  <label htmlFor="doc-title" className="block text-label text-txt-primary mb-1">Title</label>
+                  <input
+                    id="doc-title"
+                    type="text"
+                    value={docTitle}
+                    onChange={(e) => setDocTitle(e.target.value)}
+                    placeholder="e.g. Main Engine Service Manual"
+                    disabled={loading}
+                    className="w-full px-3 py-1.5 rounded border border-surface-border bg-surface-primary text-body text-txt-primary placeholder:text-txt-tertiary"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="doc-type" className="block text-label text-txt-primary mb-1">Document Type</label>
+                  <select
+                    id="doc-type"
+                    value={docType}
+                    onChange={(e) => setDocType(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-3 py-1.5 rounded border border-surface-border bg-surface-primary text-body text-txt-primary"
+                  >
+                    <option value="">— Select —</option>
+                    <option value="manual">Manual</option>
+                    <option value="drawing">Drawing</option>
+                    <option value="certificate">Certificate</option>
+                    <option value="report">Report</option>
+                    <option value="photo">Photo</option>
+                    <option value="spec_sheet">Spec Sheet</option>
+                    <option value="schematic">Schematic</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="doc-tags" className="block text-label text-txt-primary mb-1">Tags</label>
+                  <input
+                    id="doc-tags"
+                    type="text"
+                    value={docTags}
+                    onChange={(e) => setDocTags(e.target.value)}
+                    placeholder="e.g. engine, maintenance, critical"
+                    disabled={loading}
+                    className="w-full px-3 py-1.5 rounded border border-surface-border bg-surface-primary text-body text-txt-primary placeholder:text-txt-tertiary"
+                  />
+                  <p className="mt-0.5 text-caption text-txt-tertiary">Comma-separated</p>
+                </div>
+              </>
             )}
           </div>
 

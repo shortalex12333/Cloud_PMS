@@ -140,9 +140,14 @@ export function AppShell({ children }: AppShellProps) {
   // Sidebar count badges from Vessel Surface endpoint
   const sidebarCounts = useSidebarCounts();
 
-  // Role-based primary action gating: crew cannot file warranty claims
+  // Role-based primary action gating:
+  // - warranties: crew cannot file claims (HOD+ only)
+  // - documents: crew cannot upload (HOD+ only) — backend returns 403, but
+  //   the button must also be disabled/hidden so crew don't see a broken action.
   const { user } = useAuth();
-  const primaryActionDisabled = activeDomain === 'warranties' && !isHOD(user);
+  const primaryActionDisabled =
+    (activeDomain === 'warranties' && !isHOD(user)) ||
+    (activeDomain === 'documents' && !isHOD(user));
 
   // Global search overlay state
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -214,7 +219,7 @@ export function AppShell({ children }: AppShellProps) {
   //   - 500: storage upload or doc_metadata insert failed (server-side rollback)
   // ------------------------------------------------------------------
   const handleDocumentUpload = React.useCallback(
-    async (file: File): Promise<void> => {
+    async (file: File, metadata?: { title?: string; doc_type?: string; tags_csv?: string }): Promise<void> => {
       const yachtId = await getYachtId();
       const authHeaders = await getAuthHeaders(yachtId);
 
@@ -223,6 +228,9 @@ export function AppShell({ children }: AppShellProps) {
 
       const formData = new FormData();
       formData.append('file', file);
+      if (metadata?.title) formData.append('title', metadata.title);
+      if (metadata?.doc_type) formData.append('doc_type', metadata.doc_type);
+      if (metadata?.tags_csv) formData.append('tags_csv', metadata.tags_csv);
 
       const response = await fetch(`${apiBaseUrl}/v1/documents/upload`, {
         method: 'POST',
@@ -288,6 +296,7 @@ export function AppShell({ children }: AppShellProps) {
         title="Upload Document"
         description="Add a document to the vessel library. Accepted: PDF, images, office docs; max 15 MB."
         onUpload={handleDocumentUpload}
+        showMetadataFields
       />
     </ShellProvider>
   );
