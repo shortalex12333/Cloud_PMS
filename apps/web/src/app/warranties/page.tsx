@@ -24,10 +24,10 @@ interface Warranty {
 
 function warrantyAdapter(w: Warranty): EntityListResult {
   const statusVariant: EntityListResult['statusVariant'] =
-    w.status === 'rejected'     ? 'critical' :
-    w.status === 'submitted' ? 'warning' :
-    w.status === 'approved'     ? 'open' :
-    w.status === 'closed'       ? 'neutral' :
+    w.status === 'rejected'   ? 'critical' :
+    w.status === 'submitted'  ? 'warning' :
+    w.status === 'approved'   ? 'signed' :     // green pill — approved = good outcome
+    w.status === 'closed'     ? 'cancelled' :  // faint neutral — closed/archived
     'open'; // draft
 
   return {

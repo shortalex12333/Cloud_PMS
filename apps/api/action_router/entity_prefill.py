@@ -103,12 +103,15 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("receiving", "link_invoice_document"):               {"receiving_id": "id"},
 
     # ── Warranty ──────────────────────────────────────────────────────────────
-    ("warranty", "submit_warranty_claim"):  {"warranty_id": "id"},
-    ("warranty", "approve_warranty_claim"): {"warranty_id": "id"},
-    ("warranty", "reject_warranty_claim"):  {"warranty_id": "id"},
-    ("warranty", "compose_warranty_email"): {"warranty_id": "id"},
+    # submit/approve/reject/compose/close use claim_id (matches required_fields in registry)
+    # draft uses warranty_id (its handler resolves by warranty_id)
+    # add_warranty_note uses warranty_id (its handler stores warranty_id FK on pms_notes)
+    ("warranty", "submit_warranty_claim"):  {"claim_id": "id"},
+    ("warranty", "approve_warranty_claim"): {"claim_id": "id"},
+    ("warranty", "reject_warranty_claim"):  {"claim_id": "id"},
+    ("warranty", "compose_warranty_email"): {"claim_id": "id"},
     ("warranty", "draft_warranty_claim"):   {"warranty_id": "id"},
-    ("warranty", "close_warranty_claim"):   {"warranty_id": "id"},
+    ("warranty", "close_warranty_claim"):   {"claim_id": "id"},
     ("warranty", "add_warranty_note"):      {"warranty_id": "id"},
     ("warranty", "add_to_handover"):        {"entity_id": "id", "title": "title"},
 

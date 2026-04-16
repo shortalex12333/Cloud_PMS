@@ -381,6 +381,15 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'] },
     },
+    // =========================================================================
+    // DOCUMENTS MVP — full frontend walkthrough (mirrors DOCUMENTS_MVP_CHEATSHEET.md)
+    // =========================================================================
+    {
+      name: 'shard-52-documents-mvp',
+      testDir: './e2e/shard-52-documents-mvp',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
 
   // Web server configuration (if running locally)
