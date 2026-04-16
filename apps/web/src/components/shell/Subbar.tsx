@@ -318,6 +318,7 @@ export function Subbar({
         onClick={primaryActionDisabled ? undefined : onPrimaryAction}
         disabled={primaryActionDisabled}
         title={primaryActionDisabled ? 'Only HOD / Captain can perform this action' : undefined}
+        data-testid={`subbar-${activeDomain}-primary-action`}
         style={{
           height: 28,
           padding: '0 12px',
