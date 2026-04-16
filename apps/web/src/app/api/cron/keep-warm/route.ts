@@ -25,7 +25,8 @@ const SERVICES = [
 const UNIQUE_SERVICES = [...new Set(SERVICES)];
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+// 55s: Render free-tier cold boot takes 30-60s. Must be < Vercel's 60s limit.
+export const maxDuration = 55;
 
 export async function GET() {
   const results: Record<string, number | string> = {};
@@ -34,8 +35,9 @@ export async function GET() {
     UNIQUE_SERVICES.map(async (url) => {
       const target = `${url}/health`;
       try {
+        // 50s timeout — enough for a full Render cold-start boot cycle
         const res = await fetch(target, {
-          signal: AbortSignal.timeout(10_000),
+          signal: AbortSignal.timeout(50_000),
           cache: 'no-store',
         });
         results[url] = res.status;
