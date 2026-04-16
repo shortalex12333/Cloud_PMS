@@ -340,7 +340,7 @@ async def get_redis() -> Optional[redis_async.Redis]:
         return None
     if _redis is None:
         try:
-            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
+            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=3)
             await _redis.ping()
             logger.info("[F1Search] Redis connected for result caching")
         except Exception as e:

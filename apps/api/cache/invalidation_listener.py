@@ -51,15 +51,21 @@ async def ensure_redis_connected():
 
     if _redis is None:
         logger.info("Redis not initialized, attempting connection...")
-        _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
+        _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=3)
 
     try:
         await _redis.ping()
         return True
     except Exception as e:
         logger.warning(f"Redis ping failed: {e}, attempting reconnection...")
+        # Close old pool before creating a new one to avoid connection leaks
         try:
-            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
+            await _redis.aclose()
+        except Exception:
+            pass
+        _redis = None
+        try:
+            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=3)
             await _redis.ping()
             logger.info("Redis reconnected successfully")
             return True
@@ -158,7 +164,8 @@ async def listen_and_evict():
     )
 
     logger.info("Connecting to Redis...")
-    _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
+    # max_connections=3 caps this worker's pool so parallel workers don't saturate Redis
+    _redis = await redis_async.from_url(REDIS_URL, decode_responses=True, max_connections=3)
 
     # Test Redis connection
     try:
@@ -166,6 +173,11 @@ async def listen_and_evict():
         logger.info(f"Redis connected: {pong}")
     except Exception as e:
         logger.error(f"Redis ping failed: {e}")
+        try:
+            await _redis.aclose()
+        except Exception:
+            pass
+        _redis = None
         return
 
     # Register notification listener
