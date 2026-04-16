@@ -600,8 +600,22 @@ export function ActionPopup({
   const handleSubmit = () => {
     if (computedDisabled) return;
     const result: Record<string, unknown> = { ...values };
-    if (signatureLevel === 3) result.pin = pin;
-    if (signatureLevel === 2 || signatureLevel === 4) result.signature_name = sigName;
+    // Backend SIGNED actions require `signature` (JSON object) in the payload.
+    // Map frontend signature levels to the backend contract shape.
+    if (signatureLevel === 3) {
+      result.signature = {
+        method: 'pin',
+        pin,
+        signed_at: new Date().toISOString(),
+      };
+    }
+    if (signatureLevel === 2 || signatureLevel === 4) {
+      result.signature = {
+        method: 'name',
+        name: sigName,
+        signed_at: new Date().toISOString(),
+      };
+    }
     onSubmit(result);
   };
 
