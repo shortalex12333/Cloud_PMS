@@ -1177,6 +1177,11 @@ async def execute_action(
                                 f"[Ledger safety net] {action}: {_ledger_err}"
                             )
             # ─────────────────────────────────────────────────────────────
+            # Normalize: frontend expects {success: true} (boolean) but many
+            # handlers return {status: "success"} (string). Inject success=true
+            # on any non-error response so EntityLensPage.tsx:407 works.
+            if isinstance(result, dict) and result.get("status") != "error":
+                result.setdefault("success", True)
             return result
         except HTTPException:
             raise
