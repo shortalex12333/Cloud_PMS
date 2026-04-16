@@ -505,8 +505,25 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
         tenant_key = auth['tenant_key_alias']
         supabase = get_tenant_client(tenant_key)
 
-        r = supabase.table("v_warranty_enriched").select("*") \
-            .eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        # v_warranty_enriched is a joined view and intermittently 500s with
+        # "The read operation timed out" under Supabase connection-pool
+        # saturation (observed 2026-04-16 21:48Z, claim c0149904-...). Retry
+        # transient errors up to 3× with 0.8s backoff before surfacing.
+        _supabase_err = None
+        r = None
+        for _attempt in range(3):
+            try:
+                r = supabase.table("v_warranty_enriched").select("*") \
+                    .eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                _supabase_err = None
+                break
+            except Exception as _e:
+                _supabase_err = _e
+                if _attempt < 2:
+                    import time as _t
+                    _t.sleep(0.8)
+        if _supabase_err is not None:
+            raise _supabase_err
 
         if r is None or not r.data:
             raise HTTPException(status_code=404, detail="Warranty not found")
