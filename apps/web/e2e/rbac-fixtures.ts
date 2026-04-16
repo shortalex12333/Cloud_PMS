@@ -132,17 +132,23 @@ export const test = base.extend<RBACFixtures>({
   },
 
   // Supabase admin client (service role - bypasses RLS)
+  // IMPORTANT: must always point at TENANT (vzsohavtuotocgrfkfyd), NOT MASTER.
+  // NEXT_PUBLIC_SUPABASE_URL in .env.e2e points at MASTER for frontend auth — if
+  // supabaseAdmin used RBAC_CONFIG.supabaseUrl it would query MASTER and find 0 rows
+  // for all pms_* tables (they live on TENANT). Root cause of failures 1/2/3 (2026-04-16).
   supabaseAdmin: async ({}, use) => {
-    const client = createClient(
-      RBAC_CONFIG.supabaseUrl,
-      RBAC_CONFIG.supabaseServiceKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    const tenantUrl =
+      process.env.TENANT_SUPABASE_URL ||
+      'https://vzsohavtuotocgrfkfyd.supabase.co';
+    const tenantKey =
+      process.env.TENANT_SERVICE_KEY ||
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzU5Mjg3NSwiZXhwIjoyMDc5MTY4ODc1fQ.fC7eC_4xGnCHIebPzfaJ18pFMPKgImE7BuN0I3A-pSY';
+    const client = createClient(tenantUrl, tenantKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
     await use(client);
   },
 

@@ -1,10 +1,11 @@
 # Warranty Domain — Test Cheat Sheet
 
-**Last verified:** 2026-04-15  
-**Commit:** `d5a5de92` (PR #558)  
+**Last verified:** 2026-04-16 (live backend wire walk — 17 tests, 0 failures)  
+**Commit:** `d5a5de92` (PR #558) + fixes in PRs #552, #558  
 **Backend:** `https://backend.celeste7.ai`  
 **Frontend:** `https://app.celeste7.ai`  
-**Tenant DB:** `vzsohavtuotocgrfkfyd.supabase.co`
+**Tenant DB:** `vzsohavtuotocgrfkfyd.supabase.co`  
+**Test yacht_id:** `85fe1119-b04c-41ac-80f1-829d23322598`
 
 ---
 
@@ -19,18 +20,22 @@
 
 ## Role map — who can do what
 
-| Role | File claim | Submit | Approve | Reject | Close | Compose email | Add note | View |
-|------|-----------|--------|---------|--------|-------|---------------|----------|------|
-| `crew` | **NO** | NO | NO | NO | NO | NO | NO | YES |
-| `chief_engineer` | YES | YES | NO | NO | NO | YES | YES | YES |
-| `chief_officer` | YES | YES | NO | NO | NO | YES | YES | YES |
-| `captain` | YES | YES | YES | YES | YES | YES | YES | YES |
-| `manager` | YES | YES | YES | YES | YES | YES | YES | YES |
-| `purser` | NO | NO | NO | NO | NO | NO | NO | YES |
+| Role | Draft claim | File claim | Submit | Approve | Reject | Close | Compose email | Add note | View |
+|------|------------|-----------|--------|---------|--------|-------|---------------|----------|------|
+| `crew` | **YES** (draft_warranty_claim) | **NO** | NO | NO | NO | NO | NO | NO | YES |
+| `chief_engineer` | YES | YES | YES | NO | NO | NO | YES | YES | YES |
+| `chief_officer` | YES | YES | YES | NO | NO | NO | YES | YES | YES |
+| `captain` | YES | YES | YES | YES | YES | YES | YES | YES | YES |
+| `manager` | YES | YES | YES | YES | YES | YES | YES | YES | YES |
+| `purser` | NO | NO | NO | NO | NO | NO | NO | NO | YES |
 
-**Source:** `apps/api/action_router/registry.py` — `file_warranty_claim:2740`, `submit_warranty_claim:2272`, `approve_warranty_claim:2289`, `compose_warranty_email:2344`
+**Two filing actions — same dispatcher, different allowed roles:**
+- `draft_warranty_claim` (`registry.py:2243`) — crew + HOD. Creates a draft claim. No difference in output from `file_warranty_claim`.
+- `file_warranty_claim` (`registry.py:2734`) — HOD only (chief_engineer, chief_officer, captain, manager). Semantically identical.
 
-> **Gap:** `crew` cannot file a warranty claim. The system currently restricts filing to HOD and above. If a crew member needs to raise a claim they must ask their chief engineer or chief officer.
+**Source:** `apps/api/action_router/registry.py` — `file_warranty_claim:2734`, `draft_warranty_claim:2243`, `submit_warranty_claim:2277`, `approve_warranty_claim:2294`, `compose_warranty_email:2348`
+
+> **Crew CAN initiate:** crew uses `draft_warranty_claim`. HOD uses `file_warranty_claim`. Both call `_draft_warranty_claim` in the dispatcher (`internal_dispatcher.py:4188–4189`).
 
 ---
 
@@ -324,11 +329,116 @@ Claim numbering is `WC-{year}-{count+1}`. Count is computed as the number of exi
 
 ---
 
+## CRITICAL: API payload field names — use exactly these
+
+The dispatcher at `internal_dispatcher.py:3546` resolves the claim ID via:
+```python
+warranty_id = params.get("warranty_id") or params.get("claim_id") or params.get("entity_id")
+```
+
+**Wrong field names will silently pass (no 400), but the handler gets `None` → Supabase gets the literal string `"None"` → `22P02 invalid input syntax for type uuid` at DB level.**
+
+| Action | Correct payload field for the claim ID | Other required fields |
+|--------|----------------------------------------|----------------------|
+| `draft_warranty_claim` | N/A (creates new) | `title`, `description` (required), `vendor_name`, `manufacturer_email` (optional) |
+| `file_warranty_claim` | N/A (creates new) | same as above |
+| `submit_warranty_claim` | `claim_id` | — |
+| `approve_warranty_claim` | `claim_id` | `approved_amount` (opt), `notes` (opt) |
+| `reject_warranty_claim` | `claim_id` | `rejection_reason` (required) |
+| `close_warranty_claim` | `warranty_id` | — |
+| `compose_warranty_email` | `claim_id` | — |
+| `add_warranty_note` | `warranty_id` | `note_text` (required) |
+| `attach_warranty_document` | `entity_id` | `document_url`, `document_name` |
+
+> **NB:** `add_warranty_note` uses `warranty_id` not `claim_id`. The note is stored in `pms_notes.warranty_id`. Entity endpoint query at `entity_routes.py:526` selects `.eq("warranty_id", warranty_id)` — if you send the wrong field, the note is written to DB but not linked to the claim and won't appear in the Notes section.
+
+### Correct curl shapes
+
+```bash
+# File claim (HOD)
+curl -X POST https://backend.celeste7.ai/v1/actions/execute \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"action":"file_warranty_claim","context":{"yacht_id":"85fe1119-..."},"payload":{"title":"Compressor failure","description":"...","vendor_name":"Atlas Copco","manufacturer_email":"warranty@atlascopco.com"}}'
+
+# Submit claim
+curl -X POST https://backend.celeste7.ai/v1/actions/execute \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"action":"submit_warranty_claim","context":{"yacht_id":"85fe1119-..."},"payload":{"claim_id":"<CLAIM_ID>"}}'
+
+# Approve (captain)
+curl -X POST https://backend.celeste7.ai/v1/actions/execute \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"action":"approve_warranty_claim","context":{"yacht_id":"85fe1119-..."},"payload":{"claim_id":"<CLAIM_ID>","approved_amount":4500,"notes":"Approved."}}'
+
+# Reject (captain)
+curl -X POST https://backend.celeste7.ai/v1/actions/execute \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"action":"reject_warranty_claim","context":{"yacht_id":"85fe1119-..."},"payload":{"claim_id":"<CLAIM_ID>","rejection_reason":"Outside warranty window."}}'
+
+# Compose email
+curl -X POST https://backend.celeste7.ai/v1/actions/execute \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"action":"compose_warranty_email","context":{"yacht_id":"85fe1119-..."},"payload":{"claim_id":"<CLAIM_ID>"}}'
+
+# Add note
+curl -X POST https://backend.celeste7.ai/v1/actions/execute \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"action":"add_warranty_note","context":{"yacht_id":"85fe1119-..."},"payload":{"warranty_id":"<CLAIM_ID>","note_text":"Serial confirmed: AT-2024-998877."}}'
+
+# Read entity
+curl https://backend.celeste7.ai/v1/entity/warranty/<CLAIM_ID>?yacht_id=85fe1119-... \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## Live backend test results — 2026-04-16
+
+All tests run against `backend.celeste7.ai` (`d5a5de92`). Auth via MASTER Supabase JWT (`qvzmkaamzaqxpzbewjxe`).
+
+| Test | Action | Role | HTTP/Result | PASS/FAIL |
+|------|--------|------|-------------|-----------|
+| T01 | Entity read (new claim) | chief_engineer | 200, all fields populated | **PASS** |
+| T02 | `file_warranty_claim` | crew | FORBIDDEN — `required_roles: [chief_engineer, chief_officer, captain, manager]` | **PASS** |
+| T03 | `add_warranty_note` | chief_engineer | success, note linked to claim (using `warranty_id`) | **PASS** |
+| T04 | `compose_warranty_email` | chief_engineer | success, `email_draft.to = warranty@atlascopco.com` | **PASS** |
+| T05 | `submit_warranty_claim` | chief_engineer | success, `new_status: submitted` | **PASS** |
+| T06 | `approve_warranty_claim` | captain | success, `new_status: approved`, `approved_amount: 4500.0` | **PASS** |
+| T06b | `approve_warranty_claim` | crew | FORBIDDEN — `required_roles: [captain, manager]` | **PASS** |
+| T07 | Entity read (approved claim) | crew | 200, `status: approved`, `approved_amount: 4500.0`, `email_draft.to: warranty@atlascopco.com` | **PASS** |
+| T08 | Ledger events | — | 6 warranty events: create, note, email, submit, approve, view×3 | **PASS** |
+| T09 | Notifications | — | Rows written to `pms_notifications` (no frontend surface yet) | **PASS (DB only)** |
+| T10 | Notes on entity | chief_engineer | 1 note visible when using correct `warranty_id` field | **PASS** |
+| T11 | `file_warranty_claim` | chief_engineer | success, WC-2026-007 | **PASS** |
+| T12 | `submit_warranty_claim` | chief_engineer | success, submitted | **PASS** |
+| T13 | `reject_warranty_claim` | captain | success, `new_status: rejected`, rejection_reason on entity | **PASS** |
+| T14 | `file_warranty_claim` | captain | success, WC-2026-008 | **PASS** |
+| T15 | `submit_warranty_claim` | crew | FORBIDDEN — `required_roles: [chief_engineer, chief_officer, captain]` | **PASS** |
+| T16 | `reject_warranty_claim` | crew | FORBIDDEN — `required_roles: [captain, manager]` | **PASS** |
+| T17 | `draft_warranty_claim` | crew | success, WC-2026-009 — crew CAN draft | **PASS** |
+
+**Ledger event breakdown for claim `e329dde0-c159-4cc1-b9d5-d5ca4a9f0c1b`:**
+```
+[create      ] file_warranty_claim       | role=chief_engineer | 03:14:00
+[update      ] add_warranty_note         | role=chief_engineer | 03:15:07
+[update      ] compose_warranty_email    | role=chief_engineer | 03:16:02
+[status_change] submit_warranty_claim   | role=chief_engineer | 03:16:56
+[approval    ] approve_warranty_claim    | role=captain        | 03:17:14
+[view        ] view_warranty_claim       | role=crew           | 03:17:15
+```
+
+**To query via backend:**
+```bash
+curl "https://backend.celeste7.ai/v1/ledger/events?yacht_id=85fe1119-b04c-41ac-80f1-829d23322598&entity_id=<claim_id>&entity_type=warranty" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
 ## Known gaps — do not claim these work
 
 | Gap | Status | Who should fix |
 |-----|--------|---------------|
-| `crew` role cannot file warranty claims | Not built | WARRANTY01 — add `crew` to `file_warranty_claim.allowed_roles` in `registry.py:2740` |
 | Email body not displayed in UI | Not built | WARRANTY01 — render `email_draft.body` in `WarrantyContent.tsx:382` |
 | Email body not editable in-app | Not built | WARRANTY01 — add textarea for email body editing |
 | Bcc / CC fields on email draft | Not built | WARRANTY01 — add to `email_draft` data model and compose handler |
