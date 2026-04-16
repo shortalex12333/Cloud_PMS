@@ -63,9 +63,15 @@ export function mapActionFields(action: ActionDef): ActionPopupField[] {
   const optionalNames = (action.optional_fields ?? []).filter(
     (f) => !BACKEND_AUTO.has(f) && !(f in action.prefill) && !requiredNames.includes(f)
   );
+  // field_schema entries not already claimed by required/optional are treated as
+  // additional optional fields — decouples from whether backend sends optional_fields array.
+  const schemaNames = (action.field_schema ?? [])
+    .map((s) => s.name)
+    .filter((f) => !BACKEND_AUTO.has(f) && !(f in action.prefill) && !requiredNames.includes(f) && !optionalNames.includes(f));
   const allFields = [
     ...requiredNames.map((f) => ({ name: f, isRequired: true })),
     ...optionalNames.map((f) => ({ name: f, isRequired: false })),
+    ...schemaNames.map((f) => ({ name: f, isRequired: false })),
   ];
 
   return allFields.map(({ name: f, isRequired }) => {
@@ -103,11 +109,12 @@ export function mapActionFields(action: ActionDef): ActionPopupField[] {
     });
 }
 
-/** Check if an action has user-facing fields (required or optional, excluding backend-auto) */
+/** Check if an action has user-facing fields (required, optional, or schema-defined) */
 export function actionHasFields(action: ActionDef): boolean {
   const hasRequired = action.required_fields.some((f) => !BACKEND_AUTO.has(f) && !(f in action.prefill));
   const hasOptional = (action.optional_fields ?? []).some((f) => !BACKEND_AUTO.has(f) && !(f in action.prefill));
-  return hasRequired || hasOptional;
+  const hasSchema = (action.field_schema ?? []).some((s) => !BACKEND_AUTO.has(s.name) && !(s.name in action.prefill));
+  return hasRequired || hasOptional || hasSchema;
 }
 
 /** Get signature level from action definition */
