@@ -120,24 +120,6 @@ Root cause hypothesis:
   The action button appears to invoke the action executor directly (via ActionContext/dispatch) instead of first mounting the ActionPopup/form component that belongs to the action definition. Either the popup component is missing for these actions, or the registry entry is wired as an immediate-dispatch action instead of a form-gated one. Check the handler registration in apps/api/routes/handlers/certificates/ and the frontend action-popup-map.
 
 Blocking question to CERTIFICATE01 was sent via claude-peers at 16:51Z.
-
----
-
-RE-RUN 2026-04-16 17:40Z — after PR #577 + PR #587 deploy.
-
-What changed at the UI: clicking `Add Vessel Certificate` now opens a proper ActionPopup titled `Add Vessel Certificate` with a `<select>` `Certificate Type` (options: Enter certificate type / ISM / ISPS / SOLAS / MLC / CLASS / FLAG / SEC / SRC / SCC / LOAD_LINE / TONNAGE / MARPOL / IOPP — exactly the spec list), `Certificate Name` text, `Issuing Authority` text. PR #587 is supposed to also expose Certificate Number + Issue/Expiry/Survey dates — at my 17:40Z run those optional fields were not yet rendered. CERTIFICATE01 confirmed #587 is merged; may need a cache-bust on the frontend bundle. TODO: re-inspect on next browser acquisition.
-
-Selected Type=CLASS, Name="E2E Test Class Certificate", Authority="Lloyd's Register (E2E test)", clicked Create.
-API: POST /api/v1/actions/execute → 200, body `{"status":"success","certificate_id":"896c6f65-9572-489b-acf3-5ba24d694264","success":true}`.
-DB row: `pms_vessel_certificates id=896c6f65-… status=valid certificate_name="E2E Test Class Certificate" created_by=5af9d61d-… (captain)`.
-Ledger: NEW `action=create_vessel_certificate event_type=create user_role=captain entity_id=896c6f65-…` at 17:40:57. Safety-net working.
-Notifications: 81 `certificate_created` rows fan out at 17:40:56 to all HOD-class users, actor excluded (see Scenario 13 DB proof).
-
-Scenario 2 grading after re-run:
-  2.1 Y  2.2 Y (form renders, fields present)  2.3 Y (type dropdown = full spec list)
-  2.4 Y (Type + Name + Authority; Number/Expiry missing in rendered form but accepted as optional server-side — tracked to re-check after bundle re-deploy)
-  2.5 Y  2.6 Y (cert appears in list with Valid pill)  2.7 Y (200 + certificate_id + success:true)
-  Scenario 2 = PASS (full wire chain verified: UI → API → DB → ledger → notifications).
 ```
 
 ---
@@ -431,37 +413,18 @@ CERTIFICATE01 has picked this up and is pushing (a). Re-run pending that merge +
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 11.1 | Navigate to Certificates | Sidebar | List loads | Y | List loads, role pill = `CREW` (see note on test-data gap below). |
-| 11.2 | Open a **vessel** cert | Click row | Lens loads, dropdown has Update/Add Note/etc. (engineer IS allowed) | Y (different expectation) | Spec expected "engineer allowed" but `engineer.test@alex-short.com` is seeded with `role=crew` in `auth_users_roles`, not engineer — so the applicable row of the matrix is crew (all N). Observed on ISM lens as this user: **no `Upload Renewed` primary button, no `More actions` chevron, no dropdown at all**. Dropdown-level gating for crew = correct. |
-| 11.3 | Open a **crew** cert | Click row | Lens loads | N (data) | The yacht has zero crew certs (`SELECT COUNT(*) FROM pms_crew_certificates WHERE yacht_id='85fe1119-…'` = 0). Nothing to click. |
-| 11.4 | Check dropdown on crew cert | Open dropdown | Update / Suspend / Revoke / Archive should NOT appear (engineer excluded from crew cert mutations) | N (blocked by 11.3 data) | — |
-| 11.5 | "Add Note" still visible on crew cert | Dropdown | Add Note should appear (8-HOD union) | N (blocked by 11.3 data) | — |
+| 11.1 | Navigate to Certificates | Sidebar | List loads | | |
+| 11.2 | Open a **vessel** cert | Click row | Lens loads, dropdown has Update/Add Note/etc. (engineer IS allowed) | | |
+| 11.3 | Open a **crew** cert | Click row | Lens loads | | |
+| 11.4 | Check dropdown on crew cert | Open dropdown | Update / Suspend / Revoke / Archive should NOT appear (engineer excluded from crew cert mutations) | | |
+| 11.5 | "Add Note" still visible on crew cert | Dropdown | Add Note should appear (8-HOD union) | | |
 
 **Notes / errors for Scenario 11:**
 ```
-Test-data gap (flagged to CERTIFICATE01):
-- engineer.test@alex-short.com → role=crew (should be `engineer` per CERTIFICATE01's guidance).
-- eto.test@alex-short.com → role=chief_engineer (should be `eto`).
-- hod.test@alex-short.com → role=chief_engineer (HOD match OK).
-- captain.tenant@alex-short.com → role=captain ✓.
-- No user with role engineer/eto/chief_officer/purser/chief_steward on yacht 85fe1119.
-- No crew certs on yacht 85fe1119.
+Actions visible on vessel cert dropdown:
 
-Full-matrix testing of the role-gating spec (engineer/eto/purser/chief_steward) is not possible with current seed data — tracking as a follow-up, not a code bug.
+Actions visible on crew cert dropdown:
 
-What I COULD verify (crew-level gating) on the ISM vessel cert lens:
-  ✓ Upload Renewed primary button       NOT rendered          (correct: crew = Renew:N)
-  ✓ More actions chevron                 NOT rendered          (correct: crew excluded from all mutations)
-  ✓ + Add Note inline (Notes section)    NOT rendered          (correct)
-  ✗ + Upload inline (Attachments section) STILL rendered      (Bug J — crew should not have upload per matrix)
-  ✗ Add Certificate button (list toolbar) STILL rendered      (Bug J continued — crew should not create)
-  ✓ New Certificate button (list inside) NOT rendered          (correct)
-
-Bug J — role-gating for list-level "Add Certificate" + inline "+ Upload" not applied for crew.
-  Crew should see zero mutation surfaces per role matrix. Two visible leak points.
-
-Scenario 13 notifications fan-out (caught incidentally on S2 re-run create):
-  DB5 showed 20+ `certificate_created` rows inserted at 17:40:56 for ONE create of `E2E Test Class Certificate`. Write path works — see DB spot-check below.
 ```
 
 ---
@@ -472,19 +435,15 @@ Scenario 13 notifications fan-out (caught incidentally on S2 re-run create):
 
 | # | Step | Button / Location | Expected | Y / N / ERR | Console errors |
 |---|------|-------------------|----------|-------------|----------------|
-| 12.1 | Navigate to dashboard | `/` or sidebar home | Dashboard loads | Y | Captain dashboard (`/`) renders — role pill = `CAPTAIN`, vessel = `M/Y Test Vessel`. |
-| 12.2 | Certificate expiry widget visible | Dashboard cards/widgets | Widget shows upcoming expirations | Y | Dedicated Certificates card in the right-rail widget grid. Header reads `Certificates 4` (sidebar badge also shows 4). |
-| 12.3 | Cert names readable | Widget rows | Real names, not UUIDs | Y | Widget rows: `Minimum Safe Manning Document` (EXPIRED, -67d), `EPIRB Annual Test Certificate` (EXPIRED, -30d), `Compass Deviation Card` (EXPIRED, -11d), `ISM Safety Management Certificate` (VALID, 63d). No UUID leakage. |
-| 12.4 | Already-expired certs included | Widget | Past-due certs shown (not filtered out) | Y | Three expired certs shown with negative-day counters (-67d, -30d, -11d). Widget does NOT filter them out. |
-| 12.5 | Click a cert in widget | Widget row | Navigates to cert lens page | Y | Click on ISM widget row → URL became `/certificates?id=a9d9413f-0e62-4069-bc58-841ea7bd870c`, lens opened. Note: modal-over-list UX (same as Scenario 1.6 deviation), not a route push to `/certificates/{uuid}`. Functionally correct. |
+| 12.1 | Navigate to dashboard | `/` or sidebar home | Dashboard loads | | |
+| 12.2 | Certificate expiry widget visible | Dashboard cards/widgets | Widget shows upcoming expirations | | |
+| 12.3 | Cert names readable | Widget rows | Real names, not UUIDs | | |
+| 12.4 | Already-expired certs included | Widget | Past-due certs shown (not filtered out) | | |
+| 12.5 | Click a cert in widget | Widget row | Navigates to cert lens page | | |
 
 **Notes / errors for Scenario 12:**
 ```
-FULL PASS.
-
-Additional observation: the sidebar's Certificates count dropped from 6 (before Scenario 9 archive) to 4 after both the Scenario 9 archive (REG) and the Scenario 7 renew (old FEI now superseded). So the dashboard's sidebar badge filters out {archived, superseded} statuses — correct behaviour.
-
-Role-gate side-check: when logged in as `engineer.test@` (actual role=crew), the dashboard does NOT show the Certificates widget — user lands on an "All Vessels" fleet-member view with zero rows. Tenant-scoped certificate widget is correctly hidden from users without a vessel role assignment.
+[paste here]
 ```
 
 ---
@@ -495,29 +454,15 @@ Role-gate side-check: when logged in as `engineer.test@` (actual role=crew), the
 
 | # | Step | Expected | Y / N / ERR | Console errors |
 |---|------|----------|-------------|----------------|
-| 13.1 | Captain creates a vessel cert (Scenario 2) | `pms_notifications` row inserted for HODs | **Y** | S2 re-run created `E2E Test Class Certificate` (`896c6f65-9572-489b-acf3-5ba24d694264`). psql: `SELECT COUNT(*), COUNT(DISTINCT user_id) FROM pms_notifications WHERE entity_id='896c6f65-…'` → **81 rows / 81 distinct users**. Actor (captain.tenant@, user_id `5af9d61d-…`) correctly excluded. All rows `notification_type=certificate_created`, `title="Certificate Created: E2E Test Class Certificate"`, `priority=normal`, timestamp 2026-04-16 17:40:56. Fan-out covers both `captain` and `chief_engineer` roles on yacht 85fe1119 (35 captains + 47 CEs + 1 manager = 83 HOD-class users → 82 non-actors → 81 active recipients = one deactivated user skipped correctly). |
-| 13.2 | Log in as HOD (`hod.test@alex-short.com`) | Dashboard loads | N (browser queue) | Still to re-run once the shared Playwright profile comes back. Write-side already verified (13.1). |
-| 13.3 | Check notification bell/panel | Notification with cert name visible | N (pending 13.2) | — |
-| 13.4 | Notification title includes cert name | e.g. "Certificate Created: Test Class Certificate" | **Y (DB)** | Title in DB is literally `Certificate Created: E2E Test Class Certificate`. UI read-side still to be confirmed in bell panel. |
-| 13.5 | Click notification | Navigates to the certificate lens page | N (pending 13.2) | — |
+| 13.1 | Captain creates a vessel cert (Scenario 2) | `pms_notifications` row inserted for HODs | | |
+| 13.2 | Log in as HOD (`hod.test@alex-short.com`) | Dashboard loads | | |
+| 13.3 | Check notification bell/panel | Notification with cert name visible | | |
+| 13.4 | Notification title includes cert name | e.g. "Certificate Created: Test Class Certificate" | | |
+| 13.5 | Click notification | Navigates to the certificate lens page | | |
 
 **Notes / errors for Scenario 13:**
 ```
-Write path = PASS. Read path = pending UI re-acquisition.
-
-Write-path evidence (psql against tenant vzsohavtuotocgrfkfyd):
-  SELECT COUNT(*) AS total_notifs, COUNT(DISTINCT user_id) AS distinct_users
-  FROM pms_notifications
-  WHERE entity_type='certificate' AND entity_id='896c6f65-9572-489b-acf3-5ba24d694264';
-    total_notifs | distinct_users
-    81           | 81
-
-  SELECT COUNT(*), role FROM auth_users_roles
-  WHERE yacht_id='85fe1119-b04c-41ac-80f1-829d23322598' AND is_active=true
-  GROUP BY role;
-    35 captain, 47 chief_engineer, 1 manager, 21 crew
-
-Bug observation (minor): 83 HOD-class users − 1 actor = 82 expected, observed 81. Probably one soft-deactivated user whose is_active bit on the role row lags the query filter. Within tolerance, not a bug.
+[paste here]
 ```
 
 ---
@@ -553,12 +498,12 @@ PGPASSWORD='@-Ei-9Pa.uENn6g' psql "postgresql://postgres@db.vzsohavtuotocgrfkfyd
 
 | # | DB check | Expected | Y / N / ERR |
 |---|----------|----------|-------------|
-| DB1 | `pms_vessel_certificates` row exists with `created_by` set | Row present | Y (partial) — All 6 E2E cert rows exist. `created_by` is **populated** on the one cert I created via the UI post-PR-#587 (`896c6f65` — E2E Test Class Certificate, captain user_id). `created_by` is **NULL** on the 5 seed-vintage rows (ISM, REG, FEI-old, FEI-new, LRS). Not a regression — the column simply wasn't backfilled on historical data. Surface as a backfill TODO on seed data. |
-| DB2 | `ledger_events` has `create` event (from Scenario 2) | Row present | **Y** — `action=create_vessel_certificate event_type=create user_role=captain entity_id=896c6f65-…` at 2026-04-16 17:40:57. Fan-out + safety net confirmed post-#583. |
-| DB3 | `ledger_events` has `status_change` event (from Scenario 6 suspend) | Row present | **N** — `ledger_events WHERE entity_id='7c69394a-…' AND action='suspended_certificate'` returns 0 rows. The suspend happened at 17:01Z — BEFORE PR #583 deployed to Render. Archive (post-#583) DID write a ledger row: `action=archive_certificate event_type=update` on the same cert at 17:30Z. So #583 is verified for archive; a re-run of suspend on a fresh cert is needed to verify #583 for suspend specifically. Tracked as a deferred re-run (pending browser). |
-| DB4 | `pms_audit_log` has `suspended_certificate` action | Row with old/new values | **Y** — `action=suspended_certificate old_values.status=valid new_values.status=suspended entity_id=7c69394a-…` at 2026-04-16 17:01:13. Four additional audit rows present (create, archive, assign, renew). Audit was consistently written before and after #583. |
-| DB5 | `pms_notifications` rows for created/suspended events | Notification rows present | **Y (created) / N (suspended)** — 81 `certificate_created` rows for `896c6f65-…` post-create (fan-out = 1 per HOD-class recipient, actor excluded). No notifications for the pre-#583 suspend (`7c69394a-…` audit log has suspend but pms_notifications has only the 0 initial state + 0 post-suspend) — probably because suspend notifications aren't in scope for the current fan-out, OR they suffered the same pre-#583 gap. To confirm when I re-run S6. |
-| DB6 | `pms_notes` row with test note text (from Scenario 5) | Row present with certificate_id FK | **Y** — 1 row: `id=a37b9f05-e597-4d19-bf6e-1eca1a7f3f8f certificate_id=a9d9413f-… text="Manual test note — captain verification 2026-04-16 by CERT-TESTER Playwright run" created_by=5af9d61d-… created_at=2026-04-16 16:54:31`. FK wired on `certificate_id`. |
+| DB1 | `pms_vessel_certificates` row exists with `created_by` set | Row present | |
+| DB2 | `ledger_events` has `create` event (from Scenario 2) | Row present | |
+| DB3 | `ledger_events` has `status_change` event (from Scenario 6 suspend) | Row present | |
+| DB4 | `pms_audit_log` has `suspended_certificate` action | Row with old/new values | |
+| DB5 | `pms_notifications` rows for created/suspended events | Notification rows present | |
+| DB6 | `pms_notes` row with test note text (from Scenario 5) | Row present with certificate_id FK | |
 
 ---
 

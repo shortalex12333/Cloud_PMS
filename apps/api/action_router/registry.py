@@ -4354,12 +4354,23 @@ def get_actions_for_domain(domain: str, role: str = None) -> List[Dict[str, Any]
                     entry["options"] = [{"value": o, "label": o.replace("_", " ").title()} for o in fm.options]
                 field_schema.append(entry)
 
+        # Build optional_fields list from field_metadata (OPTIONAL classification,
+        # excluding CONTEXT/BACKEND_AUTO). Frontend mapActionFields uses this to
+        # render optional form fields below the required ones.
+        optional_fields = []
+        if action.field_metadata:
+            for fm in action.field_metadata:
+                cls = fm.classification
+                if cls in (FieldClassification.OPTIONAL, "OPTIONAL"):
+                    optional_fields.append(fm.name)
+
         results.append({
             "action_id": action.action_id,
             "label": action.label,
             "variant": action.variant.value if action.variant else "MUTATE",
             "allowed_roles": action.allowed_roles,
             "required_fields": action.required_fields,
+            "optional_fields": optional_fields,
             "has_prefill": action.prefill_endpoint is not None,
             "prefill_endpoint": action.prefill_endpoint,
             "context_required": action.context_required,
