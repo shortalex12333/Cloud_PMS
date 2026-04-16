@@ -131,13 +131,13 @@ export function CertificateContent() {
 
   // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
-    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+    actionId: string; title: string; subtitle?: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
   } | null>(null);
 
-  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean; confirmation_message?: string | null }) {
     const fields = mapActionFields(action as any);
     const sigLevel = getSignatureLevel(action as any);
-    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, subtitle: action.confirmation_message || undefined, fields, signatureLevel: sigLevel });
   }
 
   const isRenewable = renewAction !== null && !['revoked'].includes(status);
@@ -439,8 +439,8 @@ export function CertificateContent() {
       </ScrollReveal>
 
       {actionPopupConfig && (
-        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
-          signatureLevel={actionPopupConfig.signatureLevel}
+        <ActionPopup mode="mutate" title={actionPopupConfig.title} subtitle={actionPopupConfig.subtitle}
+          fields={actionPopupConfig.fields} signatureLevel={actionPopupConfig.signatureLevel}
           onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
           onClose={() => setActionPopupConfig(null)} />
       )}
