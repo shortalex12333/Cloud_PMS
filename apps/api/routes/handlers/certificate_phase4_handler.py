@@ -35,10 +35,10 @@ from supabase import Client
 logger = logging.getLogger(__name__)
 
 _ALLOWED_ROLES: dict = {
-    "create_vessel_certificate": ["chief_engineer", "captain", "manager"],
-    "create_crew_certificate":   ["chief_engineer", "captain", "manager"],
-    "update_certificate":        ["chief_engineer", "captain", "manager"],
-    "link_document_to_certificate": ["chief_engineer", "captain", "manager"],
+    "create_vessel_certificate": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+    "create_crew_certificate":   ["chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
+    "update_certificate":        ["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
+    "link_document_to_certificate": ["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
     "supersede_certificate":     ["captain", "manager"],
 }
 

@@ -26,6 +26,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Optional, List
 import logging
 import json
+import uuid
 
 import sys
 from pathlib import Path
@@ -817,6 +818,10 @@ def _create_vessel_certificate_adapter(handlers: CertificateHandlers):
             # Do not fail the main operation if audit insert throws; log upstream
             pass
 
+        _notify_cert_stakeholders(db, yacht_id, new_id,
+            params.get("certificate_name") or "Certificate",
+            "created", user_id, "vessel")
+
         return {
             "status": "success",
             "certificate_id": new_id,
@@ -1058,6 +1063,10 @@ def _create_crew_certificate_adapter(handlers: CertificateHandlers):
             db.table("pms_audit_log").insert(audit).execute()
         except Exception:
             pass
+
+        _notify_cert_stakeholders(db, yacht_id, new_id,
+            params.get("person_name") or "Certificate",
+            "created", user_id, "crew")
 
         return {
             "status": "success",
@@ -1383,6 +1392,10 @@ def _change_certificate_status_adapter(new_status: str):
             except Exception:
                 pass
 
+            _notify_cert_stakeholders(db, yacht_id, cert_id,
+                old_cert.get("certificate_name") or old_cert.get("person_name") or "Certificate",
+                new_status, user_id, domain)
+
             return {
                 "status": "success",
                 "certificate_id": cert_id,
@@ -1437,6 +1450,10 @@ def _archive_certificate_adapter(handlers: "CertificateHandlers"):
             }).execute()
         except Exception:
             pass
+
+        _notify_cert_stakeholders(db, yacht_id, cert_id,
+            old_cert.get("certificate_name") or old_cert.get("person_name") or "Certificate",
+            "archived", user_id, domain)
 
         return {
             "status": "success",
@@ -1522,3 +1539,75 @@ def _assign_certificate_adapter(handlers: "CertificateHandlers"):
         }
 
     return _fn
+
+
+# =============================================================================
+# NOTIFICATION HELPERS
+# =============================================================================
+
+def _body_for_event(event_type: str, cert_name: str, cert_domain: str) -> str:
+    """Return human-readable notification body for a certificate event."""
+    bodies = {
+        "created": f"A new {cert_domain} certificate '{cert_name}' has been added.",
+        "suspended": f"Certificate '{cert_name}' has been suspended. Review required.",
+        "revoked": f"Certificate '{cert_name}' has been revoked. Immediate attention required.",
+        "archived": f"Certificate '{cert_name}' has been archived.",
+        "expired": f"Certificate '{cert_name}' has expired. Renewal action required.",
+    }
+    return bodies.get(event_type, f"Certificate '{cert_name}': {event_type}.")
+
+
+def _get_cert_notification_recipients(db, yacht_id: str, cert_domain: str) -> list:
+    """Return deduplicated user_ids who should be notified about a certificate event."""
+    try:
+        roles = ["captain", "manager"]
+        if cert_domain == "vessel":
+            roles.extend(["chief_engineer", "chief_officer"])
+        elif cert_domain == "crew":
+            roles.extend(["chief_officer", "purser", "chief_steward", "chief_engineer"])
+        result = db.table("auth_users_roles").select(
+            "user_id"
+        ).eq("yacht_id", yacht_id).in_("role", roles).execute()
+        seen: set = set()
+        ids = []
+        for row in (result.data or []):
+            uid = row["user_id"]
+            if uid not in seen:
+                seen.add(uid)
+                ids.append(uid)
+        return ids
+    except Exception:
+        return []
+
+
+def _notify_cert_stakeholders(db, yacht_id: str, cert_id: str, cert_name: str,
+                              event_type: str, actor_user_id: str, cert_domain: str) -> int:
+    """Insert notification rows into pms_notifications. Fire-and-forget."""
+    try:
+        recipients = _get_cert_notification_recipients(db, yacht_id, cert_domain)
+        notifs = []
+        for uid in recipients:
+            if uid == actor_user_id:
+                continue
+            notifs.append({
+                "id": str(uuid.uuid4()),
+                "yacht_id": yacht_id,
+                "user_id": uid,
+                "notification_type": f"certificate_{event_type}",
+                "title": f"Certificate {event_type.title()}: {cert_name}",
+                "body": _body_for_event(event_type, cert_name, cert_domain),
+                "priority": "high" if event_type in ("expired", "revoked", "suspended") else "normal",
+                "entity_type": "certificate",
+                "entity_id": cert_id,
+                "triggered_by": actor_user_id,
+                "idempotency_key": f"cert_{event_type}:{cert_id}:{uid}",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+        if notifs:
+            db.table("pms_notifications").upsert(
+                notifs, on_conflict="yacht_id,user_id,idempotency_key"
+            ).execute()
+        return len(notifs)
+    except Exception:
+        return 0

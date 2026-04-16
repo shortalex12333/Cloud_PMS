@@ -1500,7 +1500,9 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/certificates/create-vessel",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "captain", "manager"],  # HOD roles
+        # Engineering dept (engineer, eto, chief_engineer) owns machinery certs;
+        # deck HOD (chief_officer) owns hull and flag-state certs.
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
         required_fields=[
             "yacht_id",
             "certificate_type",
@@ -1541,7 +1543,10 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/certificates/create-crew",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "captain", "manager"],  # HOD roles
+        # Crew certs follow seafarer's department. Interior+deck HODs own
+        # crew compliance files. No rank-and-file engineering roles — they
+        # don't manage seafarer certs.
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
         required_fields=[
             "yacht_id",
             "person_name",
@@ -1577,7 +1582,9 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/certificates/update",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "captain", "manager"],  # HOD roles
+        # Full 8-HOD union; handler-level _cert_mutation_gate narrows by cert
+        # domain (crew certs need interior/deck HODs, vessel certs need eng/deck).
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
         required_fields=[
             "yacht_id",
             "certificate_id",
@@ -1594,7 +1601,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "captain", "manager"],
+        # Full 8-HOD union; handler narrows by cert domain.
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
         required_fields=["yacht_id", "certificate_id", "assigned_to"],
         domain="certificates",
         variant=ActionVariant.MUTATE,
@@ -1622,7 +1630,9 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/certificates/link-document",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "captain", "manager"],  # HOD roles
+        # Any department HOD can attach evidence to a cert in their remit.
+        # Handler-level _cert_mutation_gate narrows by cert domain (vessel vs crew).
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
         required_fields=[
             "yacht_id",
             "certificate_id",
@@ -2616,7 +2626,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "captain", "manager"],
+        # Notes are documentation — any HOD who can see the cert should be able to annotate.
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
         required_fields=["yacht_id", "certificate_id", "note_text"],
         domain="certificates",
         variant=ActionVariant.MUTATE,
@@ -3520,7 +3531,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        # Full 8-HOD union; _cert_mutation_gate narrows by cert domain at handler layer.
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
         required_fields=["yacht_id", "entity_id"],
         domain="certificates",
         variant=ActionVariant.SIGNED,
@@ -3702,7 +3714,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "captain", "manager"],
+        # Full 8-HOD union; _cert_mutation_gate narrows by cert domain.
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
         required_fields=["yacht_id", "certificate_id", "new_issue_date", "new_expiry_date"],
         domain="certificates",
         variant=ActionVariant.MUTATE,
