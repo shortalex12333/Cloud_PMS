@@ -669,7 +669,7 @@ async def get_domain_records(
     status: Optional[str] = Query(None, description="Status filter chip value"),
     assigned: Optional[str] = Query(None, description="Assigned to filter"),
     sort: Optional[str] = Query(None, description="Sort field"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
     """

@@ -980,6 +980,24 @@ class HoursOfRestHandlers:
                 )
                 return builder.build()
 
+            # BUG-HOR-7 fix: crew may only sign their own signoff
+            if signature_level == "crew":
+                signoff_owner_id = signoff.get("user_id")
+                if signoff_owner_id and signoff_owner_id != user_id:
+                    builder.set_error(
+                        "FORBIDDEN",
+                        "Crew can only sign their own monthly sign-off. Cross-user signing is not permitted."
+                    )
+                    return builder.build()
+                # BUG-HOR-6 fix: crew sign only valid from draft state — prevents status regression
+                if current_status != "draft":
+                    builder.set_error(
+                        "VALIDATION_ERROR",
+                        f"Crew signature is only valid on a draft sign-off. Current status: {current_status}. "
+                        "Once a sign-off progresses past draft it cannot be re-signed at crew level."
+                    )
+                    return builder.build()
+
             if signature_level == "hod" and current_status != "crew_signed":
                 builder.set_error(
                     "VALIDATION_ERROR",
