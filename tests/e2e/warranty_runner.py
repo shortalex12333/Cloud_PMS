@@ -35,7 +35,10 @@ import json
 import os
 import re
 import sys
+import time
 import traceback
+import urllib.error  # noqa: F401 — used by warmup_render_api
+import urllib.request
 from typing import Any, Callable
 
 from playwright.sync_api import (
@@ -48,11 +51,53 @@ from playwright.sync_api import (
 )
 
 # ---------------------------------------------------------------------------
+# Render API warm-up — must complete before any browser context is opened.
+# Render spins down after 15 min of inactivity; cold-start takes ~20-30s.
+# The app bootstrap timeout is 2+4+8+16 = 30s — barely survives a cold-start.
+# Warming here guarantees the backend is live when tests run.
+# ---------------------------------------------------------------------------
+
+API_BASE_URL = os.environ.get("WARRANTY_API_URL", "https://pipeline-core.int.celeste7.ai")
+WARMUP_TIMEOUT_S = 90
+
+
+def warmup_render_api() -> None:
+    """Ping the Render health endpoint until it responds or WARMUP_TIMEOUT_S expires."""
+    health_url = f"{API_BASE_URL}/health"
+    deadline = time.monotonic() + WARMUP_TIMEOUT_S
+    attempt = 0
+    while time.monotonic() < deadline:
+        attempt += 1
+        try:
+            with urllib.request.urlopen(health_url, timeout=10) as resp:
+                if resp.status == 200:
+                    print(f"[warmup] Render API warm after {attempt} attempt(s)", file=sys.stderr)
+                    return
+        except Exception as exc:
+            print(f"[warmup] attempt {attempt}: {exc}", file=sys.stderr)
+        time.sleep(2)
+    print(
+        f"[warmup] WARNING: Render API did not respond within {WARMUP_TIMEOUT_S}s — "
+        "tests may fail on bootstrap.",
+        file=sys.stderr,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
 HEADLESS = True
 BASE_URL = os.environ.get("WARRANTY_BASE_URL", "https://app.celeste7.ai")
+
+# Real Chrome UA — prevents Supabase / Vercel BotID from rejecting the auth fetch.
+# Default headless Chromium exposes navigator.webdriver=true which triggers bot
+# detection. We override it via browser args + init script (see main()).
+BROWSER_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/128.0.0.0 Safari/537.36"
+)
 
 STEP_TIMEOUT_MS = 10_000
 NAV_TIMEOUT_MS = 25_000
@@ -195,15 +240,32 @@ def login(page: Page, email: str, password: str) -> None:
     pw_input.fill(password, timeout=STEP_TIMEOUT_MS)
     submit = page.get_by_role("button", name=re.compile(r"(sign in|log in|login)", re.I))
     submit.first.click(timeout=STEP_TIMEOUT_MS)
-    # Post-login the app redirects off /login (usually to /warranties or a dashboard).
-    page.wait_for_url(re.compile(r"(?!.*\/login)"), timeout=NAV_TIMEOUT_MS)
+    # Use wait_for_function rather than wait_for_url with a regex.
+    # The pattern (?!.*\/login) is a free-floating negative lookahead that
+    # matches the /login URL itself (at a position after the path). Polling
+    # window.location is the only reliable way to detect the auth redirect.
+    page.wait_for_function(
+        "() => !window.location.pathname.startsWith('/login')",
+        timeout=60_000,
+    )
+    page.wait_for_load_state("networkidle", timeout=30_000)
 
 
 def assert_pill_label(page: Page, expected: str) -> None:
-    pill = page.get_by_test_id("warranty-status-pill")
-    pill.wait_for(state="visible", timeout=STEP_TIMEOUT_MS)
-    text = pill.inner_text(timeout=STEP_TIMEOUT_MS).strip().lower()
-    assert expected.lower() in text, f"expected pill={expected!r}, got {text!r}"
+    """Poll until the status pill shows the expected text.
+
+    Status updates are asynchronous: /actions/execute fires on Render, the
+    frontend then refetches the entity, and only then re-renders the pill.
+    Polling avoids the stale-read race that snap-checks produce.
+    """
+    exp = expected.lower().replace("'", "\\'")
+    page.wait_for_function(
+        f"""() => {{
+            const pill = document.querySelector('[data-testid="warranty-status-pill"]');
+            return pill !== null && pill.innerText.trim().toLowerCase().includes('{exp}');
+        }}""",
+        timeout=20_000,
+    )
 
 
 def extract_claim_id_from_url(page: Page) -> str | None:
@@ -272,16 +334,29 @@ def scenario_1_hod_files_claim(ctx: BrowserContext, state: dict) -> dict:
     state["test_claim_title"] = title
     step(res, "1.3", "Fill new-claim modal",
          lambda: fill_new_claim_modal(page, title))
-    step(res, "1.4", "Submit new-claim modal",
-         lambda: page.get_by_role("button", name=re.compile(r"(submit|create|save)", re.I)).first.click(timeout=STEP_TIMEOUT_MS))
+
+    # The app does NOT auto-navigate after File Claim — URL stays at
+    # /warranties list. The /api/v1/actions/execute response body includes
+    # claim_id. expect_response couples the click with the response capture so
+    # we deterministically get the id before checking the pill.
+    def submit_modal_and_capture():
+        with page.expect_response(
+            lambda r: "/api/v1/actions/execute" in r.url and r.request.method == "POST",
+            timeout=NAV_TIMEOUT_MS,
+        ) as resp_info:
+            page.locator("[role='dialog'] button[type='submit']").click(timeout=STEP_TIMEOUT_MS)
+        resp = resp_info.value
+        assert resp.status == 200, f"create-claim returned {resp.status}: {resp.text()[:200]}"
+        body = resp.json()
+        cid = body.get("claim_id")
+        assert cid, f"no claim_id in response body: {body}"
+        state["claim_id_1"] = cid
+        page.goto(f"{BASE_URL}/warranties/{cid}", timeout=NAV_TIMEOUT_MS)
+        page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
+    step(res, "1.4", "Submit modal, capture claim_id, navigate to lens",
+         submit_modal_and_capture)
 
     step(res, "1.5", "Status pill = Draft", lambda: assert_pill_label(page, "Draft"))
-
-    def capture_id():
-        cid = extract_claim_id_from_url(page)
-        assert cid, f"claim id not in URL: {page.url}"
-        state["claim_id_1"] = cid
-    step(res, "1.5b", "Capture claim_id from URL", capture_id)
 
     step(res, "1.7", "Primary button = Submit Claim",
          lambda: page.get_by_test_id("warranty-submit-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
@@ -345,22 +420,40 @@ def scenario_3_rejection(ctx: BrowserContext, state: dict) -> dict:
 
     title = f"{TEST_CLAIM_TITLE_REJECT} {dt.datetime.utcnow().strftime('%H%M%S')}"
     step(res, "3.1c", "Fill new-claim modal", lambda: fill_new_claim_modal(page, title))
-    step(res, "3.1d", "Submit new-claim modal",
-         lambda: page.get_by_role("button", name=re.compile(r"(submit|create|save)", re.I)).first.click(timeout=STEP_TIMEOUT_MS))
 
-    def capture_id():
-        cid = extract_claim_id_from_url(page)
-        assert cid, f"claim id not in URL: {page.url}"
+    def submit_modal_and_capture_3():
+        with page.expect_response(
+            lambda r: "/api/v1/actions/execute" in r.url and r.request.method == "POST",
+            timeout=NAV_TIMEOUT_MS,
+        ) as resp_info:
+            page.locator("[role='dialog'] button[type='submit']").click(timeout=STEP_TIMEOUT_MS)
+        resp = resp_info.value
+        assert resp.status == 200, f"create-claim returned {resp.status}: {resp.text()[:200]}"
+        body = resp.json()
+        cid = body.get("claim_id")
+        assert cid, f"no claim_id in response body: {body}"
         state["claim_id_3"] = cid
-    step(res, "3.1e", "Capture claim_id_3", capture_id)
+        page.goto(f"{BASE_URL}/warranties/{cid}", timeout=NAV_TIMEOUT_MS)
+        page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
+    step(res, "3.1d", "Submit modal, capture claim_id_3, navigate",
+         submit_modal_and_capture_3)
 
     step(res, "3.2", "Submit the claim (status → Submitted)",
          lambda: page.get_by_test_id("warranty-submit-btn").click(timeout=STEP_TIMEOUT_MS))
     step(res, "3.2b", "Status pill = Submitted", lambda: assert_pill_label(page, "Submitted"))
 
-    # 3b — captain rejects
+    # 3b — captain rejects. Supabase session is in localStorage + cookies;
+    # clearing cookies alone leaves the SPA thinking it's still signed in,
+    # so the login form never re-renders on /login. Clear both, then force
+    # a fresh navigation to /login before calling login().
     def relogin_captain():
         page.context.clear_cookies()
+        try:
+            page.evaluate("() => { try { localStorage.clear(); sessionStorage.clear(); } catch(e) {} }")
+        except Exception:
+            pass
+        # Force a full reload of /login so React mounts the login form fresh.
+        page.goto(f"{BASE_URL}/login", timeout=NAV_TIMEOUT_MS)
         login(page, CAPTAIN_EMAIL, PASSWORD)
     step(res, "3.3", "Switch to captain", relogin_captain)
 
@@ -386,9 +479,10 @@ def scenario_3_rejection(ctx: BrowserContext, state: dict) -> dict:
     step(res, "3.9", "Enter rejection_reason",
          lambda: fill_popup_field(page, "rejection_reason",
                                   "Claim filed after 24-month warranty window expired"))
-    step(res, "3.10", "Submit → status = Rejected",
-         lambda: (page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS),
-                  assert_pill_label(page, "Rejected")))
+    def submit_reject_and_verify():
+        page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS)
+        assert_pill_label(page, "Rejected")
+    step(res, "3.10", "Submit → status = Rejected", submit_reject_and_verify)
 
     page.close()
     return finalize(res)
@@ -425,10 +519,13 @@ def scenario_4_compose_email(ctx: BrowserContext, state: dict) -> dict:
 
     def to_is_manufacturer_email():
         # "To" row should contain the manufacturer email, not the company name.
+        # NOTE: this will fail if manufacturer_email wasn't populated at claim
+        # creation (the kv-edit widget isn't a standard <input>, so best-effort
+        # fill in fill_new_claim_modal may silently skip it). Mark provisional.
         page.get_by_text(TEST_MFG_EMAIL, exact=False).first.wait_for(
             state="visible", timeout=STEP_TIMEOUT_MS,
         )
-    step(res, "4.5", "Email 'To' = manufacturer_email", to_is_manufacturer_email)
+    step(res, "4.5", "Email 'To' = manufacturer_email (provisional)", to_is_manufacturer_email)
 
     page.close()
     return finalize(res)
@@ -501,8 +598,10 @@ def scenario_6_upload_document(ctx: BrowserContext, state: dict) -> dict:
     step(res, "6.1", "Open the claim",
          lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
 
+    # warranty-upload-btn may take a moment to render after the entity loads.
+    # Use NAV_TIMEOUT_MS to give the attachments section time to mount.
     step(res, "6.3", "'+ Upload' visible on attachments",
-         lambda: page.get_by_test_id("warranty-upload-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
+         lambda: page.get_by_test_id("warranty-upload-btn").wait_for(state="visible", timeout=NAV_TIMEOUT_MS))
     step(res, "6.4", "Click upload button",
          lambda: page.get_by_test_id("warranty-upload-btn").click(timeout=STEP_TIMEOUT_MS))
 
@@ -513,17 +612,19 @@ def scenario_6_upload_document(ctx: BrowserContext, state: dict) -> dict:
     step(res, "6.5", "Attach test PDF", attach_file)
 
     def submit_and_wait_for_render_api():
-        # The upload hits /v1/attachments/upload on Render. Click whatever the
-        # modal's confirm button is, then assert we saw a 2xx from the endpoint
-        # in the captured network log.
-        page.get_by_role("button", name=re.compile(r"(upload|submit|save|confirm)", re.I)).first.click(timeout=STEP_TIMEOUT_MS)
-        deadline = dt.datetime.utcnow() + dt.timedelta(seconds=20)
+        # AttachmentUploadModal uses a form with type=submit button. Scope to the
+        # dialog to avoid matching other buttons on the page behind the modal.
+        modal_btn = page.locator("[role='dialog'] button[type='submit']")
+        modal_btn.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+        modal_btn.click(timeout=STEP_TIMEOUT_MS)
+        # Wait for the /v1/attachments/upload POST to complete with 2xx.
+        deadline = dt.datetime.utcnow() + dt.timedelta(seconds=30)
         while dt.datetime.utcnow() < deadline:
             for n in res["network"]:
                 if "/v1/attachments/upload" in n["url"] and 200 <= n["status"] < 300:
                     return
             page.wait_for_timeout(500)
-        raise AssertionError("no 2xx from /v1/attachments/upload within 20s")
+        raise AssertionError("no 2xx from /v1/attachments/upload within 30s")
     step(res, "6.6", "Upload POST hits /v1/attachments/upload and returns 2xx",
          submit_and_wait_for_render_api)
 
@@ -551,14 +652,18 @@ def scenario_7_crew_restrictions(ctx: BrowserContext, state: dict) -> dict:
     step(res, "7.2b", "'+ Add Warranty' disabled for crew", add_warranty_is_disabled)
 
     # Open the first visible claim (crew can view, not mutate).
+    # Prefer the claim seeded by S1 if available; fall back to any claim link.
     def open_first_claim():
-        # The list rows aren't carrying testids yet — fall back to the first
-        # anchor that matches /warranties/<uuid>.
-        first_row = page.locator("a[href*='/warranties/']").first
-        first_row.wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
-        first_row.click(timeout=STEP_TIMEOUT_MS)
-        page.wait_for_url(re.compile(r"/warranties/[0-9a-f-]{36}"), timeout=NAV_TIMEOUT_MS)
-    step(res, "7.3", "Open an existing claim", open_first_claim)
+        claim_id = state.get("claim_id_1")
+        if claim_id:
+            page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS)
+            page.wait_for_url(re.compile(r"/warranties/[0-9a-f-]{36}"), timeout=NAV_TIMEOUT_MS)
+        else:
+            first_row = page.locator("a[href*='/warranties/']").first
+            first_row.wait_for(state="visible", timeout=NAV_TIMEOUT_MS)
+            first_row.click(timeout=STEP_TIMEOUT_MS)
+            page.wait_for_url(re.compile(r"/warranties/[0-9a-f-]{36}"), timeout=NAV_TIMEOUT_MS)
+    step(res, "7.3", "Open an existing claim (seeded by S1)", open_first_claim)
 
     def no_mutate_buttons_visible():
         for hidden_id in ("warranty-submit-btn", "warranty-approve-btn",
@@ -637,10 +742,27 @@ def main() -> int:
     state: dict = {}
     results: list[dict] = []
 
+    # Warm the Render API before spawning any browsers so the app's bootstrap
+    # doesn't race against a cold-start.
+    warmup_render_api()
+
     with sync_playwright() as pw:
-        browser: Browser = pw.chromium.launch(headless=headless)
+        browser: Browser = pw.chromium.launch(
+            headless=headless,
+            # Disable the automation flag that Supabase / Vercel BotID use to
+            # detect headless Chrome and block auth fetches.
+            args=["--disable-blink-features=AutomationControlled"],
+        )
         for sid, fn in selected:
-            ctx = browser.new_context(accept_downloads=True)
+            ctx = browser.new_context(
+                accept_downloads=True,
+                user_agent=BROWSER_UA,
+                locale="en-US",
+            )
+            # Mask navigator.webdriver at the JS level too.
+            ctx.add_init_script(
+                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+            )
             try:
                 result = fn(ctx, state)
             except Exception as e:  # last-ditch guard
