@@ -435,6 +435,18 @@ except Exception as e:
     logger.error("Document link/unlink endpoints will not be available")
 
 # ============================================================================
+# ATTACHMENT UPLOAD PROXY (generic entity attachment write-through to TENANT)
+# ============================================================================
+
+try:
+    from routes.attachment_upload import router as attachment_upload_router
+    app.include_router(attachment_upload_router)
+    logger.info("✅ Attachment upload routes registered at /v1/attachments/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Attachment upload routes: {e}")
+    logger.error("Attachment upload endpoint will not be available")
+
+# ============================================================================
 # HOURS OF REST ROUTES (Crew Compliance - MLC 2006 & STCW)
 # ============================================================================
 
