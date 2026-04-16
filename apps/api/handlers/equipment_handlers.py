@@ -2027,11 +2027,12 @@ def _link_document_to_equipment_adapter(handlers: EquipmentHandlers):
         description = params.get("description")
 
         # Verify equipment exists
+        # Guard: supabase-py >= 2.x returns None from maybe_single() when 0 rows match
         eq_result = db.table("pms_equipment").select(
             "id"
         ).eq("id", equipment_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-        if not eq_result.data:
+        if not eq_result or not eq_result.data:
             return {
                 "status": "error",
                 "error_code": "NOT_FOUND",
@@ -2044,7 +2045,7 @@ def _link_document_to_equipment_adapter(handlers: EquipmentHandlers):
             "id, filename, storage_path, content_type, size_bytes"
         ).eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-        if not doc_result.data:
+        if not doc_result or not doc_result.data:
             return {
                 "status": "error",
                 "error_code": "DOCUMENT_NOT_FOUND",
@@ -2058,7 +2059,7 @@ def _link_document_to_equipment_adapter(handlers: EquipmentHandlers):
             "id"
         ).eq("equipment_id", equipment_id).eq("document_id", document_id).maybe_single().execute()
 
-        if existing.data:
+        if existing and existing.data:
             return {
                 "status": "error",
                 "error_code": "ALREADY_LINKED",
