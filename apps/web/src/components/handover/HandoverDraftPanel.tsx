@@ -509,22 +509,39 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
   const userReady = !!(user?.id);
 
   // ── Fetch — all calls go through Render API (TENANT DB, correct path) ──
+  // CORS headers occasionally disappear during Render rolling deploys
+  // (PR #565 is deployed, but transitions briefly serve without CORS). Cap
+  // retries at 3 with exponential backoff (1s / 2s / 4s) so a deploy blip
+  // doesn't produce infinite console spam.
   const fetchItems = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
+    const MAX_RETRIES = 3;
+    const BACKOFFS = [1000, 2000, 4000];
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       if (!token) { toast.error('Not authenticated'); return; }
 
-      const res = await fetch(`${RENDER_API_URL}/v1/handover/items`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) { toast.error('Failed to load handover items'); return; }
-      const { items: fetched } = await res.json();
-      setItems(fetched || []);
-      setExpandedDays(new Set([new Date().toISOString().split('T')[0]]));
-    } catch {
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          const res = await fetch(`${RENDER_API_URL}/v1/handover/items`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const { items: fetched } = await res.json();
+          setItems(fetched || []);
+          setExpandedDays(new Set([new Date().toISOString().split('T')[0]]));
+          return;
+        } catch (err) {
+          lastError = err;
+          if (attempt < MAX_RETRIES - 1) {
+            await new Promise((r) => setTimeout(r, BACKOFFS[attempt]));
+          }
+        }
+      }
+      console.warn('[HandoverDraftPanel] fetchItems giving up after retries:', lastError);
       toast.error('Failed to load handover items');
     } finally {
       setLoading(false);
@@ -606,6 +623,13 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
   const handleExport = useCallback(async () => {
     if (!user?.id || !(activeVesselId || user?.yachtId) || items.length === 0) return;
     setExporting(true);
+    // Immediate feedback: the LLM pipeline can take up to 2 minutes on a
+    // cold start. Without this toast the button just spins and the user has
+    // no indication anything is happening.
+    const pendingToastId = toast.info(
+      'Generating handover — this may take up to 2 minutes',
+      { duration: 120_000 }
+    );
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
@@ -629,11 +653,15 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
         body: JSON.stringify({ item_ids: items.map(i => i.id) }),
       });
 
+      toast.dismiss(pendingToastId);
+      // 10s duration (not default 4s) so the user sees the "View" button.
       toast.success(`Handover exported — ${result.total_items} items`, {
+        duration: 10_000,
         action: { label: 'View', onClick: () => router.push(`/handover-export/${result.export_id}`) },
       });
       fetchItems();
     } catch (err) {
+      toast.dismiss(pendingToastId);
       toast.error(err instanceof Error ? err.message : 'Failed to export handover');
     } finally {
       setExporting(false);

@@ -298,6 +298,11 @@ export function HandoverQueueView() {
   const handleAdd = React.useCallback(async (item: HandoverQueueItem, entityType: string, entityLabel: string) => {
     if (!user?.id || !vesselId) return;
     setAddingId(item.id);
+    // True optimistic update: flip the button to "✓ Added" immediately so the
+    // user gets instant feedback. Revert on failure. The round-trip
+    // Vercel → Render → Supabase can be slow (cold start + rolling deploy);
+    // the UI shouldn't visibly stall for that.
+    setAlreadyQueued(prev => new Set([...prev, item.id]));
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
@@ -321,10 +326,14 @@ export function HandoverQueueView() {
         const errBody = await res.json().catch(() => ({}));
         throw new Error(errBody?.message || `Failed (${res.status})`);
       }
-      // Optimistic update
-      setAlreadyQueued(prev => new Set([...prev, item.id]));
       toast.success('Added to handover draft');
     } catch (err) {
+      // Revert optimistic flip on failure
+      setAlreadyQueued(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
       toast.error(err instanceof Error ? err.message : 'Failed to add to draft');
     } finally {
       setAddingId(null);
