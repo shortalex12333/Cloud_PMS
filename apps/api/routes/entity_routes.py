@@ -524,7 +524,7 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
 
         try:
             notes_r = supabase.table("pms_notes").select(
-                "id, text, note_type, created_by, created_at"
+                "id, text, note_type, created_by, created_by_role, created_at"
             ).eq("warranty_id", warranty_id).eq("yacht_id", yacht_id).order("created_at", desc=True).execute()
             warranty_notes = notes_r.data or []
         except Exception:

@@ -209,6 +209,7 @@ async def add_note(params: Dict[str, Any]) -> Dict[str, Any]:
         "text": note_text,
         "note_type": params.get("note_type", "observation"),
         "created_by": user_id,
+        "created_by_role": params.get("role", ""),
         "created_at": now,
         "updated_at": now,
     }

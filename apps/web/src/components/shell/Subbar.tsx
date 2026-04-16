@@ -123,6 +123,8 @@ interface SubbarProps {
   onSearch?: (query: string) => void;
   onSortChange?: (sort: string) => void;
   onPrimaryAction?: () => void;
+  /** When true the primary action button is rendered disabled (greyed out, not clickable) */
+  primaryActionDisabled?: boolean;
 }
 
 export function Subbar({
@@ -133,6 +135,7 @@ export function Subbar({
   onSearch,
   onSortChange,
   onPrimaryAction,
+  primaryActionDisabled = false,
 }: SubbarProps) {
   // Hide when Vessel Surface is active
   if (activeDomain === 'surface') return null;
@@ -312,23 +315,26 @@ export function Subbar({
 
       {/* Primary action button */}
       <button
-        onClick={onPrimaryAction}
+        onClick={primaryActionDisabled ? undefined : onPrimaryAction}
+        disabled={primaryActionDisabled}
+        title={primaryActionDisabled ? 'Only HOD / Captain can perform this action' : undefined}
         style={{
           height: 28,
           padding: '0 12px',
           borderRadius: 4,
-          background: 'var(--teal-bg)',
-          border: '1px solid var(--mark-hover)',
+          background: primaryActionDisabled ? 'var(--surface-raised)' : 'var(--teal-bg)',
+          border: `1px solid ${primaryActionDisabled ? 'var(--border-sub)' : 'var(--mark-hover)'}`,
           fontSize: 11,
           fontWeight: 500,
-          color: 'var(--mark)',
+          color: primaryActionDisabled ? 'var(--text-sub)' : 'var(--mark)',
           display: 'flex',
           alignItems: 'center',
           gap: 5,
-          cursor: 'pointer',
+          cursor: primaryActionDisabled ? 'not-allowed' : 'pointer',
           whiteSpace: 'nowrap',
           flexShrink: 0,
           transition: 'background 80ms',
+          opacity: primaryActionDisabled ? 0.5 : 1,
         }}
       >
         <Plus style={{ width: 11, height: 11 }} />

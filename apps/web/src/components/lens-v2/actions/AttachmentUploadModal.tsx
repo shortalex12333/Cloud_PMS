@@ -50,7 +50,9 @@ import { cn } from '@/lib/utils';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
 import { Toast } from '@/components/ui/Toast';
-import { supabase } from '@/lib/supabaseClient';
+// Use the TENANT client for storage + pms_attachments — these live on the
+// TENANT Supabase project (vzsohavtuotocgrfkfyd), not the MASTER auth project.
+import { supabaseTenant as supabase } from '@/lib/supabaseTenantClient';
 
 // ---------------------------------------------------------------------------
 // Constants

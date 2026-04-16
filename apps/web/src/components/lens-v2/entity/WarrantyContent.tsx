@@ -246,7 +246,7 @@ export function WarrantyContent() {
   // ── Notes ──
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
-    author: (n.author ?? n.created_by ?? n.user_name) as string ?? 'Unknown',
+    author: (n.created_by_role ?? n.author ?? n.user_name) as string ?? 'Unknown',
     timestamp: (n.created_at ?? n.timestamp) as string ?? '',
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));

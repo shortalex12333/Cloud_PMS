@@ -43,6 +43,8 @@ import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUp
 import { LedgerPanel } from '@/components/ledger';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAuthHeaders, getYachtId } from '@/lib/authHelpers';
+import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
 
 /** Map URL pathnames to domain IDs */
 const PATH_TO_DOMAIN: Record<string, DomainId> = {
@@ -137,6 +139,10 @@ export function AppShell({ children }: AppShellProps) {
 
   // Sidebar count badges from Vessel Surface endpoint
   const sidebarCounts = useSidebarCounts();
+
+  // Role-based primary action gating: crew cannot file warranty claims
+  const { user } = useAuth();
+  const primaryActionDisabled = activeDomain === 'warranties' && !isHOD(user);
 
   // Global search overlay state
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -265,6 +271,7 @@ export function AppShell({ children }: AppShellProps) {
         onLedgerClick={() => setLedgerOpen(true)}
         onSettingsClick={handleSettingsClick}
         onPrimaryAction={handlePrimaryAction}
+        primaryActionDisabled={primaryActionDisabled}
       >
         {children}
       </AppShellInner>
@@ -299,6 +306,7 @@ function AppShellInner({
   onLedgerClick,
   onSettingsClick,
   onPrimaryAction,
+  primaryActionDisabled,
   children,
 }: {
   activeDomain: DomainId;
@@ -312,6 +320,7 @@ function AppShellInner({
   onLedgerClick: () => void;
   onSettingsClick: () => void;
   onPrimaryAction: () => void;
+  primaryActionDisabled: boolean;
   children: React.ReactNode;
 }) {
   const { activeChip, setActiveChip, setSearchQuery, setActiveSort } = useShellContext();
@@ -383,6 +392,7 @@ function AppShellInner({
           onSearch={setSearchQuery}
           onSortChange={setActiveSort}
           onPrimaryAction={onPrimaryAction}
+          primaryActionDisabled={primaryActionDisabled}
         />
       )}
 
