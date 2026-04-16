@@ -927,6 +927,15 @@ class HoursOfRestHandlers:
 
             signoff = current_result.data[0]
 
+            # Resolve signer's role for ledger (user_role was NULL — BUG-HOR-LEDGER-1)
+            try:
+                role_row = self.db.table("auth_users_roles").select("role").eq(
+                    "user_id", user_id
+                ).eq("yacht_id", yacht_id).limit(1).execute()
+                signer_role = role_row.data[0]["role"] if role_row.data else None
+            except Exception:
+                signer_role = None
+
             # Role enforcement: only appropriate roles can countersign at each level.
             # Crew can always sign their own records (signature_level == "crew").
             # HOD and master levels require verified role from auth_users_roles.
@@ -1105,9 +1114,10 @@ class HoursOfRestHandlers:
                         yacht_id=yacht_id,
                         user_id=user_id,
                         event_type="approval",
-                        entity_type="pms_hor_monthly_signoffs",
+                        entity_type="hours_of_rest_signoff",
                         entity_id=signoff_id,
                         action=ledger_action,
+                        user_role=signer_role,
                         department=signoff.get("department"),
                         change_summary=f"{signer_name} signed {signoff.get('month', '')} HoR as {signature_level}",
                         metadata={"signature_level": signature_level, "month": signoff.get("month"), "new_status": update_data.get("status")},
