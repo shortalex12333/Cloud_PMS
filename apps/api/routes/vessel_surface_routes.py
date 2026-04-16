@@ -739,9 +739,9 @@ async def get_domain_records(
 
         # Sort — map frontend field names to actual DB columns
         _SORT_COLUMN_MAP = {
-            "certificates": {"title": "certificate_name", "name": "certificate_name", "priority": "expiry_date"},
-            "equipment": {"title": "name"},
-            "parts": {"title": "name"},
+            "certificates": {"title": "certificate_name", "name": "certificate_name", "alpha": "certificate_name", "priority": "expiry_date"},
+            "equipment": {"title": "name", "alpha": "name"},
+            "parts": {"title": "name", "alpha": "name"},
         }
         resolved_sort = _SORT_COLUMN_MAP.get(domain, {}).get(sort_field, sort_field)
         query = query.order(resolved_sort, desc=sort_desc)

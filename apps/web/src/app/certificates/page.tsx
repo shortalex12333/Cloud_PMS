@@ -64,7 +64,7 @@ function certAdapter(c: Certificate): EntityListResult {
     subtitle: `${c.certificate_type || ''} · ${c.issuing_authority || ''}`.replace(/^ · |· $/g, ''),
     entityRef: c.certificate_number || (c.domain === 'crew' ? 'Crew' : 'Vessel'),
     status,
-    statusVariant: c.status === 'expired' ? 'critical' : c.status === 'revoked' ? 'critical' : c.status === 'suspended' ? 'warning' : c.status === 'expiring_soon' ? 'warning' : c.status === 'superseded' ? 'neutral' : c.status === 'valid' ? 'success' : 'open',
+    statusVariant: c.status === 'expired' ? 'critical' : c.status === 'revoked' ? 'critical' : c.status === 'suspended' ? 'warning' : c.status === 'expiring_soon' ? 'warning' : c.status === 'superseded' ? 'cancelled' : c.status === 'valid' ? 'completed' : 'open',
     severity: c.status === 'expired' ? 'critical' : c.status === 'revoked' ? 'critical' : c.status === 'suspended' ? 'warning' : c.status === 'expiring_soon' ? 'warning' : null,
     age: daysLeft !== null ? (daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d`) : '\u2014',
   };
