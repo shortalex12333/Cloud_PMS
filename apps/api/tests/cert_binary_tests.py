@@ -21,6 +21,8 @@ TENANT_URL = "https://vzsohavtuotocgrfkfyd.supabase.co"
 TENANT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzU5Mjg3NSwiZXhwIjoyMDc5MTY4ODc1fQ.fC7eC_4xGnCHIebPzfaJ18pFMPKgImE7BuN0I3A-pSY"
 YACHT_ID  = "85fe1119-b04c-41ac-80f1-829d23322598"
 USER_ID   = "00000000-0000-0000-0000-000000000001"  # synthetic test user
+# _cert_mutation_gate requires user_context with role for domain-based narrowing
+USER_CTX  = {"role": "captain", "user_id": USER_ID}
 
 import os
 os.environ.setdefault("SUPABASE_URL", TENANT_URL)
@@ -126,6 +128,7 @@ try:
     result = asyncio.run(handlers["renew_certificate"](
         yacht_id=YACHT_ID,
         user_id=USER_ID,
+        user_context=USER_CTX,
         certificate_id=old_id,
         new_issue_date="2026-02-01",
         new_expiry_date="2027-02-01",
@@ -160,6 +163,7 @@ try:
     asyncio.run(handlers["suspend_certificate"](
         yacht_id=YACHT_ID,
         user_id=USER_ID,
+        user_context=USER_CTX,
         entity_id=cert_id,
         reason="Test suspension",
         signature={"signer": USER_ID, "method": "test"},
@@ -195,6 +199,7 @@ try:
     asyncio.run(handlers["revoke_certificate"](
         yacht_id=YACHT_ID,
         user_id=USER_ID,
+        user_context=USER_CTX,
         entity_id=crew_id,
         reason="Test revocation",
         signature={"signer": USER_ID, "method": "test"},
@@ -226,6 +231,7 @@ try:
     asyncio.run(handlers["archive_certificate"](
         yacht_id=YACHT_ID,
         user_id=USER_ID,
+        user_context=USER_CTX,
         entity_id=cert_id,
     ))
     row = get_vessel(cert_id)
@@ -256,6 +262,7 @@ try:
     asyncio.run(handlers["archive_certificate"](
         yacht_id=YACHT_ID,
         user_id=USER_ID,
+        user_context=USER_CTX,
         entity_id=crew_id,
     ))
     row = get_crew(crew_id)
@@ -339,6 +346,7 @@ try:
     asyncio.run(handlers["renew_certificate"](
         yacht_id=YACHT_ID,
         user_id=USER_ID,
+        user_context=USER_CTX,
         certificate_id=cert_id,
         new_issue_date="2026-01-01",
         new_expiry_date="2027-01-01",
@@ -430,6 +438,7 @@ try:
     asyncio.run(handlers["assign_certificate"](
         yacht_id=YACHT_ID,
         user_id=USER_ID,
+        user_context=USER_CTX,
         certificate_id=cert_id,
         assigned_to=USER_ID,
         assigned_to_name="Chief Engineer Test",
@@ -459,6 +468,7 @@ try:
     asyncio.run(handlers["suspend_certificate"](
         yacht_id=YACHT_ID,
         user_id=USER_ID,
+        user_context=USER_CTX,
         entity_id=cert_id,
         reason="Should not work",
     ))
@@ -478,6 +488,7 @@ try:
     asyncio.run(handlers["revoke_certificate"](
         yacht_id=YACHT_ID,
         user_id=USER_ID,
+        user_context=USER_CTX,
         entity_id=cert_id,
         reason="Should not work",
     ))
@@ -488,6 +499,44 @@ except Exception as e:
     record("T13: wrong exception type", False, str(e))
 finally:
     cleanup(("pms_crew_certificates", cert_id))
+
+
+# ─── TEST 14: mutation gate — engineer blocked from crew cert ────────────────
+print("\nT14: mutation gate — engineer cannot archive crew cert")
+crew_id = make_crew_cert()
+try:
+    asyncio.run(handlers["archive_certificate"](
+        yacht_id=YACHT_ID,
+        user_id=USER_ID,
+        user_context={"role": "engineer", "user_id": USER_ID},
+        entity_id=crew_id,
+    ))
+    record("T14: engineer should be blocked from crew cert", False, "No exception")
+except ValueError as e:
+    record("T14: engineer correctly blocked from crew cert", True, str(e))
+except Exception as e:
+    record("T14: wrong exception type", False, str(e))
+finally:
+    cleanup(("pms_crew_certificates", crew_id))
+
+
+# ─── TEST 15: mutation gate — purser blocked from vessel cert ────────────────
+print("\nT15: mutation gate — purser cannot archive vessel cert")
+cert_id = make_vessel_cert()
+try:
+    asyncio.run(handlers["archive_certificate"](
+        yacht_id=YACHT_ID,
+        user_id=USER_ID,
+        user_context={"role": "purser", "user_id": USER_ID},
+        entity_id=cert_id,
+    ))
+    record("T15: purser should be blocked from vessel cert", False, "No exception")
+except ValueError as e:
+    record("T15: purser correctly blocked from vessel cert", True, str(e))
+except Exception as e:
+    record("T15: wrong exception type", False, str(e))
+finally:
+    cleanup(("pms_vessel_certificates", cert_id))
 
 
 # ─── T-META: ACTION_METADATA coverage (ledger safety net prerequisite) ──────

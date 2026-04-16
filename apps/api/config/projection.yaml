@@ -275,6 +275,33 @@ certificates:
     expiry: expiry_date
     authority: issuing_authority
 
+crew_certificates:
+  source_table: pms_crew_certificates
+  object_type: crew_certificate
+  search_text:
+    - field: person_name
+      cast: text
+    - field: certificate_type
+      cast: text
+    - field: certificate_number
+      cast: text
+    - field: issuing_authority
+      cast: text
+  filters:
+    certificate_type: certificate_type
+    status: status
+    expiry_date:
+      source: expiry_date
+      transform: "to_char(%, 'YYYY-MM-DD')"
+    issuing_authority: issuing_authority
+  payload:
+    name: person_name
+    type: certificate_type
+    number: certificate_number
+    status: status
+    expiry: expiry_date
+    authority: issuing_authority
+
 email:
   source_table: email_messages
   object_type: email
@@ -525,7 +552,7 @@ hours_of_rest_signoffs:
 
 promoted_facets:
   - key: status
-    domains: [work_orders, faults, equipment, receiving, certificates, hours_of_rest_signoffs]
+    domains: [work_orders, faults, equipment, receiving, certificates, crew_certificates, hours_of_rest_signoffs]
     index_type: btree
   - key: priority
     domains: [work_orders]
@@ -538,10 +565,10 @@ promoted_facets:
     domains: [documents]
     index_type: btree
   - key: certificate_type
-    domains: [certificates]
+    domains: [certificates, crew_certificates]
     index_type: btree
   - key: expiry_date
-    domains: [certificates]
+    domains: [certificates, crew_certificates]
     index_type: btree
     transform: to_date
   - key: equipment_id

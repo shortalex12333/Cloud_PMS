@@ -574,8 +574,10 @@ class HoursOfRestHandlers:
             limit = params.get("limit", 50)
             offset = params.get("offset", 0)
 
-            # Build query — join user profile for display names so the list
-            # doesn't show raw UUIDs. Mirrors what get_monthly_signoff does.
+            # Build query. NOTE: no cross-schema join to auth.users here —
+            # PostgREST cannot resolve auth.users from the public schema,
+            # which causes a DATABASE_ERROR instead of a clean success response.
+            # User display names are raw UUIDs here; the frontend resolves them.
             query = self.db.table("pms_hor_monthly_signoffs").select(
                 "id, user_id, department, month, status, "
                 "period_type, week_start, "
@@ -585,8 +587,7 @@ class HoursOfRestHandlers:
                 "master_signature, master_signed_at, master_signed_by, "
                 "fleet_manager_signed_by, fleet_manager_signed_at, "
                 "total_rest_hours, total_work_hours, violation_count, "
-                "created_at, updated_at, "
-                "user:user_id(name, email)",
+                "created_at, updated_at",
                 count="exact"
             ).eq("yacht_id", yacht_id)
 
@@ -657,8 +658,10 @@ class HoursOfRestHandlers:
         builder = ResponseBuilder("get_monthly_signoff", entity_id, "monthly_signoff", yacht_id)
 
         try:
+            # NOTE: no cross-schema join to auth.users — PostgREST cannot resolve
+            # auth.users from the public schema and throws, which masks the NOT_FOUND path.
             result = self.db.table("pms_hor_monthly_signoffs").select(
-                "*, user:user_id(email, name)"
+                "*"
             ).eq("id", entity_id).eq("yacht_id", yacht_id).limit(1).execute()
 
             signoff = result.data[0] if result.data else None

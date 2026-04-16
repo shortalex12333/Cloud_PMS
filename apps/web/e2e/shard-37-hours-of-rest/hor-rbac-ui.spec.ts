@@ -41,8 +41,13 @@
 //     not just JWT injection.
 
 import { test, expect, RBAC_CONFIG } from '../rbac-fixtures';
-import { callActionDirect } from '../shard-34-lens-actions/helpers';
+import { callActionDirect, callActionAs, generateFreshJwt } from '../shard-34-lens-actions/helpers';
 import { BASE_URL } from '../shard-33-lens-actions/helpers';
+
+// Role-specific JWTs for sign-chain independence (MLC requires HOD ≠ master signer).
+// SESSION_JWT is always captain/a35cad0b — HOD sign must use a different identity.
+const HOD_JWT     = generateFreshJwt('81c239df-f8ef-4bba-9496-78bf8f46733c', 'eto.test@alex-short.com');
+const CAPTAIN_JWT = generateFreshJwt('5af9d61d-9b2e-4db4-a54c-a3c95eec70e5', 'captain.tenant@alex-short.com');
 
 // ── auth.users.id values (NOT auth_users_profiles.id) ─────────────────────────
 const CREW_USER_ID    = '4a66036f-899c-40c8-9b2a-598cee24a62f'; // engineer.test
@@ -274,7 +279,10 @@ test.describe('[Phase 2-3-4] Full sign chain: create → crew → HOD → master
     expect(afterCrewSign?.status).toBe('crew_signed');
 
     // ── PHASE 3 step 2: HOD sign (advance to hod_signed) ──────────────────
-    const hodSignResult = await callActionDirect(crewPage, 'sign_monthly_signoff', {
+    // MLC 2006 independence rule: HOD signer must be a different identity from master.
+    // SESSION_JWT = a35cad0b (captain role). Use HOD_JWT (81c239df, eto role) here
+    // so that master can then sign as a different person (5af9d61d, captain role).
+    const hodSignResult = await callActionAs(crewPage, HOD_JWT, 'sign_monthly_signoff', {
       signoff_id: signoffId,
       signature_level: 'hod',
       signature_data: {
@@ -294,7 +302,8 @@ test.describe('[Phase 2-3-4] Full sign chain: create → crew → HOD → master
     expect(afterHodSign?.status).toBe('hod_signed');
 
     // ── PHASE 4: master sign (advance to finalized) ────────────────────────
-    const masterSignResult = await callActionDirect(crewPage, 'sign_monthly_signoff', {
+    // Use CAPTAIN_JWT (5af9d61d) — different from HOD_JWT (81c239df) — passes MLC check.
+    const masterSignResult = await callActionAs(crewPage, CAPTAIN_JWT, 'sign_monthly_signoff', {
       signoff_id: signoffId,
       signature_level: 'master',
       signature_data: {

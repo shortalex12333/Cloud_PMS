@@ -76,6 +76,8 @@
 | `pms_vessel_certificates` | Vessel/machinery/flag certs | id, yacht_id, certificate_name, certificate_type, certificate_number, issuing_authority, issue_date, expiry_date, status, properties, document_id, deleted_at |
 | `pms_crew_certificates` | Seafarer/crew certs | id, yacht_id, person_name, person_node_id, certificate_type, certificate_number, issuing_authority, issue_date, expiry_date, status, properties, deleted_at |
 
+> **Note**: The crew member FK column is `person_node_id` (FK to `search_graph_nodes.id`), not `person_id`. Historical naming — functionally correct.
+
 ### 2.2 Unified view
 
 `v_certificates_enriched` — `UNION ALL` of both tables with `'vessel'::text AS domain` / `'crew'::text AS domain`. Filters: `deleted_at IS NULL` and `is_seed = false` (vessel only).
