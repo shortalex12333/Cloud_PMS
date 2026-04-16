@@ -817,6 +817,10 @@ class HoursOfRestHandlers:
             ).eq("user_id", target_user_id).eq("month", month).eq("department", department).execute()
             signoff = result.data[0] if (result is not None and result.data) else None
 
+            # Fix BUG-HOR-2: response entity_id must be the new signoff UUID, not the caller's user_id
+            if signoff and signoff.get("id"):
+                builder.entity_id = str(signoff["id"])
+
             # Write audit log
             if signoff and signoff.get("id"):
                 _write_hor_audit_log(self.db, {
@@ -829,15 +833,25 @@ class HoursOfRestHandlers:
                     "signature": {},  # Not a signed action
                 })
 
+                # Resolve creator's role for ledger (same pattern as sign handler)
+                try:
+                    _create_role_r = self.db.table("auth_users_roles").select("role").eq(
+                        "user_id", user_id
+                    ).eq("yacht_id", yacht_id).limit(1).execute()
+                    _create_role = _create_role_r.data[0]["role"] if _create_role_r.data else None
+                except Exception:
+                    _create_role = None
+
                 # Write ledger event for signoff creation
                 try:
                     self.db.table("ledger_events").insert(build_ledger_event(
                         yacht_id=yacht_id,
                         user_id=user_id,
                         event_type="create",
-                        entity_type="pms_hor_monthly_signoffs",
+                        entity_type="hours_of_rest_signoff",
                         entity_id=str(signoff["id"]),
                         action="create_monthly_signoff",
+                        user_role=_create_role,
                         change_summary=f"HoR signoff period opened for {month}, department {department}",
                         metadata={
                             "month": month,
