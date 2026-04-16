@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import s from './popup.module.css';
+import { useAuth } from '@/hooks/useAuth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -214,9 +215,10 @@ function FieldEntitySearch({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { user, session } = useAuth();
   const [query, setQuery] = React.useState('');
   const [displayLabel, setDisplayLabel] = React.useState('');
-  const [results, setResults] = React.useState<Array<{ id: string; title: string; object_type: string }>>([]);
+  const [results, setResults] = React.useState<Array<{ id: string; title: string }>>([]);
   const [showDropdown, setShowDropdown] = React.useState(false);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -231,33 +233,21 @@ function FieldEntitySearch({
       }
       debounceRef.current = setTimeout(async () => {
         try {
-          const yachtId =
-            typeof window !== 'undefined'
-              ? localStorage.getItem('celeste_yacht_id') || ''
-              : '';
-          const jwt =
-            typeof window !== 'undefined'
-              ? (() => {
-                  try {
-                    const authKey = Object.keys(localStorage).find((k) => k.includes('auth-token')) || '';
-                    const raw = localStorage.getItem(authKey);
-                    return raw ? JSON.parse(raw)?.access_token : '';
-                  } catch {
-                    return '';
-                  }
-                })()
-              : '';
-          // Call the Render backend search directly (has all tenant DB env vars).
-          // The Vercel /api/search/fallback route may not have TENANT_SUPABASE_SERVICE_KEY.
+          const yachtId = user?.yachtId || '';
+          const jwt = session?.access_token || '';
+          if (!yachtId) {
+            console.warn('[FieldEntitySearch] No yacht_id — user not bootstrapped');
+            setResults([]);
+            setShowDropdown(false);
+            return;
+          }
           const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
           const domain = field.search_domain || 'equipment';
           const resp = await fetch(
             `${apiBase}/api/vessel/${yachtId}/domain/${domain}/records?search=${encodeURIComponent(q)}&limit=15`,
             {
               method: 'GET',
-              headers: {
-                ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-              },
+              headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
             },
           );
           if (resp.ok) {
@@ -279,7 +269,7 @@ function FieldEntitySearch({
         }
       }, 250);
     },
-    [field.search_domain]
+    [field.search_domain, user?.yachtId, session?.access_token]
   );
 
   const handleSelect = React.useCallback(
