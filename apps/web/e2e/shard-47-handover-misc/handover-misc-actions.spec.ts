@@ -27,6 +27,17 @@
 import { test, expect, generateTestId, RBAC_CONFIG } from '../rbac-fixtures';
 import { callActionDirect, SESSION_JWT } from '../shard-34-lens-actions/helpers';
 import { BASE_URL } from '../shard-33-lens-actions/helpers';
+import { createClient } from '@supabase/supabase-js';
+
+// TENANT Supabase client for DB verification.
+// supabaseAdmin (from rbac-fixtures) may point to MASTER when .env.e2e is loaded,
+// but handover_items and ledger_events live on the TENANT project.
+const TENANT_URL = 'https://vzsohavtuotocgrfkfyd.supabase.co';
+const TENANT_SERVICE_KEY = process.env.TENANT_SERVICE_KEY
+  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzU5Mjg3NSwiZXhwIjoyMDc5MTY4ODc1fQ.fC7eC_4xGnCHIebPzfaJ18pFMPKgImE7BuN0I3A-pSY';
+const tenantDb = createClient(TENANT_URL, TENANT_SERVICE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -375,5 +386,268 @@ test.describe('[Captain] sign_handover_incoming — ADVISORY', () => {
     } catch (e) {
       console.log(`sign_handover_incoming — advisory: fetchDirect crashed (likely 404 HTML page)`);
     }
+  });
+});
+
+// ===========================================================================
+// list_handover_items — HARD PROOF (GET /v1/handover/items)
+// ===========================================================================
+
+test.describe('[Captain] list_handover_items — HARD PROOF', () => {
+  test('create item then GET /v1/handover/items → 200 + item in list', async ({
+    captainPage,
+  }) => {
+    await captainPage.goto(`${BASE_URL}/`);
+    await captainPage.waitForLoadState('domcontentloaded');
+
+    // Step 1: Create a handover item so the list is non-empty
+    const tag = generateTestId('li');
+    const createResult = await callActionDirect(captainPage, 'add_to_handover', {
+      entity_type: 'note',
+      summary: `S47 list-items probe ${tag}`,
+      category: 'fyi',
+    });
+    console.log(`[JSON] add_to_handover (for list): ${JSON.stringify(createResult.data)}`);
+
+    expect(createResult.status).toBe(200);
+    const createData = createResult.data as { status?: string; result?: { item_id?: string } };
+    expect(createData.status).toBe('success');
+    const itemId = createData.result?.item_id;
+    expect(typeof itemId).toBe('string');
+
+    // Step 2: List pending draft items
+    const listResult = await fetchDirect(captainPage, 'GET', '/v1/handover/items');
+    console.log(`[JSON] list_handover_items: status=${listResult.status}, keys=${Object.keys(listResult.data).join(',')}`);
+
+    expect(listResult.status).toBe(200);
+    const listData = listResult.data as { status?: string; items?: { id?: string }[]; count?: number };
+    expect(listData.status).toBe('success');
+    expect(Array.isArray(listData.items)).toBe(true);
+    expect(listData.count).toBeGreaterThan(0);
+
+    // Step 3: Verify the created item appears in the list
+    const ids = listData.items!.map((i) => i.id);
+    expect(ids).toContain(itemId);
+  });
+});
+
+// ===========================================================================
+// edit_handover_item — HARD PROOF (PATCH /v1/handover/items/{item_id})
+// ===========================================================================
+
+test.describe('[Captain] edit_handover_item — HARD PROOF', () => {
+  test('PATCH item → 200 + DB summary updated + is_critical + ledger row', async ({
+    captainPage,
+  }) => {
+    await captainPage.goto(`${BASE_URL}/`);
+    await captainPage.waitForLoadState('domcontentloaded');
+
+    // Step 1: Create a handover item
+    const tag = generateTestId('ei');
+    const createResult = await callActionDirect(captainPage, 'add_to_handover', {
+      entity_type: 'note',
+      summary: `S47 edit-item seed ${tag}`,
+      category: 'fyi',
+    });
+    console.log(`[JSON] add_to_handover (for edit): ${JSON.stringify(createResult.data)}`);
+
+    expect(createResult.status).toBe(200);
+    const createData = createResult.data as { status?: string; result?: { item_id?: string } };
+    expect(createData.status).toBe('success');
+    const itemId = createData.result?.item_id;
+    expect(typeof itemId).toBe('string');
+
+    // Step 2: PATCH the item — set summary + category='critical' to flip is_critical=true
+    // Use Playwright request (Node.js) instead of fetchDirect (browser) to avoid CORS on PATCH
+    const updatedSummary = `Updated summary for edit test ${tag}`;
+    const editResponse = await captainPage.request.patch(
+      `${API_URL}/v1/handover/items/${itemId}`,
+      {
+        headers: { Authorization: `Bearer ${SESSION_JWT}`, 'Content-Type': 'application/json' },
+        data: { summary: updatedSummary, category: 'critical' },
+      }
+    );
+    const editData = await editResponse.json();
+    console.log(`[JSON] edit_handover_item: status=${editResponse.status()}, ${JSON.stringify(editData)}`);
+
+    expect(editResponse.status()).toBe(200);
+    // Two PATCH handlers exist — first returns {success:true}, second returns {status:'ok'}
+    const editOk = (editData as any).success === true || (editData as any).status === 'ok';
+    expect(editOk).toBe(true);
+
+    // Step 3: DB verify — handover_items row has updated summary and is_critical=true
+    await expect.poll(
+      async () => {
+        const { data: row } = await tenantDb
+          .from('handover_items')
+          .select('id, summary, is_critical')
+          .eq('id', itemId)
+          .single();
+        return row as { id?: string; summary?: string; is_critical?: boolean } | null;
+      },
+      {
+        intervals: [500, 1000, 1500],
+        timeout: 8_000,
+        message: 'Expected handover_items row with updated summary and is_critical=true',
+      }
+    ).toEqual(
+      expect.objectContaining({
+        id: itemId,
+        summary: updatedSummary,
+        is_critical: true,
+      })
+    );
+
+    // Step 4: Ledger verify — ledger_events row with action='edit_draft_item'
+    await expect.poll(
+      async () => {
+        const { data: rows } = await tenantDb
+          .from('ledger_events')
+          .select('id, action, entity_id')
+          .eq('entity_id', itemId)
+          .eq('action', 'edit_draft_item');
+        return (rows as { id: string }[] | null)?.length ?? 0;
+      },
+      {
+        intervals: [500, 1000, 1500],
+        timeout: 8_000,
+        message: 'Expected ledger_events row with action=edit_draft_item',
+      }
+    ).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ===========================================================================
+// delete_handover_item — HARD PROOF (DELETE /v1/handover/items/{item_id})
+// ===========================================================================
+
+test.describe('[Captain] delete_handover_item — HARD PROOF', () => {
+  test('DELETE item → success + DB soft-deleted + gone from list + ledger row', async ({
+    captainPage,
+  }) => {
+    await captainPage.goto(`${BASE_URL}/`);
+    await captainPage.waitForLoadState('domcontentloaded');
+
+    // Step 1: Create a handover item
+    const tag = generateTestId('di');
+    const createResult = await callActionDirect(captainPage, 'add_to_handover', {
+      entity_type: 'note',
+      summary: `S47 delete-item seed ${tag}`,
+      category: 'fyi',
+    });
+    console.log(`[JSON] add_to_handover (for delete): ${JSON.stringify(createResult.data)}`);
+
+    expect(createResult.status).toBe(200);
+    const createData = createResult.data as { status?: string; result?: { item_id?: string } };
+    expect(createData.status).toBe('success');
+    const itemId = createData.result?.item_id;
+    expect(typeof itemId).toBe('string');
+
+    // Step 2: DELETE the item
+    // Use Playwright request (Node.js) instead of fetchDirect (browser) to avoid CORS on DELETE
+    const deleteResponse = await captainPage.request.delete(
+      `${API_URL}/v1/handover/items/${itemId}`,
+      {
+        headers: { Authorization: `Bearer ${SESSION_JWT}` },
+        timeout: 30_000,
+      }
+    );
+    const deleteData = await deleteResponse.json().catch(() => ({}));
+    console.log(`[JSON] delete_handover_item: status=${deleteResponse.status()}, ${JSON.stringify(deleteData)}`);
+
+    expect(deleteResponse.status()).toBe(200);
+    expect((deleteData as { success?: boolean }).success).toBe(true);
+
+    // Step 3: DB verify — handover_items row has deleted_at NOT NULL
+    await expect.poll(
+      async () => {
+        const { data: row } = await tenantDb
+          .from('handover_items')
+          .select('id, deleted_at')
+          .eq('id', itemId)
+          .single();
+        return (row as { deleted_at?: string | null } | null)?.deleted_at;
+      },
+      {
+        intervals: [500, 1000, 1500],
+        timeout: 8_000,
+        message: 'Expected handover_items row with deleted_at NOT NULL',
+      }
+    ).toBeTruthy();
+
+    // Step 4: Verify item no longer appears in GET /v1/handover/items list
+    const listResult = await fetchDirect(captainPage, 'GET', '/v1/handover/items');
+    console.log(`[JSON] list after delete: status=${listResult.status}`);
+
+    expect(listResult.status).toBe(200);
+    const listData = listResult.data as { items?: { id?: string }[] };
+    const ids = (listData.items ?? []).map((i) => i.id);
+    expect(ids).not.toContain(itemId);
+
+    // Step 5: Ledger verify — ledger_events row with action='draft_item_deleted'
+    await expect.poll(
+      async () => {
+        const { data: rows } = await tenantDb
+          .from('ledger_events')
+          .select('id, action, entity_id')
+          .eq('entity_id', itemId)
+          .eq('action', 'draft_item_deleted');
+        return (rows as { id: string }[] | null)?.length ?? 0;
+      },
+      {
+        intervals: [500, 1000, 1500],
+        timeout: 8_000,
+        message: 'Expected ledger_events row with action=draft_item_deleted',
+      }
+    ).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ===========================================================================
+// critical item → HOD ledger cascade — HARD PROOF
+// ===========================================================================
+
+test.describe('[Captain] critical item HOD ledger cascade — HARD PROOF', () => {
+  test('add_to_handover with is_critical → critical_item_added ledger entries', async ({
+    captainPage,
+  }) => {
+    await captainPage.goto(`${BASE_URL}/`);
+    await captainPage.waitForLoadState('domcontentloaded');
+
+    // Step 1: Create a critical handover item
+    const tag = generateTestId('cc');
+    const createResult = await callActionDirect(captainPage, 'add_to_handover', {
+      entity_type: 'note',
+      summary: `S47 critical cascade probe ${tag}`,
+      category: 'critical',
+      is_critical: true,
+    });
+    console.log(`[JSON] add_to_handover (critical): ${JSON.stringify(createResult.data)}`);
+
+    expect(createResult.status).toBe(200);
+    const createData = createResult.data as { status?: string; result?: { item_id?: string } };
+    expect(createData.status).toBe('success');
+    const itemId = createData.result?.item_id;
+    expect(typeof itemId).toBe('string');
+
+    // Step 2: Check ledger for critical_item_added entries targeting this item
+    // The dispatcher fans out to each HOD (chief_engineer, chief_officer, captain)
+    // On the test yacht there should be at least 1 cascade entry
+    await expect.poll(
+      async () => {
+        const { data: rows } = await tenantDb
+          .from('ledger_events')
+          .select('id, action, entity_id')
+          .eq('entity_id', itemId)
+          .eq('action', 'critical_item_added');
+        console.log(`[POLL] critical_item_added rows: ${JSON.stringify(rows)}`);
+        return (rows as { id: string }[] | null)?.length ?? 0;
+      },
+      {
+        intervals: [500, 1000, 2000, 3000],
+        timeout: 15_000,
+        message: 'Expected at least 1 ledger_events row with action=critical_item_added for HOD cascade',
+      }
+    ).toBeGreaterThanOrEqual(1);
   });
 });
