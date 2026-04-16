@@ -57,7 +57,7 @@ from playwright.sync_api import (
 # Warming here guarantees the backend is live when tests run.
 # ---------------------------------------------------------------------------
 
-API_BASE_URL = os.environ.get("WARRANTY_API_URL", "https://pipeline-core.int.celeste7.ai")
+API_BASE_URL = os.environ.get("WARRANTY_API_URL", "https://backend.celeste7.ai")
 WARMUP_TIMEOUT_S = 90
 
 
