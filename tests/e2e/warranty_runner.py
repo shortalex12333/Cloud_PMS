@@ -416,7 +416,7 @@ def scenario_2_captain_approves(ctx: BrowserContext, state: dict) -> dict:
         # close_warranty_claim may require a signature popup (requires_signature=true).
         # If the ActionPopup appears, confirm it; if action executes directly, skip.
         try:
-            page.get_by_test_id("action-popup").wait_for(state="visible", timeout=3000)
+            page.get_by_test_id("action-popup").wait_for(state="visible", timeout=10000)
             page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS)
         except Exception:
             pass  # No popup = direct execution
