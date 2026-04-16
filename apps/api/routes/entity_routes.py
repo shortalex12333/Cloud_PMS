@@ -161,6 +161,26 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
             except Exception as e:
                 logger.warning(f"Failed to resolve document_id {doc_id} for cert {certificate_id}: {e}")
 
+        # Notes — query pms_notes by certificate_id FK
+        cert_notes = []
+        try:
+            notes_r = supabase.table("pms_notes").select(
+                "id, text, note_type, created_by, created_at"
+            ).eq("certificate_id", certificate_id).eq("yacht_id", yacht_id).order("created_at", desc=True).execute()
+            cert_notes = notes_r.data or []
+        except Exception:
+            cert_notes = []
+
+        # Audit trail
+        cert_audit = []
+        try:
+            audit_r = supabase.table("pms_audit_log").select(
+                "id, action, user_id, old_values, new_values, created_at"
+            ).eq("entity_type", "certificate").eq("entity_id", certificate_id).eq("yacht_id", yacht_id).order("created_at", desc=True).limit(50).execute()
+            cert_audit = audit_r.data or []
+        except Exception:
+            cert_audit = []
+
         nav = [n for n in [
             _nav("document", doc_id, "Document"),
         ] if n]
@@ -184,6 +204,8 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
             "created_at": data.get("created_at"),
             "properties": properties,
             "attachments": attachments,
+            "notes": cert_notes,
+            "audit_trail": cert_audit,
             "related_entities": nav,
         }
         _entity_response["available_actions"] = get_available_actions(
