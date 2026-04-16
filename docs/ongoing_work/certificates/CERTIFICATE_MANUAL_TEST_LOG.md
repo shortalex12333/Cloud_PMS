@@ -553,3 +553,85 @@ PGPASSWORD='@-Ei-9Pa.uENn6g' psql "postgresql://postgres@db.vzsohavtuotocgrfkfyd
 ---
 
 *Edit freely — paste console logs, API responses, mark pass/fail inline.*
+
+---
+
+## S13 final re-check — after PR #595 (notification bell merged + deployed)
+
+| # | Step | Y / N / ERR | Evidence |
+|---|------|-------------|----------|
+| 13.1 | Captain creates vessel cert → pms_notifications inserted for HODs | Y | S2 re-run on `896c6f65-…`: 81 rows in `pms_notifications`, title `Certificate Created: E2E Test Class Certificate`, actor excluded. |
+| 13.2 | Log in as HOD (hod.test@) → dashboard loads | Y | HOD session now bootstraps correctly to `CHIEF ENGINEER` on `M/Y Test Vessel` (previous MEMBER/All-Vessels bug is fixed). Dashboard renders widgets, sidebar `Certificates 4`. |
+| 13.3 | Check notification bell/panel → cert notification visible | **N — Bug M** | Bell icon IS present in topbar (aria-label=`Notifications`, data-testid=`notification-bell`). Clicking opens a dropdown titled `Notifications` but it renders `No notifications`. No red badge count. |
+| 13.4 | Notification title includes cert name | Y (DB) | DB: user_id `05a488fd-e099-4d18-bf86-d87afba4fcdf` has row id `d701f234-7f4a-4aff-be92-c79582c85093`, `notification_type=certificate_created`, `title="Certificate Created: E2E Test Class Certificate"`, `read_at=NULL`, correct `yacht_id`. Also 41 other unread notifications. |
+| 13.5 | Click notification → navigate | **N — blocked by 13.3** | Dropdown is empty, nothing clickable. |
+
+**Bug M — Notification bell renders empty despite API returning 59 unread.**
+
+Reproduction:
+  1. Log in as hod.test@alex-short.com, wait for HOD bootstrap (CHIEF ENGINEER pill).
+  2. Open DevTools Network + click the bell icon in the topbar.
+  3. 30 s after page load the component fires `GET /api/v1/notifications?unread_only=false&limit=20` → `200`, body:
+     `{"status":"success","unread_count":59,"notifications":[{id:5bf10ba1-…, notification_type:"warranty_rejected", title:"Warranty Claim Rejected", …}, …]}`.
+  4. Open the bell — dropdown shows only the literal string `No notifications` and no red badge is rendered.
+
+Verification the data is real: direct fetch of same endpoint from the HOD session (all five variants below) returns the same 59-unread payload:
+  - `https://backend.celeste7.ai/v1/notifications` → 200, unread_count=59
+  - `https://pipeline-core.int.celeste7.ai/v1/notifications` → 200, unread_count=59
+  - `/api/v1/notifications` → 200, unread_count=59
+  - `/api/v1/notifications?unread_only=false&limit=20` → 200 (this IS the URL the component fires)
+
+So the fetch succeeds and arrives back to the component, but the bell UI never renders any row and never updates its count. Frontend state-binding issue.
+
+Likely candidates:
+  - The component reads `data.data.notifications` or similar nested path while the API returns `{"notifications": […]}` at the top level.
+  - React-query cache key mismatch (hook may be subscribed to a different query key than the one fetched).
+  - `unread_only` query string drift between the hook and the URL being hit — hook expects `unread_only=true` and separate `isRead=false` filtering locally, while the URL fetched is `unread_only=false` and the local filter zeros it.
+
+DB counts by type for hod.test@:
+  14 warranty_approved, 9 violation_alert, 8 certificate_created, 5 warranty_rejected, 5 document_uploaded,
+  5 certificate_archived, 4 certificate_suspended, 3 document_tags_updated, 2 certificate_revoked,
+  1 warranty_closed, 1 hor_awaiting_countersign, 1 document_updated   (42 unread, 59 when including read_at)
+
+Net effect on S13: write path still PASS; read path still FAIL. Bell UI now exists but is non-functional due to Bug M. Ball is back in CERTIFICATE01's court.
+
+---
+
+## Final verdict — all scenarios, all fixes, Apr 2026-04-16 run
+
+| Scenario | Verdict | Short proof |
+|---|---|---|
+| Pre-flight P1–P4 | PASS | 4/4 Y on reload as captain. |
+| 1 — list view | PASS (data caveat on 1.2) | 131 results, real names, 8 distinct statuses, click opens lens modal. Crew cert check deferred to S3. |
+| 2 — create vessel cert | PASS (re-run post-#577 + #587) | Form renders, API 200 `success:true`, cert `896c6f65-…` persisted, ledger create row written, 81 fan-out notifications. |
+| 3 — create crew cert | PASS | Crew cert `9bdb70ab-…` persisted, STCW/Eng1/Coc/Gmdss/Bst/Psc/Aff/Medical_Care in dropdown, ledger + 81 notifications + lens shows person_name. |
+| 4 — dropdown actions | PASS (spec deltas) | 11 items captured; spec 4.7 and 4.13 rendered as primary-button + lens sections, not dropdown rows. |
+| 5 — add note | PASS (post-#577 + #579) | Modal opens, API 200 with note_id, row in pms_notes, note now surfaces on the lens. |
+| 6 — suspend | PASS (post-#583 + #589 narrow-gate) | ISPS cert: API 200 `success:true`, pill=Suspended, `suspend_certificate event_type=status_change` ledger row written, dropdown disables re-Suspend. ISPS restored to valid after. |
+| 7 — renew | PASS (with workaround; #589 closes the blank-number case) | Second attempt with cert_number: old superseded, new valid, dates projected. |
+| 8 — assign officer | PASS | API 200 success:true, `assign_certificate event_type=assignment` ledger row, `RESPONSIBLE OFFICER` row on lens. |
+| 9 — archive | PASS (minor UX wording miss) | Two-step modal, API 200 success:true, `deleted_at` set, `archive_certificate event_type=update` ledger row, cert excluded from list + register. Missing "This will archive this record." confirmation text. |
+| 10 — register | PASS (post-#585 + #592) | Page loads, M/Y Test Vessel header, Expired/Expiring/Valid/Suspended groups, crew cert included, archived excluded, issuing-authority + cert-number columns now populated. |
+| 11 — role gating | PARTIAL (test-data gap + Bug J) | Crew-level gating verified on ISM lens: no primary/dropdown/inline-note buttons. Bug J: crew still sees list-toolbar Add Certificate + inline `+ Upload`. Engineer-role case untestable without proper seed. |
+| 12 — dashboard widget | PASS | Certificates card lists real names, expired shown, click navigates to lens. Archived + superseded excluded from `4` badge. |
+| 13 — notifications | **SPLIT — write PASS, read FAIL (Bug M replaces Bug L)** | Backend + bell icon shipped in #595; API returns 59 unread; bell dropdown renders empty and shows no badge. See S13 block above. |
+| DB1–DB6 | PASS | Filled inline in the DB check table with exact row values. |
+
+### Bug catalogue
+| Bug | Status | Fix / note |
+|---|---|---|
+| A — ActionPopup L0 auto-submit | FIXED | PR #577 |
+| B — cert entity endpoint omitted notes/audit_trail | FIXED | PR #579 |
+| C — UI "Action failed" on string-only `status:success` | FIXED | PR #583 |
+| D — dropdown not status-gated (Suspend on suspended) | FIXED (narrow) | PR #589 |
+| E — ledger safety net wrong entity_id | FIXED | PR #583 |
+| F — renew with blank cert_number 500 | FIXED | PR #589 (auto-suffix) |
+| G — register page 422 on limit=500 | FIXED | PR #585 |
+| K — register columns rendered `—` | FIXED | PR #592 |
+| L — no notification bell UI | Bell shipped in PR #595 (component + endpoint + HOD bootstrap), BUT |
+| M — **NEW** — bell component doesn't render API data | OPEN | Fetcher hits `/api/v1/notifications?unread_only=false&limit=20` → 200 with 59 unread, dropdown shows `No notifications`. Likely response-shape or query-key mismatch in the bell hook. |
+| H — archived_at vs deleted_at naming | open (cosmetic) | — |
+| I — "131 results" count doesn't match active total | open (cosmetic) | — |
+| J — crew sees Add Certificate + inline Upload | open | role-gate leak on subbar primary-action + Attachments |
+
+11 bugs found, 8 FIXED in production, 2 remaining open (J + M), 2 cosmetic deferrals (H + I). Full wire chain proven for every cert action create → update → suspend → revoke-capable → archive → assign → renew → note → list → lens → register → dashboard. Only open blocker is Bug M (frontend bell wiring). Bug M is platform-shared (affects all domains since it's the bell component itself), not cert-specific.
