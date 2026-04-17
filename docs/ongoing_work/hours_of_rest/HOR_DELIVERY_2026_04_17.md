@@ -207,4 +207,8 @@ These queried a table (`hours_of_rest`) that doesn't exist on TENANT, used depre
 
 ---
 
-*End of delivery manifest. Next step: open PR, request MCP02 shard-46 re-run, request CEO merge review.*
+W8: fleet-compliance (fleet manager JWT): PASS (2 vessels, compliance_pct=float|None, violations=int, crew=int — all assertions green)
+
+Note: compliance_pct=None on a vessel with 0 crew is correct behaviour — no data, not a bug. Confirmed at hor_compliance_routes.py:811-813 (total_expected_days=0 returns None).
+
+*End of delivery manifest. PR #640 open. shard-46 baseline: 10/10 (MCP02). CEO review requested.*
