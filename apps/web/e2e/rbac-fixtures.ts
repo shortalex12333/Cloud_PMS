@@ -591,9 +591,12 @@ async function getAuthToken(page: Page): Promise<string> {
         return null;
       }
     }
-    // Try alternate storage key
+    // Try alternate storage keys — supabase-js writes under `sb-{projectRef}-auth-token`,
+    // older shims write under keys containing "supabase" and "auth".
     for (const key of Object.keys(localStorage)) {
-      if (key.includes('supabase') && key.includes('auth')) {
+      const matchesSbRefPattern = /^sb-[a-z0-9]+-auth-token$/.test(key);
+      const matchesLegacyPattern = key.includes('supabase') && key.includes('auth');
+      if (matchesSbRefPattern || matchesLegacyPattern) {
         try {
           const data = JSON.parse(localStorage.getItem(key) || '{}');
           if (data.access_token) return data.access_token;

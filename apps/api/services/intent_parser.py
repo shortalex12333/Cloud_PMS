@@ -145,9 +145,10 @@ INTENT_CATEGORIES = {
     # COMPLY AUDIT - Actions related to compliance and regulations
     # =========================================================================
     "comply_audit": [
-        "view_hours_of_rest",          # "Show my hours of rest"
-        "update_hours_of_rest",        # "Log my hours for today"
-        "export_hours_of_rest",        # "Export HOR for the month"
+        # TODO(hor-cleanup): Removed view/update/export_hours_of_rest —
+        # legacy action IDs deleted from registry. Use get_hours_of_rest /
+        # upsert_hours_of_rest (Crew Lens v3) — those live in Crew Lens
+        # surfacing, not this cluster.
         "view_compliance_status",      # "Who hasn't completed HOR?"
         "tag_for_survey",              # "Flag this for next survey"
     ],
@@ -279,7 +280,8 @@ MUTATION_INTENTS = {
     "edit_handover_section",           # Edits handover content
 
     # Compliance mutations
-    "update_hours_of_rest",            # Logs crew rest hours
+    # TODO(hor-cleanup): update_hours_of_rest removed — use upsert_hours_of_rest
+    # (Crew Lens v3) which writes to pms_hours_of_rest with JSONB work_periods.
 
     # Procurement mutations
     "create_purchase_request",         # Starts new purchase
@@ -757,7 +759,9 @@ class IntentParser:
 
             # But if they explicitly say "update" or "log", it IS a mutation
             if any(kw in query_lower for kw in ["update", "log", "enter", "submit"]):
-                intent = "update_hours_of_rest"
+                # TODO(hor-cleanup): was update_hours_of_rest — now routes to
+                # upsert_hours_of_rest (Crew Lens v3, pms_hours_of_rest table).
+                intent = "upsert_hours_of_rest"
                 query_type = "mutation"
                 requires_mutation = True
 
@@ -845,7 +849,9 @@ class IntentParser:
                     intent = "mark_work_order_complete"
                     intent_category = "do_maintenance"
                 elif is_update_mutation:
-                    intent = "update_hours_of_rest"  # Default update action
+                    # TODO(hor-cleanup): was update_hours_of_rest — now routes
+                    # to upsert_hours_of_rest (Crew Lens v3).
+                    intent = "upsert_hours_of_rest"  # Default update action
                     intent_category = "comply_audit"
                 elif is_create_mutation and "add" in query_lower:
                     intent = "add_work_order_note"

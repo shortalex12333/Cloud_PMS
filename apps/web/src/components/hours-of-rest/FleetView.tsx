@@ -63,10 +63,10 @@ function normalizeFleetCompliance(json: any, fallbackVessels: { yacht_id: string
 }
 
 function complianceColor(pct: number | undefined): string {
-  if (pct === undefined) return 'rgba(255,255,255,0.3)';
-  if (pct >= 95) return 'rgba(34,197,94,0.9)';
-  if (pct >= 80) return 'rgba(245,158,11,0.9)';
-  return 'rgba(239,68,68,0.9)';
+  if (pct === undefined) return 'var(--txt-ghost)';
+  if (pct >= 95) return 'var(--compliance-good)';
+  if (pct >= 80) return 'var(--compliance-warn)';
+  return 'var(--compliance-crit)';
 }
 
 export function FleetView() {
@@ -115,7 +115,7 @@ export function FleetView() {
         textAlign: 'center',
         fontFamily: 'var(--font-mono)',
         fontSize: 11,
-        color: 'rgba(255,255,255,0.25)',
+        color: 'var(--txt-ghost)',
       }}>
         No fleet vessels assigned to your account.
       </div>
@@ -123,14 +123,14 @@ export function FleetView() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
         <div style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 9,
-          color: 'rgba(255,255,255,0.25)',
+          color: 'var(--txt-ghost)',
           textTransform: 'uppercase',
           letterSpacing: '0.10em',
         }}>
@@ -139,9 +139,9 @@ export function FleetView() {
         {loading && (
           <div style={{
             width: 12, height: 12,
-            border: '1.5px solid rgba(255,255,255,0.1)',
-            borderTopColor: 'rgba(90,171,204,0.6)',
-            borderRadius: '50%',
+            border: '1.5px solid var(--border-top)',
+            borderTopColor: 'var(--mark)',
+            borderRadius: 'var(--radius-full)',
             animation: 'spin 1s linear infinite',
           }} />
         )}
@@ -150,10 +150,10 @@ export function FleetView() {
       {error && (
         <div style={{
           fontFamily: 'var(--font-mono)', fontSize: 10,
-          color: 'rgba(239,68,68,0.7)',
-          background: 'rgba(239,68,68,0.05)',
-          border: '1px solid rgba(239,68,68,0.15)',
-          borderRadius: 6, padding: '8px 12px',
+          color: 'var(--red)',
+          background: 'var(--red-bg)',
+          border: '1px solid var(--red-border)',
+          borderRadius: 'var(--radius-pill)', padding: '8px 12px',
         }}>
           {error}
         </div>
@@ -163,15 +163,15 @@ export function FleetView() {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-        gap: 12,
+        gap: 'var(--space-3)',
       }}>
         {vessels.map(vessel => (
           <div
             key={vessel.yacht_id}
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: 8,
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-sub)',
+              borderRadius: 'var(--radius-sm)',
               padding: '16px 18px',
             }}
           >
@@ -179,24 +179,24 @@ export function FleetView() {
               fontFamily: 'var(--font-mono)',
               fontSize: 12,
               fontWeight: 600,
-              color: 'rgba(255,255,255,0.75)',
-              marginBottom: 12,
+              color: 'var(--txt)',
+              marginBottom: 'var(--space-3)',
               letterSpacing: '0.04em',
             }}>
               {vessel.yacht_name}
             </div>
 
             {vessel.error ? (
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(239,68,68,0.5)' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--red)' }}>
                 Data unavailable
               </div>
             ) : loading && vessel.compliance_pct === undefined ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                 {[1, 2, 3].map(i => (
                   <div key={i} style={{
                     height: 12,
-                    background: 'rgba(255,255,255,0.05)',
-                    borderRadius: 4,
+                    background: 'var(--surface-subtle)',
+                    borderRadius: 'var(--radius-pill)',
                     animation: 'pulse 1.5s ease-in-out infinite',
                   }} />
                 ))}
@@ -211,12 +211,12 @@ export function FleetView() {
                 <Stat
                   label="Violations"
                   value={vessel.violations_this_week !== undefined ? String(vessel.violations_this_week) : '—'}
-                  color={vessel.violations_this_week ? 'rgba(239,68,68,0.9)' : 'rgba(34,197,94,0.8)'}
+                  color={vessel.violations_this_week ? 'var(--red-strong)' : 'var(--green-strong)'}
                 />
                 <Stat
                   label="Crew"
                   value={vessel.total_crew !== undefined ? String(vessel.total_crew) : '—'}
-                  color="rgba(255,255,255,0.55)"
+                  color="var(--txt2)"
                 />
                 <Stat
                   label="Dept OK"
@@ -225,7 +225,7 @@ export function FleetView() {
                       ? `${vessel.departments_finalized}/${vessel.departments_total}`
                       : '—'
                   }
-                  color="rgba(90,171,204,0.8)"
+                  color="var(--mark-strong)"
                 />
               </div>
             )}
@@ -243,7 +243,7 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
       <span style={{
         fontFamily: 'var(--font-mono)',
         fontSize: 8,
-        color: 'rgba(255,255,255,0.25)',
+        color: 'var(--txt-ghost)',
         textTransform: 'uppercase',
         letterSpacing: '0.06em',
       }}>{label}</span>

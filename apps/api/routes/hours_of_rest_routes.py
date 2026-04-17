@@ -10,7 +10,7 @@ Endpoints (19 total):
 Daily HOR Records:
 - GET  /v1/hours-of-rest                    - View HOR records (READ) [get_hours_of_rest]
 - POST /v1/hours-of-rest/upsert             - Upsert HOR record (MUTATE) [upsert_hours_of_rest]
-- POST /v1/hours-of-rest/export             - Export HOR data (READ) [export_hours_of_rest]
+- POST /v1/hours-of-rest/export             - Export HOR data (READ) — direct route, reuses get_hours_of_rest handler
 - POST /v1/hours-of-rest/undo               - Undo submitted day (MUTATE) [undo_hours_of_rest]
 
 MLC 2006 Corrections:
@@ -275,7 +275,7 @@ async def get_hours_of_rest_route(
         return JSONResponse(content=result)
 
     except Exception as e:
-        logger.error(f"view_hours_of_rest error: {e}", exc_info=True)
+        logger.error(f"get_hours_of_rest error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={
@@ -329,7 +329,7 @@ async def upsert_hours_of_rest_route(
         return JSONResponse(content=result)
 
     except Exception as e:
-        logger.error(f"update_hours_of_rest error: {e}", exc_info=True)
+        logger.error(f"upsert_hours_of_rest error: {e}", exc_info=True)
 
         # Map known errors to proper 4xx codes
         error_str = str(e).lower()

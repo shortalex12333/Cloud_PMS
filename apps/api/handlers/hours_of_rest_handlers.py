@@ -42,6 +42,189 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# HELPERS: MLC 2006 Article A2.3 Compliance Math (module-level for unit-testing)
+# =============================================================================
+
+def _period_hours(p: dict) -> float:
+    """Return duration of a period in hours. Handles overnight periods."""
+    if "hours" in p:
+        try:
+            return float(p["hours"])
+        except Exception:
+            pass
+    try:
+        sh, sm = map(int, str(p["start"]).split(":"))
+        eh, em = map(int, str(p["end"]).split(":"))
+        start_mins = sh * 60 + sm
+        end_mins   = eh * 60 + em
+        if end_mins <= start_mins:  # overnight / end == "24:00"
+            end_mins += 24 * 60
+        return round((end_mins - start_mins) / 60, 2)
+    except Exception:
+        return 0.0
+
+
+def _filter_qualifying_periods(periods: list) -> list:
+    """MLC 2006 A2.3: rest periods under one hour do NOT count toward the total."""
+    qualifying = []
+    for p in periods or []:
+        if _period_hours(p) >= 1.0:
+            qualifying.append(p)
+    return qualifying
+
+
+def _compute_max_gap_hours(sorted_rest_periods: list) -> float:
+    """
+    Return the longest intra-day gap (hours) BETWEEN consecutive rest periods.
+
+    MLC 2006 A2.3 requires the interval between two consecutive rest periods
+    must not exceed 14 hours. For a single contiguous rest block returns 0.0.
+    Input must be sorted by start time (HH:MM). Crossing-midnight handling for
+    the cross-day boundary is covered by _check_rolling_24h_compliance.
+    """
+    if not sorted_rest_periods or len(sorted_rest_periods) < 2:
+        return 0.0
+
+    def _to_mins(hhmm: str) -> int:
+        h, m = map(int, str(hhmm).split(":"))
+        return h * 60 + m
+
+    max_gap = 0.0
+    for i in range(len(sorted_rest_periods) - 1):
+        cur_end = sorted_rest_periods[i].get("end", "")
+        nxt_start = sorted_rest_periods[i + 1].get("start", "")
+        try:
+            end_m = _to_mins(cur_end) if cur_end != "24:00" else 24 * 60
+            start_m = _to_mins(nxt_start)
+        except Exception:
+            continue
+        gap_mins = start_m - end_m
+        if gap_mins > 0:
+            gap_h = round(gap_mins / 60, 2)
+            if gap_h > max_gap:
+                max_gap = gap_h
+    return max_gap
+
+
+def _complement(periods: list) -> list:
+    """Return gaps between 00:00 and 24:00 not covered by periods."""
+    if not periods:
+        return [{"start": "00:00", "end": "24:00", "hours": 24.0}]
+    rest = []
+    prev_end = "00:00"
+    for wp in periods:
+        wp_start = wp.get("start", "")
+        if wp_start > prev_end:
+            gap = {"start": prev_end, "end": wp_start}
+            rest.append(dict(gap, hours=_period_hours(gap)))
+        prev_end = wp.get("end", "")
+    if prev_end < "24:00":
+        gap = {"start": prev_end, "end": "24:00"}
+        rest.append(dict(gap, hours=_period_hours(gap)))
+    return rest
+
+
+def _check_rolling_24h_compliance(db, yacht_id: str, user_id: str, record_date: str) -> dict:
+    """
+    MLC 2006 A2.3: "any 24-hour period" requires >= 10h rest.
+
+    Reads the current + previous day from pms_hours_of_rest, stitches rest
+    periods onto a 48h timeline, and slides a 24h window (30-min increments)
+    across the most recent 24h. Only periods >= 1h contribute (A2.3 threshold).
+
+    Returns:
+        {"rolling_24h_rest_min": float | None,
+         "is_rolling_compliant": bool | None,
+         "prev_day_available": bool}
+
+    If the previous day isn't submitted, rolling fields are None (flagged).
+    """
+    try:
+        from datetime import date as _date
+        rd = _date.fromisoformat(str(record_date))
+        prev_date = (rd - timedelta(days=1)).isoformat()
+    except Exception as e:
+        logger.debug(f"rolling-24h: bad record_date {record_date}: {e}")
+        return {"rolling_24h_rest_min": None, "is_rolling_compliant": None,
+                "prev_day_available": False}
+
+    try:
+        result = db.table("pms_hours_of_rest").select(
+            "record_date, rest_periods"
+        ).eq("yacht_id", yacht_id).eq("user_id", user_id).in_(
+            "record_date", [prev_date, str(record_date)]
+        ).execute()
+        rows = result.data or []
+    except Exception as e:
+        logger.warning(f"rolling-24h: db read failed: {e}")
+        return {"rolling_24h_rest_min": None, "is_rolling_compliant": None,
+                "prev_day_available": False}
+
+    prev_rows = [r for r in rows if str(r.get("record_date")) == prev_date]
+    prev_day_available = bool(prev_rows)
+
+    if not prev_day_available:
+        return {"rolling_24h_rest_min": None, "is_rolling_compliant": None,
+                "prev_day_available": False}
+
+    def _hhmm_to_mins(hhmm: str) -> int:
+        if hhmm == "24:00":
+            return 24 * 60
+        h, m = map(int, str(hhmm).split(":"))
+        return h * 60 + m
+
+    # Build a minute-resolution "is-resting" array across 48 hours.
+    # Index 0..1439   = previous day 00:00..23:59
+    # Index 1440..2879 = current  day 00:00..23:59
+    timeline = [False] * (48 * 60)
+
+    def _paint(day_offset_mins: int, periods):
+        for p in _filter_qualifying_periods(periods or []):
+            try:
+                s = _hhmm_to_mins(p.get("start", "00:00"))
+                e = _hhmm_to_mins(p.get("end", "00:00"))
+                if e <= s:
+                    e += 24 * 60
+            except Exception:
+                continue
+            a = day_offset_mins + s
+            b = day_offset_mins + e
+            a = max(0, min(48 * 60, a))
+            b = max(0, min(48 * 60, b))
+            for i in range(a, b):
+                timeline[i] = True
+
+    for r in prev_rows:
+        _paint(0, r.get("rest_periods") or [])
+    for r in [rr for rr in rows if str(rr.get("record_date")) == str(record_date)]:
+        _paint(24 * 60, r.get("rest_periods") or [])
+
+    # Slide a 24h window (1440 minutes) across the second 24h, stepping 30 min.
+    # Window start positions: 0, 30, 60, ..., 1440 (i.e. prev-day 00:00 through
+    # current-day 00:00) — covers "any 24-hour period ending today".
+    min_rest_h = None
+    step = 30
+    for start in range(0, 24 * 60 + 1, step):
+        end = start + 24 * 60
+        if end > 48 * 60:
+            break
+        rest_mins = sum(1 for i in range(start, end) if timeline[i])
+        rest_h = round(rest_mins / 60.0, 2)
+        if min_rest_h is None or rest_h < min_rest_h:
+            min_rest_h = rest_h
+
+    if min_rest_h is None:
+        return {"rolling_24h_rest_min": None, "is_rolling_compliant": None,
+                "prev_day_available": True}
+
+    return {
+        "rolling_24h_rest_min": min_rest_h,
+        "is_rolling_compliant": bool(min_rest_h >= 10.0),
+        "prev_day_available": True,
+    }
+
+
+# =============================================================================
 # HELPER: Write Audit Log
 # =============================================================================
 
@@ -284,48 +467,28 @@ class HoursOfRestHandlers:
                     builder.set_error("VALIDATION_ERROR", "Work periods must not overlap")
                     return builder.build()
 
-            def _period_hours(p: dict) -> float:
-                if "hours" in p:
-                    return float(p["hours"])
-                try:
-                    sh, sm = map(int, str(p["start"]).split(":"))
-                    eh, em = map(int, str(p["end"]).split(":"))
-                    start_mins = sh * 60 + sm
-                    end_mins   = eh * 60 + em
-                    if end_mins <= start_mins:  # overnight
-                        end_mins += 24 * 60
-                    return round((end_mins - start_mins) / 60, 2)
-                except Exception:
-                    return 0.0
-
-            # Inject hours into work_periods
+            # Inject hours into work_periods (uses module-level _period_hours)
             work_periods = [dict(p, hours=_period_hours(p)) for p in sorted_work]
 
             # Derive rest_periods as 24h complement of work_periods
-            def _complement(periods: list) -> list:
-                """Return gaps between 00:00 and 24:00 not covered by periods."""
-                if not periods:
-                    return [{"start": "00:00", "end": "24:00", "hours": 24.0}]
-                rest = []
-                prev_end = "00:00"
-                for wp in periods:
-                    wp_start = wp.get("start", "")
-                    if wp_start > prev_end:
-                        gap = {"start": prev_end, "end": wp_start}
-                        rest.append(dict(gap, hours=_period_hours(gap)))
-                    prev_end = wp.get("end", "")
-                if prev_end < "24:00":
-                    gap = {"start": prev_end, "end": "24:00"}
-                    rest.append(dict(gap, hours=_period_hours(gap)))
-                return rest
-
             rest_periods = _complement(work_periods)
 
             total_work_hours = sum(p["hours"] for p in work_periods)
-            total_rest_hours = 24 - total_work_hours
 
-            # MLC 2006 compliance checks
-            is_daily_compliant = total_rest_hours >= 10
+            # MLC 2006 A2.3: sub-1h rest periods do NOT count toward the total.
+            qualifying_rest = _filter_qualifying_periods(rest_periods)
+            total_rest_hours = round(sum(_period_hours(p) for p in qualifying_rest), 2)
+
+            # MLC 2006 A2.3: interval between consecutive rest periods must not exceed 14h.
+            max_gap_hours = _compute_max_gap_hours(rest_periods)
+            violates_14h_rule = max_gap_hours > 14.0
+
+            # MLC 2006 A2.3: rolling 24h window >= 10h (reads adjacent day).
+            rolling_check = _check_rolling_24h_compliance(
+                self.db, yacht_id, user_id, record_date
+            )
+
+            # MLC 2006 compliance checks (daily window)
             rest_period_count = len(rest_periods)
             longest_rest_period = max((_period_hours(p) for p in rest_periods), default=0.0)
 
@@ -333,6 +496,23 @@ class HoursOfRestHandlers:
                 rest_period_count <= 2 and
                 longest_rest_period >= 6
             )
+
+            # Daily compliance now ALSO requires the 14h interval rule
+            is_daily_compliant = (
+                total_rest_hours >= 10
+                and has_valid_rest_periods
+                and not violates_14h_rule
+            )
+
+            # MLC crew comment requirement: non-compliant entries must include a justification
+            crew_comment = payload.get("crew_comment", "").strip()
+            if not is_daily_compliant and not crew_comment:
+                builder.set_error(
+                    "VALIDATION_ERROR",
+                    "A crew comment (justification) is required when logging non-compliant hours. "
+                    "Please describe why the rest requirement could not be met."
+                )
+                return builder.build()
 
             # Upsert record
             upsert_data = {
@@ -343,8 +523,9 @@ class HoursOfRestHandlers:
                 "rest_periods": rest_periods,
                 "total_rest_hours": total_rest_hours,
                 "total_work_hours": total_work_hours,
-                "is_daily_compliant": is_daily_compliant and has_valid_rest_periods,
+                "is_daily_compliant": is_daily_compliant,
                 "daily_compliance_notes": daily_compliance_notes,
+                "crew_comment": crew_comment or None,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
 
@@ -401,7 +582,7 @@ class HoursOfRestHandlers:
                 })
 
                 # Insert into ledger_events so the ledger panel reflects HoR submissions
-                is_violation = not (is_daily_compliant and has_valid_rest_periods)
+                is_violation = not is_daily_compliant
                 try:
                     ledger_event = build_ledger_event(
                         yacht_id=yacht_id,
@@ -441,7 +622,7 @@ class HoursOfRestHandlers:
                     warnings_created = violation_check.data
 
                 # S7: if violation, notify the crew member's HOD
-                is_violation = not (is_daily_compliant and has_valid_rest_periods)
+                is_violation = not is_daily_compliant
                 if is_violation:
                     try:
                         # Find HOD for this user's department.
@@ -518,14 +699,21 @@ class HoursOfRestHandlers:
             builder.set_data({
                 "record": record,
                 "action_taken": action_taken,
+                "crew_comment": crew_comment or None,
                 "compliance": {
-                    "is_daily_compliant": is_daily_compliant and has_valid_rest_periods,
+                    "is_daily_compliant": is_daily_compliant,
                     "total_rest_hours": total_rest_hours,
                     "meets_mlc_minimum": total_rest_hours >= 10,
                     "has_valid_rest_periods": has_valid_rest_periods,
                     "rest_period_count": rest_period_count,
                     "longest_rest_period": longest_rest_period,
+                    "requires_crew_comment": not is_daily_compliant and not crew_comment,
                 },
+                "mlc_interval_check": {
+                    "max_gap_hours": max_gap_hours,
+                    "violates_14h_rule": violates_14h_rule,
+                },
+                "rolling_24h_check": rolling_check,
                 "warnings_created": warnings_created,
             })
 
@@ -942,6 +1130,30 @@ class HoursOfRestHandlers:
                 return builder.build()
 
             signoff = current_result.data[0]
+
+            # MLC self-completion general guard: same user cannot appear at two levels
+            # of the same sign chain. This prevents a single person completing the full
+            # crew→HOD→master chain, which defeats MLC independent verification.
+            # The existing hod_signed_by==user_id check below handles HOD→master;
+            # this guard covers crew→HOD and crew→master cases.
+            crew_signed_by = signoff.get("crew_signed_by")
+            hod_signed_by_existing = signoff.get("hod_signed_by")
+
+            if signature_level == "hod" and crew_signed_by and crew_signed_by == user_id:
+                builder.set_error(
+                    "FORBIDDEN",
+                    "The same person cannot sign as both crew member and HOD. "
+                    "MLC 2006 requires independent verification at each level of the sign chain."
+                )
+                return builder.build()
+
+            if signature_level == "master" and crew_signed_by and crew_signed_by == user_id:
+                builder.set_error(
+                    "FORBIDDEN",
+                    "The same person cannot sign as both crew member and master. "
+                    "MLC 2006 requires independent verification at each level of the sign chain."
+                )
+                return builder.build()
 
             # Resolve signer's role for ledger (user_role was NULL — BUG-HOR-LEDGER-1)
             try:

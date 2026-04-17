@@ -17,7 +17,7 @@ import logging
 from datetime import datetime, timezone, timedelta, date
 from typing import Optional, Dict, Any, List
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 
 import sys
@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from middleware.auth import get_authenticated_user
 from integrations.supabase import get_tenant_client
+from handlers.hours_of_rest_handlers import _filter_qualifying_periods, _compute_max_gap_hours, _complement, _period_hours
 
 logger = logging.getLogger(__name__)
 
@@ -960,4 +961,125 @@ async def get_month_status(
         raise
     except Exception as e:
         logger.error(f"get_month_status error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+# ===========================================================================
+# POST /v1/hours-of-rest/schedule/preview
+# Forward scheduling compliance check — no DB writes
+# ===========================================================================
+
+@router.post("/schedule/preview")
+async def preview_schedule_compliance(
+    request: Request,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Preview compliance for proposed work_periods without persisting.
+
+    MLC 2006 source: Article A2.3 — minimum rest requirements.
+    Rules applied per entry:
+    - total_rest_hours >= 10 (daily minimum)
+    - rest_period_count <= 2 (or 3 if three_rest_periods exception active)
+    - longest_rest_period >= 6h
+    - max_gap_hours <= 14 (14h interval rule)
+    - sub-1h rest periods filtered out per MLC para 1
+
+    Returns compliance analysis per day + weekly summary.
+    No DB writes. preview_only: true in response.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    entries: List[Dict[str, Any]] = body.get("entries", [])
+
+    if not entries or not isinstance(entries, list):
+        raise HTTPException(status_code=400, detail={
+            "error": "VALIDATION_ERROR",
+            "message": "entries must be a non-empty array of {record_date, work_periods} objects"
+        })
+
+    if len(entries) > 7:
+        raise HTTPException(status_code=400, detail={
+            "error": "VALIDATION_ERROR",
+            "message": "preview accepts at most 7 entries (one week)"
+        })
+
+    days_out = []
+    total_week_rest = 0.0
+    days_compliant = 0
+
+    for entry in entries:
+        record_date = entry.get("record_date")
+        work_periods_raw = entry.get("work_periods", [])
+
+        if not record_date:
+            raise HTTPException(status_code=400, detail={
+                "error": "VALIDATION_ERROR",
+                "message": "each entry must include record_date (YYYY-MM-DD)"
+            })
+
+        # Derive rest periods as 24h complement of work periods
+        rest_periods = _complement(work_periods_raw)
+
+        # Filter sub-1h periods per MLC 1-hour threshold
+        qualifying_rest = _filter_qualifying_periods(rest_periods)
+
+        # Compute totals from qualifying periods only
+        total_rest = sum(_period_hours(p) for p in qualifying_rest)
+        total_work = sum(_period_hours(p) for p in work_periods_raw) if work_periods_raw else 24.0
+        total_rest = min(total_rest, 24.0)
+
+        # Compliance flags
+        rest_period_count = len(qualifying_rest)
+        longest_rest = max((_period_hours(p) for p in qualifying_rest), default=0.0)
+        max_gap = _compute_max_gap_hours(qualifying_rest)
+
+        is_daily_compliant = (
+            total_rest >= 10.0
+            and rest_period_count <= 2
+            and longest_rest >= 6.0
+            and max_gap <= 14.0
+        )
+
+        total_week_rest += total_rest
+        if is_daily_compliant:
+            days_compliant += 1
+
+        days_out.append({
+            "record_date":           record_date,
+            "proposed_work_periods": work_periods_raw,
+            "derived_rest_periods":  rest_periods,
+            "qualifying_rest_periods": qualifying_rest,
+            "total_rest_hours":      round(total_rest, 2),
+            "total_work_hours":      round(total_work, 2),
+            "is_daily_compliant":    is_daily_compliant,
+            "mlc_interval_check": {
+                "max_gap_hours":      round(max_gap, 2),
+                "violates_14h_rule":  max_gap > 14.0,
+            },
+            "rest_period_detail": {
+                "count":              rest_period_count,
+                "longest_hours":      round(longest_rest, 2),
+                "sub_1h_filtered":    len(rest_periods) - len(qualifying_rest),
+            },
+        })
+
+    # Derive week_start from first entry if not provided
+    week_start = body.get("week_start")
+    if not week_start and days_out:
+        week_start = days_out[0]["record_date"]
+
+    return JSONResponse(content={
+        "status":       "success",
+        "preview_only": True,
+        "week_start":   week_start,
+        "days":         days_out,
+        "weekly_summary": {
+            "total_rest_hours":   round(total_week_rest, 2),
+            "is_weekly_compliant": total_week_rest >= 77.0,
+            "days_compliant":     days_compliant,
+            "days_submitted":     len(days_out),
+        },
+    })

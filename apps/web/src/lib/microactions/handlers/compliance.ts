@@ -2,6 +2,14 @@
  * Compliance Domain Handlers
  *
  * TypeScript handlers for compliance and hours of rest related microactions.
+ *
+ * TODO(hor-cleanup): The handlers viewHoursOfRest, updateHoursOfRest, and
+ * exportHoursOfRest below are DEAD — backend action IDs
+ * (view/update/export_hours_of_rest) were removed. They query the non-existent
+ * `hours_of_rest` table with scalar columns. They are NO LONGER exported in
+ * `complianceHandlers` and will not be invokable. Migrate callers to the
+ * Crew Lens v3 handlers (get_hours_of_rest / upsert_hours_of_rest) which use
+ * `pms_hours_of_rest` with work_periods/rest_periods JSONB arrays.
  */
 
 import type { ActionContext, ActionResult } from '../types';
@@ -440,9 +448,8 @@ async function tagForSurvey(
  * Get all compliance handlers for registration
  */
 export const complianceHandlers = {
-  view_hours_of_rest: viewHoursOfRest,
-  update_hours_of_rest: updateHoursOfRest,
-  export_hours_of_rest: exportHoursOfRest,
+  // view_hours_of_rest, update_hours_of_rest, export_hours_of_rest removed —
+  // see top-of-file TODO. Migrate callers to Crew Lens v3.
   view_compliance_status: viewComplianceStatus,
   tag_for_survey: tagForSurvey,
 };

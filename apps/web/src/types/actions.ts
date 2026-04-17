@@ -64,9 +64,8 @@ export const ACTION_DISPLAY: Record<string, { icon: string; cluster: ActionClust
   update_receiving:               { icon: 'edit',          cluster: 'entity'       },
   // Certificate
   update_certificate:             { icon: 'edit',          cluster: 'entity'       },
-  // Hours of rest
-  update_hours_of_rest:           { icon: 'clock',         cluster: 'compliance'   },
-  export_hours_of_rest:           { icon: 'download',      cluster: 'compliance'   },
+  // Hours of rest — legacy action IDs removed (view/update/export_hours_of_rest).
+  // Migrate to Crew Lens v3 (get_hours_of_rest / upsert_hours_of_rest).
   // Documents
   view_document:                  { icon: 'file',          cluster: 'documents'    },
   // Handover

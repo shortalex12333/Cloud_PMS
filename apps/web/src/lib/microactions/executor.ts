@@ -130,13 +130,8 @@ function getConfirmationConfig(action: MicroAction): ConfirmationConfig {
       cancel_label: 'Cancel',
       variant: 'default',
     },
-    update_hours_of_rest: {
-      title: 'Update Hours of Rest',
-      message: 'This will modify hours of rest records. Continue?',
-      confirm_label: 'Update',
-      cancel_label: 'Cancel',
-      variant: 'warning',
-    },
+    // update_hours_of_rest removed — legacy action ID. Migrate to
+    // upsert_hours_of_rest (Crew Lens v3).
     add_worklist_task: {
       title: 'Add Worklist Task',
       message: 'This will create a new shipyard work item. Continue?',

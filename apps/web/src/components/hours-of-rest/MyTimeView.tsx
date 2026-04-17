@@ -101,9 +101,15 @@ function normalizeMyWeekResponse(json: any): void {
   }
 }
 
-async function getAuthHeader(): Promise<string> {
+/**
+ * Returns the Authorization header value, or null if no session exists.
+ * BUG-HOR-2 fix: previously returned an empty string on null session, causing
+ * fetches to send `Authorization: ` which backend rejects with 401. Callers
+ * must now null-check before making a request.
+ */
+async function getAuthHeader(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
-  return session ? `Bearer ${session.access_token}` : '';
+  return session ? `Bearer ${session.access_token}` : null;
 }
 
 function formatMonth(yyyyMm: string): string {
@@ -130,8 +136,8 @@ function Skeleton({ w = '100%', h = 16 }: { w?: string | number; h?: number }) {
     <div style={{
       width: w,
       height: h,
-      background: 'rgba(255,255,255,0.05)',
-      borderRadius: 4,
+      background: 'var(--surface-subtle)',
+      borderRadius: 'var(--radius-pill)',
       animation: 'pulse 1.5s ease-in-out infinite',
     }} />
   );
@@ -140,11 +146,11 @@ function Skeleton({ w = '100%', h = 16 }: { w?: string | number; h?: number }) {
 function SectionCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: 'var(--surface, #181614)',
-      border: '1px solid rgba(255,255,255,0.07)',
-      borderRadius: 8,
+      background: 'var(--surface)',
+      border: '1px solid var(--border-sub)',
+      borderRadius: 'var(--radius-sm)',
       overflow: 'hidden',
-      marginBottom: 12,
+      marginBottom: 'var(--space-3)',
       ...style,
     }}>
       {children}
@@ -159,7 +165,7 @@ function SectionHeader({ label, right }: { label: React.ReactNode; right?: React
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '10px 16px 8px',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      borderBottom: '1px solid var(--surface-subtle)',
     }}>
       <span style={{
         fontFamily: 'var(--font-mono)',
@@ -167,7 +173,7 @@ function SectionHeader({ label, right }: { label: React.ReactNode; right?: React
         fontWeight: 600,
         letterSpacing: '0.14em',
         textTransform: 'uppercase' as const,
-        color: 'rgba(255,255,255,0.35)',
+        color: 'var(--txt-ghost)',
       }}>{label}</span>
       {right}
     </div>
@@ -175,13 +181,13 @@ function SectionHeader({ label, right }: { label: React.ReactNode; right?: React
 }
 
 function StatusBadge({ ok, label }: { ok: boolean | null; label?: string }) {
-  if (ok === null) return <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>—</span>;
+  if (ok === null) return <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>—</span>;
   return (
     <span style={{
       fontFamily: 'var(--font-mono)',
       fontSize: 9,
       fontWeight: 600,
-      color: ok ? 'var(--green, #4A9468)' : 'var(--red, #C0503A)',
+      color: ok ? 'var(--green)' : 'var(--red)',
     }}>
       {ok ? '✓' : '⚠'} {label}
     </span>
@@ -286,6 +292,11 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     weekFinalised.current = false;
     try {
       const auth = await getAuthHeader();
+      // BUG-HOR-2 fix: bail out early if no session — previously sent `Authorization: `
+      if (!auth) {
+        setError('Not authenticated');
+        return;
+      }
       const ws = weekStart !== undefined ? weekStart : viewWeekStart;
       const params = new URLSearchParams();
       if (targetUserId) params.set('user_id', targetUserId);
@@ -324,6 +335,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   async function checkUnsignedAlert() {
     try {
       const auth = await getAuthHeader();
+      if (!auth) return;
       const resp = await fetch('/api/v1/notifications?type=hor_unsigned', {
         headers: { 'Authorization': auth },
       });
@@ -340,6 +352,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   async function loadWarnings() {
     try {
       const auth = await getAuthHeader();
+      if (!auth) return;
       const resp = await fetch('/api/v1/hours-of-rest/warnings?status=active', {
         headers: { 'Authorization': auth },
       });
@@ -358,6 +371,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     setCalendarLoading(true);
     try {
       const auth = await getAuthHeader();
+      if (!auth) return;
       const resp = await fetch(`/api/v1/hours-of-rest/month-status?month=${month}`, {
         headers: { 'Authorization': auth },
       });
@@ -376,6 +390,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     setAcknowledging(prev => ({ ...prev, [warningId]: true }));
     try {
       const auth = await getAuthHeader();
+      if (!auth) return;
       await fetch('/api/v1/hours-of-rest/warnings/acknowledge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
@@ -408,6 +423,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     setSubmitting(prev => ({ ...prev, [date]: true }));
     try {
       const auth = await getAuthHeader();
+      if (!auth) {
+        setSubmitErrors(prev => ({ ...prev, [date]: 'Not authenticated' }));
+        return;
+      }
       const resp = await fetch('/api/v1/hours-of-rest/upsert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
@@ -472,6 +491,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     if (recordId) {
       try {
         const auth = await getAuthHeader();
+        if (!auth) return;
         await fetch('/api/v1/hours-of-rest/undo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': auth },
@@ -493,6 +513,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     setApplyingTemplate(true);
     try {
       const auth = await getAuthHeader();
+      if (!auth) return;
       const resp = await fetch('/api/v1/hours-of-rest/templates/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
@@ -521,6 +542,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   async function handleSignWeek(values: Record<string, unknown>) {
     if (!data) return;
     const auth = await getAuthHeader();
+    if (!auth) return;
     const weekStart = (data as any).week_start as string;
     const department = (data as any).department || 'general';
     const month = weekStart.slice(0, 7); // YYYY-MM
@@ -578,6 +600,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   async function handleSignMonthly(values: Record<string, unknown>) {
     if (!data?.pending_signoff?.id) return;
     const auth = await getAuthHeader();
+    if (!auth) return;
     await fetch('/api/v1/hours-of-rest/signoffs/sign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': auth },
@@ -599,7 +622,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         {[1, 2, 3].map(i => <Skeleton key={i} h={60} />)}
       </div>
     );
@@ -607,7 +630,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
 
   if (!data) {
     return (
-      <div style={{ padding: 24, textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+      <div style={{ padding: 24, textAlign: 'center', color: 'var(--txt-ghost)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
         Failed to load hours of rest data.
         <button onClick={() => loadWeekData()} style={{ marginLeft: 10, color: 'var(--mark)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 11 }}>Retry</button>
       </div>
@@ -630,21 +653,21 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
       {unsignedAlert && (
         <div style={{
           padding: '10px 16px',
-          background: 'rgba(192,80,58,0.08)',
-          border: '1px solid rgba(192,80,58,0.20)',
-          borderRadius: 6,
-          marginBottom: 12,
+          background: 'var(--red-bg)',
+          border: '1px solid var(--red-border)',
+          borderRadius: 'var(--radius-pill)',
+          marginBottom: 'var(--space-3)',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
         }}>
-          <span style={{ color: 'var(--red, #C0503A)', fontSize: 13 }}>⚠</span>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.70)' }}>
+          <span style={{ color: 'var(--red)', fontSize: 13 }}>⚠</span>
+          <span style={{ fontSize: 12, color: 'var(--txt3)' }}>
             Your hours of rest for this month are unsigned. Weekly signature is required by MLC 2006.
           </span>
           <button
             onClick={() => setSignMonthlyOpen(true)}
-            style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', border: '1px solid rgba(192,80,58,0.35)', borderRadius: 4, color: 'var(--red, #C0503A)', fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+            style={{ marginLeft: 'auto', padding: '4px 10px', background: 'none', border: '1px solid var(--red-border-strong)', borderRadius: 'var(--radius-pill)', color: 'var(--red)', fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
           >
             Review & Sign
           </button>
@@ -655,15 +678,15 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
       <SectionCard>
         <SectionHeader
           label={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               {/* Prev week */}
               <button
                 onClick={() => navigateWeek(-1)}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', padding: '0 2px', fontSize: 12, lineHeight: 1 }}
+                style={{ background: 'none', border: 'none', color: 'var(--txt2)', cursor: 'pointer', padding: '0 2px', fontSize: 12, lineHeight: 1 }}
                 title="Previous week"
               >‹</button>
               {/* Week label */}
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase', color: isCurrentWeek ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.35)' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase', color: isCurrentWeek ? 'var(--txt2)' : 'var(--txt-ghost)' }}>
                 {isCurrentWeek ? `This Week — ${data.week_start}` : data.week_start}
                 {weekLocked ? ' 🔒' : ''}
               </span>
@@ -671,7 +694,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               <button
                 onClick={() => navigateWeek(1)}
                 disabled={isCurrentWeek}
-                style={{ background: 'none', border: 'none', color: isCurrentWeek ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.45)', cursor: isCurrentWeek ? 'default' : 'pointer', padding: '0 2px', fontSize: 12, lineHeight: 1 }}
+                style={{ background: 'none', border: 'none', color: isCurrentWeek ? 'var(--txt-ghost)' : 'var(--txt2)', cursor: isCurrentWeek ? 'default' : 'pointer', padding: '0 2px', fontSize: 12, lineHeight: 1 }}
                 title="Next week"
               >›</button>
               {/* Calendar toggle */}
@@ -679,10 +702,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 onClick={() => setCalendarOpen(o => !o)}
                 title="Month calendar"
                 style={{
-                  background: calendarOpen ? 'var(--teal-bg, rgba(58,124,157,0.14))' : 'rgba(255,255,255,0.04)',
-                  border: calendarOpen ? '1px solid var(--mark, #5AABCC)' : '1px solid rgba(255,255,255,0.10)',
-                  borderRadius: 4,
-                  color: calendarOpen ? 'var(--mark, #5AABCC)' : 'rgba(255,255,255,0.50)',
+                  background: calendarOpen ? 'var(--teal-bg)' : 'var(--border-faint)',
+                  border: calendarOpen ? '1px solid var(--mark)' : '1px solid var(--border-top)',
+                  borderRadius: 'var(--radius-pill)',
+                  color: calendarOpen ? 'var(--mark)' : 'var(--txt2)',
                   cursor: 'pointer', padding: '3px 10px',
                   fontFamily: 'var(--font-mono)', fontSize: 10,
                   fontWeight: 500,
@@ -700,12 +723,12 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                   const w = (ls?.warnings ?? day.warnings ?? []);
                   const hasViolation = w.length > 0;
                   const color = !isSubmit
-                    ? 'rgba(255,255,255,0.18)'
+                    ? 'var(--txt-ghost)'
                     : hasViolation
-                    ? 'rgba(192,80,58,0.85)'
-                    : 'rgba(74,148,104,0.85)';
+                    ? 'var(--red-strong)'
+                    : 'var(--green-strong)';
                   return (
-                    <div key={day.date} title={`${day.label}: ${!isSubmit ? 'Not filed' : hasViolation ? 'Violation' : 'Compliant'}`} style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                    <div key={day.date} title={`${day.label}: ${!isSubmit ? 'Not filed' : hasViolation ? 'Violation' : 'Compliant'}`} style={{ width: 6, height: 6, borderRadius: 'var(--radius-full)', background: color, flexShrink: 0 }} />
                   );
                 })}
               </div>
@@ -713,7 +736,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           }
           right={isReadOnly ? (
             weekLocked && !forceReadOnly ? (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', letterSpacing: '0.06em' }}>
                 {signoffStatus === 'hod_signed' ? 'Awaiting Captain' : signoffStatus === 'finalized' ? 'Finalized' : 'Read-only'}
               </span>
             ) : undefined
@@ -724,10 +747,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               disabled={!allSubmitted}
               style={{
                 padding: '5px 12px',
-                background: allSubmitted ? 'var(--mark, #5AABCC)' : 'rgba(255,255,255,0.06)',
+                background: allSubmitted ? 'var(--mark)' : 'var(--surface-subtle)',
                 border: 'none',
-                borderRadius: 5,
-                color: allSubmitted ? '#0c0b0a' : 'rgba(255,255,255,0.25)',
+                borderRadius: 'var(--radius-pill)',
+                color: allSubmitted ? 'var(--surface-base)' : 'var(--txt-ghost)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 9,
                 fontWeight: 600,
@@ -739,28 +762,28 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               Submit Week For Approval
             </button>
           ) : (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.06em' }}>Past week — read only</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', letterSpacing: '0.06em' }}>Past week — read only</span>
           )}
         />
 
         {/* ── Month calendar ── */}
         {calendarOpen && (
           <div style={{
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid var(--border-sub)',
             padding: '12px 16px',
-            background: 'rgba(0,0,0,0.15)',
+            background: 'var(--overlay-subtle)',
           }}>
             {/* Month nav */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 10 }}>
               <button
                 onClick={() => {
                   const [y, m] = calendarMonth.split('-').map(Number);
                   const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
                   setCalendarMonth(prev);
                 }}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: 12 }}
+                style={{ background: 'none', border: 'none', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12 }}
               >‹</button>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.50)', flex: 1, textAlign: 'center' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--txt2)', flex: 1, textAlign: 'center' }}>
                 {(() => { const [y, m] = calendarMonth.split('-'); return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); })()}
               </span>
               <button
@@ -772,20 +795,20 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                   const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
                   setCalendarMonth(next);
                 }}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: 12 }}
+                style={{ background: 'none', border: 'none', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12 }}
               >›</button>
             </div>
 
             {/* Day-of-week headers */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
               {['M','T','W','T','F','S','S'].map((d, i) => (
-                <div key={i} style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(255,255,255,0.25)', padding: '2px 0' }}>{d}</div>
+                <div key={i} style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--txt-ghost)', padding: '2px 0' }}>{d}</div>
               ))}
             </div>
 
             {/* Calendar grid */}
             {calendarLoading ? (
-              <div style={{ textAlign: 'center', padding: '12px 0', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>Loading…</div>
+              <div style={{ textAlign: 'center', padding: '12px 0', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>Loading…</div>
             ) : (() => {
               const [cy, cm] = calendarMonth.split('-').map(Number);
               const firstDay = new Date(cy, cm - 1, 1);
@@ -814,11 +837,11 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
 
                 let bg: string;
                 if (!rec || !rec.submitted) {
-                  bg = isToday ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.06)';
+                  bg = isToday ? 'var(--border-top)' : 'var(--split-bg)';
                 } else if (rec.is_compliant === false) {
-                  bg = 'rgba(192,80,58,0.70)';
+                  bg = 'var(--red-strong)';
                 } else {
-                  bg = 'rgba(74,148,104,0.70)';
+                  bg = 'var(--green-strong)';
                 }
 
                 const isViewedWeek = (() => {
@@ -843,9 +866,9 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                     }}
                     style={{
                       background: bg,
-                      border: isViewedWeek ? '1px solid rgba(90,171,204,0.6)' : '1px solid transparent',
+                      border: isViewedWeek ? '1px solid var(--mark-border)' : '1px solid transparent',
                       borderRadius: 3,
-                      color: rec?.submitted ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.35)',
+                      color: rec?.submitted ? 'var(--txt)' : 'var(--txt-ghost)',
                       fontFamily: 'var(--font-mono)',
                       fontSize: 9,
                       cursor: 'pointer',
@@ -867,15 +890,15 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
             })()}
 
             {/* Legend */}
-            <div style={{ display: 'flex', gap: 12, marginTop: 10, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 10, justifyContent: 'flex-end' }}>
               {[
-                { color: 'rgba(74,148,104,0.70)', label: 'Compliant' },
-                { color: 'rgba(192,80,58,0.70)', label: 'Violation' },
-                { color: 'rgba(255,255,255,0.06)', label: 'Not filed' },
+                { color: 'var(--green-strong)', label: 'Compliant' },
+                { color: 'var(--red-strong)', label: 'Violation' },
+                { color: 'var(--split-bg)', label: 'Not filed' },
               ].map(({ color, label }) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(255,255,255,0.30)' }}>{label}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--txt-ghost)' }}>{label}</span>
                 </div>
               ))}
             </div>
@@ -887,12 +910,12 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           <div style={{
             margin: '8px 16px',
             padding: '8px 12px',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            borderRadius: 5,
+            background: 'var(--border-faint)',
+            border: '1px solid var(--border-top)',
+            borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-mono)',
             fontSize: 10,
-            color: 'rgba(255,255,255,0.45)',
+            color: 'var(--txt-ghost)',
           }}>
             🔒 This week is finalized. To make changes, ask your HOD to submit a correction request.
           </div>
@@ -903,12 +926,12 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           <div style={{
             margin: '8px 16px',
             padding: '8px 12px',
-            background: 'rgba(245,158,11,0.05)',
-            border: '1px solid rgba(245,158,11,0.20)',
-            borderRadius: 5,
+            background: 'var(--amber-bg)',
+            border: '1px solid var(--amber-border)',
+            borderRadius: 'var(--radius-pill)',
             fontFamily: 'var(--font-mono)',
             fontSize: 10,
-            color: 'rgba(245,158,11,0.75)',
+            color: 'var(--amber)',
           }}>
             HOD has counter-signed this week. Editing will require your HOD to re-counter-sign.
           </div>
@@ -919,15 +942,15 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           <div style={{
             margin: '8px 16px',
             padding: '8px 12px',
-            background: 'rgba(245,158,11,0.06)',
-            border: '1px solid rgba(245,158,11,0.25)',
-            borderRadius: 5,
+            background: 'var(--amber-bg)',
+            border: '1px solid var(--amber-border)',
+            borderRadius: 'var(--radius-pill)',
           }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(245,158,11,0.8)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--amber)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
               Correction Requested by HOD
             </div>
             {correctionNote && (
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(245,158,11,0.7)' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--amber)' }}>
                 {correctionNote}
               </div>
             )}
@@ -951,8 +974,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 key={day.date}
                 style={{
                   padding: '10px 16px',
-                  borderBottom: idx < 6 ? '1px solid rgba(255,255,255,0.03)' : undefined,
-                  background: hasWarning && !isSubmitted ? 'rgba(192,80,58,0.04)' : undefined,
+                  borderBottom: idx < 6 ? '1px solid var(--border-faint)' : undefined,
+                  background: hasWarning && !isSubmitted ? 'var(--red-bg)' : undefined,
                 }}
               >
                 {/* Day header row */}
@@ -961,13 +984,13 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                     fontFamily: 'var(--font-mono)',
                     fontSize: 10,
                     fontWeight: 600,
-                    color: 'rgba(255,255,255,0.55)',
+                    color: 'var(--txt2)',
                     width: 28,
                   }}>{day.label}</span>
 
                   {isSubmitted ? (
                     <>
-                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+                      <span style={{ fontSize: 12, color: 'var(--txt2)' }}>
                         {(() => {
                           // Compute from periods — stored totals may be stale/wrong
                           const wp = displayDay.work_periods ?? [];
@@ -998,15 +1021,15 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                       {/* Submitted this session — show acknowledgement + Undo */}
                       {canUndo && (
                         <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--green, #4A9468)', fontWeight: 600 }}>Submitted ✓</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--green)', fontWeight: 600 }}>Submitted ✓</span>
                           <button
                             onClick={() => undoDay(day.date)}
                             style={{
                               padding: '3px 8px',
                               background: 'none',
-                              border: '1px solid rgba(255,255,255,0.15)',
-                              borderRadius: 4,
-                              color: 'rgba(255,255,255,0.45)',
+                              border: '1px solid var(--border-top)',
+                              borderRadius: 'var(--radius-pill)',
+                              color: 'var(--txt2)',
                               fontFamily: 'var(--font-mono)',
                               fontSize: 9,
                               cursor: 'pointer',
@@ -1017,7 +1040,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                       )}
                     </>
                   ) : (
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Not submitted</span>
+                    <span style={{ fontSize: 12, color: 'var(--txt-ghost)', fontStyle: 'italic' }}>Not submitted</span>
                   )}
 
                   {/* Submit day button — only when not submitted and has draft */}
@@ -1029,10 +1052,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                       style={{
                         marginLeft: 'auto',
                         padding: '4px 10px',
-                        background: 'var(--mark, #5AABCC)',
+                        background: 'var(--mark)',
                         border: 'none',
-                        borderRadius: 4,
-                        color: '#0c0b0a',
+                        borderRadius: 'var(--radius-pill)',
+                        color: 'var(--surface-base)',
                         fontFamily: 'var(--font-mono)',
                         fontSize: 9,
                         fontWeight: 600,
@@ -1050,7 +1073,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 {/* Submit error (e.g. overlap rejection) */}
                 {submitErrors[day.date] && (
                   <div style={{ marginBottom: 6, paddingLeft: 38 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(239,68,68,0.85)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--red-strong)' }}>
                       ✕ {submitErrors[day.date]}
                     </span>
                   </div>
@@ -1063,7 +1086,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                       <span key={wi} style={{
                         fontFamily: 'var(--font-mono)',
                         fontSize: 9,
-                        color: 'rgba(192,80,58,0.85)',
+                        color: 'var(--red-strong)',
                         paddingLeft: 38,
                       }}>⚠ {w.message ?? 'Compliance rule breached'}</span>
                     ))}
@@ -1092,10 +1115,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               onChange={e => setSelectedTemplate(e.target.value)}
               style={{
                 flex: 1,
-                background: 'var(--surface-el, #1e1b18)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 5,
-                color: 'rgba(255,255,255,0.70)',
+                background: 'var(--surface-el)',
+                border: '1px solid var(--border-chrome)',
+                borderRadius: 'var(--radius-pill)',
+                color: 'var(--txt3)',
                 fontFamily: 'var(--font-body)',
                 fontSize: 12,
                 padding: '6px 10px',
@@ -1112,10 +1135,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               disabled={!selectedTemplate || applyingTemplate}
               style={{
                 padding: '6px 14px',
-                background: selectedTemplate ? 'rgba(90,171,204,0.12)' : 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(90,171,204,0.25)',
-                borderRadius: 5,
-                color: selectedTemplate ? 'var(--mark, #5AABCC)' : 'rgba(255,255,255,0.25)',
+                background: selectedTemplate ? 'var(--teal-bg)' : 'var(--border-faint)',
+                border: '1px solid var(--mark-border)',
+                borderRadius: 'var(--radius-pill)',
+                color: selectedTemplate ? 'var(--mark)' : 'var(--txt-ghost)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 9,
                 fontWeight: 600,
@@ -1128,7 +1151,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               {applyingTemplate ? 'Applying…' : 'Insert My Template'}
             </button>
           </div>
-          <p style={{ padding: '0 16px 10px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', lineHeight: 1.5 }}>
+          <p style={{ padding: '0 16px 10px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', lineHeight: 1.5 }}>
             Template populates unsubmitted days only. Your signature is still required.
           </p>
         </SectionCard>
@@ -1137,33 +1160,33 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
       {/* ── COMPLIANCE ── */}
       <SectionCard>
         <SectionHeader label="Compliance" />
-        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+            <span style={{ fontSize: 12, color: 'var(--txt2)' }}>
               24h rolling — {comp.rolling_24h_rest != null ? `${comp.rolling_24h_rest}h rest` : '—'}
             </span>
             {comp.rolling_24h_rest != null
               ? <StatusBadge ok={comp.rolling_24h_rest >= comp.min_24h} label={comp.rolling_24h_rest >= comp.min_24h ? `✓ min ${comp.min_24h}h` : `⚠ min ${comp.min_24h}h`} />
-              : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>No data today</span>
+              : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>No data today</span>
             }
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+            <span style={{ fontSize: 12, color: 'var(--txt2)' }}>
               7-day rolling — {comp.rolling_7day_rest != null ? `${comp.rolling_7day_rest}h rest` : '—'}
             </span>
             {comp.rolling_7day_rest != null
               ? <StatusBadge ok={comp.rolling_7day_rest >= comp.min_7d} label={comp.rolling_7day_rest >= comp.min_7d ? `✓ min ${comp.min_7d}h` : `⚠ min ${comp.min_7d}h`} />
-              : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>No data</span>
+              : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>No data</span>
             }
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>This week — {comp.rolling_7d_work != null ? `${comp.rolling_7d_work}h worked` : '—'}</span>
+            <span style={{ fontSize: 12, color: 'var(--txt2)' }}>This week — {comp.rolling_7d_work != null ? `${comp.rolling_7d_work}h worked` : '—'}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>MLC 2006 Status</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, paddingTop: 'var(--space-2)', borderTop: '1px solid var(--border-faint)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--txt-ghost)' }}>MLC 2006 Status</span>
             <span style={{
               fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
-              color: comp.mlc_status === 'COMPLIANT' ? 'var(--green, #4A9468)' : 'var(--red, #C0503A)',
+              color: comp.mlc_status === 'COMPLIANT' ? 'var(--green)' : 'var(--red)',
             }}>
               {comp.mlc_status}
             </span>
@@ -1177,10 +1200,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           <SectionHeader label="Monthly Sign-Off" />
           <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.80)', marginBottom: 3 }}>
+              <div style={{ fontSize: 13, color: 'var(--txt)', marginBottom: 3 }}>
                 {formatMonth(signoff.month)}
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>
                 {signoff.status === 'draft' ? 'Awaiting your signature' :
                   signoff.status === 'crew_signed' ? 'Submitted — awaiting HOD' :
                   signoff.status === 'hod_signed' ? 'HOD signed — awaiting Captain' :
@@ -1192,10 +1215,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 onClick={() => setSignMonthlyOpen(true)}
                 style={{
                   padding: '6px 14px',
-                  background: 'var(--mark, #5AABCC)',
+                  background: 'var(--mark)',
                   border: 'none',
-                  borderRadius: 5,
-                  color: '#0c0b0a',
+                  borderRadius: 'var(--radius-pill)',
+                  color: 'var(--surface-base)',
                   fontFamily: 'var(--font-mono)',
                   fontSize: 9,
                   fontWeight: 600,
@@ -1208,7 +1231,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               </button>
             )}
             {signoff.status === 'crew_signed' && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--green, #4A9468)' }}>Submitted ✓</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--green)' }}>Submitted ✓</span>
             )}
           </div>
         </SectionCard>
@@ -1222,18 +1245,18 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
             {warnings.map((w: any) => (
               <div key={w.id} style={{
                 display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 12,
+                padding: '10px 16px', borderBottom: '1px solid var(--border-faint)', gap: 'var(--space-3)',
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, color: w.severity === 'critical' ? 'var(--red, #C0503A)' : 'rgba(245,158,11,0.85)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 3 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, color: w.severity === 'critical' ? 'var(--red)' : 'var(--amber)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                       ⚠ {w.severity ?? 'warning'}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>
                       {w.record_date ?? ''}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.45 }}>
+                  <div style={{ fontSize: 12, color: 'var(--txt3)', lineHeight: 1.45 }}>
                     {w.message ?? w.warning_type ?? 'Compliance rule breached'}
                   </div>
                 </div>
@@ -1242,8 +1265,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                   disabled={acknowledging[w.id]}
                   style={{
                     flexShrink: 0, padding: '4px 10px',
-                    background: 'none', border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 4, color: 'rgba(255,255,255,0.40)',
+                    background: 'none', border: '1px solid var(--border-top)',
+                    borderRadius: 'var(--radius-pill)', color: 'var(--txt-ghost)',
                     fontFamily: 'var(--font-mono)', fontSize: 9,
                     cursor: acknowledging[w.id] ? 'wait' : 'pointer',
                     letterSpacing: '0.06em', textTransform: 'uppercase',
@@ -1271,41 +1294,41 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               cursor: 'pointer',
             }}
           >
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>History</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" style={{ transform: historyOpen ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--txt-ghost)' }}>History</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: historyOpen ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s', color: 'var(--txt-ghost)' }}>
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
           {historyOpen && (
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ borderTop: '1px solid var(--border-faint)' }}>
               {data.prior_weeks.map((w: any) => (
                 <div
                   key={w.week_start}
                   onClick={() => setViewWeekStart(w.week_start)}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '9px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    padding: '9px 16px', borderBottom: '1px solid var(--border-faint)',
                     cursor: 'pointer', transition: 'background 0.1s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{w.label}</span>
+                    <span style={{ fontSize: 12, color: 'var(--txt2)' }}>{w.label}</span>
                     {w.days_filed < 7 && (
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', marginLeft: 8 }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', marginLeft: 'var(--space-2)' }}>
                         {w.days_filed}/7 days filed
                       </span>
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{w.total_rest_hours}h rest</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>{w.total_rest_hours}h rest</span>
                     <StatusBadge ok={w.is_compliant} />
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.20)' }}>›</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>›</span>
                   </div>
                 </div>
               ))}
-              <div style={{ padding: '8px 16px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>
+              <div style={{ padding: '8px 16px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>
                 Avg {((data.prior_weeks.reduce((s: number, w: any) => s + (w.total_rest_hours || 0), 0) / data.prior_weeks.length) || 0).toFixed(1)}h rest/week
               </div>
             </div>
