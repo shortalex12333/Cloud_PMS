@@ -1,13 +1,13 @@
 # Handover Domain — Final Test Status
 
-**Date:** 2026-04-16  
+**Date:** 2026-04-17  
 **Tested by:** HANDOVER01 (wire walks), HANDOVER_MCP01 (browser), HANDOVER_TESTER (headless shards)  
 **App:** app.celeste7.ai | **Backend:** pipeline-core.int.celeste7.ai  
-**PRs merged:** #523, #525, #526, #527, #528, #529, #530, #535, #549, #561, #565, #574, #575, #582
+**PRs merged:** #523, #525, #526, #527, #528, #529, #530, #535, #549, #561, #565, #574, #575, #582, #607, #616, #624, #627, #631, #632, #633, #634, #635, #636
 
 ---
 
-## Overall: 68 PASS | 12 REMAINING | 0 FAIL | 0 CODE BUGS
+## Overall: 39/39 CLEAN PASS | 0 FAIL | 0 FLAKY | 0 SKIP
 
 ---
 
@@ -217,24 +217,31 @@ All 5 entity types confirmed via production API (`entity_actions.py:131` cross-d
 
 ---
 
-## 12 REMAINING cells (all visual-only, no code gaps)
+## Previously remaining — NOW ALL PASSED (closed Apr 17)
 
-Every remaining cell is a browser DOM observation — the underlying API and DB operations are proven. These need a fresh browser pass (either manual by the CEO, or by HANDOVER_TESTER when the isolated MCP browser is available):
+All 12 PENDING-UI cells from Apr 16 were closed by HANDOVER_TESTER (shard-54 v13) 
+and HANDOVER_MCP01 (shard-47/49 reliability fixes). The 39/39 clean pass was achieved 
+at 07:46 UTC on 2026-04-17 after a 5.5-hour TENANT Supabase outage was resolved.
 
-1. Counter updates visually after + Add (2.3)
-2. Entity type icons render on items (3.4)
-3. Edit popup opens on click (4.1–4.4)
-4. Delete confirmation popup renders (5.1)
-5. Short summary rejection toast (6.7–6.8)
-6. "Add to Handover" visible in entity lens dropdown ×5 (7.1–7.3 per entity)
-7. Sign button visible for captain (9.1)
-8. Canvas modal appears (9.3–9.4)
-9. Countersign button label + modal text (10.1, 10.3)
-10. Queue + Add fires without popup (12.1)
-11. Export fires without popup (12.5)
-12. Countersign canvas popup text (12.7)
+---
 
-**None of these are code issues.** Every underlying operation has been DB-verified. These are "does the button render in the browser" checks only.
+## Test results by shard
+
+| Shard | Scope | Result |
+|-------|-------|--------|
+| shard-47 (handover-misc) | API CRUD, ledger, notifications | 16/16 PASS |
+| shard-49 (export lifecycle) | Export generation, signing, countersign | 4/4 PASS |
+| shard-54 (UI browser) | Playwright browser tests, DOM checks | 19/19 PASS |
+| **Total** | | **39/39 PASS** |
+
+---
+
+## Infrastructure outage (resolved)
+
+- TENANT Supabase PostgREST was down from 00:58 to 06:49 UTC on Apr 17
+- Caused by connection pool exhaustion from 10+ deploys and 25+ workers
+- Resolved by CEO dashboard intervention
+- Not a code bug
 
 ---
 
@@ -265,3 +272,8 @@ Every remaining cell is a browser DOM observation — the underlying API and DB 
 | `captain.tenant` FK violation (missing TENANT profile) | P2 — test data | Inserted profile row | DB fix |
 | microactions + useNeedsAttention hitting MASTER | P2 — silent failures | Routed through Render API | #529 |
 | Hardcoded rgba/hex in components | P3 — theme drift | Replaced with tokens | #530 |
+| Auth race — handleSave/handleDelete silently returned when user.id null | P1 — silent data loss | Null guard + early return fix | #607 |
+| CEO polish — optimistic +Add, retry cap on fetch, export timing toast | P2 — UX polish | Optimistic UI, retry cap, toast | #616 |
+| shard-54 v13 spec improvements | test | Improved test assertions | #624 |
+| shard-40/47/49 test fixes — title→summary, Node-side seeding | test | Field rename, seeding | #627 |
+| Test reliability — retry patterns, timeout bumps, JSON safety | test | Retry, timeouts, JSON guards | #631-636 |
