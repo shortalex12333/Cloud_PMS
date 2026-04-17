@@ -390,6 +390,21 @@ test.describe('[Captain] sign_handover_incoming — ADVISORY', () => {
 });
 
 // ===========================================================================
+// Helper: seed a handover item via Node-side request (no CORS dependency)
+// ===========================================================================
+async function seedHandoverItem(
+  request: import('@playwright/test').APIRequestContext,
+  payload: Record<string, unknown>,
+): Promise<{ status: number; data: Record<string, unknown> }> {
+  const response = await request.post(`${API_URL}/v1/actions/execute`, {
+    headers: { Authorization: `Bearer ${SESSION_JWT}`, 'Content-Type': 'application/json' },
+    data: { action: 'add_to_handover', context: {}, payload },
+  });
+  const data = await response.json();
+  return { status: response.status(), data };
+}
+
+// ===========================================================================
 // list_handover_items — HARD PROOF (GET /v1/handover/items)
 // ===========================================================================
 
@@ -402,7 +417,7 @@ test.describe('[Captain] list_handover_items — HARD PROOF', () => {
 
     // Step 1: Create a handover item so the list is non-empty
     const tag = generateTestId('li');
-    const createResult = await callActionDirect(captainPage, 'add_to_handover', {
+    const createResult = await seedHandoverItem(captainPage.request, {
       entity_type: 'note',
       summary: `S47 list-items probe ${tag}`,
       category: 'fyi',
@@ -444,7 +459,7 @@ test.describe('[Captain] edit_handover_item — HARD PROOF', () => {
 
     // Step 1: Create a handover item
     const tag = generateTestId('ei');
-    const createResult = await callActionDirect(captainPage, 'add_to_handover', {
+    const createResult = await seedHandoverItem(captainPage.request, {
       entity_type: 'note',
       summary: `S47 edit-item seed ${tag}`,
       category: 'fyi',
@@ -530,7 +545,7 @@ test.describe('[Captain] delete_handover_item — HARD PROOF', () => {
 
     // Step 1: Create a handover item
     const tag = generateTestId('di');
-    const createResult = await callActionDirect(captainPage, 'add_to_handover', {
+    const createResult = await seedHandoverItem(captainPage.request, {
       entity_type: 'note',
       summary: `S47 delete-item seed ${tag}`,
       category: 'fyi',
@@ -616,7 +631,7 @@ test.describe('[Captain] critical item HOD ledger cascade — HARD PROOF', () =>
 
     // Step 1: Create a critical handover item
     const tag = generateTestId('cc');
-    const createResult = await callActionDirect(captainPage, 'add_to_handover', {
+    const createResult = await seedHandoverItem(captainPage.request, {
       entity_type: 'note',
       summary: `S47 critical cascade probe ${tag}`,
       category: 'critical',
