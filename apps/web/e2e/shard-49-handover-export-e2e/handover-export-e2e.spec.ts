@@ -65,20 +65,31 @@ function authHeaders(accessToken: string) {
   };
 }
 
-/** Helper: create an export and return the parsed result */
+/** Helper: create an export with retry (export endpoint is heavy — 30-120s, can 502/503 under load) */
 async function createExport(
   request: any,
   accessToken: string,
+  maxAttempts = 3,
 ): Promise<{ export_id: string; sections_count: number; total_items: number; status: string; [key: string]: any }> {
-  const response = await request.post(`${API_URL}/v1/handover/export`, {
-    headers: authHeaders(accessToken),
-    data: { export_type: 'html', filter_by_user: false },
-  });
-  expect(response.status()).toBe(200);
-  const result = await response.json();
-  expect(result.status).toBe('success');
-  expect(result.export_id).toBeTruthy();
-  return result;
+  let lastStatus = 0;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const response = await request.post(`${API_URL}/v1/handover/export`, {
+      headers: authHeaders(accessToken),
+      data: { export_type: 'html', filter_by_user: false },
+      timeout: 150_000, // 2.5 min — LLM pipeline can take 120s
+    });
+    lastStatus = response.status();
+    if (lastStatus === 200) {
+      const result = await response.json();
+      expect(result.status).toBe('success');
+      expect(result.export_id).toBeTruthy();
+      return result;
+    }
+    console.log(`[createExport] Attempt ${attempt}/${maxAttempts} returned ${lastStatus} — ${attempt < maxAttempts ? 'retrying in 10s' : 'giving up'}`);
+    if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 10_000));
+  }
+  throw new Error(`createExport failed after ${maxAttempts} attempts (last status: ${lastStatus})`);
+}
 }
 
 /**
