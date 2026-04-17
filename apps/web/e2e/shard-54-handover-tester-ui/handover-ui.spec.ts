@@ -144,21 +144,30 @@ async function readErrors(page: Page): Promise<{ errors: string[]; warnings: str
  */
 async function seedHandoverItem(role: Role, summary: string, category = 'standard'): Promise<string> {
   const session = await masterSignIn(role);
-  const res = await fetch(`${API_URL}/v1/actions/execute`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'add_to_handover',
-      context: { yacht_id: '85fe1119-b04c-41ac-80f1-829d23322598' },
-      payload: { entity_type: 'note', summary, category },
-    }),
-  });
-  if (!res.ok) throw new Error(`seedHandoverItem failed: ${res.status}`);
-  const data: any = await res.json();
-  return data.result?.item_id;
+  // Retry 3× on transient 5xx from Render rolling deploys / cold starts.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(`${API_URL}/v1/actions/execute`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'add_to_handover',
+        context: { yacht_id: '85fe1119-b04c-41ac-80f1-829d23322598' },
+        payload: { entity_type: 'note', summary, category },
+      }),
+    });
+    if (res.ok) {
+      const data: any = await res.json();
+      return data.result?.item_id;
+    }
+    if (res.status < 500 || attempt === 2) {
+      throw new Error(`seedHandoverItem failed: ${res.status}`);
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  throw new Error('seedHandoverItem: unreachable');
 }
 
 const API_URL = 'https://pipeline-core.int.celeste7.ai';
@@ -204,7 +213,10 @@ async function gotoWithRetry(page: Page, url: string, attempts = 3): Promise<voi
   }
 }
 
-/** Retry POST 3× on 5xx from Render rolling deploys. */
+/** Retry POST 3× on 5xx from Render rolling deploys.
+ *  Timeout is 150s per attempt — POST /v1/handover/export runs an LLM
+ *  pipeline (classify → group → merge) that can take up to 120s on a cold
+ *  Render container, and any timeout shorter than that produces false 5xx. */
 async function postWithRetry(
   page: Page,
   accessToken: string,
@@ -216,7 +228,7 @@ async function postWithRetry(
     const r = await page.request.post(url, {
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       data,
-      timeout: 60_000,
+      timeout: 150_000,
     });
     if (r.status() < 500) return r;
     if (i < attempts - 1) await page.waitForTimeout(3000);
