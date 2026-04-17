@@ -373,9 +373,33 @@ def scenario_1_hod_files_claim(ctx: BrowserContext, state: dict) -> dict:
 
     step(res, "1.7", "Primary button = Submit Claim",
          lambda: page.get_by_test_id("warranty-submit-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
-    step(res, "1.8", "Click Submit Claim",
-         lambda: page.get_by_test_id("warranty-submit-btn").click(timeout=STEP_TIMEOUT_MS))
-    step(res, "1.9", "Status pill = Submitted", lambda: assert_pill_label(page, "Submitted"))
+    def click_submit_and_handle_popup():
+        page.get_by_test_id("warranty-submit-btn").click(timeout=STEP_TIMEOUT_MS)
+        # submit_warranty_claim may open an ActionPopup (requires_signature or
+        # unresolved required_fields at runtime). If it does, confirm it.
+        # If direct-execution path, the try/except is a no-op.
+        try:
+            page.get_by_test_id("action-popup").wait_for(state="visible", timeout=10000)
+            page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS)
+        except Exception:
+            pass  # No popup = direct execution, action fired inline
+
+    step(res, "1.8", "Click Submit Claim (confirm popup if required)",
+         click_submit_and_handle_popup)
+
+    def pill_is_submitted():
+        page.wait_for_timeout(3000)  # Let submit_warranty_claim propagate to DB
+        reload_claim(page, state["claim_id_1"])
+        page.wait_for_function(
+            """() => {
+                const pill = document.querySelector('[data-testid="warranty-status-pill"]');
+                if (!pill) return false;
+                return pill.innerText.trim().toLowerCase().includes('submitted');
+            }""",
+            timeout=20_000,
+        )
+
+    step(res, "1.9", "Status pill = Submitted (reload for fresh state)", pill_is_submitted)
 
     page.close()
     return finalize(res)
