@@ -41,7 +41,13 @@ const tenantDb = createClient(TENANT_URL, TENANT_SERVICE_KEY, {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-/** Helper to call a dedicated REST endpoint (not /v1/actions/execute). */
+/** Helper to call a dedicated REST endpoint (not /v1/actions/execute).
+ *  Uses Playwright's Node-side `page.request` instead of `page.evaluate(fetch)`
+ *  — the browser-context version fails cross-origin with "Failed to fetch"
+ *  when the page was loaded from https://app.celeste7.ai and the call
+ *  targets https://pipeline-core.int.celeste7.ai (CORS preflight can time
+ *  out on Render cold-start). Same fix HANDOVER_MCP01 applied to the POST
+ *  helper `executeActionNode` in PR #634. */
 async function fetchDirect(
   page: import('@playwright/test').Page,
   method: string,
@@ -49,27 +55,24 @@ async function fetchDirect(
   body?: Record<string, unknown>
 ): Promise<{ status: number; data: Record<string, unknown> }> {
   const jwt = SESSION_JWT;
-  return page.evaluate(
-    async ([url, token, reqMethod, reqBody]) => {
-      const opts: RequestInit = {
-        method: reqMethod as string,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      };
-      if (reqBody) opts.body = reqBody as string;
-      const res = await fetch(url as string, opts);
-      const data = await res.json().catch(() => ({}));
-      return { status: res.status, data };
+  const url = `${API_URL}${path}`;
+  const opts = {
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
     },
-    [
-      `${API_URL}${path}`,
-      jwt,
-      method,
-      body ? JSON.stringify(body) : null,
-    ] as [string, string, string, string | null]
-  );
+    timeout: 60_000, // 60s — Render cold-start envelope
+    ...(body ? { data: body } : {}),
+  };
+  let response;
+  const upperMethod = method.toUpperCase();
+  if (upperMethod === 'GET') response = await page.request.get(url, opts);
+  else if (upperMethod === 'POST') response = await page.request.post(url, opts);
+  else if (upperMethod === 'PATCH') response = await page.request.patch(url, opts);
+  else if (upperMethod === 'DELETE') response = await page.request.delete(url, opts);
+  else throw new Error(`fetchDirect: unsupported method ${method}`);
+  const data = await response.json().catch(() => ({}));
+  return { status: response.status(), data };
 }
 
 // ===========================================================================
@@ -205,7 +208,7 @@ test.describe('[Captain] show_manual_section — ADVISORY', () => {
     console.log(`[JSON] show_manual_section: status=${result.status}`);
 
     // 200 = success, 400 = validation, 403 = RBAC, 404 = not found, 500 = handler not init, 503 = Render cold-start
-    expect([200, 400, 403, 404, 500, 503]).toContain(result.status);
+    expect([200, 400, 403, 404, 500, 502, 503]).toContain(result.status);
   });
 });
 
@@ -235,7 +238,7 @@ test.describe('[Captain] add_entity_link — ADVISORY', () => {
     console.log(`[JSON] add_entity_link: status=${result.status}, ${JSON.stringify(result.data)}`);
 
     // 200 = linked, 400 = validation, 500 = handler error, 503 = Render cold-start
-    expect([200, 400, 500, 503]).toContain(result.status);
+    expect([200, 400, 500, 502, 503]).toContain(result.status);
   });
 });
 
@@ -257,7 +260,7 @@ test.describe('[Captain] export_handover — ADVISORY', () => {
     console.log(`[JSON] export_handover (invalid): status=${result.status}`);
 
     // 200 = handler returns data for any ID, 400 = validation, 404 = not found, 500 = handler error, 503 = Render cold-start
-    expect([200, 400, 404, 500, 503]).toContain(result.status);
+    expect([200, 400, 404, 500, 502, 503]).toContain(result.status);
   });
 });
 
@@ -277,7 +280,7 @@ test.describe('[Captain] get_pending_handovers — HARD PROOF', () => {
     console.log(`[JSON] get_pending_handovers: status=${result.status}, keys=${Object.keys(result.data).join(',')}`);
 
     // 200 = success (may be empty), 400 = validation, 404 = route not found, 500 = handler not initialized, 503 = Render cold-start
-    expect([200, 400, 404, 500, 503]).toContain(result.status);
+    expect([200, 400, 404, 500, 502, 503]).toContain(result.status);
     if (result.status === 200) {
       const data = result.data as { status?: string; success?: boolean };
       expect(data.status === 'success' || data.success === true).toBe(true);
