@@ -709,6 +709,10 @@ async def upload_document(
         'content_type': content_type,
         'size_bytes': size_bytes,
         'uploaded_by': user_id,
+        # Explicit is_seed=false: the column default is TRUE, which would hide
+        # the row from v_documents_enriched (WHERE is_seed = false). Every
+        # production upload must opt out of the seed flag.
+        'is_seed': False,
     }
     # Optional columns — only add if the caller supplied them.
     if title:
@@ -1084,7 +1088,8 @@ async def import_documents(
                 continue
             uploaded_blobs.append(storage_path)
 
-            # Insert doc_metadata row
+            # Insert doc_metadata row. is_seed explicitly FALSE (column default
+            # is TRUE — would hide the row from v_documents_enriched).
             row = {
                 'id': doc_id,
                 'yacht_id': yacht_id,
@@ -1097,6 +1102,7 @@ async def import_documents(
                 'size_bytes': len(file_bytes),
                 'uploaded_by': user_id,
                 'import_batch_id': batch_id,
+                'is_seed': False,
             }
             if doc_type_default:
                 row['doc_type'] = doc_type_default
