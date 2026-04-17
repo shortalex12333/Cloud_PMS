@@ -90,7 +90,6 @@ async function createExport(
   }
   throw new Error(`createExport failed after ${maxAttempts} attempts (last status: ${lastStatus})`);
 }
-}
 
 /**
  * Helper: build a minimal valid sections payload for the submit endpoint.
