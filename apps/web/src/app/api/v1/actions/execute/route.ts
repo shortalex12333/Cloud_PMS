@@ -43,7 +43,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
       renderUrl: `${RENDER_API_URL}/v1/actions/execute`,
     });
 
-    // Proxy to Render backend
+    // Proxy to Render backend (25s hard timeout — Vercel functions limit)
     const renderResponse = await fetch(`${RENDER_API_URL}/v1/actions/execute`, {
       method: 'POST',
       headers: {
@@ -51,10 +51,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
         'Authorization': authHeader,
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(25000),
     });
 
-    // Get response from Render
-    const responseData = await renderResponse.json();
+    // Get response from Render — backend may return empty body on connection drop
+    let responseData: ActionResponse;
+    try {
+      responseData = await renderResponse.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Backend returned empty response', code: 'EMPTY_RESPONSE' },
+        { status: 502 }
+      );
+    }
 
     // Log the response
     console.log('[Action Router] Render response:', {
