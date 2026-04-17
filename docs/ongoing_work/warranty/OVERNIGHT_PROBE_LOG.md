@@ -13,3 +13,4 @@
 | 2026-04-17T09:10Z | tenant_rest=403 | bootstrap=403 | note=auth403 |
 | 2026-04-17T10:05Z | tenant_rest=403 | bootstrap=403 | note=auth403 |
 | 2026-04-17T11:05Z | tenant_rest=403 | bootstrap=403 | note=auth403 |
+| 2026-04-17T12:04Z | tenant_rest=403 | bootstrap=403 | note=auth403 |
