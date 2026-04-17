@@ -300,7 +300,7 @@ export function DocumentContent() {
   }
 
   return (
-    <>
+    <div data-testid="document-content">
       {/* Identity Strip */}
       <IdentityStrip
         overline={document_code}
@@ -480,6 +480,6 @@ export function DocumentContent() {
         onSubmit={handleNoteSubmit}
         isLoading={isLoading}
       />
-    </>
+    </div>
   );
 }
