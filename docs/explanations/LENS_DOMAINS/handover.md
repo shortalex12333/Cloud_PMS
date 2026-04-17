@@ -1,9 +1,11 @@
 # Handover — Complete Feature Explanation
 
-**Written by:** HANDOVER01 (2026-04-14)  
+**Written by:** HANDOVER01 (2026-04-17 (updated))  
 **For:** Any new engineer, agent, or worker picking up this feature  
 **Repo:** `Cloud_PMS` — `shortalex12333/Cloud_PMS`  
-**Scope:** Everything about the handover feature — frontend, backend, DB, microservice, ledger, bugs, traps, limitations
+**Scope:** Everything about the handover feature — frontend, backend, DB, microservice, ledger, bugs, traps, limitations  
+**Updates:** Updated with PRs #607-636 and 39/39 test results  
+**Test status: 39/39 CLEAN PASS (Apr 17, 2026)**
 
 ---
 
@@ -495,6 +497,23 @@ These are real bugs that were in production. Know them so you don't reintroduce 
 **Fix:** Changed to `export_status="exported"`, `status="completed"`. Removed invented `exported_at` column (doesn't exist).  
 **File:** `apps/api/routes/handover_export_routes.py`
 
+### Bug 8 — Auth race silent save
+**Symptom:** Popup closed with no toast, no error when `user.id` was null  
+**Cause:** `if (!user?.id) return;` at `HandoverDraftPanel.tsx:533` silently returned  
+**Fix:** Added `userReady` flag, disabled buttons until auth loaded. PR #607  
+**File:** `apps/web/src/components/handover/HandoverDraftPanel.tsx:506, 371, 478`
+
+### Bug 9 — Slow + Add with no optimistic update
+**Symptom:** 2-5 second delay before button changed to "Added"  
+**Cause:** Button only flipped after full Render API round-trip at `HandoverQueueView.tsx:325`  
+**Fix:** Optimistic flip before API call, revert on error. PR #616  
+**File:** `apps/web/src/components/handover/HandoverQueueView.tsx:298-332`
+
+### Bug 10 — Export gave no timing feedback
+**Symptom:** User saw nothing during 30-120s LLM export  
+**Fix:** Immediate toast "Generating handover — up to 2 minutes" + 10s persistent success toast. PR #616  
+**File:** `apps/web/src/components/handover/HandoverDraftPanel.tsx:610-635`
+
 ---
 
 ## 12. What I Wish I Knew at the Start
@@ -543,13 +562,10 @@ For a proper crew handover (scoped to their department), you'd want to also filt
 When exporting, there's no UI step to nominate the incoming crew member. `incoming_user_id` in `handover_exports` is always NULL until the incoming person actively signs.
 **Simple fix:** Add a `Select incoming crew member` optional dropdown before triggering export. Pull from `auth_users_roles` where `role = outgoing user's role` and `yacht_id = vessel`.
 
-### Gap 5 — Signing flow not complete end-to-end in production
-`handover_exports` has 1 row in production (as of 2026-04-14), `signoff_complete=false`. The submit/countersign routes exist and work, but the frontend `/handover-export/{id}` page doesn't show the signing UI yet (Gap 1 above). No handover has ever been fully signed.
-
-### Gap 6 — Vessel-level handover not implemented
+### Gap 5 — Vessel-level handover not implemented
 The marketing material describes a "vessel handover" — pulls all items across all crew, appends certificate status, open warranty claims, overdue PMS tasks. The DB has `handover_type` discussed but not implemented. Only crew-level handovers (scoped to one user) exist.
 
-### Gap 7 — PDF export is `window.print()`
+### Gap 6 — PDF export is `window.print()`
 The "Export PDF" button calls `window.print()`. This uses the browser print dialog. It works but has no server-side PDF generation, no consistent formatting across environments, no stored PDF.
 WeasyPrint is installed in the handover_export microservice — a proper PDF endpoint could be added there.
 
@@ -720,6 +736,18 @@ Files changed during the HANDOVER01 session. If you're debugging a regression, t
 | `apps/api/handlers/hours_of_rest_handlers.py` | Added ledger event on signoff creation; pms_notifications crew alert |
 
 PRs: #523 (CRUD fix), #525 (ledger cascade), #526 (sync)
+
+| **Session 2 (2026-04-15 to 2026-04-17)** | |
+|---|---|
+| `HandoverDraftPanel.tsx` | Auth race fix (userReady guard), optimistic +Add, retry cap, export toast |
+| `HandoverQueueView.tsx` | Optimistic +Add flip |
+| `HandoverContent.tsx` | Sign/countersign wired to /submit and /countersign routes |
+| `entity_routes.py` | Sections fallback to v_handover_draft_complete |
+| `pipeline_service.py` | CORS: added PATCH/PUT/DELETE |
+| `playwright.config.ts` | Shard-49/54 timeout overrides (150s action, 180s test) |
+| `shard-52/54 specs` | 19 browser UI tests |
+
+PRs: #607, #616, #624, #627, #631-636
 
 ---
 
