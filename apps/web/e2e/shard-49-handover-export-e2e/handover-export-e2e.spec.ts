@@ -280,25 +280,38 @@ test.describe('Handover Export E2E', () => {
     console.log('[Test 3] Step B: DB confirmed pending_hod_signature');
 
     // ── Step C: Countersign (captain can countersign — role is in allowed list) ──
+    // Retry 3× on transient 5xx from Render rolling deploys / hourly blip.
+    // Same pattern as createExport (PR #632). 150s timeout — countersign
+    // involves signed-HTML generation + storage upload + ledger cascade.
     console.log('[Test 3] Step C: POST countersign...');
-    const countersignResponse = await captainPage.request.post(
-      `${API_URL}/v1/handover/export/${exportId}/countersign`,
-      {
-        headers,
-        data: {
-          hodSignature: {
-            image_base64: FAKE_SIGNATURE_BASE64,
-            signed_at: new Date().toISOString(),
-            signer_name: 'Captain Test (HOD)',
-            signer_id: session.user.id,
+    let countersignResponse;
+    let countersignResult: any = { error: 'no response' };
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      countersignResponse = await captainPage.request.post(
+        `${API_URL}/v1/handover/export/${exportId}/countersign`,
+        {
+          headers,
+          data: {
+            hodSignature: {
+              image_base64: FAKE_SIGNATURE_BASE64,
+              signed_at: new Date().toISOString(),
+              signer_name: 'Captain Test (HOD)',
+              signer_id: session.user.id,
+            },
           },
+          timeout: 150_000,
         },
-      },
-    );
-
-    const countersignResult = await countersignResponse.json().catch(() => ({ error: 'empty response' }));
-    console.log('[Test 3] Step C: countersign response:', countersignResponse.status(), JSON.stringify(countersignResult));
-    expect(countersignResponse.status()).toBe(200);
+      );
+      const status = countersignResponse.status();
+      if (status < 500) {
+        countersignResult = await countersignResponse.json().catch(() => ({ error: 'empty response' }));
+        break;
+      }
+      console.log(`[Test 3] Step C: countersign attempt ${attempt}/3 returned ${status} — ${attempt < 3 ? 'retrying in 10s' : 'giving up'}`);
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 10_000));
+    }
+    console.log('[Test 3] Step C: countersign response:', countersignResponse!.status(), JSON.stringify(countersignResult));
+    expect(countersignResponse!.status()).toBe(200);
     expect(countersignResult.success).toBe(true);
     expect(countersignResult.review_status).toBe('complete');
 
