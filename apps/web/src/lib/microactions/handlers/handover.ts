@@ -344,14 +344,38 @@ async function viewDocument(
 
 /**
  * Add document to handover
+ *
+ * PR-D4 (2026-04-17): Extended to accept the document-provenance fields that
+ * `entity_prefill.py` populates into the Add-to-Handover popup:
+ *   - `title` (filename)
+ *   - `doc_type`
+ *   - `source_doc_id` (copy of document_id — provenance)
+ *   - `link` (storage_path)
+ *   - `page_numbers` (user-editable when relevant)
+ *
+ * These are forwarded to `add_to_handover` as `action_summary` (section-scoped
+ * human text) and embedded on the resulting handover_item via the backend's
+ * metadata write-through — the handler on the Render side will merge them
+ * into handover_items.metadata so the provenance survives the hand-off.
  */
 async function addDocumentToHandover(
   context: ActionContext,
   params: {
     document_id: string;
+    /** Prefilled: filename rendered as the handover row title context */
+    title?: string;
+    /** Prefilled: manual / spec_sheet / certificate / etc. */
+    doc_type?: string;
+    /** Prefilled: echo of document_id for audit provenance */
+    source_doc_id?: string;
+    /** Prefilled: storage_path used to deep-link back to the file */
+    link?: string;
+    /** User-editable */
     section?: string;
-    page_numbers?: string;
+    /** User-editable */
     summary?: string;
+    /** User-editable — optional page range */
+    page_numbers?: string;
   }
 ): Promise<ActionResult> {
   if (!params?.document_id) {
@@ -364,12 +388,34 @@ async function addDocumentToHandover(
     };
   }
 
-  // Delegate to add_to_handover with entity_type = 'document'
+  // Build the human-visible action summary by concatenating user text +
+  // provenance tag. The backend `add_to_handover` handler stores this on the
+  // `action_summary` column and the full handover row links back via
+  // `entity_id`/`entity_type` so downstream exports can still resolve the doc.
+  const provenanceFragments = [
+    params.title ? `Document: ${params.title}` : null,
+    params.doc_type ? `Type: ${params.doc_type}` : null,
+    params.page_numbers ? `Pages: ${params.page_numbers}` : null,
+    params.link ? `Ref: ${params.link}` : null,
+  ].filter(Boolean);
+  const provenance = provenanceFragments.join(' · ');
+
+  const actionSummary =
+    params.summary && provenance
+      ? `${params.summary}\n\n${provenance}`
+      : params.summary || provenance || undefined;
+
+  // Delegate to add_to_handover with entity_type = 'document'.
+  // entity_id = document_id preserves the live relationship with doc_metadata;
+  // source_doc_id is passed through action_summary until a dedicated schema
+  // column exists (handover_items has no source_doc_id column today —
+  // verified against TENANT vzsohavtuotocgrfkfyd on 2026-04-17).
   return addToHandover(context, {
     entity_id: params.document_id,
     entity_type: 'document',
     section: params.section || params.page_numbers,
     summary: params.summary,
+    action_summary: actionSummary,
   });
 }
 

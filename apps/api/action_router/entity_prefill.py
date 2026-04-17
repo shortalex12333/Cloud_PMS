@@ -122,6 +122,17 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("document", "delete_document"):              {"document_id": "id"},
     ("document", "update_document_comment"):      {"document_id": "id"},
     ("document", "link_document_to_equipment"):   {"document_id": "id"},
+    # add_document_to_handover: prefill document provenance fields so the
+    # handover item records WHAT document is being handed over. `section` and
+    # `summary` stay empty and editable — the HOD fills them in the popup.
+    ("document", "add_document_to_handover"): {
+        "document_id":   "id",
+        "entity_id":     "id",
+        "title":         "filename",
+        "doc_type":      "doc_type",
+        "source_doc_id": "id",
+        "link":          "storage_path",
+    },
 
     # ── Shopping List ─────────────────────────────────────────────────────────
     # shopping_list prefill intentionally empty for Phase 2 — add as needed
