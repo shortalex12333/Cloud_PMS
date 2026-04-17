@@ -400,7 +400,7 @@ async function seedHandoverItem(
     headers: { Authorization: `Bearer ${SESSION_JWT}`, 'Content-Type': 'application/json' },
     data: { action: 'add_to_handover', context: {}, payload },
   });
-  const data = await response.json();
+  const data = await response.json().catch(() => ({ error: 'empty response', http_status: response.status() }));
   return { status: response.status(), data };
 }
 
