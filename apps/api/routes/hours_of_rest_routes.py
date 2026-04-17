@@ -127,6 +127,7 @@ class UpdateHoursRequest(BaseModel):
     rest_periods: Optional[list] = Field(None, description="DEPRECATED: ignored. Backend derives rest from work_periods complement.")
     signature: Optional[Dict[str, Any]] = Field(None, description="Digital signature (optional, included in audit trail)")
     daily_compliance_notes: Optional[str] = Field(None, description="Optional notes")
+    crew_comment: Optional[str] = Field(None, description="Required justification when logging non-compliant hours (MLC A2.3)")
 
 
 class ExportHoursRequest(BaseModel):
@@ -322,7 +323,8 @@ async def upsert_hours_of_rest_route(
                 "record_date": request.record_date,
                 "work_periods": work_periods,
                 "signature": request.signature,
-                "daily_compliance_notes": request.daily_compliance_notes
+                "daily_compliance_notes": request.daily_compliance_notes,
+                "crew_comment": request.crew_comment
             }
         )
 
