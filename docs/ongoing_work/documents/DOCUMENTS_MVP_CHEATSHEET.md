@@ -90,11 +90,11 @@ Fill in Y / N / ERR for each check. Paste console errors directly into the ERR c
 | 4.2 | Navigate to Documents | Sidebar | Documents list loads | | |
 | 4.3 | Open the test document from Scenario 1 | Document row | Detail panel opens | | |
 | 4.4 | Find **Delete** in ⋯ menu or dropdown | Dropdown arrow or ⋯ | "Delete Document" option visible | | |
-| 4.5 | Click **Delete Document** | Dropdown menu | **Signature popup opens** — requires reason + name + timestamp | | |
-| 4.6 | Popup has required reason field | Popup modal | "Reason" field visible, marked required | | |
-| 4.7 | Try to submit without reason | **Confirm** with blank reason | Validation blocks — cannot delete without reason | | |
-| 4.8 | Enter reason and sign | Popup fields | Reason: "Test cleanup — verified doc no longer needed" | | |
-| 4.9 | Submit deletion | **Confirm** / **Delete** in popup | Document removed from list (soft-deleted) | | |
+| 4.5 | Click **Delete Document** | Dropdown menu | **First popup opens** — "Delete Document" with reason textarea + 4-digit PIN boxes | | |
+| 4.6 | Popup has reason + PIN fields | Popup modal | "DELETION REASON (AUDIT TRAIL)" textarea + "Enter your 4-digit PIN" with 4 numeric boxes. **Verify** button disabled until PIN entered. | | |
+| 4.7 | Try to submit without PIN | **Verify** button | Button stays disabled — cannot submit until 4 digits entered | | |
+| 4.8 | Enter reason + any 4-digit PIN | Popup fields | Reason: "Test cleanup — verified doc no longer needed". PIN: any 4 digits (e.g. 1234). **Second popup may appear** ("Signature Required") — re-enter PIN. | | |
+| 4.9 | Submit deletion | **Verify** in popup | API returns 200 with `is_signed:true`, `_ledger_written:true`. Document removed from list (soft-deleted). | | |
 | 4.10 | Document no longer in list | Documents list | Row gone or marked as deleted | | |
 
 **Notes / errors for Scenario 4:**
@@ -174,8 +174,8 @@ for crew role). The backend correctly blocks it — proven in automated wirewalk
 | 8.1 | Upload document (any HOD) | **No popup** — fires directly | | |
 | 8.2 | Update metadata (any HOD) | **No popup** — fires directly | | |
 | 8.3 | Add tags (any HOD) | **No popup** — fires directly | | |
-| 8.4 | Delete document (captain) | **Popup opens** — reason + signature required | | |
-| 8.5 | Archive document (HOD+) | **Popup opens** — signature required | | |
+| 8.4 | Delete document (captain) | **Popup opens** — reason textarea + 4-digit PIN. Any 4 digits work (frontend-only gate). | | |
+| 8.5 | Archive document (HOD+) | **Popup opens** — same PIN gate as delete | | |
 | 8.6 | Add comment (HOD+) | **No popup** — fires directly | | |
 | 8.7 | Link to entity (HOD+) | **No popup** — fires directly | | |
 
