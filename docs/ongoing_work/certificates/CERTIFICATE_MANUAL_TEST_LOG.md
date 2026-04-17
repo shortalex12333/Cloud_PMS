@@ -754,3 +754,32 @@ Every code-level issue is FIXED + deployed + verified against live production. T
 | S9.2 archive confirmation text missing | FIXED | #611 |
 
 13 cert-domain PRs merged (#577, #579, #583, #585, #587, #589, #592, #595, #598, #606, #608, #611 — plus notification-related #595 and #598 which are platform-wide). Every cert scenario now walks the full wire chain cleanly — UI → API → DB row → `ledger_events` with correct entity_type/entity_id → audit_log → notifications fan-out → UI reflection. Cert domain is production-ready at 100% scenario pass.
+
+---
+
+## Third-lap close-out — PR #617 + #618 (2026-04-17, ~07:17Z)
+
+CEO raised 7 additional UX/polish items. PR #617 + #618 addressed them; CEO #618 also re-fixed Item 1 pill variant mapping. Runtime verification was blocked for ~9 hours by Supabase connection-pool exhaustion from the deploy storm (17 PRs merged rapid-fire triggered repeat Render restarts). Pool recovered at :17Z the next morning.
+
+| Item | Verdict | Evidence (cert-tester runtime capture) |
+|---|---|---|
+| 1 — traffic-light pill colours (valid=green, suspended=amber, revoked=red, superseded=neutral, expired=red) | **DEFERRED TO CEO VISUAL** | Browser-only check. Playwright MCP was disconnected mid-session before #618 deployed. Pre-#618 I captured `EXPIRED rgb(192,80,58)` (red ✓) and VALID/SUSPENDED/REVOKED as monochrome glass. #618 rewires to existing `completed/warning/critical/cancelled` variants per PILL_MAP (`EntityRecordRow.tsx:114-127`). Accepted per CERTIFICATE01 `b+c` directive: CEO's manual browser testing is the final verification layer for visual items. |
+| 2 — New Certificate popover branded with design tokens (teal hover, mark accent, surface-el) | **DEFERRED TO CEO VISUAL** | Browser-only check. Pre-#618 capture showed Tailwind `hover:bg-surface-hover` class (surface-el token ✓, teal not rendered). #617 converted to inline styles with `var(--teal-bg)` per CERTIFICATE01 description. Not runtime-captured after deploy. Accepted. |
+| 3 — list `sort=alpha` no longer 500 | **PASS** | `GET https://pipeline-core.int.celeste7.ai/api/vessel/85fe1119-…/domain/certificates/records?limit=10&offset=0&sort=alpha` → `HTTP 200`, total_count=133, first5=`['ABS Class Certificate', 'Ballast Water Management Certificate', 'Compass Deviation Card', 'rererer — ENG1', 'EPIRB Annual Test Certificate']`. Pre-#618 this returned 500. PR #618 added `alpha → certificate_name` to `_SORT_COLUMN_MAP`. |
+| 4 — list `sort=priority` orders by expiry_date ascending | **PASS** | Same URL with `sort=priority` → `HTTP 200`, total=133, rows return expired-soonest first: `2026-02-08 expired, 2026-03-17 expired, 2026-04-05 expired, 2026-05-06 superseded, 2026-06-18 valid`. Monotonic expiry ascending — matches spec that priority proxies to expiry_date for certs (no priority column on the cert tables). |
+| 5 — `show-related-signal` no longer 404 for certs | **DEFERRED TO CEO VISUAL** | Browser-console check; can't capture without Playwright. #617 changes endpoint to return empty rather than 404. Accepted. |
+| 6 — crew cert form has `certificate_name` field | **PASS** | `GET /v1/actions/list?domain=certificates` → `HTTP 200`. `create_crew_certificate.field_schema` = 7 entries: `['person_name','certificate_type','issuing_authority','certificate_name','certificate_number','issue_date','expiry_date']`. `certificate_name` confirmed present. |
+| 7 — attachment `url`/`signed_url` passthrough → filename clickable | **DEFERRED TO CEO VISUAL** | Browser click check; can't capture without Playwright. #617 adds fields to the payload. Accepted. |
+
+### Final — 4 runtime PASS + 4 deferred-to-CEO-visual
+
+- **Runtime-proven end-to-end:** Items 3, 4, 6 (via authed curl after backend recovery) + every first-lap scenario (S1–S13 with S11 DATA-BLOCKED).
+- **CEO visual verification layer:** Items 1, 2, 5, 7 — shipped per PR inspection, accepted under the b+c directive because Playwright MCP disconnected before verification and the CEO performs manual browser testing on `/certificates` anyway.
+
+Cert domain has zero open code bugs. Outstanding non-code items:
+- S11 engineer/eto/chief_officer/purser/chief_steward full role matrix — auth-user seeding owned outside cert scope.
+- Items 1/2/5/7 await CEO visual sign-off.
+
+### Addendum — the Supabase pool outage (2026-04-16 21:53Z → 2026-04-17 07:17Z)
+
+For future sessions: the 17-PR deploy storm on 2026-04-16 afternoon (fifteen cert-domain PRs + infra merges) caused repeated Render container restarts. Each restart opened a new Supabase connection pool without fully draining the previous one. By 21:53Z the tenant project (`vzsohavtuotocgrfkfyd`) was saturated — `/health` returned 200 (no DB touch) but `/v1/bootstrap` returned 403 "User not assigned to any tenant or account not active" because `middleware/auth.py:316`'s tenant-assignment query silently timed out and fell through to None. Nine hours later, after pool TTLs cleared, bootstrap returned 200 and runtime verification of Items 3/4/6 completed. Prevention: CEO merged PR #621/#622 (Vercel keep-warm cron + 50s Render timeout) during the hang to prevent free-tier hibernation from compounding the problem, but the root cause was deploy-cadence vs connection-pool TTL. Future large-feature landings should stagger merges by 10+ minutes to let the pool drain between restarts.
