@@ -59,14 +59,12 @@ test.describe('[Captain] add_to_handover — HARD PROOF', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    // Validation gate at p0_actions_routes.py:880 requires 'title' field (not 'summary').
-    // Route code at line 1944 then extracts: summary = payload.get("summary") or uses title as fallback.
-    // Pass 'title' (10+ chars) to satisfy the gate; route maps it to summary internally.
-    const titleText = `S40 smoke handover note: vessel status summary ${generateTestId('s')}`;
+    // Required field is 'summary' per p0_actions_routes.py:795
+    const summaryText = `S40 smoke handover note: vessel status summary ${generateTestId('s')}`;
     const result = await callActionDirect(captainPage, 'add_to_handover', {
       // entity_type='note' does not require entity_id
       entity_type: 'note',
-      title: titleText,
+      summary: summaryText,
       category: 'fyi',
       priority: 'normal',
       is_critical: false,
@@ -102,10 +100,10 @@ test.describe('[Captain] add_to_handover — HARD PROOF', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    const titleText = `S40 critical handover: urgent engine inspection required ${generateTestId('c')}`;
+    const summaryText = `S40 critical handover: urgent engine inspection required ${generateTestId('c')}`;
     const result = await callActionDirect(captainPage, 'add_to_handover', {
       entity_type: 'note',
-      title: titleText,
+      summary: summaryText,
       category: 'urgent',
       priority: 'high',
       is_critical: true,

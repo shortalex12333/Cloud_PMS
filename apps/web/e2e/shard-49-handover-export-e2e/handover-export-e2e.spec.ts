@@ -41,13 +41,19 @@ function tenantAdmin(): SupabaseClient {
 const FAKE_SIGNATURE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-/** Helper: sign in as captain via MASTER auth and return session */
-async function captainSession(supabaseAdmin: any) {
-  const { data: { session }, error } = await supabaseAdmin.auth.signInWithPassword({
+/** Helper: sign in as captain via MASTER auth (anon key) and return session */
+const MASTER_URL = 'https://qvzmkaamzaqxpzbewjxe.supabase.co';
+const MASTER_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzkwNDYsImV4cCI6MjA3OTU1NTA0Nn0.MMzzsRkvbug-u19GBUnD0qLDtMVWEbOf6KE8mAADaxw';
+
+async function captainSession(_supabaseAdmin?: any) {
+  const authClient = createClient(MASTER_URL, MASTER_ANON, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data: { session }, error } = await authClient.auth.signInWithPassword({
     email: 'x@alex-short.com',
     password: 'Password2!',
   });
-  if (error || !session) throw new Error(`Captain auth failed: ${error?.message ?? 'no session'}`);
+  if (error || !session) throw new Error(`Captain auth failed: ${error?.message ?? JSON.stringify(error) ?? 'no session'}`);
   return session;
 }
 
