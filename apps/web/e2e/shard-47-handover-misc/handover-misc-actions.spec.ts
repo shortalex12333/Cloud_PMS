@@ -85,7 +85,7 @@ test.describe('[Captain] add_worklist_task — HARD PROOF', () => {
     await captainPage.waitForLoadState('domcontentloaded');
 
     const taskDesc = `S47 worklist task: check bilge pump ${generateTestId('wt')}`;
-    const result = await callActionDirect(captainPage, 'add_worklist_task', {
+    const result = await executeActionNode(captainPage.request, 'add_worklist_task', {
       task_description: taskDesc,
       priority: 'routine',
     });
@@ -123,7 +123,7 @@ test.describe('[Captain] view_worklist — HARD PROOF', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    const result = await callActionDirect(captainPage, 'view_worklist', {});
+    const result = await executeActionNode(captainPage.request, 'view_worklist', {});
     console.log(`[JSON] view_worklist: ${JSON.stringify(result.data)}`);
 
     expect(result.status).toBe(200);
@@ -147,7 +147,7 @@ test.describe('[Captain] view_work_order_detail — HARD PROOF', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    const result = await callActionDirect(captainPage, 'view_work_order_detail', {
+    const result = await executeActionNode(captainPage.request, 'view_work_order_detail', {
       work_order_id: wo.id,
     });
     console.log(`[JSON] view_work_order_detail: ${JSON.stringify(result.data)}`);
@@ -199,7 +199,7 @@ test.describe('[Captain] show_manual_section — ADVISORY', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    const result = await callActionDirect(captainPage, 'show_manual_section', {
+    const result = await executeActionNode(captainPage.request, 'show_manual_section', {
       equipment_id: equipment.id,
     });
     console.log(`[JSON] show_manual_section: status=${result.status}`);
@@ -225,7 +225,7 @@ test.describe('[Captain] add_entity_link — ADVISORY', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    const result = await callActionDirect(captainPage, 'add_entity_link', {
+    const result = await executeActionNode(captainPage.request, 'add_entity_link', {
       source_entity_type: 'work_order',
       source_entity_id: wo.id,
       target_entity_type: 'equipment',
@@ -250,7 +250,7 @@ test.describe('[Captain] export_handover — ADVISORY', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    const result = await callActionDirect(captainPage, 'export_handover', {
+    const result = await executeActionNode(captainPage.request, 'export_handover', {
       handover_id: '00000000-0000-0000-0000-000000000000',
       format: 'pdf',
     });
@@ -390,19 +390,27 @@ test.describe('[Captain] sign_handover_incoming — ADVISORY', () => {
 });
 
 // ===========================================================================
-// Helper: seed a handover item via Node-side request (no CORS dependency)
+// Helper: execute any action via Node-side request (no CORS dependency)
+// Replaces callActionDirect which uses browser-side fetch (subject to CORS)
 // ===========================================================================
-async function seedHandoverItem(
+async function executeActionNode(
   request: import('@playwright/test').APIRequestContext,
+  action: string,
   payload: Record<string, unknown>,
 ): Promise<{ status: number; data: Record<string, unknown> }> {
   const response = await request.post(`${API_URL}/v1/actions/execute`, {
     headers: { Authorization: `Bearer ${SESSION_JWT}`, 'Content-Type': 'application/json' },
-    data: { action: 'add_to_handover', context: {}, payload },
+    data: { action, context: {}, payload },
   });
   const data = await response.json().catch(() => ({ error: 'empty response', http_status: response.status() }));
   return { status: response.status(), data };
 }
+
+// Alias for handover-specific seeding
+const seedHandoverItem = (
+  request: import('@playwright/test').APIRequestContext,
+  payload: Record<string, unknown>,
+) => executeActionNode(request, 'add_to_handover', payload);
 
 // ===========================================================================
 // list_handover_items — HARD PROOF (GET /v1/handover/items)

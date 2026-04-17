@@ -262,7 +262,7 @@ test.describe('Handover Export E2E', () => {
       },
     );
 
-    const submitResult = await submitResponse.json();
+    const submitResult = await submitResponse.json().catch(() => ({ error: 'empty response' }));
     console.log('[Test 3] Step B: submit response:', submitResponse.status(), JSON.stringify(submitResult));
     expect(submitResponse.status()).toBe(200);
     expect(submitResult.success).toBe(true);
@@ -296,7 +296,7 @@ test.describe('Handover Export E2E', () => {
       },
     );
 
-    const countersignResult = await countersignResponse.json();
+    const countersignResult = await countersignResponse.json().catch(() => ({ error: 'empty response' }));
     console.log('[Test 3] Step C: countersign response:', countersignResponse.status(), JSON.stringify(countersignResult));
     expect(countersignResponse.status()).toBe(200);
     expect(countersignResult.success).toBe(true);
