@@ -1,4 +1,10 @@
-# Documents workstream — context dump
+# Documents workstream — context dump (HISTORICAL ARCHIVE)
+
+> **ARCHIVED 2026-04-17.** This file is a point-in-time snapshot from 2026-04-15. It documents the F-series investigation phase BEFORE the MVP fixes in PRs #562-#615. For current state, see:
+> - **DOCUMENTS_HANDOVER.md** — CEO-ready summary of all work done
+> - **DOCUMENTS_DOMAIN_GUIDE.md** — how the domain works (technical reference)
+> - **DOCUMENTS_TEST_RESULTS.md** — browser test evidence (8/8 PASS)
+> - **DOCUMENTS_MVP_CHEATSHEET.md** — manual test scenarios (fillable)
 
 **Generated:** 2026-04-15 during F-series execution
 **Source:** live TENANT (vzsohavtuotocgrfkfyd) evidence, not assumption
