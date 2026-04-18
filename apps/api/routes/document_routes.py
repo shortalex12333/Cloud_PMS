@@ -709,9 +709,6 @@ async def upload_document(
         'content_type': content_type,
         'size_bytes': size_bytes,
         'uploaded_by': user_id,
-        # Explicit is_seed=false: the column default is TRUE, which would hide
-        # the row from v_documents_enriched (WHERE is_seed = false). Every
-        # production upload must opt out of the seed flag.
         'is_seed': False,
     }
     # Optional columns — only add if the caller supplied them.
