@@ -237,7 +237,7 @@ export function CertificateContent() {
 
   const dropdownItems: DropdownItem[] = availableActions
     .filter((a) => a.action_id !== primaryActionId)
-    .filter((a) => !['create_vessel_certificate', 'create_crew_certificate', 'assign_certificate'].includes(a.action_id))
+    .filter((a) => !['create_vessel_certificate', 'create_crew_certificate', 'assign_certificate', 'supersede_certificate'].includes(a.action_id))
     .map((a) => ({
       label: a.label,
       onClick: SPECIAL_HANDLERS[a.action_id]

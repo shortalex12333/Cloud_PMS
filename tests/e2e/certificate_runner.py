@@ -1029,14 +1029,22 @@ def scenario_4_lens_actions_dropdown(ctx: BrowserContext, state: dict) -> dict:
          lambda: open_cert_more_actions(page))
 
     def verify_dropdown_actions():
-        # After opening the dropdown, verify these items exist
-        required_actions = ["update", "assign", "note", "document", "supersede",
-                            "archive", "suspend", "revoke"]
+        # After opening the dropdown, verify these items exist.
+        # "assign" (assign_certificate) removed — noise per user mandate.
+        # "supersede" removed — redundant with "renew" flow per user mandate.
+        required_actions = ["update", "note", "archive", "suspend", "revoke"]
         dropdown = page.locator("[role='menu'], [data-testid*='dropdown'], [class*='dropdown']").first
         dropdown_text = dropdown.inner_text(timeout=STEP_TIMEOUT_MS).lower()
         missing = [a for a in required_actions if a not in dropdown_text]
         assert not missing, f"missing actions in dropdown: {missing}"
-    step(res, "4.6", "Dropdown contains: Update, Assign, Note, Document, Supersede, Archive, Suspend, Revoke",
+        # Verify removed noisy actions are absent
+        assert "assign responsible" not in dropdown_text, (
+            "assign_certificate must not appear in dropdown (removed as noise)"
+        )
+        assert "supersede" not in dropdown_text, (
+            "supersede_certificate must not appear in dropdown (removed; renew flow handles this)"
+        )
+    step(res, "4.6", "Dropdown contains: Update, Note, Archive, Suspend, Revoke (assign+supersede removed)",
          verify_dropdown_actions)
 
     def danger_items_have_red_styling():
@@ -1591,7 +1599,7 @@ def scenario_7_renew_certificate(ctx: BrowserContext, state: dict) -> dict:
 
 
 def scenario_8_assign_officer(ctx: BrowserContext, state: dict) -> dict:
-    res = new_result("8", "Assign responsible officer", "captain")
+    res = new_result("8", "Assign responsible officer — REMOVED (regression guard)", "captain")
     cert_id = state.get("vessel_cert_id")
     if not cert_id:
         res["result"] = "skipped"
@@ -1609,98 +1617,22 @@ def scenario_8_assign_officer(ctx: BrowserContext, state: dict) -> dict:
         page.wait_for_load_state("networkidle", timeout=20_000)
     step(res, "8.nav", "Navigate to cert lens", nav_to_cert_lens)
 
-    def click_assign_officer():
+    def verify_assign_officer_absent():
+        # Regression guard: assign_certificate was removed from _get_certificate_actions()
+        # as wasteful/noisy per user mandate. It must NOT appear in the dropdown.
         open_cert_more_actions(page)
-        assign_item = page.get_by_role("button", name="Assign Responsible Officer", exact=True).first
-        assign_item.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
-        assign_item.click(timeout=STEP_TIMEOUT_MS)
-    step(res, "8.1", "Click 'Assign Officer' from dropdown", click_assign_officer)
-
-    def verify_assign_popup_opens():
-        """Verify popup opens. The assigned_to field is a user-search autocomplete,
-        not a plain input — we close the popup and submit via direct API using the
-        captain's UUID from the auth token in localStorage."""
-        form = page.locator("[data-testid='action-popup'], [role='dialog']").first
-        form.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
-        popup_text = form.inner_text(timeout=STEP_TIMEOUT_MS).lower()
-        assert any(kw in popup_text for kw in ("assign", "officer", "responsible")), (
-            "assign popup doesn't mention officer/responsible/assign"
+        dropdown = page.locator("[role='menu'], [data-testid*='dropdown'], [class*='dropdown']").first
+        dropdown.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+        dropdown_text = dropdown.inner_text(timeout=STEP_TIMEOUT_MS).lower()
+        assert "assign responsible" not in dropdown_text, (
+            "assign_certificate should be absent from dropdown (removed as noise) — "
+            "check _get_certificate_actions() in certificate_handlers.py"
         )
+        # Close dropdown
         page.keyboard.press("Escape")
         page.wait_for_timeout(300)
-    step(res, "8.2", "Assign popup opens with assign/officer keyword (UI verified)", verify_assign_popup_opens)
-
-    def submit_assign_via_api():
-        """Submit assignment directly via authenticated fetch.
-
-        The UI popup uses a searchable user-select autocomplete which can't be filled
-        with Playwright fill(). We get captain UUID from the Supabase auth token and
-        call the API directly to verify the full wire chain.
-        """
-        result = page.evaluate(
-            """async ([certId]) => {
-                let accessToken = null;
-                let userId = null;
-                const storageKey = 'sb-qvzmkaamzaqxpzbewjxe-auth-token';
-                try {
-                    const raw = localStorage.getItem(storageKey);
-                    if (raw) {
-                        const parsed = JSON.parse(raw);
-                        accessToken = parsed?.access_token ?? parsed?.session?.access_token ?? null;
-                        userId = parsed?.user?.id ?? parsed?.session?.user?.id ?? null;
-                    }
-                } catch (e) {}
-                if (!accessToken) {
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const k = localStorage.key(i);
-                        if (k && k.includes('auth-token')) {
-                            try {
-                                const v = JSON.parse(localStorage.getItem(k) || '{}');
-                                if (v?.access_token) { accessToken = v.access_token; userId = v?.user?.id || null; break; }
-                                if (v?.session?.access_token) { accessToken = v.session.access_token; userId = v?.session?.user?.id || null; break; }
-                            } catch (e) {}
-                        }
-                    }
-                }
-                if (!accessToken) return { error: 'no access token' };
-                const payload = {
-                    action: 'assign_certificate',
-                    context: { yacht_id: '85fe1119-b04c-41ac-80f1-829d23322598' },
-                    payload: {
-                        certificate_id: certId,
-                        assigned_to: userId,
-                        assigned_to_name: 'Captain CERT04 Test'
-                    }
-                };
-                const resp = await fetch('/api/v1/actions/execute', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + accessToken
-                    },
-                    body: JSON.stringify(payload)
-                });
-                const body = await resp.json().catch(() => ({}));
-                return { status: resp.status, ok: resp.ok, userId, body };
-            }""",
-            [cert_id],
-        )
-        assert result.get("ok") or result.get("status") == 200, (
-            f"assign_certificate API returned {result.get('status')}: {result}"
-        )
-        state["assigned_to_user_id"] = result.get("userId")
-    step(res, "8.3", "Direct API: assign_certificate → 200 success (wire chain verified)", submit_assign_via_api)
-
-    def db_check_assigned_to():
-        rows = db_verify(
-            f"SELECT properties FROM pms_vessel_certificates WHERE id = '{cert_id}'"
-        )
-        assert rows, f"cert not found in DB: {cert_id}"
-        row_str = str(rows[0]["_row"])
-        assert "assigned_to" in row_str, (
-            f"properties.assigned_to not set in DB row: {row_str[:200]}"
-        )
-    step(res, "8.4", "DB: pms_vessel_certificates.properties.assigned_to is set", db_check_assigned_to)
+    step(res, "8.1", "Regression guard: 'Assign Responsible Officer' absent from dropdown (noise removed)",
+         verify_assign_officer_absent)
 
     page.close()
     return finalize(res)

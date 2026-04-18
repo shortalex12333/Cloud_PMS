@@ -676,16 +676,6 @@ class CertificateHandlers:
             ))
 
         # Status-based actions
-        if status == "active":
-            # Supersede action (SIGNED - requires confirmation and signature)
-            actions.append(AvailableAction(
-                action_id="supersede_certificate",
-                label="Supersede",
-                variant="MUTATE",
-                icon="refresh-cw",
-                requires_signature=True,
-                confirmation_message="This will mark the current certificate as superseded. This action is logged and cannot be undone."
-            ))
 
         if status not in ("superseded", "revoked"):
             # Update action
