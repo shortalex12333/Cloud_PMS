@@ -69,6 +69,212 @@ function formatLabel(str: string): string {
   return str.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// ─── Acknowledge visibility rule (extracted for unit testing) ───
+//
+// Exported pure function. Visible when ALL of:
+//   - review_status === 'complete' (HOD has countersigned)
+//   - incoming_signed_at is null/undefined (nobody has acknowledged yet)
+//   - caller is authenticated (userId truthy)
+//   - caller is NOT the outgoing signer
+//   - caller is NOT the HOD countersigner
+
+export function canUserAcknowledgeHandover(args: {
+  reviewStatus: string | null | undefined;
+  incomingSignedAt: string | null | undefined;
+  userId: string | null | undefined;
+  outgoingSignerId: string | null | undefined;
+  hodSignerId: string | null | undefined;
+}): boolean {
+  return (
+    args.reviewStatus === 'complete' &&
+    !args.incomingSignedAt &&
+    !!args.userId &&
+    args.userId !== args.outgoingSignerId &&
+    args.userId !== args.hodSignerId
+  );
+}
+
+// ─── Signature Block — dynamic three-role signoff ───
+//
+// Three columns, always side-by-side (grid repeat(3, 1fr), no responsive
+// collapse). Token-only styling: --mark (teal) for labels, --ok (green)
+// for SIGNED badges, --txt2/--txt-ghost for meta, --border-sub for dividers.
+// Typography: Inter for natural text, IBM Plex Mono for timestamps (per
+// CelesteOS design philosophy §20).
+
+export interface SignatureSlot {
+  name?: string;
+  role?: string;
+  signedAt?: string;
+  image?: string; // data URL or https URL; rendered as <img> when present
+}
+
+export interface SignatureBlockProps {
+  outgoing: SignatureSlot;
+  reviewed: SignatureSlot;
+  incoming: SignatureSlot;
+}
+
+function SignatureColumn({
+  heading,
+  pendingHint,
+  slot,
+}: {
+  heading: string;
+  pendingHint: string;
+  slot: SignatureSlot;
+}) {
+  const isSigned = !!slot.signedAt;
+
+  return (
+    <div data-testid={`sig-col-${heading.toLowerCase().replace(/\s+/g, '-')}`}>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          color: 'var(--mark)',
+          marginBottom: 12,
+        }}
+      >
+        {heading}
+      </div>
+
+      {/* Signature surface — image if present, else baseline rule */}
+      {isSigned && slot.image ? (
+        // eslint-disable-next-line @next/next/no-img-element -- signature is a user-drawn data URL; next/image cannot handle it
+        <img
+          src={slot.image}
+          alt={`${heading} signature`}
+          data-testid="sig-image"
+          style={{
+            display: 'block',
+            height: 48,
+            maxWidth: '100%',
+            objectFit: 'contain',
+            marginBottom: 8,
+            borderBottom: '1px solid var(--border-sub)',
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            height: 48,
+            borderBottom: '1px solid var(--border-sub)',
+            marginBottom: 8,
+          }}
+        />
+      )}
+
+      {isSigned ? (
+        <>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--txt2)',
+              fontFamily: 'Inter, -apple-system, sans-serif',
+            }}
+          >
+            {slot.name ?? 'Signed'}
+          </div>
+          {slot.role && (
+            <div style={{ fontSize: 10, color: 'var(--txt-ghost)', marginTop: 2 }}>
+              {slot.role}
+            </div>
+          )}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            <span
+              data-testid="sig-badge-signed"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 9,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                padding: '2px 8px',
+                borderRadius: 3,
+                color: 'var(--ok, #4A9468)',
+                border: '1px solid var(--green-border)',
+                background: 'var(--green-bg)',
+              }}
+            >
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 8.5 6.5 12 13 5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Signed
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                color: 'var(--txt-ghost)',
+                fontFamily:
+                  "'IBM Plex Mono', 'SF Mono', 'Fira Code', Consolas, monospace",
+              }}
+            >
+              {slot.signedAt}
+            </span>
+          </div>
+        </>
+      ) : (
+        <div
+          data-testid="sig-pending"
+          style={{
+            fontSize: 11,
+            color: 'var(--txt-ghost)',
+            fontStyle: 'italic',
+          }}
+        >
+          {pendingHint}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SignatureBlock({ outgoing, reviewed, incoming }: SignatureBlockProps) {
+  return (
+    <div
+      data-testid="signature-block"
+      style={{
+        padding: '32px 48px',
+        borderTop: '1px solid var(--border-sub)',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: 32,
+        background: 'var(--surface)',
+        color: 'var(--txt2)',
+      }}
+    >
+      <SignatureColumn heading="Prepared By" pendingHint="Pending" slot={outgoing} />
+      <SignatureColumn heading="Reviewed By" pendingHint="Pending" slot={reviewed} />
+      <SignatureColumn heading="Acknowledged By" pendingHint="Pending" slot={incoming} />
+    </div>
+  );
+}
+
 // ─── Component ───
 
 export function HandoverContent() {
@@ -97,6 +303,20 @@ export function HandoverContent() {
   const content = (entity?.content ?? entity?.body ?? payload.content ?? payload.body) as string | undefined;
   const export_url = (entity?.export_url ?? payload.export_url) as string | undefined;
 
+  // Signature data — three roles (outgoing / HOD / incoming). Each is stored
+  // as a SignatureData envelope: { image_base64, signed_at, signer_name, signer_id }.
+  // `incoming_signature` lives inside the signatures JSONB envelope; all other
+  // incoming_* fields are resolved on the entity response.
+  const user_sig = (entity?.user_signature ?? payload.user_signature) as Record<string, unknown> | null | undefined;
+  const hod_sig = (entity?.hod_signature ?? payload.hod_signature) as Record<string, unknown> | null | undefined;
+  const incoming_signature = (entity?.incoming_signature ?? payload.incoming_signature) as Record<string, unknown> | null | undefined;
+  const incoming_user_id = (entity?.incoming_user_id ?? payload.incoming_user_id) as string | undefined;
+  const incoming_user_name = (entity?.incoming_user_name ?? payload.incoming_user_name) as string | undefined;
+  const incoming_role = (entity?.incoming_role ?? payload.incoming_role) as string | undefined;
+  const incoming_signed_at = (entity?.incoming_signed_at ?? payload.incoming_signed_at) as string | undefined;
+  const incoming_acknowledged_critical = Boolean(entity?.incoming_acknowledged_critical ?? payload.incoming_acknowledged_critical);
+  const signoff_complete = Boolean(entity?.signoff_complete ?? payload.signoff_complete);
+
   // Section data
   const signatures = ((entity?.signatures ?? payload.signatures) as Array<Record<string, unknown>> | undefined) ?? [];
   const embedded_entities = ((entity?.embedded_entities ?? payload.embedded_entities ?? entity?.entity_links ?? payload.entity_links) as Array<Record<string, unknown>> | undefined) ?? [];
@@ -116,7 +336,28 @@ export function HandoverContent() {
   //   complete               → read-only, no sign actions
   const canSignOutgoing = review_status === 'pending_review';
   const canCountersign = review_status === 'pending_hod_signature' && isHodOrAbove;
-  const signAction = (canSignOutgoing || canCountersign) ? { disabled: false, disabled_reason: null } : null;
+
+  // Acknowledge: any authenticated user on the yacht when:
+  //   - HOD has countersigned (review_status === 'complete')
+  //   - nobody has acknowledged yet (incoming_signed_at IS NULL)
+  //   - signed-in user was NOT the outgoing signer NOR the HOD countersigner
+  //     (self-acknowledgement defeats the compliance purpose).
+  const userReady = !!(user?.id);
+  const outgoingSignerId = (user_sig?.signer_id as string | undefined)
+    ?? (user_sig?.signer_user_id as string | undefined);
+  const hodSignerId = (hod_sig?.signer_id as string | undefined)
+    ?? (hod_sig?.signer_user_id as string | undefined);
+  const canAcknowledge = canUserAcknowledgeHandover({
+    reviewStatus: review_status,
+    incomingSignedAt: incoming_signed_at,
+    userId: userReady ? user?.id : null,
+    outgoingSignerId,
+    hodSignerId,
+  });
+
+  const signAction = (canSignOutgoing || canCountersign || canAcknowledge)
+    ? { disabled: false, disabled_reason: null }
+    : null;
 
   // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
@@ -175,12 +416,39 @@ export function HandoverContent() {
   ) : undefined;
 
   // ── Split button config ──
-  const canSign = canSignOutgoing || canCountersign;
-  const signButtonLabel = canCountersign ? 'Countersign Handover' : 'Sign Handover';
+  const canSign = canSignOutgoing || canCountersign || canAcknowledge;
+  const signButtonLabel = canAcknowledge
+    ? 'Acknowledge Handover'
+    : canCountersign
+      ? 'Countersign Handover'
+      : 'Sign Handover';
+
+  // Critical-item detection for the acknowledge checkbox gate.
+  const criticalItemCount = React.useMemo(() => {
+    const secs = (entity?.sections ?? []) as Array<{
+      is_critical?: boolean;
+      items?: Array<{ priority?: string }>;
+    }>;
+    let n = 0;
+    for (const s of secs) {
+      if (s.is_critical) n += 1;
+      for (const it of s.items ?? []) {
+        if (it.priority === 'critical') n += 1;
+      }
+    }
+    return n;
+  }, [entity]);
+  const hasCriticalItems = criticalItemCount > 0;
+
+  // Acknowledge modal state (separate from outgoing/HOD canvas — reuses the same
+  // signature canvas component; adds a critical-acknowledgement checkbox).
+  const [ackCriticalChecked, setAckCriticalChecked] = React.useState(false);
 
   const handlePrimary = React.useCallback(() => {
+    if (canAcknowledge && !userReady) return; // PR#607 auth-race guard
+    setAckCriticalChecked(false);
     setShowSignModal(true);
-  }, []);
+  }, [canAcknowledge, userReady]);
 
   // Sign via direct HTTP routes (not action router) — these routes handle full flow:
   // signed HTML generation, ledger events, HOD notification cascade.
@@ -221,6 +489,29 @@ export function HandoverContent() {
     }));
 
     try {
+      if (canAcknowledge) {
+        // Incoming-crew acknowledge — routes through Next.js proxy to backend
+        // /v1/actions/handover/{id}/sign/incoming. Backend fires ledger event +
+        // notification cascade; client only needs to refetch.
+        const ackPayload = {
+          acknowledge_critical: hasCriticalItems ? ackCriticalChecked : true,
+          method: 'wet_signature',
+          note: undefined as string | undefined,
+        };
+        const res = await fetch(`/api/handover-export/${entityId}/acknowledge`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(ackPayload),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || err.error || `Acknowledge failed (${res.status})`);
+        }
+        toast.success('Handover acknowledged.');
+        setShowSignModal(false);
+        refetch();
+        return;
+      }
       if (canCountersign) {
         // HOD countersign — /v1/handover/export/{id}/countersign
         const res = await fetch(`${API_URL}/v1/handover/export/${entityId}/countersign`, {
@@ -266,7 +557,7 @@ export function HandoverContent() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to sign');
     }
-  }, [entityId, entity, canCountersign, user, session, refetch]);
+  }, [entityId, entity, canCountersign, canAcknowledge, hasCriticalItems, ackCriticalChecked, user, session, refetch]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
   const DANGER_ACTIONS = new Set(['archive_handover', 'delete_handover']);
@@ -585,29 +876,29 @@ export function HandoverContent() {
               ))}
             </div>
 
-            {/* ── Signature Block ── */}
-            <div style={{
-              padding: '32px 48px',
-              borderTop: '2px solid #D8DEE4',
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48,
-            }}>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#5AABCC', marginBottom: 20 }}>
-                  Prepared By
-                </div>
-                <div style={{ height: 48, borderBottom: '1px solid #D8DEE4', marginBottom: 8 }} />
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#1A2332' }}>{from_crew ?? 'Officer on Watch'}</div>
-                <div style={{ fontSize: 10, color: '#8896A6' }}>{from_role ?? department ?? ''}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#5AABCC', marginBottom: 20 }}>
-                  Reviewed By
-                </div>
-                <div style={{ height: 48, borderBottom: '1px solid #D8DEE4', marginBottom: 8 }} />
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#1A2332' }}>{to_crew ?? 'Pending — Head of Department'}</div>
-                <div style={{ fontSize: 10, color: '#8896A6' }}>{to_role ?? ''}</div>
-              </div>
-            </div>
+            {/* ── Signature Block (dynamic: outgoing / HOD / incoming) ── */}
+            <SignatureBlock
+              outgoing={{
+                name: (user_sig?.signer_name as string | undefined) ?? from_crew,
+                role: from_role ?? department,
+                signedAt: (user_sig?.signed_at as string | undefined) ?? signed_date,
+                image: user_sig?.image_base64 as string | undefined,
+              }}
+              reviewed={{
+                name: (hod_sig?.signer_name as string | undefined) ?? to_crew,
+                role: (hod_sig?.role as string | undefined) ?? to_role,
+                signedAt: hod_sig?.signed_at as string | undefined,
+                image: hod_sig?.image_base64 as string | undefined,
+              }}
+              incoming={{
+                name: incoming_user_name,
+                role: incoming_role,
+                signedAt: incoming_signed_at,
+                image: (incoming_signature as Record<string, unknown> | null | undefined)
+                  ? ((incoming_signature as Record<string, unknown>).image_base64 as string | undefined)
+                  : undefined,
+              }}
+            />
 
             {/* ── Footer ── */}
             <div style={{
@@ -709,10 +1000,33 @@ export function HandoverContent() {
               {signButtonLabel}
             </div>
             <div style={{ fontSize: 12, color: '#8896A6', marginBottom: 20 }}>
-              {canCountersign
-                ? 'Draw your signature to countersign and complete this handover.'
-                : 'Draw your signature to submit this handover for HOD review.'}
+              {canAcknowledge
+                ? 'Draw your signature to acknowledge receipt of this handover.'
+                : canCountersign
+                  ? 'Draw your signature to countersign and complete this handover.'
+                  : 'Draw your signature to submit this handover for HOD review.'}
             </div>
+            {canAcknowledge && hasCriticalItems && (
+              <label
+                data-testid="ack-critical-checkbox-label"
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  fontSize: 12, color: '#1A2332', marginBottom: 16,
+                  padding: '10px 12px',
+                  border: '1px solid #D8DEE4', borderRadius: 4,
+                  background: '#FAFBFC', cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  data-testid="ack-critical-checkbox"
+                  checked={ackCriticalChecked}
+                  onChange={(e) => setAckCriticalChecked(e.target.checked)}
+                  style={{ marginTop: 2 }}
+                />
+                <span>I acknowledge I have read and understood the {criticalItemCount} critical item{criticalItemCount === 1 ? '' : 's'} listed.</span>
+              </label>
+            )}
             <canvas
               ref={signCanvasRef}
               width={416}
@@ -774,16 +1088,25 @@ export function HandoverContent() {
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleSignConfirm}
-                  style={{
-                    padding: '8px 20px', fontSize: 12, fontWeight: 600, borderRadius: 4,
-                    border: 'none', background: '#5AABCC', color: '#fff',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Confirm &amp; Sign
-                </button>
+                {(() => {
+                  const ackGateBlocked = canAcknowledge && hasCriticalItems && !ackCriticalChecked;
+                  return (
+                    <button
+                      data-testid="sign-confirm-button"
+                      onClick={handleSignConfirm}
+                      disabled={ackGateBlocked}
+                      style={{
+                        padding: '8px 20px', fontSize: 12, fontWeight: 600, borderRadius: 4,
+                        border: 'none',
+                        background: ackGateBlocked ? '#B8CDD6' : '#5AABCC',
+                        color: '#fff',
+                        cursor: ackGateBlocked ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {canAcknowledge ? 'Confirm Acknowledgement' : 'Confirm & Sign'}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           </div>
