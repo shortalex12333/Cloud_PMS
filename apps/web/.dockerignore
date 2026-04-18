@@ -1,0 +1,68 @@
+# =============================================================================
+# Docker Build Context Exclusions — apps/web
+# =============================================================================
+# Keep build context small and fast; prevent stale build artifacts from being
+# COPY'd into the image (the shard-54 cache trap: a stale .next/ shipped in
+# prod because Dockerfile does `COPY . .` after `npm ci`, so anything present
+# on the host got layered in AFTER `npm run build` wrote its own .next).
+# =============================================================================
+
+# Git
+.git
+.gitignore
+
+# Dependencies — Dockerfile runs `npm ci` itself
+node_modules
+.pnp
+.pnp.js
+
+# Next.js build output — MUST be rebuilt inside the container, never shipped
+# from host. Leaving this out of .dockerignore caused stale JS chunks in prod.
+.next
+out
+
+# Production build
+build
+dist
+
+# Test artifacts (Playwright/Vitest)
+test-results
+playwright-report
+.auth-state.json
+coverage
+.nyc_output
+
+# TypeScript incremental build info
+*.tsbuildinfo
+next-env.d.ts
+
+# Local env files — NEVER include secrets in image
+.env
+.env.*
+*.local
+
+# Vercel local state
+.vercel
+
+# IDE / OS noise
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docs (not needed at runtime)
+*.md
+README*
+
+# Docker files themselves don't need to be in the build context
+Dockerfile*
+docker-compose*.yml
+.dockerignore
