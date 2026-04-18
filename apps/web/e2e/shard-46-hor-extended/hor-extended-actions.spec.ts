@@ -107,10 +107,12 @@ test.describe('[Captain] apply_crew_template — HARD PROOF', () => {
     const createData = createResult.data as {
       success?: boolean;
       template?: { id?: string };
-      data?: { id?: string };
+      data?: { id?: string; template?: { id?: string } };
     };
     const templateId =
-      createData?.template?.id ?? createData?.data?.id;
+      createData?.template?.id ??
+      createData?.data?.template?.id ??
+      createData?.data?.id;
     expect(templateId).toBeTruthy();
 
     // Step 2: apply the template we just created
@@ -185,9 +187,13 @@ test.describe('[Captain] acknowledge_warning — HARD PROOF', () => {
     expect(listResult.status).toBe(200);
     const listData = listResult.data as {
       warnings?: Array<{ id?: string; warning_id?: string }>;
-      data?: Array<{ id?: string; warning_id?: string }>;
+      data?: { warnings?: Array<{ id?: string; warning_id?: string }> } | Array<{ id?: string; warning_id?: string }>;
     };
-    const warnings = listData?.warnings ?? listData?.data ?? [];
+    const rawData = listData?.data;
+    const warnings: Array<{ id?: string; warning_id?: string }> =
+      listData?.warnings ??
+      (Array.isArray(rawData) ? rawData : (rawData as { warnings?: Array<{ id?: string; warning_id?: string }> })?.warnings) ??
+      [];
     expect(warnings.length).toBeGreaterThan(0);
     const warningId = warnings[0]?.id ?? warnings[0]?.warning_id;
     expect(warningId).toBeTruthy();
@@ -315,7 +321,18 @@ test.describe('[Captain] create_monthly_signoff — HARD PROOF (bug re-check)', 
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    // First call — expect 200 (created) or 409 if record already exists from prior run
+    // SETUP: delete any leftover from prior run so first call always gets 200.
+    const { createClient } = await import('@supabase/supabase-js');
+    const adminClient = createClient(RBAC_CONFIG.supabaseUrl, RBAC_CONFIG.supabaseServiceKey);
+    await adminClient
+      .from('pms_hor_monthly_signoffs')
+      .delete()
+      .eq('yacht_id', RBAC_CONFIG.yachtId)
+      .eq('user_id', CAPTAIN_USER_ID)
+      .eq('month', '2025-02')
+      .eq('department', 'engineering');
+
+    // First call — expect 200 (created) on the fresh, just-cleaned record
     const result = await callActionDirect(captainPage, 'create_monthly_signoff', {
       yacht_id: RBAC_CONFIG.yachtId,
       user_id: CAPTAIN_USER_ID,
@@ -329,7 +346,7 @@ test.describe('[Captain] create_monthly_signoff — HARD PROOF (bug re-check)', 
     const data = result.data as { success?: boolean };
     expect(data.success).toBe(true);
 
-    // Second call — duplicate: must return 409 with structured error, not an uncaught exception
+    // Second call — duplicate: action bus always returns HTTP 200; error is in the JSON body.
     const result2 = await callActionDirect(captainPage, 'create_monthly_signoff', {
       yacht_id: RBAC_CONFIG.yachtId,
       user_id: CAPTAIN_USER_ID,
@@ -338,11 +355,12 @@ test.describe('[Captain] create_monthly_signoff — HARD PROOF (bug re-check)', 
     });
     console.log(`[JSON] create_monthly_signoff (duplicate call): status=${result2.status}, data=${JSON.stringify(result2.data)}`);
 
-    // HARD PROOF: duplicate must be 409 with a structured error code — never a 500
-    expect(result2.status).toBe(409);
-    const data2 = result2.data as { error?: { code?: string } };
-    // Accept either DUPLICATE_SIGNOFF or DUPLICATE_RECORD — backend may use either
-    expect(['DUPLICATE_SIGNOFF', 'DUPLICATE_RECORD', 'CONFLICT']).toContain(data2?.error?.code);
+    // HARD PROOF: action bus wraps all errors in HTTP 200 — what matters is the inner error code.
+    // Inner status_code=409 is surfaced via error.code, not the HTTP response code.
+    expect(result2.status).toBe(200);
+    const data2 = result2.data as { success?: boolean; error?: { code?: string } };
+    expect(data2.success).toBe(false);
+    expect(['DUPLICATE_SIGNOFF', 'DUPLICATE_RECORD', 'CONFLICT', 'DUPLICATE_ERROR']).toContain(data2?.error?.code);
   });
 });
 
@@ -358,7 +376,18 @@ test.describe('[Sign Chain] HOD self-completion guard', () => {
     await captainPage.goto(`${BASE_URL}/`);
     await captainPage.waitForLoadState('domcontentloaded');
 
-    // Step 1: create a fresh monthly signoff as crew (captain acting as crew)
+    // SETUP: clean any leftover 2024-11/deck signoff so we always create fresh.
+    const { createClient: createAdminClient2 } = await import('@supabase/supabase-js');
+    const adminClient2 = createAdminClient2(RBAC_CONFIG.supabaseUrl, RBAC_CONFIG.supabaseServiceKey);
+    // Delete ALL signoffs for 2024-11 on this yacht — duplicate check is on (yacht_id, user_id, month),
+    // not per-department, so partial cleanup leaves a DUPLICATE_ERROR for any create call.
+    await adminClient2
+      .from('pms_hor_monthly_signoffs')
+      .delete()
+      .eq('yacht_id', RBAC_CONFIG.yachtId)
+      .eq('month', '2024-11');
+
+    // Step 1: create a fresh monthly signoff
     const createResult = await callActionDirect(captainPage, 'create_monthly_signoff', {
       yacht_id: RBAC_CONFIG.yachtId,
       user_id: CAPTAIN_USER_ID,
@@ -366,56 +395,65 @@ test.describe('[Sign Chain] HOD self-completion guard', () => {
       department: 'deck',
     });
     console.log(`[JSON] HOD guard — create signoff: status=${createResult.status}, data=${JSON.stringify(createResult.data)}`);
-    // May already exist from a prior test run — accept 200 or 409
-    expect([200, 409]).toContain(createResult.status);
+    // After cleanup, this must always be 200 success
+    expect(createResult.status).toBe(200);
+    expect((createResult.data as { success?: boolean }).success).toBe(true);
 
-    // Retrieve signoff_id — from create (200) or via list (409 path)
+    // Retrieve signoff_id from the 200 success response
     let signoffId: string | undefined;
-    if (createResult.status === 200) {
-      const cd = createResult.data as {
-        signoff?: { id?: string };
-        data?: { id?: string };
-      };
-      signoffId = cd?.signoff?.id ?? cd?.data?.id;
-    }
-
-    if (!signoffId) {
-      // Fall back to list to find the existing signoff
-      const listResult = await callActionDirect(captainPage, 'list_monthly_signoffs', {
-        yacht_id: RBAC_CONFIG.yachtId,
-      });
-      expect(listResult.status).toBe(200);
-      const ld = listResult.data as {
-        signoffs?: Array<{ id?: string; month?: string; department?: string }>;
-        data?: Array<{ id?: string; month?: string; department?: string }>;
-      };
-      const signoffs = ld?.signoffs ?? ld?.data ?? [];
-      const match = signoffs.find(
-        (s) => s.month === '2024-11' && s.department === 'deck'
-      );
-      signoffId = match?.id;
-    }
+    const cd = createResult.data as {
+      signoff?: { id?: string };
+      data?: { signoff?: { id?: string }; id?: string };
+    };
+    signoffId = cd?.signoff?.id ?? cd?.data?.signoff?.id ?? cd?.data?.id;
 
     expect(signoffId).toBeTruthy();
 
-    // Step 2: attempt to sign as HOD using the same captain account
-    const hodSignResult = await callActionDirect(captainPage, 'sign_monthly_signoff_hod', {
-      yacht_id: RBAC_CONFIG.yachtId,
-      signoff_id: signoffId,
-      user_id: CAPTAIN_USER_ID,
-      role: 'captain',
-    });
-    console.log(`[JSON] HOD guard — hod sign attempt: status=${hodSignResult.status}, data=${JSON.stringify(hodSignResult.data)}`);
+    try {
+      // Step 2: crew-sign the signoff as this captain — sets crew_signed_by in DB.
+      // The HOD guard fires when the SAME JWT sub tries to also sign at HOD level.
+      const crewSignResult = await callActionDirect(captainPage, 'sign_monthly_signoff', {
+        signoff_id: signoffId,
+        signature_level: 'crew',
+        signature_data: {
+          name: 'Test Captain (HOD guard test)',
+          declaration: 'I confirm these rest hours per MLC 2006',
+          timestamp: new Date().toISOString(),
+        },
+      });
+      console.log(`[JSON] HOD guard — crew sign: status=${crewSignResult.status}, success=${(crewSignResult.data as { success?: boolean })?.success}`);
+      expect(crewSignResult.status).toBe(200);
+      expect((crewSignResult.data as { success?: boolean }).success).toBe(true);
 
-    // HARD PROOF: same user cannot sign at two levels — must be rejected
-    expect([400, 403]).toContain(hodSignResult.status);
-    const hodData = hodSignResult.data as {
-      error?: { code?: string };
-      success?: boolean;
-    };
-    expect(hodData.success).toBe(false);
-    expect(['FORBIDDEN', 'VALIDATION_ERROR', 'SELF_SIGN_FORBIDDEN']).toContain(
-      hodData?.error?.code
-    );
+      // Step 3: attempt HOD sign with the SAME captainPage JWT — guard must fire
+      const hodSignResult = await callActionDirect(captainPage, 'sign_monthly_signoff', {
+        signoff_id: signoffId,
+        signature_level: 'hod',
+        signature_data: {
+          name: 'Test Captain (unauthorized HOD sign)',
+          declaration: 'Attempting same-user HOD sign — should be rejected',
+          timestamp: new Date().toISOString(),
+        },
+      });
+      console.log(`[JSON] HOD guard — hod sign attempt: status=${hodSignResult.status}, data=${JSON.stringify(hodSignResult.data)}`);
+
+      // HARD PROOF: action bus wraps in HTTP 200; inner success must be false + FORBIDDEN code
+      expect(hodSignResult.status).toBe(200);
+      const hodData = hodSignResult.data as {
+        error?: { code?: string };
+        success?: boolean;
+      };
+      expect(hodData.success).toBe(false);
+      expect(['FORBIDDEN', 'VALIDATION_ERROR', 'SELF_SIGN_FORBIDDEN']).toContain(
+        hodData?.error?.code
+      );
+    } finally {
+      // Cleanup — delete the test signoff regardless of pass/fail
+      await adminClient2
+        .from('pms_hor_monthly_signoffs')
+        .delete()
+        .eq('yacht_id', RBAC_CONFIG.yachtId)
+        .eq('month', '2024-11');
+    }
   });
 });
