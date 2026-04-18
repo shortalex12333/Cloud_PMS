@@ -335,6 +335,7 @@ def _upload_document_adapter(handlers: DocumentHandlers):
             "storage_path": storage_path,
             "content_type": params["mime_type"],
             "source": "document_lens",  # Required NOT NULL column
+            "is_seed": False,
         }
         # Optional columns that exist but aren't required:
         # title, doc_type, uploaded_by, oem, notes, tags, equipment_ids, etc.

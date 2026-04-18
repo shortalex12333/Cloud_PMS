@@ -1329,6 +1329,7 @@ class PartHandlers:
             "id": document_id,
             "yacht_id": yacht_id,
             "source": "part_lens",
+            "is_seed": False,
             "filename": filename,
             "storage_path": storage_path,
             "storage_bucket": "pms-label-pdfs",
