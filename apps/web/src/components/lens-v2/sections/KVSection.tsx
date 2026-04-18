@@ -20,9 +20,12 @@ export interface KVSectionProps {
   items: KVItem[];
   defaultCollapsed?: boolean;
   icon?: React.ReactNode;
+  /** Rendered after the KV rows, inside the same collapsible body. Used e.g.
+   *  for multi-line preformatted blocks that do not fit the label/value grid. */
+  children?: React.ReactNode;
 }
 
-export function KVSection({ title, items, defaultCollapsed = false, icon }: KVSectionProps) {
+export function KVSection({ title, items, defaultCollapsed = false, icon, children }: KVSectionProps) {
   return (
     <CollapsibleSection
       id={`sec-${title.toLowerCase().replace(/\s+/g, '-')}`}
@@ -30,7 +33,7 @@ export function KVSection({ title, items, defaultCollapsed = false, icon }: KVSe
       defaultCollapsed={defaultCollapsed}
       icon={icon}
     >
-      {items.length === 0 ? (
+      {items.length === 0 && !children ? (
         <div className={styles.emptyState}>No details.</div>
       ) : (
         items.map((item, i) => (
@@ -42,6 +45,7 @@ export function KVSection({ title, items, defaultCollapsed = false, icon }: KVSe
           </div>
         ))
       )}
+      {children}
     </CollapsibleSection>
   );
 }

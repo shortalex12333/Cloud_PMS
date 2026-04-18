@@ -469,6 +469,17 @@
 .noteBody {
   font-size: 14px; font-weight: 400; color: var(--txt2); line-height: 1.6;
 }
+
+/* Email draft body — preformatted text, pre-wrap preserves line breaks */
+.emailBody {
+  margin-top: 12px;
+  padding: 12px 14px;
+  font-size: 13px; font-weight: 400;
+  color: var(--txt2); line-height: 1.6;
+  white-space: pre-wrap;
+  border-left: 2px solid var(--line);
+  background: var(--bg2);
+}
 .noteBodyClamped {
   display: -webkit-box; -webkit-line-clamp: 3;
   -webkit-box-orient: vertical; overflow: hidden;

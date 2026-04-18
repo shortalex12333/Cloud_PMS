@@ -767,6 +767,44 @@ def scenario_8_revise_resubmit(ctx: BrowserContext, state: dict) -> dict:
     return finalize(res)
 
 
+def scenario_9_email_body_renders(ctx: BrowserContext, state: dict) -> dict:
+    """S9 — after S4 composed the email, the Email Draft body renders in the lens.
+    Verifies the testid `warranty-email-body` is visible and contains the claim
+    number (deterministic substring from internal_dispatcher.py email template)."""
+    res = new_result("9", "Email Draft body renders in lens", "chief_engineer")
+    claim_id = state.get("claim_id_1")
+    if not claim_id:
+        res["result"] = "skipped"
+        res["steps"].append({"id": "9.0", "desc": "Scenario 1 claim missing",
+                             "pass": False, "error": "prereq missing"})
+        return finalize(res)
+
+    page = ctx.new_page()
+    instrument(page, res)
+
+    step(res, "9.0", "Login as HOD", lambda: login(page, HOD_EMAIL, PASSWORD))
+    step(res, "9.1", "Navigate to the approved claim",
+         lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
+
+    def email_body_visible():
+        page.get_by_test_id("warranty-email-body").wait_for(
+            state="visible", timeout=NAV_TIMEOUT_MS,
+        )
+    step(res, "9.2", "Email body renders with testid warranty-email-body",
+         email_body_visible)
+
+    def email_body_has_claim_number():
+        # The email template from internal_dispatcher.py:3834-3890 interpolates the
+        # claim_number (e.g., WC-2026-077). The body is not empty and includes it.
+        txt = page.get_by_test_id("warranty-email-body").inner_text(timeout=STEP_TIMEOUT_MS)
+        assert txt and txt.strip(), "email body was empty"
+        assert re.search(r"WC-\d{4}-\d+", txt), f"claim number missing from body: {txt[:200]}"
+    step(res, "9.3", "Email body contains claim number", email_body_has_claim_number)
+
+    page.close()
+    return finalize(res)
+
+
 # ---------------------------------------------------------------------------
 # Registry + main
 # ---------------------------------------------------------------------------
@@ -781,6 +819,7 @@ SCENARIOS: list[tuple[str, Callable[[BrowserContext, dict], dict]]] = [
     ("6", scenario_6_upload_document),
     ("7", scenario_7_crew_restrictions),
     ("8", scenario_8_revise_resubmit),
+    ("9", scenario_9_email_body_renders),
 ]
 
 
