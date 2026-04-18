@@ -246,6 +246,20 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   const [warnings, setWarnings] = React.useState<any[]>([]);
   const [acknowledging, setAcknowledging] = React.useState<Record<string, boolean>>({});
 
+  // Per-day crew comment — required by MLC when submitting non-compliant hours
+  const [crewComments, setCrewComments] = React.useState<Record<string, string>>({});
+  // True when backend returned VALIDATION_ERROR requiring a crew comment for this day
+  const [commentRequired, setCommentRequired] = React.useState<Record<string, boolean>>({});
+
+  // Create template form
+  const [createTemplateOpen, setCreateTemplateOpen] = React.useState(false);
+  const [newTemplateName, setNewTemplateName] = React.useState('');
+  const [newTemplateDesc, setNewTemplateDesc] = React.useState('');
+  const [newTemplateWorkStart, setNewTemplateWorkStart] = React.useState('08:00');
+  const [newTemplateWorkEnd, setNewTemplateWorkEnd] = React.useState('18:00');
+  const [creatingTemplate, setCreatingTemplate] = React.useState(false);
+  const [createTemplateError, setCreateTemplateError] = React.useState<string | null>(null);
+
   // Month calendar
   const [calendarOpen, setCalendarOpen] = React.useState(false);
   const [calendarMonth, setCalendarMonth] = React.useState<string>(() => {
@@ -391,12 +405,16 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     try {
       const auth = await getAuthHeader();
       if (!auth) return;
-      await fetch('/api/v1/hours-of-rest/warnings/acknowledge', {
+      const resp = await fetch('/api/v1/hours-of-rest/warnings/acknowledge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
         body: JSON.stringify({ warning_id: warningId }),
       });
-      setWarnings(prev => prev.filter(w => w.id !== warningId));
+      // Remove from UI regardless of response — optimistic update
+      // Backend writes to ledger_events (BUG-641-8 fix in Python handler)
+      if (resp.ok || resp.status === 200) {
+        setWarnings(prev => prev.filter(w => w.id !== warningId));
+      }
     } catch {
       // non-critical
     } finally {
@@ -420,6 +438,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     // draftPeriods[date] holds WORK periods from the slider.
     // Blank (no work blocks) = valid 24h rest day — still submittable.
     const workPeriods: RestPeriod[] = draftPeriods[date] ?? [];
+    const crewComment = crewComments[date] ?? '';
     setSubmitting(prev => ({ ...prev, [date]: true }));
     try {
       const auth = await getAuthHeader();
@@ -427,10 +446,13 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         setSubmitErrors(prev => ({ ...prev, [date]: 'Not authenticated' }));
         return;
       }
+      const body: Record<string, unknown> = { record_date: date, work_periods: workPeriods };
+      if (crewComment.trim()) body.crew_comment = crewComment.trim();
+
       const resp = await fetch('/api/v1/hours-of-rest/upsert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
-        body: JSON.stringify({ record_date: date, work_periods: workPeriods }),
+        body: JSON.stringify(body),
       });
       const json = await resp.json().catch(() => null);
 
@@ -447,26 +469,47 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         return;
       }
 
-      if (resp.ok) {
+      // Action bus returns HTTP 200 even for errors — check envelope success flag
+      const envelopeError = json?.success === false
+        ? (json?.error?.message ?? json?.message ?? null)
+        : null;
+
+      // Crew comment required — reveal textarea and show error without marking submitted
+      if (envelopeError && json?.error?.code === 'VALIDATION_ERROR' &&
+          envelopeError.toLowerCase().includes('crew comment')) {
+        setCommentRequired(prev => ({ ...prev, [date]: true }));
+        setSubmitErrors(prev => ({ ...prev, [date]: envelopeError }));
+        return;
+      }
+
+      if (resp.ok && !envelopeError) {
         // Patch local state from response — NO page reload
         const record = json?.data?.record ?? null;
         const compliance = json?.data?.compliance ?? null;
         const warnings = json?.data?.warnings_created ?? [];
         const dayPatch = record ? {
           date,
-          record_id: record.id ?? null,  // stored so undoDay can call POST /undo
+          record_id: record.id ?? null,
           work_periods: workPeriods,
+          rest_periods: record.rest_periods ?? [],
           total_rest_hours: record.total_rest_hours ?? compliance?.total_rest_hours ?? null,
           total_work_hours: record.total_work_hours ?? null,
+          // Use server-authoritative is_daily_compliant — not client re-derive
           is_compliant: record.is_daily_compliant ?? compliance?.is_daily_compliant ?? null,
           submitted: true,
           warnings,
-        } : { date, record_id: null, work_periods: workPeriods, submitted: true, warnings: [] };
+        } : { date, record_id: null, work_periods: workPeriods, rest_periods: [], submitted: true, warnings: [] };
         setSubmittedDays(prev => ({ ...prev, [date]: dayPatch }));
         setSubmitErrors(prev => { const n = { ...prev }; delete n[date]; return n; });
+        setCommentRequired(prev => { const n = { ...prev }; delete n[date]; return n; });
         setDraftPeriods(prev => { const n = { ...prev }; delete n[date]; return n; });
+        // Keep crew comment in state for display but reset required flag
+        if (warnings.length > 0) {
+          // Re-load warnings list after new violation created
+          await loadWarnings();
+        }
       } else {
-        const msg = json?.message ?? `Submit failed (${resp.status})`;
+        const msg = envelopeError ?? json?.message ?? `Submit failed (${resp.status})`;
         setSubmitErrors(prev => ({ ...prev, [date]: msg }));
       }
     } catch (err) {
@@ -514,6 +557,17 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     try {
       const auth = await getAuthHeader();
       if (!auth) return;
+
+      // Fetch template work_periods before applying so we can populate draft state
+      // without calling loadWeekData() (which resets draftPeriods via setDraftPeriods({}))
+      const templateResp = await fetch(
+        `/api/v1/hours-of-rest/templates/${selectedTemplate}`,
+        { headers: { 'Authorization': auth } },
+      ).catch(() => null);
+      const templateJson = templateResp?.ok ? await templateResp.json().catch(() => null) : null;
+      const templateWorkPeriods: RestPeriod[] | null =
+        templateJson?.data?.work_periods ?? templateJson?.work_periods ?? null;
+
       const resp = await fetch('/api/v1/hours-of-rest/templates/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
@@ -522,15 +576,82 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           week_start_date: (data as any).week_start,
         }),
       });
+
       if (!resp.ok) {
         const json = await resp.json().catch(() => null);
         console.error('Template apply failed:', resp.status, json);
+        await loadWeekData();
+        return;
       }
+
+      if (templateWorkPeriods) {
+        // Populate draft state for unsubmitted days directly — avoids full reload
+        // that would clear draftPeriods and leave slider blank
+        const newDraft: Record<string, RestPeriod[]> = {};
+        for (const day of (data as any).days ?? []) {
+          if (day && !day.submitted && !submittedDays[day.date]) {
+            newDraft[day.date] = templateWorkPeriods;
+          }
+        }
+        if (Object.keys(newDraft).length > 0) {
+          setDraftPeriods(prev => ({ ...prev, ...newDraft }));
+          return;
+        }
+      }
+
+      // Fallback: reload (draft state may appear blank until user interacts)
       await loadWeekData();
     } catch (e) {
       console.error('Template apply error:', e);
+      await loadWeekData();
     } finally {
       setApplyingTemplate(false);
+    }
+  }
+
+  // ── Create template ──
+
+  async function createTemplate() {
+    if (!newTemplateName.trim()) return;
+    setCreatingTemplate(true);
+    setCreateTemplateError(null);
+    try {
+      const auth = await getAuthHeader();
+      if (!auth) { setCreateTemplateError('Not authenticated'); return; }
+
+      // Build 7-day schedule_template from a single daily work block
+      const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const schedule_template: Record<string, Array<{ start: string; end: string; type: string }>> = {};
+      for (const day of DAYS) {
+        schedule_template[day] = [{ start: newTemplateWorkStart, end: newTemplateWorkEnd, type: 'work' }];
+      }
+
+      const resp = await fetch('/api/v1/hours-of-rest/templates/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: auth },
+        body: JSON.stringify({
+          schedule_name: newTemplateName.trim(),
+          ...(newTemplateDesc.trim() && { description: newTemplateDesc.trim() }),
+          schedule_template,
+          is_active: false,
+        }),
+      });
+      const json = await resp.json().catch(() => null);
+      const envelopeError = json?.success === false
+        ? (json?.error?.message ?? 'Failed to create template')
+        : null;
+      if (!resp.ok || envelopeError) {
+        setCreateTemplateError(envelopeError ?? `Create failed (${resp.status})`);
+        return;
+      }
+      setCreateTemplateOpen(false);
+      setNewTemplateName('');
+      setNewTemplateDesc('');
+      await loadWeekData();
+    } catch {
+      setCreateTemplateError('Network error — could not create template');
+    } finally {
+      setCreatingTemplate(false);
     }
   }
 
@@ -1005,18 +1126,12 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                         })()}
                       </span>
                       <StatusBadge
-                        ok={(() => {
-                          const rp = displayDay.rest_periods ?? [];
-                          const restH = rp.length > 0 ? hoursFromPeriods(rp) : (displayDay.total_rest_hours ?? null);
-                          if (restH === null) return displayDay.is_compliant;
-                          return restH >= 10; // MLC 2006 minimum daily rest
-                        })()}
-                        label={(() => {
-                          const rp = displayDay.rest_periods ?? [];
-                          const restH = rp.length > 0 ? hoursFromPeriods(rp) : (displayDay.total_rest_hours ?? null);
-                          if (restH === null || restH >= 10) return 'Compliant';
-                          return `Violation`;
-                        })()}
+                        ok={displayDay.is_compliant ?? displayDay.is_daily_compliant ?? null}
+                        label={
+                          (displayDay.is_compliant ?? displayDay.is_daily_compliant) === false
+                            ? 'Violation'
+                            : 'Compliant'
+                        }
                       />
                       {/* Submitted this session — show acknowledgement + Undo */}
                       {canUndo && (
@@ -1079,7 +1194,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                   </div>
                 )}
 
-                {/* Violation reason (BUG 3) */}
+                {/* Violation warnings */}
                 {isSubmitted && hasWarning && (
                   <div style={{ marginBottom: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {warnings.map((w: any, wi: number) => (
@@ -1090,6 +1205,31 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                         paddingLeft: 38,
                       }}>⚠ {w.message ?? 'Compliance rule breached'}</span>
                     ))}
+                  </div>
+                )}
+
+                {/* Crew comment — shown when required (MLC A2.3) or when comment was provided */}
+                {!isReadOnly && commentRequired[day.date] && (
+                  <div style={{ paddingLeft: 38, paddingBottom: 8 }}>
+                    <textarea
+                      placeholder="MLC required: explain why rest requirement could not be met…"
+                      value={crewComments[day.date] ?? ''}
+                      onChange={e => setCrewComments(prev => ({ ...prev, [day.date]: e.target.value }))}
+                      rows={2}
+                      style={{
+                        width: '100%',
+                        background: 'var(--surface-el)',
+                        border: '1px solid var(--red-border)',
+                        borderRadius: 'var(--radius-sm)',
+                        color: 'var(--txt3)',
+                        fontFamily: 'var(--font-body)',
+                        fontSize: 11,
+                        padding: '6px 8px',
+                        resize: 'vertical',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
                   </div>
                 )}
 
@@ -1106,9 +1246,26 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
       </SectionCard>
 
       {/* ── TEMPLATE SELECTOR ── */}
-      {data.templates.length > 0 && (
-        <SectionCard>
-          <SectionHeader label="Templates" />
+      <SectionCard>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 0' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.10em' }}>Templates</span>
+          <button
+            onClick={() => { setCreateTemplateOpen(v => !v); setCreateTemplateError(null); }}
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 9,
+              color: createTemplateOpen ? 'var(--txt-ghost)' : 'var(--mark)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              letterSpacing: '0.06em',
+              padding: '2px 0',
+            }}
+          >{createTemplateOpen ? 'Cancel' : '+ Create Template'}</button>
+        </div>
+
+        {/* ── Apply existing template ── */}
+        {data.templates.length > 0 && (
           <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <select
               value={selectedTemplate}
@@ -1151,11 +1308,113 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               {applyingTemplate ? 'Applying…' : 'Insert My Template'}
             </button>
           </div>
+        )}
+        {data.templates.length === 0 && !createTemplateOpen && (
+          <p style={{ padding: '6px 16px 10px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', lineHeight: 1.5 }}>
+            No templates yet. Create one to prefill unsubmitted days.
+          </p>
+        )}
+        {data.templates.length > 0 && (
           <p style={{ padding: '0 16px 10px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', lineHeight: 1.5 }}>
             Template populates unsubmitted days only. Your signature is still required.
           </p>
-        </SectionCard>
-      )}
+        )}
+
+        {/* ── Inline create template form ── */}
+        {createTemplateOpen && (
+          <div style={{ padding: '10px 16px 14px', display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--border-faint)' }}>
+            <input
+              type="text"
+              placeholder="Template name (required)"
+              value={newTemplateName}
+              onChange={e => setNewTemplateName(e.target.value)}
+              style={{
+                background: 'var(--surface-el)',
+                border: '1px solid var(--border-chrome)',
+                borderRadius: 4,
+                color: 'var(--txt3)',
+                fontFamily: 'var(--font-body)',
+                fontSize: 12,
+                padding: '6px 10px',
+                outline: 'none',
+                width: '100%',
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Description (optional)"
+              value={newTemplateDesc}
+              onChange={e => setNewTemplateDesc(e.target.value)}
+              style={{
+                background: 'var(--surface-el)',
+                border: '1px solid var(--border-chrome)',
+                borderRadius: 4,
+                color: 'var(--txt3)',
+                fontFamily: 'var(--font-body)',
+                fontSize: 12,
+                padding: '6px 10px',
+                outline: 'none',
+                width: '100%',
+              }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', whiteSpace: 'nowrap' }}>Work hours (all days)</span>
+              <input
+                type="time"
+                value={newTemplateWorkStart}
+                onChange={e => setNewTemplateWorkStart(e.target.value)}
+                style={{
+                  background: 'var(--surface-el)',
+                  border: '1px solid var(--border-chrome)',
+                  borderRadius: 4,
+                  color: 'var(--txt3)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  padding: '4px 6px',
+                  outline: 'none',
+                }}
+              />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>to</span>
+              <input
+                type="time"
+                value={newTemplateWorkEnd}
+                onChange={e => setNewTemplateWorkEnd(e.target.value)}
+                style={{
+                  background: 'var(--surface-el)',
+                  border: '1px solid var(--border-chrome)',
+                  borderRadius: 4,
+                  color: 'var(--txt3)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  padding: '4px 6px',
+                  outline: 'none',
+                }}
+              />
+              <button
+                onClick={createTemplate}
+                disabled={!newTemplateName.trim() || creatingTemplate}
+                style={{
+                  padding: '5px 12px',
+                  background: newTemplateName.trim() ? 'var(--teal-bg)' : 'var(--border-faint)',
+                  border: '1px solid var(--mark-border)',
+                  borderRadius: 'var(--radius-pill)',
+                  color: newTemplateName.trim() ? 'var(--mark)' : 'var(--txt-ghost)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
+                  cursor: newTemplateName.trim() ? 'pointer' : 'not-allowed',
+                  whiteSpace: 'nowrap',
+                  marginLeft: 'auto',
+                }}
+              >{creatingTemplate ? 'Saving…' : 'Save Template'}</button>
+            </div>
+            {createTemplateError && (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--red)' }}>{createTemplateError}</span>
+            )}
+          </div>
+        )}
+      </SectionCard>
 
       {/* ── COMPLIANCE ── */}
       <SectionCard>

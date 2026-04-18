@@ -81,7 +81,8 @@ function HoursOfRestContent() {
   const { user, session } = useAuth();
   const role = user?.role;
 
-  const showDept    = isHODRole(role) || isCaptainRole(role);
+  // Captain sees My Time + All Departments only. Department tab is HOD-only.
+  const showDept    = isHODRole(role);
   const showVessel  = isCaptainRole(role) || isFleetManagerRole(role);
   const showFleet   = isFleetManagerRole(role);
 

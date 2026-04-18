@@ -1531,6 +1531,56 @@ class HoursOfRestHandlers:
             builder.set_error("DATABASE_ERROR", str(e))
             return builder.build()
 
+    async def get_crew_template(
+        self,
+        template_id: str,
+        entity_id: str,
+        yacht_id: str,
+        user_id: str,
+    ) -> Dict:
+        """
+        GET /v1/hours-of-rest/templates/{template_id}
+
+        Returns a single schedule template including work_periods derived from
+        the monday schedule (representative day) for convenient frontend use.
+        """
+        builder = ResponseBuilder("get_crew_template", entity_id, "crew_template", yacht_id)
+        try:
+            result = self.db.table("pms_crew_normal_hours").select(
+                "id, schedule_name, description, schedule_template, is_active, applies_to, created_at"
+            ).eq("id", template_id).eq("yacht_id", yacht_id).execute()
+
+            if not result.data:
+                builder.set_error("NOT_FOUND", "Template not found")
+                return builder.build()
+
+            template = result.data[0]
+            schedule_template = template.get("schedule_template") or {}
+
+            # Extract work_periods from monday as the representative day
+            monday_entries = schedule_template.get("monday", [])
+            work_periods = [
+                {"start": e["start"], "end": e["end"]}
+                for e in monday_entries
+                if e.get("type") == "work"
+            ]
+
+            builder.set_data({
+                "id": template["id"],
+                "name": template.get("schedule_name"),
+                "description": template.get("description"),
+                "schedule_template": schedule_template,
+                "work_periods": work_periods,
+                "is_active": template.get("is_active"),
+                "applies_to": template.get("applies_to"),
+            })
+            return builder.build()
+
+        except Exception as e:
+            logger.error(f"Error getting crew template {template_id}: {e}")
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
+
     # =========================================================================
     # MUTATE HANDLERS - Schedule Templates
     # =========================================================================

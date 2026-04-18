@@ -633,6 +633,36 @@ async def list_crew_templates_route(
         raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
 
 
+@router.get("/templates/{template_id}")
+async def get_crew_template_route(
+    template_id: str,
+    yacht_id: str,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Get single schedule template by ID.
+
+    **Action**: get_crew_template
+    **Variant**: READ
+    **Endpoint**: GET /v1/hours-of-rest/templates/{template_id}
+    """
+    user_id = auth["user_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+    yacht_id = resolve_yacht_id(auth, yacht_id)
+    hor_handlers = get_hor_handlers(tenant_key_alias)
+    try:
+        result = await hor_handlers.get_crew_template(
+            template_id=template_id,
+            entity_id=user_id,
+            yacht_id=yacht_id,
+            user_id=user_id,
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"get_crew_template error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
 @router.post("/templates/create")
 async def create_crew_template_route(
     request: CreateCrewTemplateRequest,

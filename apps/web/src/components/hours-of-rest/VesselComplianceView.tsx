@@ -409,8 +409,9 @@ export function VesselComplianceView() {
       {/* ── Captain sign chain card ── */}
       {(() => {
         const sc = data.sign_chain;
+        const hodSigned = data.departments.filter(d => d.status === 'hod_signed' || d.status === 'finalized');
+        const hodPending = data.departments.filter(d => d.status !== 'hod_signed' && d.status !== 'finalized');
         const signable = data.departments.filter(d => d.status === 'hod_signed' && d.signoff_id);
-        const notReady = data.departments.filter(d => d.status !== 'hod_signed' && d.status !== 'finalized');
 
         if (sc.captain_signed) {
           return (
@@ -426,38 +427,67 @@ export function VesselComplianceView() {
           );
         }
 
-        if (signable.length === 0) return null;
+        if (hodSigned.length === 0 && hodPending.length === 0) return null;
 
         return (
-          <div style={{ ...cardStyle, borderColor: 'var(--mark-border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+          <div style={{ ...cardStyle, borderColor: sc.all_hods_signed ? 'var(--mark-border)' : 'var(--amber-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', marginBottom: 10 }}>
               <div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt3)', fontWeight: 600 }}>
-                  Captain Attestation Required
+                  Captain Attestation
                 </div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', marginTop: 3 }}>
-                  {signable.length} dept{signable.length !== 1 ? 's' : ''} ready
-                  {notReady.length > 0 && ` · ${notReady.length} dept${notReady.length !== 1 ? 's' : ''} awaiting HOD`}
+                  {sc.all_hods_signed
+                    ? 'All departments HOD-signed — ready for captain sign-off'
+                    : `${hodPending.length} dept${hodPending.length !== 1 ? 's' : ''} awaiting HOD sign-off`}
                 </div>
               </div>
               <button
                 data-testid="hor-sign-all-depts"
                 onClick={() => setSignAllPopupOpen(true)}
-                disabled={signingAll}
+                disabled={signingAll || !sc.all_hods_signed}
+                title={sc.all_hods_signed ? undefined : 'All departments must be HOD-signed before captain sign-off'}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 10,
-                  color: signingAll ? 'var(--txt-ghost)' : 'var(--green-strong)',
-                  background: 'var(--green-bg)',
-                  border: '1px solid var(--green-border)',
+                  color: (signingAll || !sc.all_hods_signed) ? 'var(--txt-ghost)' : 'var(--green-strong)',
+                  background: sc.all_hods_signed ? 'var(--green-bg)' : 'var(--surface-subtle)',
+                  border: `1px solid ${sc.all_hods_signed ? 'var(--green-border)' : 'var(--border-chrome)'}`,
                   borderRadius: 'var(--radius-pill)',
                   padding: '5px 14px',
-                  cursor: signingAll ? 'wait' : 'pointer',
+                  cursor: (signingAll || !sc.all_hods_signed) ? 'not-allowed' : 'pointer',
                   whiteSpace: 'nowrap',
+                  opacity: sc.all_hods_signed ? 1 : 0.5,
                 }}
               >
                 {signingAll ? 'Signing…' : `Sign ${signable.length} Dept${signable.length !== 1 ? 's' : ''}`}
               </button>
+            </div>
+
+            {/* Per-department HOD sign status */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {data.departments.map(d => {
+                const dSigned = d.status === 'hod_signed' || d.status === 'finalized';
+                return (
+                  <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 9,
+                      color: dSigned ? 'var(--green-strong)' : 'var(--amber)',
+                    }}>
+                      {dSigned ? '✓' : '○'}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: dSigned ? 'var(--txt2)' : 'var(--txt-ghost)' }}>
+                      {d.name}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>
+                      {dSigned
+                        ? (d.hod_signed_at ? `HOD signed ${new Date(d.hod_signed_at).toLocaleDateString()}` : 'HOD signed')
+                        : 'Awaiting HOD'}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -653,6 +683,7 @@ export function VesselComplianceView() {
                       <th key={d} style={thStyle({ width: 52, textAlign: 'center' })}>{d}</th>
                     ))}
                     <th style={thStyle({ width: 52, textAlign: 'center' })}>Avg</th>
+                    <th style={thStyle({ width: 60, textAlign: 'center' })}>HOD</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -661,6 +692,9 @@ export function VesselComplianceView() {
                     const avg = submitted.length
                       ? (submitted.reduce((s, d) => s + (d.rest_hours ?? 0), 0) / submitted.length).toFixed(1)
                       : '—';
+                    // HOD-signed if the department is hod_signed/finalized (sign is per-dept in this system)
+                    const hodSignedForDept = dept.status === 'hod_signed' || dept.status === 'finalized';
+                    const hasSubmitted = submitted.length > 0;
                     return (
                       <tr key={member.user_id} style={{ borderTop: '1px solid var(--border-faint)' }}>
                         <td style={{ padding: '8px 0', paddingRight: 'var(--space-3)' }}>
@@ -689,6 +723,23 @@ export function VesselComplianceView() {
                         ))}
                         <td style={{ padding: '8px 4px', textAlign: 'center' }}>
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt2)' }}>{avg}</span>
+                        </td>
+                        <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                          {!hasSubmitted ? (
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)' }}>—</span>
+                          ) : hodSignedForDept ? (
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--green-strong)' }}>✓</span>
+                          ) : (
+                            <span style={{
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: 8,
+                              color: 'var(--amber)',
+                              background: 'var(--amber-bg)',
+                              border: '1px solid var(--amber-border)',
+                              borderRadius: 3,
+                              padding: '1px 4px',
+                            }}>Pending</span>
+                          )}
                         </td>
                       </tr>
                     );

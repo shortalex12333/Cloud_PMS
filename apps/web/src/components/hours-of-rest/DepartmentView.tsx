@@ -204,6 +204,8 @@ export function DepartmentView() {
   const [signingId, setSigningId] = React.useState<string | null>(null);
   const [signingPopupId, setSigningPopupId] = React.useState<string | null>(null);
   const [viewingUserId, setViewingUserId] = React.useState<string | null>(null);
+  // Per-crew sign popup — opened from the "View" modal
+  const [crewSignPopupUserId, setCrewSignPopupUserId] = React.useState<string | null>(null);
   const [notifications, setNotifications] = React.useState<HoRNotification[]>([]);
   const [correctionPopupSignoff, setCorrectionPopupSignoff] = React.useState<PendingSignoff | null>(null);
   const [submittingCorrection, setSubmittingCorrection] = React.useState(false);
@@ -528,7 +530,7 @@ export function DepartmentView() {
                   <th key={d} style={thStyle({ width: 52, textAlign: 'center' })}>{d}</th>
                 ))}
                 <th style={thStyle({ width: 52, textAlign: 'center' })}>Avg</th>
-                <th style={thStyle({ width: 72, textAlign: 'center' })}>Violation</th>
+                <th style={thStyle({ width: 72, textAlign: 'center' })}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -582,27 +584,29 @@ export function DepartmentView() {
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt2)' }}>{avg}</span>
                     </td>
                     <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                      {member.is_weekly_compliant === null ? (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)' }}>—</span>
-                      ) : hasViolation ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <button
                           onClick={() => setViewingUserId(member.user_id)}
                           style={{
                             padding: '3px 8px',
-                            background: 'var(--red-bg)',
-                            border: '1px solid var(--red-border-strong)',
+                            background: hasViolation ? 'var(--red-bg)' : 'var(--surface-subtle)',
+                            border: `1px solid ${hasViolation ? 'var(--red-border-strong)' : 'var(--border-chrome)'}`,
                             borderRadius: 'var(--radius-pill)',
-                            color: 'var(--red-strong)',
+                            color: hasViolation ? 'var(--red-strong)' : 'var(--txt2)',
                             fontFamily: 'var(--font-mono)',
                             fontSize: 9,
-                            fontWeight: 600,
+                            fontWeight: hasViolation ? 600 : 400,
                             cursor: 'pointer',
                             letterSpacing: '0.06em',
                           }}
                         >View</button>
-                      ) : (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--green-strong)' }}>✓</span>
-                      )}
+                        {member.is_weekly_compliant === true && (
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--green-strong)' }}>✓</span>
+                        )}
+                        {hasViolation && (
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--red-strong)' }}>⚠</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -708,6 +712,34 @@ export function DepartmentView() {
         );
       })()}
 
+      {/* ── Per-crew HOD sign popup (opened from view modal Sign Off button) ── */}
+      {crewSignPopupUserId && (() => {
+        const member = data.crew.find(m => m.user_id === crewSignPopupUserId);
+        const ps = data.pending_counter_signs.find(p => p.crew_user_id === crewSignPopupUserId);
+        if (!ps) return null;
+        return (
+          <ActionPopup
+            mode="mutate"
+            title="Sign Off for Approval"
+            subtitle="MLC 2006 Reg. 2.3 — HOD Attestation"
+            signatureLevel={2}
+            submitLabel="Sign Off"
+            fields={[
+              { name: 'crew_member', label: 'Crew Member', type: 'kv-read', value: member?.name ?? ps.crew_name },
+              { name: 'week',        label: 'Week',         type: 'kv-read', value: ps.week_label },
+              { name: 'department',  label: 'Department',   type: 'kv-read', value: data.department },
+              { name: 'regulation',  label: 'Regulation',   type: 'kv-read', value: 'MLC 2006 Regulation 2.3 — Rest Hours' },
+            ]}
+            onClose={() => setCrewSignPopupUserId(null)}
+            onSubmit={(values) => {
+              setCrewSignPopupUserId(null);
+              setViewingUserId(null);
+              counterSign(ps.signoff_id, String(values.signature_name ?? ''));
+            }}
+          />
+        );
+      })()}
+
       {/* ── Read-only My Time overlay (HOD viewing a crew member's violation) ── */}
       {viewingUserId && (() => {
         const member = data.crew.find(m => m.user_id === viewingUserId);
@@ -742,6 +774,44 @@ export function DepartmentView() {
                   style={{ background: 'none', border: 'none', color: 'var(--txt2)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
                 >×</button>
               </div>
+              {/* Sign Off button — shown when this crew member has a pending signoff */}
+              {(() => {
+                const ps = data.pending_counter_signs.find(p => p.crew_user_id === viewingUserId);
+                if (!ps) return null;
+                return (
+                  <div style={{
+                    marginBottom: 'var(--space-4)',
+                    paddingBottom: 'var(--space-4)',
+                    borderBottom: '1px solid var(--border-sub)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}>
+                    <button
+                      onClick={() => setCrewSignPopupUserId(viewingUserId)}
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 10,
+                        color: 'var(--mark-strong)',
+                        background: 'var(--teal-bg)',
+                        border: '1px solid var(--mark-border)',
+                        borderRadius: 'var(--radius-pill)',
+                        padding: '6px 14px',
+                        cursor: 'pointer',
+                        letterSpacing: '0.06em',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >Sign Off for Approval</button>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 9,
+                      color: 'var(--txt-ghost)',
+                    }}>
+                      MLC 2006 — HOD attestation required before captain sign-off
+                    </span>
+                  </div>
+                );
+              })()}
               <MyTimeView targetUserId={viewingUserId} readOnly />
             </div>
           </div>
