@@ -388,7 +388,6 @@ export function FilteredEntityList<T extends { id: string }>({
           >
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
-            <option value="priority">Priority</option>
             <option value="alpha">Alphabetical</option>
           </select>
         </div>

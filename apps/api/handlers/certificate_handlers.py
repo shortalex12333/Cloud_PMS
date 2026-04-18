@@ -666,8 +666,8 @@ class CertificateHandlers:
             icon="history"
         ))
 
-        # Link document (if not already linked)
-        if not cert.get("document_id"):
+        # Link document (vessel certs only — documents don't apply to crew cert domain)
+        if domain == "vessel" and not cert.get("document_id"):
             actions.append(AvailableAction(
                 action_id="link_document_to_certificate",
                 label="Link Document",
@@ -704,14 +704,6 @@ class CertificateHandlers:
                 variant="MUTATE",
                 icon="refresh-cw"
             ))
-
-        # Assign responsible officer
-        actions.append(AvailableAction(
-            action_id="assign_certificate",
-            label="Assign Officer",
-            variant="MUTATE",
-            icon="user-check"
-        ))
 
         # Add note (always available)
         actions.append(AvailableAction(

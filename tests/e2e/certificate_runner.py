@@ -1216,25 +1216,30 @@ def scenario_6_suspend_certificate(ctx: BrowserContext, state: dict) -> dict:
     step(res, "6.4", "ActionPopup opens with Reason field + PIN input",
          action_popup_has_reason_and_pin)
 
-    def verify_popup_has_pin_and_reason():
-        # Verify UI shows the signed-action popup with both PIN boxes and reason field.
+    def verify_popup_has_name_attestation_and_reason():
+        # Verify UI shows the signed-action popup with SigL2 name-attestation and reason field.
+        # SigL3 (PIN) was replaced with SigL2 (type-name) in CertificateContent.tsx openActionPopup.
         popup = page.locator("[data-testid='action-popup'], [role='dialog']").first
         popup.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
-        # PIN input must be in the DOM (even if CSS-hidden)
-        pin_in_dom = page.evaluate(
-            "() => !!document.querySelector('[data-testid=\"signature-pin-input\"]')"
+        # SigL2 renders a text input with placeholder "Type your full name to confirm"
+        name_input_in_dom = page.evaluate(
+            "() => !!document.querySelector('[placeholder=\"Type your full name to confirm\"]')"
         )
-        assert pin_in_dom, "signature-pin-input not found in DOM — SigL3 component not rendered"
+        assert name_input_in_dom, (
+            "SigL2 name-attestation input not found in suspend popup — "
+            "check openActionPopup certSigLevel in CertificateContent.tsx"
+        )
         # Reason field must be present
         reason_present = (
             page.get_by_test_id("popup-field-reason").count() > 0
             or page.get_by_label(re.compile(r"(reason|why|justification)", re.I)).first.count() > 0
         )
         assert reason_present, "Reason field not found in suspend popup"
-        # Close the popup — we'll submit via API to avoid headless-PIN limitation
+        # Close the popup — submit via API (direct API matches UI name-attestation signature shape)
         page.keyboard.press("Escape")
         page.wait_for_timeout(300)
-    step(res, "6.5", "Popup shows SigL3 PIN + Reason field (UI verified)", verify_popup_has_pin_and_reason)
+    step(res, "6.5", "Popup shows SigL2 name-attestation + Reason field (UI verified, closing to use API)",
+         verify_popup_has_name_attestation_and_reason)
 
     def submit_suspend_via_api():
         """Submit suspension directly via authenticated fetch.
@@ -1406,6 +1411,22 @@ def scenario_7_renew_certificate(ctx: BrowserContext, state: dict) -> dict:
         renew_btn.click(timeout=STEP_TIMEOUT_MS)
     step(res, "7.2", "Click 'Upload Renewed' primary button", click_renew_button)
 
+    def dismiss_upload_modal_to_trigger_renew_popup():
+        # New two-step flow (CertificateContent.tsx pendingRenew):
+        # "Upload Renewed" now opens AttachmentUploadModal first.
+        # Pressing Escape triggers onClose → pendingRenew flag → opens renew ActionPopup.
+        upload_modal = page.locator(
+            "[data-testid='attachment-upload-modal'], [role='dialog']"
+        ).first
+        upload_modal.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+        page.keyboard.press("Escape")
+        # Wait for the renew ActionPopup to appear
+        action_popup = page.locator("[data-testid='action-popup'], [role='dialog']").first
+        action_popup.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+    step(res, "7.2b",
+         "AttachmentUploadModal opens; dismiss (Escape) → pendingRenew triggers renew ActionPopup",
+         dismiss_upload_modal_to_trigger_renew_popup)
+
     today = dt.date.today()
     next_year = today.replace(year=today.year + 1)
     new_issue_date = today.strftime("%Y-%m-%d")
@@ -1519,6 +1540,13 @@ def scenario_7_renew_certificate(ctx: BrowserContext, state: dict) -> dict:
         ).first
         renew_btn.wait_for(state="visible", timeout=STEP_TIMEOUT_MS)
         renew_btn.click(timeout=STEP_TIMEOUT_MS)
+
+        # Two-step flow: dismiss AttachmentUploadModal first (Escape → pendingRenew → ActionPopup)
+        upload_modal = page.locator(
+            "[data-testid='attachment-upload-modal'], [role='dialog']"
+        ).first
+        upload_modal.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+        page.keyboard.press("Escape")
 
         # Fill dates only, leave number blank
         form = page.locator("[data-testid='action-popup'], [role='dialog']").first
@@ -1722,16 +1750,21 @@ def scenario_9_archive_certificate(ctx: BrowserContext, state: dict) -> dict:
     step(res, "9.3", "Two-step PIN modal opens with confirmation text about archiving",
          two_step_pin_modal_opens)
 
-    def verify_archive_popup_has_pin():
+    def verify_archive_popup_has_name_attestation():
+        # SigL2: type-name attestation (replaced SigL3 PIN — see CertificateContent.tsx openActionPopup)
         popup = page.locator("[data-testid='action-popup'], [role='dialog']").first
         popup.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
-        pin_in_dom = page.evaluate(
-            "() => !!document.querySelector('[data-testid=\"signature-pin-input\"]')"
+        name_input_in_dom = page.evaluate(
+            "() => !!document.querySelector('[placeholder=\"Type your full name to confirm\"]')"
         )
-        assert pin_in_dom, "signature-pin-input not in DOM — SigL3 not rendered for archive"
+        assert name_input_in_dom, (
+            "SigL2 name-attestation input not found in archive popup — "
+            "check openActionPopup certSigLevel in CertificateContent.tsx"
+        )
         page.keyboard.press("Escape")
         page.wait_for_timeout(300)
-    step(res, "9.4", "Popup shows SigL3 PIN input (UI verified, closing to use direct API)", verify_archive_popup_has_pin)
+    step(res, "9.4", "Popup shows SigL2 name-attestation input (UI verified, closing to use direct API)",
+         verify_archive_popup_has_name_attestation)
 
     def submit_archive_via_api():
         """Archive via direct authenticated fetch (same headless PIN limitation as suspend)."""
@@ -1765,7 +1798,7 @@ def scenario_9_archive_certificate(ctx: BrowserContext, state: dict) -> dict:
                     context: { yacht_id: '85fe1119-b04c-41ac-80f1-829d23322598' },
                     payload: {
                         certificate_id: certId,
-                        signature: { method: 'pin', pin: '1234', signed_at: new Date().toISOString() }
+                        signature: { method: 'name', name: 'Test Captain', signed_at: new Date().toISOString() }
                     }
                 };
                 const resp = await fetch('/api/v1/actions/execute', {

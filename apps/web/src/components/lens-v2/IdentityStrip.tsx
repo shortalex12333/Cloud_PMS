@@ -53,7 +53,7 @@ export function IdentityStrip({
       {/* Top row: overline + action */}
       {(overline || actionSlot) && (
         <div className={styles.identityTopRow}>
-          {overline && <span className={styles.identityOverline}>{overline}</span>}
+          {overline ? <span className={styles.identityOverline}>{overline}</span> : <span />}
           {actionSlot}
         </div>
       )}
