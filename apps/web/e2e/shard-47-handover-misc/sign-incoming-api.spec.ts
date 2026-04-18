@@ -22,11 +22,15 @@
  *
  * Cleanup (per CEO archive-not-delete rule):
  *   handover_exports has a DENY DELETE grant; there is no archived_at
- *   column, and review_status has a CHECK constraint limiting it to the
- *   state-machine values (no 'archived'). We write a `test_archived`
- *   marker into the `metadata` JSONB column on every seeded row in
- *   afterAll so seeds are filterable without polluting the queue's state
- *   machine. Ledger / audit rows are append-only — we do NOT touch them.
+ *   column, no metadata column, and review_status has a CHECK constraint
+ *   limiting it to the state-machine values (no 'archived'). There is no
+ *   safe column to write a test-archive marker into without either
+ *   destroying real handover data (edited_content) or polluting a user-
+ *   facing textual field (incoming_comments). We therefore LOG orphan
+ *   seed IDs in afterAll and accept row accumulation. A separate sweep
+ *   script — keyed off the seeded captain's user_id + a recent
+ *   created_at window — is the right cleanup surface, not teardown.
+ *   Ledger / audit rows are append-only — we do NOT touch them.
  */
 
 import { test, expect, generateTestId } from '../rbac-fixtures';
@@ -192,27 +196,11 @@ async function seedCompleteExport(
   return exportId;
 }
 
-/** Archive a seeded export by writing a metadata marker (no delete — handover_exports DENY DELETE;
- *  review_status has a CHECK constraint limiting values to the state-machine set, so we cannot
- *  mutate it to 'archived'). */
+/** "Archive" a seeded export. handover_exports has DENY DELETE, no metadata
+ *  column, and no safe-to-overwrite textual column (see header comment). We
+ *  log the orphan id and return — a separate sweep script owns cleanup. */
 async function archiveExport(exportId: string): Promise<void> {
-  const db = tenantDb();
-  const { data: row } = await db
-    .from('handover_exports')
-    .select('metadata')
-    .eq('id', exportId)
-    .single();
-  const merged = {
-    ...(row?.metadata ?? {}),
-    test_archived: true,
-    test_archived_at: new Date().toISOString(),
-    test_run: 'handover04-sign-incoming',
-  };
-  const { error } = await db
-    .from('handover_exports')
-    .update({ metadata: merged })
-    .eq('id', exportId);
-  if (error) throw new Error(`archiveExport(${exportId}) error: ${error.message}`);
+  console.log(`[afterAll] orphan handover_exports row ${exportId} (handover04-sign-incoming)`);
 }
 
 /** For N4: inject a critical item into edited_content so the sign/incoming handler

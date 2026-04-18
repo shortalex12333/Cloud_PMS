@@ -24,8 +24,13 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const APP_URL = 'https://app.celeste7.ai';
-const API_URL = 'https://pipeline-core.int.celeste7.ai';
+// Honor docker-stack overrides so the same spec runs against both prod
+// (default) and the handover04 local stack (E2E_BASE_URL=http://localhost:3030
+// NEXT_PUBLIC_API_URL=http://localhost:8020). Hardcoding prod URLs here
+// silently ignored the env vars and made the suite impossible to run
+// against a fresh feature-branch build.
+const APP_URL = process.env.E2E_BASE_URL || 'https://app.celeste7.ai';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 const MASTER_URL = 'https://qvzmkaamzaqxpzbewjxe.supabase.co';
 const MASTER_REF = 'qvzmkaamzaqxpzbewjxe';
 const MASTER_ANON_KEY =
@@ -184,26 +189,12 @@ async function seedCompleteExport(page: Page): Promise<{ exportId: string; outgo
   return { exportId: export_id, outgoingUserId: captainSession.user.id };
 }
 
-/** Archive a seeded export — handover_exports has DENY DELETE, and review_status has a CHECK
- *  constraint that forbids 'archived'. Write a metadata marker instead. */
+/** "Archive" a seeded export. handover_exports has DENY DELETE, no metadata
+ *  column, and no safe-to-overwrite textual column (edited_content is real
+ *  data; incoming_comments is user-facing). Log the orphan id and return —
+ *  a separate sweep script owns cleanup. */
 async function archiveExport(exportId: string): Promise<void> {
-  const db = tenantDb();
-  const { data: row } = await db
-    .from('handover_exports')
-    .select('metadata')
-    .eq('id', exportId)
-    .single();
-  const merged = {
-    ...(row?.metadata ?? {}),
-    test_archived: true,
-    test_archived_at: new Date().toISOString(),
-    test_run: 'handover04-sign-incoming',
-  };
-  const { error } = await db
-    .from('handover_exports')
-    .update({ metadata: merged })
-    .eq('id', exportId);
-  if (error) throw new Error(`archiveExport(${exportId}) error: ${error.message}`);
+  console.log(`[afterAll] orphan handover_exports row ${exportId} (handover04-sign-incoming)`);
 }
 
 // Track seeds for teardown.
