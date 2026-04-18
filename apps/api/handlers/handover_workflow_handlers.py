@@ -12,8 +12,13 @@ Stage 2: Export
 - export_handover: Generate HTML/PDF, store document_hash
 
 Stage 3: Sign-off (Dual Signature)
-- sign_outgoing: Outgoing user signs export
-- sign_incoming: Incoming user countersigns + acknowledges critical items
+- sign_outgoing: [DEPRECATED — T4] Outgoing user signs export.
+    Author-sign has been consolidated onto
+    POST /v1/handover/export/{id}/submit (routes/handover_export_routes.py).
+    This handler remains only for backwards compatibility during the
+    deprecation window. See docs/ongoing_work/handover/ARCHITECTURE.md §T4.
+- sign_incoming: Incoming user acknowledges the handover.
+    This is CANONICAL — no twin exists; Path A has no incoming-ack equivalent.
 
 Stage 4: Verification
 - get_pending: List handovers awaiting signature
@@ -360,6 +365,27 @@ class HandoverWorkflowHandlers:
         method: str = "typed"
     ) -> Dict:
         """
+        [DEPRECATED — T4 consolidation, PR #642 follow-up]
+
+        Author-sign is canonicalised on ``POST /v1/handover/export/{id}/submit``
+        (see ``routes/handover_export_routes.py::submit_export``). That path is
+        richer: it regenerates the signed HTML, uploads to Bucket 2, writes the
+        ``review_status`` state-machine transition (``pending_review →
+        pending_hod_signature``), stores a full ``user_signature`` JSONB
+        (image_base64 + signer_name + signer_id + signed_at), and cascades
+        ledger + pms_audit_log notifications to HODs.
+
+        This ``sign_outgoing`` handler is feature-poor by comparison — it only
+        writes ``outgoing_*`` columns + an HMAC-soft signature envelope, reads
+        the retired legacy ``status`` column as precondition, and does NOT
+        regenerate the signed HTML or transition ``review_status``. No frontend
+        code path calls it; it is retained only for backwards compatibility
+        with shard-47 advisory tests until the deprecation window closes.
+
+        Callers MUST migrate to ``/v1/handover/export/{id}/submit``. This
+        function will be removed in a future PR once traffic has been
+        confirmed absent (see docs/ongoing_work/handover/ARCHITECTURE.md §T4).
+
         Outgoing user signs the export.
 
         Prerequisites:
@@ -379,6 +405,16 @@ class HandoverWorkflowHandlers:
 
         Returns signature metadata
         """
+        # T4 DEPRECATION WARNING — see docstring. Callers must migrate to
+        # POST /v1/handover/export/{id}/submit. Logged as warning (not error)
+        # so the route still works during the deprecation window.
+        logger.warning(
+            "DEPRECATED: HandoverWorkflowHandlers.sign_outgoing called for "
+            "export=%s user=%s role=%s; migrate to "
+            "POST /v1/handover/export/{id}/submit (T4 consolidation, PR #642 follow-up).",
+            export_id, user_id, user_role,
+        )
+
         # Fetch export
         result = self.db.table("handover_exports").select("*").eq("id", export_id).eq("yacht_id", yacht_id).single().execute()
 
@@ -761,6 +797,35 @@ class HandoverWorkflowHandlers:
             except Exception as e:
                 logger.warning(
                     "sign_incoming: ledger_events insert failed (export=%s, user=%s): %s",
+                    export_id, uid, e,
+                )
+
+            # 3. pms_notifications (bell) — skip self, skip current actor.
+            # The bell reads `pms_notifications`, NOT `ledger_events`, so this
+            # is the row the recipient's UI will actually render. Schema +
+            # idempotency_key convention mirrors certificate_handlers
+            # `_notify_cert_stakeholders` and internal_dispatcher warranty flow.
+            if uid == actor_id:
+                continue
+            try:
+                self.db.table("pms_notifications").upsert({
+                    "id": str(uuid4()),
+                    "yacht_id": yacht_id,
+                    "user_id": uid,
+                    "notification_type": "handover_acknowledged",
+                    "title": "Handover acknowledged",
+                    "body": change_summary,
+                    "priority": "normal",
+                    "entity_type": "handover_export",
+                    "entity_id": export_id,
+                    "triggered_by": actor_id,
+                    "idempotency_key": f"handover_acknowledged:{export_id}:{uid}",
+                    "is_read": False,
+                    "created_at": now_iso,
+                }, on_conflict="yacht_id,user_id,idempotency_key").execute()
+            except Exception as e:
+                logger.warning(
+                    "sign_incoming: pms_notifications upsert failed (export=%s, user=%s): %s",
                     export_id, uid, e,
                 )
 

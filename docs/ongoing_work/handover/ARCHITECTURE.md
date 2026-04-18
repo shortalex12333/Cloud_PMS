@@ -101,9 +101,14 @@ Note: production rows written before PR #642 may have `status` but no populated
    that warrants its own PR + rollback plan.
 
 ### Migration plan for a future PR
-1. Finish task T4 — pick one of the twin signing paths (`/submit + /countersign`
-   vs `/sign/outgoing + /sign/incoming`) and remove the other. The remaining
-   path must gate exclusively on `review_status`.
+1. Task T4 decision (resolved, this PR): **`/submit + /countersign` is
+   canonical** for author-sign and HOD-countersign. `/sign/incoming` is
+   canonical for incoming-crew acknowledgement (no twin exists). Only
+   `/v1/actions/handover/{id}/sign/outgoing` is a true feature-poor duplicate
+   of `/v1/handover/export/{id}/submit`; it is now logged as DEPRECATED on
+   every invocation but kept live for one release to drain stragglers. See §T4
+   below. The remaining canonical paths gate exclusively on `review_status` +
+   `incoming_signed_at`.
 2. Add a SQL backfill that populates `review_status` + `*_signed_at` columns
    for any legacy row where they are NULL but `status` is set, using the mapping
    above. Verify row counts match before deleting anything.
@@ -138,4 +143,66 @@ declaring the handover legally complete. Modelling it as a state transition woul
 imply the HOD-signed document is not "done" until the replacement crew reads it,
 which is not the design intent.
 
-## 9. (Reserved)
+## 9. T4 — Twin signing path consolidation
+
+The handover domain had two HTTP paths that looked like duplicates:
+
+| Path A (author → HOD)                                   | Path B (workflow handler)                                     |
+|---------------------------------------------------------|---------------------------------------------------------------|
+| `POST /v1/handover/export/{id}/submit`                  | `POST /v1/actions/handover/{id}/sign/outgoing`                |
+| `POST /v1/handover/export/{id}/countersign`             | `POST /v1/actions/handover/{id}/sign/incoming`                |
+| in `routes/handover_export_routes.py`                   | in `routes/p0_actions_routes.py` → `HandoverWorkflowHandlers` |
+
+A line-by-line parity pass (see PR description) found the structure is not
+symmetric. Only **one** of the four is a true duplicate:
+
+- `/submit` vs `/sign/outgoing` — **true twins**. Same role ("author signs
+  the rotation"). `/submit` is strictly richer: it regenerates the signed HTML
+  and uploads to Bucket 2, drives the `review_status` state machine, stores a
+  full `user_signature` JSONB (image_base64 + signer_name + signer_id +
+  signed_at), and cascades ledger + `pms_audit_log` rows to every HOD via
+  `_notify_hod_for_countersign`. `/sign/outgoing` writes only `outgoing_*`
+  columns + an HMAC-soft signature envelope, reads the retired legacy `status`
+  column as precondition, and inserts only a row into the `notifications`
+  table. **Frontend uses `/submit` exclusively** (HandoverContent.tsx L536).
+- `/countersign` — **canonical, no twin**. HOD approval / rotation closure.
+  Path B has no HOD-countersign handler.
+- `/sign/incoming` — **canonical, no twin**. Incoming crew acknowledgement.
+  Path A has no incoming-ack handler. Introduced by PR #642.
+
+### Decision
+- Keep `/submit` canonical for author-sign. Keep `/countersign` canonical for
+  HOD-countersign. Keep `/sign/incoming` canonical for incoming-ack.
+- Deprecate `/sign/outgoing` and its handler `HandoverWorkflowHandlers.sign_outgoing`.
+- Log a WARN on every invocation (route level + handler level). Do **not**
+  return 410 yet — one-release deprecation window.
+
+### What changed in this PR (T4)
+- `routes/p0_actions_routes.py::sign_outgoing_route` — added
+  `logger.warning(...)` firing on every call, plus `[DEPRECATED]` docstring.
+- `handlers/handover_workflow_handlers.py::sign_outgoing` — added
+  `logger.warning(...)` at the top of the function body, rewrote the
+  docstring with the `[DEPRECATED]` header and migration pointer, updated the
+  module docstring.
+- Added `apps/api/tests/test_handover_sign_outgoing_deprecation.py` asserting
+  the WARN log fires on handler invocation.
+- Docs: this section + the HANDOVER_CEO_SUMMARY T4 row.
+
+### Next-PR work (when deprecation window closes)
+1. Confirm zero WARN log hits in production over one release cycle. Grep the
+   app logs for `DEPRECATED route hit: POST /v1/actions/handover/.*/sign/outgoing`
+   and `DEPRECATED: HandoverWorkflowHandlers.sign_outgoing called`.
+2. Remove the route `@router.post("/handover/{export_id}/sign/outgoing")`
+   from `routes/p0_actions_routes.py`.
+3. Remove the `sign_outgoing` method from `HandoverWorkflowHandlers`.
+4. Remove the entry from `action_router/registry.py` (line 956 — the
+   `/v1/handover/sign/outgoing` endpoint registration).
+5. Remove the shard-47 advisory test block `sign_handover_outgoing — ADVISORY`
+   (apps/web/e2e/shard-47-handover-misc/handover-misc-actions.spec.ts
+   L345-367) or convert it to a 404 assertion.
+6. Remove the `test_sign_outgoing_no_longer_writes_legacy_status` regression
+   test once the function is gone (it is tied to the function's existence).
+7. Drop the `status` column per the plan in §8a now that the only remaining
+   reader (`sign_outgoing`) is gone.
+
+## 10. (Reserved)

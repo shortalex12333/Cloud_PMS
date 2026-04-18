@@ -46,6 +46,12 @@ bullet out of "Known gaps" above once the PR lands on `main`.
   column without a second round trip.
 - [ ] Role gate on `/sign/incoming` widened to all authenticated yacht users
   (any crew member can acknowledge a handover targeted at them).
+- [ ] T4 twin-path consolidation — `/v1/handover/export/{id}/submit` +
+  `/countersign` are canonical for author-sign and HOD-countersign;
+  `/v1/actions/handover/{id}/sign/incoming` is canonical for incoming-ack.
+  Only `/sign/outgoing` was a true duplicate (of `/submit`); it now logs
+  `DEPRECATED` on every call. No route deletions in this PR. See
+  `ARCHITECTURE.md` §9.
 
 On merge: remove "In-flight" tag from the "Incoming crew 3rd sign" row above,
 flip checkboxes here to `[x]`, and update `HANDOVER_FINAL_STATUS.md` known-gaps

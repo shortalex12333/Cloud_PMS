@@ -42,7 +42,12 @@ interface NotificationsResponse {
 /*  Entity route mapping                                               */
 /* ------------------------------------------------------------------ */
 
-function getNotificationRoute(entityType: string, entityId: string): string {
+export function getNotificationRoute(entityType: string, entityId: string): string {
+  // handover_export uses a path-param route (/handover-export/{id}), every
+  // other domain uses query-param lens routes.
+  if (entityType === 'handover_export') {
+    return `/handover-export/${entityId}`;
+  }
   const routes: Record<string, string> = {
     certificate: '/certificates',
     warranty: '/warranties',
