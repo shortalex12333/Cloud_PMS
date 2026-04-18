@@ -210,7 +210,7 @@ GET /rest/v1/ledger_events?entity_id=eq.<claim_id>&entity_type=eq.warranty
 
 Every notification row has `entity_type=warranty` and `entity_id=<claim_id>`.
 
-**Gap:** There is no frontend notification bell or inbox for warranty. Rows are written to `pms_notifications` in the DB but nothing in the app surface reads them for warranty. `apps/web/src/app/api/v1/notifications/route.ts:13` returns an empty array stub.
+**Frontend bell wired** (verified 2026-04-18 by WARRANTY04). `apps/web/src/components/shell/NotificationBell.tsx` polls `/api/v1/notifications` every 30s; the route proxies to backend `/v1/notifications` (not an empty stub any more — the old doc line was stale). Clicking a warranty row routes to `/warranties?id=<claim_id>` per the route map at `NotificationBell.tsx:47-48`.
 
 **To verify notifications in DB:**
 ```sql
@@ -439,13 +439,15 @@ curl "https://backend.celeste7.ai/v1/ledger/events?yacht_id=85fe1119-b04c-41ac-8
 
 | Gap | Status | Who should fix |
 |-----|--------|---------------|
-| Email body not displayed in UI | Not built | WARRANTY01 — render `email_draft.body` in `WarrantyContent.tsx:382` |
-| Email body not editable in-app | Not built | WARRANTY01 — add textarea for email body editing |
-| Bcc / CC fields on email draft | Not built | WARRANTY01 — add to `email_draft` data model and compose handler |
-| Notification inbox / bell for warranty | Not built | WARRANTY01 — `apps/web/src/app/api/v1/notifications/route.ts` returns empty array stub |
+| Email body not displayed in UI | **FIXED** 2026-04-18 — `WarrantyContent.tsx:407-414` renders body in `.emailBody` block via `KVSection` children slot. Testid `warranty-email-body`. | WARRANTY04 |
+| Email body not editable in-app | Not built (read-only render only) | Follow-up — add textarea + compose_warranty_email_edit action |
+| Bcc / CC fields on email draft | Not built | Follow-up — add to `email_draft` data model and compose handler |
+| Notification inbox / bell for warranty | **SHIPPED** — `NotificationBell.tsx` routes warranty → `/warranties` | CERTIFICATE01 (platform-wide wire) |
+| `close_warranty_claim` prefill mismatch (registry wants `warranty_id`, prefill had `claim_id`) | **FIXED** 2026-04-18 — `entity_prefill.py:114` | WARRANTY04 |
 | Equipment / WO ref search picker | Not built | Separate feature — requires `SearchPicker` component |
 | Auto email link (NLP match) | Not built | Separate feature — manual email linking only |
 | Atomic claim number generation | Race condition risk | Low priority for single vessel |
+| Component-level warranty-period tracking (in/out of warranty) | Not built | Cross-domain (needs `pms_equipment.warranty_start_date` + period column) |
 
 ---
 
