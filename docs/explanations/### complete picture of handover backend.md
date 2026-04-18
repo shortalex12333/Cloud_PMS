@@ -45,17 +45,22 @@
            │
            │ Both parties sign
            ▼
-  ┌─────────────────┐       ┌──────────────────────────┐
-  │ handover_signoffs│       │ handover_sources          │
-  │                  │       │                           │
-  │ Dual signature   │       │ External material linked  │
-  │ record. Outgoing │       │ to entries (emails, docs). │
-  │ signs first,     │       │ Future use — email         │
-  │ incoming counter-│       │ integration.               │
-  │ signs. Document  │       └───────────────────────────┘
-  │ hash frozen at   │
-  │ sign time.       │
-  └─────────────────┘
+  ┌──────────────────────────┐       ┌──────────────────────────┐
+  │ (signatures live on       │       │ handover_sources          │
+  │  handover_exports above)  │       │                           │
+  │                           │       │ External material linked  │
+  │ user_signature / user_    │       │ to entries (emails, docs).│
+  │ signed_at, hod_signature /│       │ Future use — email        │
+  │ hod_signed_at, incoming_  │       │ integration.              │
+  │ signature / incoming_     │       └──────────────────────────┘
+  │ signed_at /incoming_user_ │
+  │ id. document_hash frozen  │
+  │ at sign time.             │
+  └──────────────────────────┘
+
+  NOTE: The earlier `handover_signoffs` table (separate dual-signature row) is DEPRECATED.
+  Not created by any migration, not written by any handler, not read by any route.
+  Kept here only so searches hit the deprecation note — do not reference in new code.
 
   Table-by-Table for a New Engineer
 
@@ -284,25 +289,26 @@
   └───────────────────┴──────┴──────────────────────────────────────────┘
 
   ---
-  8. handover_signoffs (16 columns) — Dual Signature Record
+  8. handover_signoffs — DEPRECATED (signatures now live on handover_exports)
 
-  What: One row per draft (UNIQUE on draft_id). Tracks outgoing + incoming signatures with document hash frozen at sign time.
+  Single source of truth for all three signatures (outgoing, HOD countersign, incoming
+  acknowledgment) is now the `handover_exports` row itself. See section 6 above —
+  columns `user_signature / user_signed_at`, `hod_signature / hod_signed_at`,
+  `incoming_signature / incoming_signed_at / incoming_user_id /
+  incoming_acknowledged_critical / incoming_comments / incoming_role`, plus
+  `signoff_complete` and `document_hash`.
 
-  ┌────────────────────────────────┬─────────────┬─────────────────────────────────────────────────────────────────────────────┐
-  │             Column             │    Type     │                                 UX Purpose                                  │
-  ├────────────────────────────────┼─────────────┼─────────────────────────────────────────────────────────────────────────────┤
-  │ outgoing_user_id               │ uuid        │ Person handing over                                                         │
-  ├────────────────────────────────┼─────────────┼─────────────────────────────────────────────────────────────────────────────┤
-  │ outgoing_signed_at             │ timestamptz │ When they signed                                                            │
-  ├────────────────────────────────┼─────────────┼─────────────────────────────────────────────────────────────────────────────┤
-  │ incoming_user_id               │ uuid        │ Person receiving handover                                                   │
-  ├────────────────────────────────┼─────────────┼─────────────────────────────────────────────────────────────────────────────┤
-  │ incoming_signed_at             │ timestamptz │ When they countersigned                                                     │
-  ├────────────────────────────────┼─────────────┼─────────────────────────────────────────────────────────────────────────────┤
-  │ incoming_acknowledged_critical │ bool        │ Must be true if critical items exist                                        │
-  ├────────────────────────────────┼─────────────┼─────────────────────────────────────────────────────────────────────────────┤
-  │ document_hash                  │ text        │ SHA-256 frozen at sign time — proves document wasn't tampered after signing │
-  └────────────────────────────────┴─────────────┴─────────────────────────────────────────────────────────────────────────────┘
+  The `handover_signoffs` table existed in an earlier dual-row design (one row per
+  draft, outgoing_user_id + incoming_user_id on the same row). It was superseded before
+  MVP ship. Current state on TENANT DB:
+
+    - Not created by any migration in this repo
+    - Not written by any handler in `pipeline-core`
+    - Not read by any route or view used by the app
+
+  Kept as a named deprecation here so searches against historical docs land on this
+  note rather than a live-looking schema. Do not reference in new code. A separate
+  doc cleanup will remove the last mentions once downstream tooling is confirmed clear.
 
   ---
   9. handover_sources (16 columns) — External Material

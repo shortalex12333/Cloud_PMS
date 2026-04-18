@@ -714,6 +714,34 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
 
         user_sig = data.get("user_signature")
         dept = data.get("department") or ""
+
+        # Resolve incoming user name from auth_users_profiles (mirror user_signature
+        # resolution pattern). auth_users_profiles has (id, name, email) — no role
+        # column; role is stored directly on handover_exports.incoming_role.
+        incoming_user_id = data.get("incoming_user_id")
+        incoming_user_name = None
+        if incoming_user_id:
+            try:
+                ir = supabase.table("auth_users_profiles").select(
+                    "name, email"
+                ).eq("id", incoming_user_id).eq("yacht_id", yacht_id).limit(1).execute()
+                if ir and ir.data:
+                    prof = ir.data[0]
+                    incoming_user_name = prof.get("name") or prof.get("email")
+            except Exception as _ie:
+                logger.warning("Failed to resolve incoming_user_name for %s: %s", incoming_user_id, _ie)
+
+        # incoming_signature lives inside the `signatures` JSONB envelope
+        # (written by handover_workflow_handlers.sign_incoming → signatures["incoming"]).
+        raw_sigs = data.get("signatures") or {}
+        if isinstance(raw_sigs, str):
+            import json as _j
+            try:
+                raw_sigs = _j.loads(raw_sigs) if raw_sigs else {}
+            except Exception:
+                raw_sigs = {}
+        incoming_signature = raw_sigs.get("incoming") if isinstance(raw_sigs, dict) else None
+
         _entity_response = {
             "id": data.get("id"),
             "yacht_id": data.get("yacht_id"),
@@ -731,6 +759,15 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
             "user_signature": user_sig,
             "userSignature": user_sig,
             "hod_signature": data.get("hod_signature"),
+            # Incoming-crew acknowledgement (set by /v1/actions/handover/{id}/sign/incoming)
+            "incoming_user_id": incoming_user_id,
+            "incoming_user_name": incoming_user_name,
+            "incoming_role": data.get("incoming_role"),
+            "incoming_signed_at": data.get("incoming_signed_at"),
+            "incoming_comments": data.get("incoming_comments"),
+            "incoming_acknowledged_critical": data.get("incoming_acknowledged_critical"),
+            "incoming_signature": incoming_signature,
+            "signoff_complete": data.get("signoff_complete"),
             "submitted_at": data.get("exported_at"),
             "created_at": data.get("created_at"),
             "draft_id": data.get("draft_id"),
