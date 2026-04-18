@@ -111,7 +111,10 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("warranty", "reject_warranty_claim"):  {"claim_id": "id"},
     ("warranty", "compose_warranty_email"): {"claim_id": "id"},
     ("warranty", "draft_warranty_claim"):   {"warranty_id": "id"},
-    ("warranty", "close_warranty_claim"):   {"claim_id": "id"},
+    # close_warranty_claim's registry required_fields is ["yacht_id", "warranty_id"] —
+    # pre-fill warranty_id from the entity id so the frontend fires the action directly
+    # without prompting for a UUID. Matches add_warranty_note's pattern below.
+    ("warranty", "close_warranty_claim"):   {"warranty_id": "id"},
     ("warranty", "add_warranty_note"):      {"warranty_id": "id"},
     ("warranty", "add_to_handover"):        {"entity_id": "id", "title": "title"},
 
