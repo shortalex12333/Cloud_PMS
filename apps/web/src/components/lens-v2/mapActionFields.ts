@@ -98,6 +98,11 @@ export function mapActionFields(action: ActionDef): ActionPopupField[] {
         options,
         placeholder: meta?.placeholder || `Enter ${f.replace(/_/g, ' ')}...`,
         value: (action.prefill[f] as string) ?? '',
+        // Propagate the required flag so ActionPopup.tsx:468 can actually block
+        // submit on empty required fields. Prior to 2026-04-18 this was dropped,
+        // which meant EVERY required-field popup across EVERY domain silently
+        // accepted empty input (was Issue #630).
+        required: isRequired,
       };
     });
 }

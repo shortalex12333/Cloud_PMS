@@ -3459,6 +3459,43 @@ async def _sign_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+# ---------------------------------------------------------------------------
+# Param scrub helpers
+#
+# The action router accepts raw JSON from the frontend. Empty-string payloads
+# for numeric / UUID columns round-trip into PostgREST as literal "" or "eeee"
+# and the database rejects them with 22P02 (500 Internal Server Error for the
+# user). Handlers below call these helpers to coerce "" / invalid inputs to
+# None BEFORE they hit Supabase, so we return a clean 400 instead.
+# ---------------------------------------------------------------------------
+
+
+def _coerce_optional_uuid(value: Any) -> str | None:
+    """Return a str-UUID, or None for empty/invalid input.
+
+    Caller may distinguish "missing" from "bad" by checking the raw value
+    themselves before calling this helper when a 400 is desired.
+    """
+    if value in (None, ""):
+        return None
+    import uuid as _uuid
+    try:
+        return str(_uuid.UUID(str(value)))
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+def _coerce_optional_numeric(value: Any) -> float | None:
+    """Return a float, or None for empty. Raises ValueError for non-numeric.
+
+    Empty string and None both resolve to None (i.e. "user cleared the field").
+    Any non-empty value must parse, else the caller should surface a 400.
+    """
+    if value in (None, ""):
+        return None
+    return float(value)
+
+
 async def _draft_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create a draft warranty claim.
@@ -3468,7 +3505,7 @@ async def _draft_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
         - title: str
         - description: str
     Optional:
-        - equipment_id, fault_id, work_order_id: UUID
+        - equipment_id, fault_id, work_order_id: UUID (invalid UUIDs silently coerced to NULL)
         - vendor_name, manufacturer: str
         - warranty_expiry: date
         - claimed_amount: numeric
@@ -3502,11 +3539,29 @@ async def _draft_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
     }
-    # Optional FK fields
-    for field in ("equipment_id", "fault_id", "work_order_id",
-                  "vendor_name", "manufacturer", "warranty_expiry",
-                  "claimed_amount", "currency"):
-        if params.get(field) is not None:
+    # Optional FK fields — coerce invalid/empty UUIDs to None so Postgres
+    # doesn't 22P02. Users type free text (cheatsheet:263) today.
+    for field in ("equipment_id", "fault_id", "work_order_id"):
+        raw = params.get(field)
+        if raw in (None, ""):
+            continue
+        clean = _coerce_optional_uuid(raw)
+        if clean is None:
+            # Bad UUID typed by user — drop silently; follow-up is SearchPicker (P0.2).
+            continue
+        claim_data[field] = clean
+
+    # Optional numeric field — coerce "" to None
+    raw_amount = params.get("claimed_amount")
+    if raw_amount not in (None, ""):
+        try:
+            claim_data["claimed_amount"] = _coerce_optional_numeric(raw_amount)
+        except ValueError:
+            return {"status": "error", "message": "claimed_amount must be numeric"}
+
+    # Remaining free-text / date fields pass through as-is
+    for field in ("vendor_name", "manufacturer", "warranty_expiry", "currency"):
+        if params.get(field) is not None and params.get(field) != "":
             claim_data[field] = params[field]
     # Store structured metadata that doesn't have a dedicated DB column
     metadata: dict = {}
@@ -3611,7 +3666,20 @@ async def _approve_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
     warranty_id = params.get("warranty_id") or params.get("claim_id") or params.get("entity_id")
     user_id = params.get("user_id")
     yacht_id = params["yacht_id"]
-    approved_amount = params.get("approved_amount")
+
+    # Approval requires both amount AND notes (CEO rule 2026-04-18).
+    # Coerce "" -> None, then require present-and-parseable.
+    raw_amount = params.get("approved_amount")
+    try:
+        approved_amount = _coerce_optional_numeric(raw_amount)
+    except ValueError:
+        return {"status": "error", "message": "approved_amount must be numeric"}
+    if approved_amount is None:
+        return {"status": "error", "message": "approved_amount is required"}
+
+    approval_notes = (params.get("notes") or "").strip()
+    if not approval_notes:
+        return {"status": "error", "message": "notes is required"}
 
     r = supabase.table("pms_warranty_claims").select("*").eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
     claim = r.data if r else None
@@ -3620,14 +3688,19 @@ async def _approve_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
     if claim.get("status") != "submitted":
         return {"status": "error", "message": "Claim must be submitted to approve"}
 
+    # approval_notes doesn't have a dedicated column — stash in metadata JSONB
+    # next to manufacturer_email (matches pattern at line ~3513).
+    existing_meta = dict(claim.get("metadata") or {})
+    existing_meta["approval_notes"] = approval_notes
+
     update_data: Dict[str, Any] = {
         "status": "approved",
         "approved_by": user_id,
         "approved_at": datetime.utcnow().isoformat(),
+        "approved_amount": approved_amount,
+        "metadata": existing_meta,
         "updated_at": datetime.utcnow().isoformat(),
     }
-    if approved_amount is not None:
-        update_data["approved_amount"] = approved_amount
 
     supabase.table("pms_warranty_claims").update(update_data).eq("id", warranty_id).eq("yacht_id", yacht_id).execute()
 
@@ -3639,7 +3712,7 @@ async def _approve_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
             "entity_id": warranty_id,
             "action": "approved",
             "user_id": user_id,
-            "new_values": {"status": "approved"},
+            "new_values": {"status": "approved", "approved_amount": approved_amount, "approval_notes": approval_notes},
             "created_at": datetime.utcnow().isoformat(),
         }).execute()
     except Exception:
@@ -3695,7 +3768,11 @@ async def _reject_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
     warranty_id = params.get("warranty_id") or params.get("claim_id") or params.get("entity_id")
     user_id = params.get("user_id")
     yacht_id = params["yacht_id"]
-    rejection_reason = params.get("rejection_reason", "")
+
+    # Rejection reason is always required — the captain must say WHY.
+    rejection_reason = (params.get("rejection_reason") or "").strip()
+    if not rejection_reason:
+        return {"status": "error", "message": "rejection_reason is required"}
 
     r = supabase.table("pms_warranty_claims").select("*").eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
     claim = r.data if r else None

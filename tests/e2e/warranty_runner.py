@@ -406,6 +406,9 @@ def scenario_2_captain_approves(ctx: BrowserContext, state: dict) -> dict:
 
     step(res, "2.6", "Enter approved_amount 900",
          lambda: fill_popup_field(page, "approved_amount", "900"))
+    # notes required 2026-04-18 — captain must justify the approved amount
+    step(res, "2.6b", "Enter approval notes",
+         lambda: fill_popup_field(page, "notes", "Approved — within warranty window, parts under 5-yr cover."))
     step(res, "2.7", "Submit popup",
          lambda: page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS))
     step(res, "2.8", "Status pill = Approved", lambda: assert_pill_label(page, "Approved"))

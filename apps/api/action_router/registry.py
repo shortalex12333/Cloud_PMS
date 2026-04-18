@@ -2298,15 +2298,17 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["captain", "manager"],  # Captain/Manager only
-        required_fields=["yacht_id", "claim_id"],
+        # approved_amount + notes are REQUIRED per CEO rule 2026-04-18 —
+        # no silent approvals. See _approve_warranty_claim server-side guards.
+        required_fields=["yacht_id", "claim_id", "approved_amount", "notes"],
         domain="warranty",
         variant=ActionVariant.MUTATE,
         search_keywords=["approve", "warranty", "claim", "accept"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("claim_id", FieldClassification.REQUIRED),
-            FieldMetadata("approved_amount", FieldClassification.OPTIONAL),
-            FieldMetadata("notes", FieldClassification.OPTIONAL),
+            FieldMetadata("approved_amount", FieldClassification.REQUIRED),
+            FieldMetadata("notes", FieldClassification.REQUIRED),
         ],
     ),
 
