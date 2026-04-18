@@ -284,7 +284,9 @@ test.describe('sign_incoming API — wire walk', () => {
     expect(res.status()).toBe(200);
     expect(body.status).toBe('success');
     expect(body.signoff_complete).toBe(true);
-    expect(typeof body.incoming_signed_at).toBe('string');
+    // Response uses generic `signed_at` (route is polymorphic outgoing/incoming);
+    // the namespaced `incoming_signed_at` column is verified on the DB row below.
+    expect(typeof body.signed_at).toBe('string');
 
     // DB: handover_exports row hydrated
     const db = tenantDb();
@@ -398,8 +400,9 @@ test.describe('sign_incoming API — wire walk', () => {
     console.log(`[N2] status=${res.status()} body=${JSON.stringify(body)}`);
 
     expect(res.status()).toBe(409);
-    // Error body: FastAPI HTTPException wraps message under `detail`.
-    const msg = String(body.detail ?? body.message ?? '');
+    // Error body: project error middleware emits {error, status_code, path}.
+    // Keep `detail`/`message` as defensive fallbacks for other routes.
+    const msg = String(body.error ?? body.detail ?? body.message ?? '');
     expect(msg.toLowerCase()).toMatch(/review_status|invalid|status/);
   });
 
@@ -440,7 +443,7 @@ test.describe('sign_incoming API — wire walk', () => {
     console.log(`[N3] second status=${second.status()} body=${JSON.stringify(body)}`);
 
     expect(second.status()).toBe(409);
-    const msg = String(body.detail ?? body.message ?? '').toLowerCase();
+    const msg = String(body.error ?? body.detail ?? body.message ?? '').toLowerCase();
     expect(msg).toContain('already');
   });
 
@@ -476,7 +479,7 @@ test.describe('sign_incoming API — wire walk', () => {
     // Handler returns error_code=CRITICAL_NOT_ACKNOWLEDGED → route maps non-
     // INVALID_STATUS/NOT_FOUND errors to 400. Test spec says 400 OR 409.
     expect([400, 409]).toContain(res.status());
-    const msg = String(body.detail ?? body.message ?? '').toLowerCase();
+    const msg = String(body.error ?? body.detail ?? body.message ?? '').toLowerCase();
     expect(msg).toMatch(/critical|acknowledg/);
   });
 
