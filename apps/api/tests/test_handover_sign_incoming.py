@@ -98,9 +98,20 @@ def _make_db_mock(export_row, captured_writes=None):
             uchain.execute.return_value = MagicMock(data=[payload])
             return uchain
 
+        def _upsert(payload, **_kwargs):
+            # pms_notifications uses upsert with on_conflict; normalize list vs dict
+            # and capture the same shape as insert so tests can assert against either.
+            items = payload if isinstance(payload, list) else [payload]
+            for item in items:
+                captured_writes["inserts"].append({"table": name, "payload": item})
+            ichain = MagicMock()
+            ichain.execute.return_value = MagicMock(data=items)
+            return ichain
+
         tbl.select.side_effect = _select
         tbl.insert.side_effect = _insert
         tbl.update.side_effect = _update
+        tbl.upsert.side_effect = _upsert
         return tbl
 
     m = MagicMock()
@@ -274,6 +285,47 @@ async def test_sign_incoming_writes_audit_log():
     assert p["action"] == "handover_acknowledged"
     assert p["entity_type"] == "handover_export"
     assert p["actor_id"] == USER_ID
+
+
+@pytest.mark.asyncio
+async def test_sign_incoming_writes_notification_bell_rows():
+    """Bell regression — recipients (NOT actor) must receive pms_notifications rows
+    so the notification bell endpoint surfaces the event. Actor is self-audited via
+    ledger/audit but not via pms_notifications (skip-self convention)."""
+    db = _make_db_mock(_valid_export_row())
+    h = HandoverWorkflowHandlers(db)
+
+    await h.sign_incoming(
+        export_id=EXPORT_ID,
+        yacht_id=YACHT_ID,
+        user_id=USER_ID,
+        user_role="crew",
+        acknowledge_critical=True,
+    )
+
+    notif_inserts = [
+        w for w in db._captured["inserts"] if w["table"] == "pms_notifications"
+    ]
+    assert notif_inserts, (
+        "Expected at least one pms_notifications upsert — bell would stay silent"
+    )
+
+    # Outgoing user must get a bell row
+    recipient_ids = {w["payload"]["user_id"] for w in notif_inserts}
+    assert OUTGOING_USER_ID in recipient_ids
+    # Actor must NOT get a bell row (self-skip convention)
+    assert USER_ID not in recipient_ids
+
+    p = notif_inserts[0]["payload"]
+    assert p["notification_type"] == "handover_acknowledged"
+    assert p["entity_type"] == "handover_export"
+    assert p["entity_id"] == EXPORT_ID
+    assert p["yacht_id"] == YACHT_ID
+    assert p["triggered_by"] == USER_ID
+    assert p["is_read"] is False
+    assert p["idempotency_key"] == f"handover_acknowledged:{EXPORT_ID}:{OUTGOING_USER_ID}"
+    assert p["title"]  # non-empty
+    assert p["body"]   # non-empty
 
 
 @pytest.mark.asyncio
