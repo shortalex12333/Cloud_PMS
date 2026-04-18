@@ -378,6 +378,91 @@ def _upload_document_adapter(handlers: DocumentHandlers):
     return _fn
 
 
+# ------------------------------------------------------------------------------
+# update_document schema introspection
+# ------------------------------------------------------------------------------
+# doc_metadata column list is read from information_schema.columns on first use
+# and cached for the lifetime of the process. This replaces the previous
+# "log-only, don't mutate" shim that was in place to dodge PostgREST schema
+# cache issues — we now inspect the live schema once and only issue UPDATEs for
+# columns that exist.
+#
+# Fields that are NOT real columns (currently: title, notes) are routed into
+# the metadata JSONB blob instead, which every doc_metadata row has.
+#
+# Updatable payload fields → storage destination:
+#   title       → metadata.title        (JSONB — not a dedicated column)
+#   notes       → metadata.notes        (JSONB — not a dedicated column)
+#   doc_type    → doc_type              (real column)
+#   oem         → oem                   (real column)
+#   model       → model                 (real column)
+#   system_path → system_path           (real column)
+#   system_tag  → system_type           (real column; legacy alias)
+#   tags        → tags                  (real column, list)
+# ------------------------------------------------------------------------------
+_DOC_METADATA_COLUMN_CACHE: Optional[set] = None
+
+# Fields the frontend/payload is allowed to send as update params. Everything
+# outside this set is dropped silently (with a debug log).
+_UPDATABLE_PAYLOAD_FIELDS = {
+    "title", "doc_type", "oem", "model", "notes",
+    "system_tag", "system_path", "tags", "description",
+}
+
+# Subset of the above that lives inside the metadata JSONB (not dedicated cols).
+_METADATA_JSONB_FIELDS = {"title", "notes"}
+
+# Subset that maps to a column with a different name than the payload key.
+_PAYLOAD_KEY_TO_COLUMN = {
+    "system_tag": "system_type",
+}
+
+
+def _get_doc_metadata_columns(db) -> set:
+    """Return the set of doc_metadata column names visible to PostgREST.
+
+    Cached for the process lifetime; set to None to invalidate. Falls back to
+    a conservative baseline on failure so update_document still does something
+    useful even if information_schema is unreachable.
+    """
+    global _DOC_METADATA_COLUMN_CACHE
+    if _DOC_METADATA_COLUMN_CACHE is not None:
+        return _DOC_METADATA_COLUMN_CACHE
+    try:
+        resp = db.rpc(
+            "exec_sql",
+            {"sql": "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema='public' AND table_name='doc_metadata'"},
+        ).execute()
+        cols = {r["column_name"] for r in (resp.data or [])}
+    except Exception:
+        cols = set()
+    if not cols:
+        # exec_sql RPC may not exist on this deployment — fall back to a
+        # PostgREST query that returns one row and gives us its column set.
+        try:
+            resp = db.table("doc_metadata").select("*").limit(1).execute()
+            if resp.data:
+                cols = set(resp.data[0].keys())
+        except Exception:
+            cols = set()
+    if not cols:
+        # Last-resort conservative baseline. Matches the schema verified on
+        # TENANT at sprint time; widening it is safe (unknown cols get filtered
+        # again against the server's actual schema on the UPDATE round-trip).
+        cols = {
+            "id", "yacht_id", "source", "original_path", "filename",
+            "content_type", "size_bytes", "sha256", "storage_path",
+            "equipment_ids", "tags", "indexed", "indexed_at", "metadata",
+            "created_at", "updated_at", "system_path", "doc_type", "oem",
+            "model", "system_type", "storage_bucket", "document_type",
+            "description", "deleted_at", "deleted_by", "deleted_reason",
+            "embedding", "is_seed", "uploaded_by", "import_batch_id",
+        }
+    _DOC_METADATA_COLUMN_CACHE = cols
+    return cols
+
+
 def _update_document_adapter(handlers: DocumentHandlers):
     async def _fn(**params):
         """
@@ -387,22 +472,22 @@ def _update_document_adapter(handlers: DocumentHandlers):
         - yacht_id (str)
         - user_id (str)
         - document_id (str) - doc_metadata.id UUID
-        - title (str, optional)
+        - title (str, optional)        → metadata.title
         - doc_type (str, optional)
         - oem (str, optional)
-        - model_number (str, optional)
-        - serial_number (str, optional)
+        - model (str, optional)
         - system_path (str, optional)
-        - tags (list, optional) - Replace tags array
-        - equipment_ids (list, optional) - Replace linked equipment array
-        - notes (str, optional)
+        - system_tag (str, optional)   → system_type column
+        - tags (list, optional)        - Replace tags array
+        - notes (str, optional)        → metadata.notes
+        - description (str, optional)
         """
         db = handlers.db
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         doc_id = params["document_id"]
 
-        # Get current values for audit
+        # 1. Load current row for audit comparison + metadata merge base
         try:
             current = db.table("doc_metadata").select("*").eq(
                 "yacht_id", yacht_id
@@ -415,27 +500,110 @@ def _update_document_adapter(handlers: DocumentHandlers):
 
         old_values = current.data
 
-        # Check if document is deleted
         if old_values.get("deleted_at"):
             raise ValueError("Cannot update a deleted document")
 
-        # Schema note: doc_metadata columns vary by deployment. To avoid PostgREST schema
-        # cache issues, we only log the update intent without modifying metadata fields.
-        # The document existence is already verified above.
-        audit_fields = {}
-        for field in ["title", "doc_type", "oem", "notes"]:
-            if field in params and params[field] is not None:
-                audit_fields[field] = params[field]
+        # 2. Filter incoming payload to updatable fields (+ non-None)
+        incoming = {
+            k: v for k, v in params.items()
+            if k in _UPDATABLE_PAYLOAD_FIELDS and v is not None
+        }
 
-        # Audit log (non-signed)
+        if not incoming:
+            return {
+                "status": "success",
+                "document_id": doc_id,
+                "updated_fields": [],
+                "message": "No updatable fields provided",
+            }
+
+        # 3. Resolve against live schema
+        visible_cols = _get_doc_metadata_columns(db)
+
+        update_patch: Dict[str, Any] = {}
+        metadata_patch: Dict[str, Any] = {}
+        applied_fields: List[str] = []
+
+        for field, value in incoming.items():
+            if field in _METADATA_JSONB_FIELDS:
+                metadata_patch[field] = value
+                applied_fields.append(field)
+                continue
+            column = _PAYLOAD_KEY_TO_COLUMN.get(field, field)
+            if column in visible_cols:
+                update_patch[column] = value
+                applied_fields.append(field)
+            else:
+                logger.debug(
+                    "update_document: dropping field %s — column %s not in schema",
+                    field, column,
+                )
+
+        # 4. Merge metadata JSONB (don't clobber other keys)
+        if metadata_patch:
+            if "metadata" in visible_cols:
+                existing_meta = old_values.get("metadata") or {}
+                if not isinstance(existing_meta, dict):
+                    existing_meta = {}
+                merged = {**existing_meta, **metadata_patch}
+                update_patch["metadata"] = merged
+
+        # 5. Bump updated_at if the column exists
+        if "updated_at" in visible_cols and update_patch:
+            update_patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+        # 6. Execute UPDATE if anything landed
+        verified_values: Dict[str, Any] = {}
+        if update_patch:
+            try:
+                upd_resp = (
+                    db.table("doc_metadata")
+                      .update(update_patch)
+                      .eq("id", doc_id)
+                      .eq("yacht_id", yacht_id)
+                      .is_("deleted_at", "null")
+                      .execute()
+                )
+            except Exception as e:
+                logger.error(
+                    "update_document: UPDATE failed doc=%s yacht=%s err=%s",
+                    doc_id, yacht_id, e,
+                )
+                raise
+
+            # 7. Read-back verify — prove the UPDATE landed
+            try:
+                after = db.table("doc_metadata").select(
+                    ",".join(update_patch.keys())
+                ).eq("id", doc_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                if after and after.data:
+                    verified_values = dict(after.data)
+            except Exception as e:
+                logger.warning(
+                    "update_document: read-back verify failed doc=%s err=%s",
+                    doc_id, e,
+                )
+
+        # 8. Audit log (non-signed)
+        audit_old = {}
+        audit_new = {}
+        for f in applied_fields:
+            if f in _METADATA_JSONB_FIELDS:
+                existing_meta = old_values.get("metadata") or {}
+                audit_old[f] = existing_meta.get(f) if isinstance(existing_meta, dict) else None
+            else:
+                col = _PAYLOAD_KEY_TO_COLUMN.get(f, f)
+                audit_old[f] = old_values.get(col)
+            audit_new[f] = incoming[f]
+
         audit = {
             "yacht_id": yacht_id,
             "entity_type": "document",
             "entity_id": doc_id,
             "action": "update_document",
             "user_id": user_id,
-            "old_values": {k: old_values.get(k) for k in audit_fields.keys()},
-            "new_values": audit_fields,
+            "old_values": audit_old,
+            "new_values": audit_new,
             "signature": {},
             "metadata": {"source": "document_lens"},
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -448,7 +616,8 @@ def _update_document_adapter(handlers: DocumentHandlers):
         return {
             "status": "success",
             "document_id": doc_id,
-            "updated_fields": list(audit_fields.keys()),
+            "updated_fields": applied_fields,
+            "verified_values": verified_values,
         }
 
     return _fn

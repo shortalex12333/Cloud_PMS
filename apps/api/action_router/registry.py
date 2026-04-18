@@ -3202,10 +3202,45 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id"],
+        # HOD-only — matches document mutation gating (upload/update/delete).
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        # Backend dispatcher delegates to add_to_handover handler which writes
+        # a new handover_items row. yacht_id + entity_id + entity_type + summary
+        # are the minimum it needs; section is optional.
+        required_fields=["yacht_id", "document_id", "summary"],
         domain="handover",
         variant=ActionVariant.MUTATE,
+        search_keywords=["handover", "document", "shift", "add", "attach", "log", "brief"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            # document_id is BACKEND_AUTO from the lens context (the user is already
+            # looking at the document) — hidden from the form but required by the handler.
+            FieldMetadata("document_id", FieldClassification.BACKEND_AUTO,
+                          auto_populate_from="document",
+                          description="Source document UUID (doc_metadata.id) — auto-populated from lens context"),
+            # title / doc_type / source_doc_id / link are prefilled, but remain
+            # visible-read-only so the user sees what is being handed over.
+            FieldMetadata("title", FieldClassification.BACKEND_AUTO,
+                          auto_populate_from="document",
+                          description="Document title — auto-populated from filename"),
+            FieldMetadata("doc_type", FieldClassification.BACKEND_AUTO,
+                          auto_populate_from="document",
+                          description="Document type — auto-populated"),
+            FieldMetadata("source_doc_id", FieldClassification.BACKEND_AUTO,
+                          auto_populate_from="document",
+                          description="Source document id copied for provenance"),
+            FieldMetadata("link", FieldClassification.BACKEND_AUTO,
+                          auto_populate_from="document",
+                          description="Storage path for deep-link back to the document"),
+            # User-editable fields:
+            FieldMetadata("section", FieldClassification.OPTIONAL,
+                          options=["Engineering", "Deck", "Interior", "Command"],
+                          description="Target handover section"),
+            FieldMetadata("summary", FieldClassification.REQUIRED,
+                          description="Why this document matters for the next shift"),
+            FieldMetadata("page_numbers", FieldClassification.OPTIONAL,
+                          description="Pages to flag (optional)"),
+        ],
     ),
 
     "add_item_to_purchase": ActionDefinition(

@@ -32,6 +32,11 @@
   border-left:   1px solid var(--border-side);
   box-shadow: 0 0 0 1px rgba(0,0,0,0.50), 0 32px 100px rgba(0,0,0,0.70);
   overflow: hidden;
+  /* Constrain tall popups (e.g. upload_document with many optional fields) so
+     the footer/submit button is never clipped out of the viewport. */
+  max-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
 }
 .popupRead   { max-width: 440px; }
 .popupMutate { max-width: 560px; }
@@ -42,6 +47,7 @@
   align-items: flex-start;
   padding: 20px 24px 16px;
   gap: 12px;
+  flex-shrink: 0;
 }
 .popupHdrText { flex: 1; }
 .popupTitle {
@@ -76,8 +82,8 @@
 }
 
 /* ── Body ── */
-.popupBody     { padding: 0 24px 20px; }
-.popupBodyRead { padding: 0 24px 8px; }
+.popupBody     { padding: 0 24px 20px; overflow-y: auto; flex: 1 1 0; min-height: 0; }
+.popupBodyRead { padding: 0 24px 8px;  overflow-y: auto; flex: 1 1 0; min-height: 0; }
 
 /* ── Divider ── */
 .popupDivider {
@@ -537,8 +543,12 @@
 .pinHiddenInput {
   position: absolute;
   opacity: 0;
-  width: 0;
-  height: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  /* pointer-events must remain enabled so Playwright (and real keyboards after
+     focus) can deliver key events.  The element is invisible to users (0 opacity,
+     1px size) so no UX impact. */
 }
 
 /* L4 — wet signature pad */
@@ -684,11 +694,13 @@
   gap: 8px;
   padding: 16px 24px;
   border-top: 1px solid var(--border-sub);
+  flex-shrink: 0;
 }
 .popupFooterRead {
   padding: 8px 24px 16px;
   display: flex;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 .btnCancel {
   height: 44px;

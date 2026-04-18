@@ -343,15 +343,17 @@
 }
 .splitWrap:hover .splitTooltip { display: block; }
 
-/* Dropdown */
+/* Dropdown — positioning is handled by Radix Popper (side/align/collisionPadding
+   are set on <DropdownMenu.Content>). Do NOT re-introduce `position: absolute`
+   here — Radix needs to own the transform-based positioning for viewport flip. */
 .dropdown {
-  display: none; position: absolute; top: 50px; right: 0;
   background: var(--surface-el); border-radius: 8px;
   border: 1px solid var(--border-chrome);
   box-shadow: var(--shadow-drop);
-  min-width: 200px; padding: 4px; z-index: 30;
+  min-width: 200px; padding: 4px;
+  z-index: 30;
+  outline: none;
 }
-.dropdown.open { display: block; }
 
 .ddItem {
   display: flex; align-items: center; gap: 8px;
@@ -360,11 +362,15 @@
   cursor: pointer; width: 100%; border: none;
   background: none; font-family: var(--font-sans); text-align: left;
   transition: background 60ms; min-height: 44px;
+  outline: none;
 }
-.ddItem:hover { background: var(--surface-hover); }
+.ddItem:hover,
+.ddItem[data-highlighted] { background: var(--surface-hover); }
+.ddItem[data-disabled] { pointer-events: none; }
 .ddItem svg { width: 14px; height: 14px; color: var(--txt3); flex-shrink: 0; }
 .ddItem.danger { color: var(--red); }
 .ddItem.danger svg { color: var(--red); }
+.ddItem.danger[data-highlighted] { background: var(--red-bg, var(--surface-hover)); }
 
 .ddSep { height: 1px; background: var(--border-sub); margin: 4px 8px; }
 
