@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+const API_BASE = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const auth = request.headers.get('Authorization');

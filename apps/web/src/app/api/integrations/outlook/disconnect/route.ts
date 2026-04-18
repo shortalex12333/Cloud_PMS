@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 // Render backend URL
-const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+const RENDER_API_URL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 export async function POST(request: NextRequest) {
   try {

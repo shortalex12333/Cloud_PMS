@@ -8,7 +8,7 @@ const nextConfig = {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
     const isLocalApi = apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1');
     const localDevUrls = (isDev || isLocalApi)
-      ? 'http://127.0.0.1:54321 http://localhost:54321 http://127.0.0.1:8000 http://localhost:8000 '
+      ? 'http://127.0.0.1:54321 http://localhost:54321 http://127.0.0.1:8000 http://localhost:8000 http://127.0.0.1:8010 http://localhost:8010 '
       : '';
 
     return [

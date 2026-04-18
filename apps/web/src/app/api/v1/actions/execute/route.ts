@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+const RENDER_API_URL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 interface ActionResponse {
   success: boolean;
