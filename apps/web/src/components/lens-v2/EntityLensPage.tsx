@@ -153,7 +153,11 @@ export function EntityLensPage({
   const safeExecute = React.useCallback(
     async (actionId: string, payload: Record<string, unknown> = {}): Promise<ActionResult> => {
       const actionMeta = lens.getAction(actionId);
-      if (actionMeta?.requires_signature) {
+      // Only intercept if the action requires a signature AND the payload does
+      // not already contain one.  When ActionPopup collects the PIN it embeds
+      // `signature: { method: 'pin', pin }` in the values it passes to onSubmit,
+      // so we must let those calls through directly instead of re-intercepting.
+      if (actionMeta?.requires_signature && payload.signature === undefined) {
         setPendingSignature({ action: actionMeta, payload });
         return { success: false, message: 'Awaiting signature' };
       }

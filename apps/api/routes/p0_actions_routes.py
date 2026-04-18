@@ -1159,6 +1159,12 @@ async def execute_action(
                         )
                         _summary = _ACTION_SUMMARY.get(action) or action.replace("_", " ").capitalize()
                         _entity_name = result.get("entity_name") if isinstance(result, dict) else None
+                        # HMAC01 Option 1: if the caller supplied a signature
+                        # payload (SIGNED variant actions), propagate it into
+                        # ledger_events.metadata. Non-signed mutations still
+                        # land here with metadata={} as before.
+                        _sig = payload.get("signature") if isinstance(payload, dict) else None
+                        _ledger_metadata = {"signature": _sig} if _sig else None
                         ledger_event = build_ledger_event(
                             yacht_id=yacht_id,
                             user_id=user_id,
@@ -1169,6 +1175,7 @@ async def execute_action(
                             user_role=user_context.get("role"),
                             change_summary=_summary,
                             entity_name=_entity_name,
+                            metadata=_ledger_metadata,
                         )
                         db_client.table("ledger_events").insert(ledger_event).execute()
                     except Exception as _ledger_err:
