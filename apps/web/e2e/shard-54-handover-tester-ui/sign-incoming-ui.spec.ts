@@ -186,10 +186,11 @@ async function seedCompleteExport(page: Page): Promise<{ exportId: string; outgo
 
 /** Archive a seeded export — handover_exports has DENY DELETE, so flip review_status. */
 async function archiveExport(exportId: string): Promise<void> {
-  await tenantDb()
+  const { error } = await tenantDb()
     .from('handover_exports')
     .update({ review_status: 'archived' })
     .eq('id', exportId);
+  if (error) throw new Error(`archiveExport(${exportId}) error: ${error.message}`);
 }
 
 // Track seeds for teardown.
@@ -420,11 +421,12 @@ test.describe('sign_incoming UI — wire walk', () => {
     // contains a SIGNED badge (green "Signed" label rendered by
     // SignatureColumn when slot is populated) — and we DB-verify the
     // incoming_signed_at is now set so we know the UI is showing real data.
-    const { data: row } = await tenantDb()
+    const { data: row, error: rowErr } = await tenantDb()
       .from('handover_exports')
       .select('incoming_signed_at, incoming_user_id')
       .eq('id', exportId)
       .single();
+    if (rowErr) throw new Error(`U5 handover_exports query error: ${rowErr.message}`);
     expect(row).toBeTruthy();
     expect(typeof row!.incoming_signed_at).toBe('string');
 
