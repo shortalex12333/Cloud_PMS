@@ -533,12 +533,6 @@ const COMMUNICATE_STATUS_ACTIONS: Record<string, MicroAction> = {
 // ============================================================================
 
 const COMPLY_AUDIT_ACTIONS: Record<string, MicroAction> = {
-  // TODO(hor-cleanup): The three legacy HoR micro-actions (view_hours_of_rest,
-  // update_hours_of_rest, export_hours_of_rest) were removed from the backend
-  // action registry. They targeted a non-existent `hours_of_rest` table with
-  // scalar rest_hours/work_hours columns. Callers should migrate to the
-  // Crew Lens v3 actions: get_hours_of_rest / upsert_hours_of_rest (which use
-  // `pms_hours_of_rest` with work_periods/rest_periods JSONB arrays).
   view_compliance_status: {
     action_name: 'view_compliance_status',
     label: 'Check Compliance',

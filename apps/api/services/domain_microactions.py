@@ -59,11 +59,8 @@ DOMAIN_MICROACTIONS: Dict[tuple, List[MicroactionDef]] = {
     # =========================================================================
     # HOURS OF REST
     # =========================================================================
-    # TODO(hor-cleanup): view_hours_of_rest / update_hours_of_rest /
-    # export_hours_of_rest were removed from the action registry. They
-    # hit a non-existent `hours_of_rest` table with scalar columns. Use
-    # get_hours_of_rest / upsert_hours_of_rest (Crew Lens v3) instead —
-    # those target pms_hours_of_rest with JSONB work_periods.
+    # view_hours_of_rest / update_hours_of_rest / export_hours_of_rest removed —
+    # use get_hours_of_rest / upsert_hours_of_rest (Crew Lens v3, pms_hours_of_rest).
     ('hours_of_rest', 'READ'): [
         MicroactionDef(
             action='get_hours_of_rest',
