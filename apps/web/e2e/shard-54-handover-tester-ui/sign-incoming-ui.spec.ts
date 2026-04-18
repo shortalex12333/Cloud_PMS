@@ -184,11 +184,24 @@ async function seedCompleteExport(page: Page): Promise<{ exportId: string; outgo
   return { exportId: export_id, outgoingUserId: captainSession.user.id };
 }
 
-/** Archive a seeded export — handover_exports has DENY DELETE, so flip review_status. */
+/** Archive a seeded export — handover_exports has DENY DELETE, and review_status has a CHECK
+ *  constraint that forbids 'archived'. Write a metadata marker instead. */
 async function archiveExport(exportId: string): Promise<void> {
-  const { error } = await tenantDb()
+  const db = tenantDb();
+  const { data: row } = await db
     .from('handover_exports')
-    .update({ review_status: 'archived' })
+    .select('metadata')
+    .eq('id', exportId)
+    .single();
+  const merged = {
+    ...(row?.metadata ?? {}),
+    test_archived: true,
+    test_archived_at: new Date().toISOString(),
+    test_run: 'handover04-sign-incoming',
+  };
+  const { error } = await db
+    .from('handover_exports')
+    .update({ metadata: merged })
     .eq('id', exportId);
   if (error) throw new Error(`archiveExport(${exportId}) error: ${error.message}`);
 }
