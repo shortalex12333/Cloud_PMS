@@ -69,30 +69,10 @@ function authHeaders(token: string) {
 
 const SEEDED_IDS: string[] = [];
 test.afterAll(async () => {
+  // handover_exports has DENY DELETE, no metadata column, and no safe-to-overwrite
+  // textual column. Log orphan ids — a separate sweep script owns cleanup.
   for (const id of SEEDED_IDS) {
-    try {
-      // handover_exports has DENY DELETE and review_status has a CHECK constraint that
-      // forbids 'archived'. Write a metadata marker instead.
-      const db = tenantDb();
-      const { data: row } = await db
-        .from('handover_exports')
-        .select('metadata')
-        .eq('id', id)
-        .single();
-      const merged = {
-        ...(row?.metadata ?? {}),
-        test_archived: true,
-        test_archived_at: new Date().toISOString(),
-        test_run: 'handover04-sign-incoming',
-      };
-      const { error } = await db
-        .from('handover_exports')
-        .update({ metadata: merged })
-        .eq('id', id);
-      if (error) throw new Error(`archive error: ${error.message}`);
-    } catch (e) {
-      console.warn(`[afterAll] archive ${id}: ${e}`);
-    }
+    console.log(`[afterAll] orphan handover_exports row ${id} (handover04-sign-incoming)`);
   }
 });
 
