@@ -2215,15 +2215,18 @@ async def sign_incoming_route(
     method: str = "typed",
     auth: dict = Depends(get_authenticated_user)
 ):
-    """Incoming user countersigns the export."""
+    """Incoming crew acknowledges the handover.
+
+    Per handover.md role matrix (row 'Sign incoming (acknowledge)'): any authenticated
+    user on the yacht may acknowledge a handover addressed to them. Acknowledgement is
+    receipt, not review — yacht_id scoping is already enforced by `auth` dependency.
+    """
     yacht_id = auth["yacht_id"]
     user_id = auth["user_id"]
     user_role = auth.get("role")
 
-    # Require officer+ role
-    officer_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
-    if user_role not in officer_roles:
-        raise HTTPException(status_code=403, detail=f"Requires officer+ role. Your role: {user_role}")
+    # No role gate: any authenticated user on the yacht can acknowledge receipt of a
+    # handover. Review/approval gating happens at countersign (separate endpoint).
 
     handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
     _handover_wf = handlers.get("handover_workflow_handlers")

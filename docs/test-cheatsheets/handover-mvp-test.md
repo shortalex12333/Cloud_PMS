@@ -288,7 +288,7 @@ certificate: add_to_handover ✓
 
 | What | Status | Why |
 |---|---|---|
-| **Incoming crew acknowledgment (3rd sign)** | Not wired in UI | DB columns exist (`incoming_user_id`, `incoming_signed_at`). Backend route exists (`/sign/incoming`). No frontend button for it yet. |
+| **Incoming crew acknowledgment (3rd sign)** | In-flight on `feat/handover04-incoming-sign` | Incoming acknowledgment writes directly to `handover_exports` (`incoming_signature`, `incoming_signed_at`, `incoming_user_id`, `incoming_acknowledged_critical`, `incoming_comments`, `incoming_role`) via POST `/v1/handover/export/{id}/sign/incoming`. `handover_exports` is the single source of truth for all three signatures — the earlier `handover_signoffs` table is deprecated and unused. UI Acknowledge button being added in this branch. |
 | **PDF export** | `window.print()` only | Works but uses browser print dialog. No server-side PDF generation. WeasyPrint is installed in the microservice — could be wired. |
 | **Vessel-level handover** | Not built | Only crew-level (scoped to one user's items). Vessel-level would pull all crew + certs + warranties. Separate scope. |
 | **Incoming user selector** | Not built | When exporting, no dropdown to nominate the replacement crew member. Currently implicit. |
