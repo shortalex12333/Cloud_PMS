@@ -38,7 +38,7 @@ export function EntityDetailOverlay({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" data-testid="entity-detail-overlay">
       {/* Backdrop - 10% visibility of list behind */}
       <div
         className="absolute inset-0 bg-black/90"

@@ -258,6 +258,11 @@ async def delete_document(
     result = await _delegate_to_doc_handler("delete_document", db_client, yacht_id, user_id, payload)
     if isinstance(result, dict) and result.get("status") != "error":
         try:
+            # HMAC01 Option 1: SIGNED actions MUST propagate the signature payload
+            # into ledger_events.metadata so the receipt layer can prove who
+            # approved the destructive action. Without this, the ledger row
+            # records the mutation but not the PIN/TOTP evidence.
+            sig_metadata = payload.get("signature") or {}
             ledger_event = build_ledger_event(
                 yacht_id=yacht_id,
                 user_id=user_id,
@@ -267,6 +272,7 @@ async def delete_document(
                 action="delete_document",
                 user_role=user_context.get("role"),
                 change_summary=f"Document deleted: reason={payload.get('reason', '')}",
+                metadata={"signature": sig_metadata} if sig_metadata else None,
             )
             db_client.table("ledger_events").insert(ledger_event).execute()
         except Exception as ledger_err:

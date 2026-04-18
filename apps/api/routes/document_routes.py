@@ -21,6 +21,8 @@ from datetime import datetime
 import logging
 import os
 import uuid
+import io
+import zipfile
 
 from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
@@ -706,6 +708,7 @@ async def upload_document(
         'storage_bucket': DOCUMENTS_BUCKET,
         'content_type': content_type,
         'size_bytes': size_bytes,
+        'uploaded_by': user_id,
         'is_seed': False,
     }
     # Optional columns — only add if the caller supplied them.
@@ -842,4 +845,387 @@ async def upload_document(
         filename=filename,
         size_bytes=size_bytes,
         content_type=content_type,
+    )
+
+
+# ============================================================================
+# POST /v1/documents/import — bulk zip import for onboarding
+# ============================================================================
+# Accepts a .zip file, unzips in-memory, uploads each entry to Supabase Storage
+# under {yacht_id}/documents/{doc_id}/{filename}, and inserts a row into
+# doc_metadata per file. The F2 trigger (trg_doc_metadata_extraction_enqueue)
+# handles downstream extraction/embedding per row.
+#
+# Compensating rollback: on any mid-batch failure, every blob uploaded so far
+# AND every doc_metadata row stamped with the same import_batch_id is deleted
+# before returning 500.
+#
+# Bounds:
+#   - 500 MB total uncompressed
+#   - 2,000 files per archive
+#   - 15 MB per file (matches single-upload cap)
+#
+# Roles: captain, manager, chief_engineer only (onboarding ops).
+# ============================================================================
+
+IMPORT_ROLES = ['captain', 'manager', 'chief_engineer']
+IMPORT_MAX_TOTAL_BYTES = 500 * 1024 * 1024  # 500 MB uncompressed
+IMPORT_MAX_FILES = 2000
+IMPORT_MAX_PER_FILE_BYTES = 15 * 1024 * 1024  # 15 MB per file
+# MIME types allowed inside a zip — superset of single-upload (onboarding
+# often has csv, json, yaml metadata alongside the real docs).
+IMPORT_ACCEPTED_MIME_PREFIX = (
+    'application/pdf',
+    'image/',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument',
+    'application/vnd.ms-',
+    'text/',
+    'application/json',
+    'application/xml',
+    'application/zip',
+    'application/octet-stream',
+)
+
+
+def _guess_content_type(filename: str) -> str:
+    """Lightweight extension → MIME guess for zip entries (no python-magic dep)."""
+    lf = filename.lower()
+    if lf.endswith('.pdf'):
+        return 'application/pdf'
+    if lf.endswith(('.jpg', '.jpeg')):
+        return 'image/jpeg'
+    if lf.endswith('.png'):
+        return 'image/png'
+    if lf.endswith('.heic'):
+        return 'image/heic'
+    if lf.endswith('.webp'):
+        return 'image/webp'
+    if lf.endswith('.tiff') or lf.endswith('.tif'):
+        return 'image/tiff'
+    if lf.endswith('.doc'):
+        return 'application/msword'
+    if lf.endswith('.docx'):
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    if lf.endswith('.xls'):
+        return 'application/vnd.ms-excel'
+    if lf.endswith('.xlsx'):
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    if lf.endswith('.txt') or lf.endswith('.md'):
+        return 'text/plain'
+    if lf.endswith('.csv'):
+        return 'text/csv'
+    if lf.endswith('.json'):
+        return 'application/json'
+    if lf.endswith('.xml'):
+        return 'application/xml'
+    if lf.endswith('.zip'):
+        return 'application/zip'
+    return 'application/octet-stream'
+
+
+class DocumentImportResponse(BaseModel):
+    success: bool
+    batch_id: str
+    imported: int
+    failed: List[dict]
+    total_size_bytes: int
+
+
+@router.post("/import", response_model=DocumentImportResponse)
+async def import_documents(
+    zipfile_: UploadFile = File(..., alias="zipfile",
+                                description="Zip archive of documents (≤500 MB, ≤2000 files)"),
+    doc_type_default: Optional[str] = Form(None,
+                                           description="Default doc_type applied to every file"),
+    system_tag_default: Optional[str] = Form(None,
+                                             description="Default system_type applied to every file"),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
+    auth: dict = Depends(get_authenticated_user),
+):
+    """Bulk import documents from a zip archive.
+
+    Writes one doc_metadata row per file (stamped with a shared import_batch_id),
+    uploads the blob to Supabase Storage, and lets the F2 trigger enqueue
+    extraction. Emits ONE ledger_events + ONE pms_audit_log for the whole batch.
+    """
+    yacht_id = resolve_yacht_id(auth, yacht_id)
+    user_id = auth['user_id']
+    user_role = auth.get('role', '')
+
+    # -----------------------------------------------------------------------
+    # Role gate
+    # -----------------------------------------------------------------------
+    if user_role not in IMPORT_ROLES:
+        logger.warning(
+            f"[documents/import] Forbidden: role={user_role} user={user_id[:8] if user_id else 'unknown'}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Insufficient permissions to bulk-import documents (role '{user_role}' not in captain/manager/chief_engineer)"
+        )
+
+    # -----------------------------------------------------------------------
+    # Read zip bytes + validate
+    # -----------------------------------------------------------------------
+    try:
+        zip_bytes = await zipfile_.read()
+    except Exception as e:
+        logger.error(f"[documents/import] Failed to read zip stream: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to read uploaded zip"
+        )
+
+    if not zip_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded zip is empty"
+        )
+
+    if len(zip_bytes) > IMPORT_MAX_TOTAL_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Zip exceeds maximum size of {IMPORT_MAX_TOTAL_BYTES // (1024 * 1024)} MB"
+        )
+
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(zip_bytes), 'r')
+    except zipfile.BadZipFile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is not a valid zip archive"
+        )
+
+    # -----------------------------------------------------------------------
+    # Bound-check member count and cumulative uncompressed size BEFORE reading
+    # any bytes (zip bomb guard).
+    # -----------------------------------------------------------------------
+    members = [m for m in zf.infolist() if not m.is_dir()]
+    if len(members) > IMPORT_MAX_FILES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Zip contains {len(members)} files; limit is {IMPORT_MAX_FILES}"
+        )
+    if not members:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Zip contains no files"
+        )
+
+    total_uncompressed = sum(m.file_size for m in members)
+    if total_uncompressed > IMPORT_MAX_TOTAL_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Zip uncompressed size {total_uncompressed} exceeds limit "
+                   f"{IMPORT_MAX_TOTAL_BYTES}"
+        )
+    for m in members:
+        if m.file_size > IMPORT_MAX_PER_FILE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File '{m.filename}' ({m.file_size} bytes) exceeds per-file "
+                       f"limit of {IMPORT_MAX_PER_FILE_BYTES} bytes"
+            )
+
+    supabase = _get_tenant_client(auth['tenant_key_alias'])
+    batch_id = str(uuid.uuid4())
+    uploaded_blobs: List[str] = []
+    inserted_doc_ids: List[str] = []
+    failed: List[dict] = []
+    imported_bytes = 0
+
+    # -----------------------------------------------------------------------
+    # Process each entry. On any exception we break out and run compensating
+    # delete of everything committed so far.
+    # -----------------------------------------------------------------------
+    try:
+        for m in members:
+            original_path = m.filename
+            # Skip macOS resource forks and hidden files at the top level
+            base = os.path.basename(original_path)
+            if not base or base.startswith('.') or '__MACOSX' in original_path:
+                continue
+
+            try:
+                with zf.open(m) as fh:
+                    file_bytes = fh.read()
+            except Exception as e:
+                failed.append({
+                    "path": original_path,
+                    "error": f"read_failed: {e}",
+                })
+                continue
+
+            if len(file_bytes) == 0:
+                failed.append({"path": original_path, "error": "empty_file"})
+                continue
+
+            content_type = _guess_content_type(base)
+            if not content_type.startswith(IMPORT_ACCEPTED_MIME_PREFIX):
+                failed.append({"path": original_path, "error": f"unsupported_mime:{content_type}"})
+                continue
+
+            doc_id = str(uuid.uuid4())
+            safe_filename = sanitize_storage_filename(base)
+            storage_path = f"{yacht_id}/documents/{doc_id}/{safe_filename}"
+
+            # Upload blob
+            try:
+                supabase.storage.from_(DOCUMENTS_BUCKET).upload(
+                    path=storage_path,
+                    file=file_bytes,
+                    file_options={
+                        'content-type': content_type,
+                        'upsert': 'false',
+                    },
+                )
+            except Exception as e:
+                failed.append({"path": original_path, "error": f"storage_failed: {e}"})
+                continue
+            uploaded_blobs.append(storage_path)
+
+            # Insert doc_metadata row. is_seed explicitly FALSE (column default
+            # is TRUE — would hide the row from v_documents_enriched).
+            row = {
+                'id': doc_id,
+                'yacht_id': yacht_id,
+                'source': 'bulk_import',
+                'filename': safe_filename,
+                'original_path': original_path,
+                'storage_path': storage_path,
+                'storage_bucket': DOCUMENTS_BUCKET,
+                'content_type': content_type,
+                'size_bytes': len(file_bytes),
+                'uploaded_by': user_id,
+                'import_batch_id': batch_id,
+                'is_seed': False,
+            }
+            if doc_type_default:
+                row['doc_type'] = doc_type_default
+            if system_tag_default:
+                row['system_type'] = system_tag_default
+
+            try:
+                ins = supabase.table('doc_metadata').insert(row).execute()
+                if not ins.data:
+                    raise ValueError("insert returned no data")
+                inserted_doc_ids.append(ins.data[0].get('id', doc_id))
+                imported_bytes += len(file_bytes)
+            except Exception as e:
+                failed.append({"path": original_path, "error": f"db_insert_failed: {e}"})
+                # The blob is orphaned — roll it back individually so the
+                # batch rollback doesn't have to retry it.
+                try:
+                    supabase.storage.from_(DOCUMENTS_BUCKET).remove([storage_path])
+                    uploaded_blobs.remove(storage_path)
+                except Exception as rollback_err:
+                    logger.error(
+                        f"[documents/import] per-file blob rollback failed: "
+                        f"path={storage_path} err={rollback_err}"
+                    )
+
+        # If NOTHING landed, treat the whole batch as a failure so the caller
+        # sees a 4xx rather than a success with imported=0.
+        if not inserted_doc_ids:
+            raise RuntimeError("No files imported; all entries failed")
+
+    except Exception as batch_err:
+        # -------------------------------------------------------------------
+        # Compensating rollback: delete every blob and every doc_metadata row
+        # stamped with this batch_id.
+        # -------------------------------------------------------------------
+        logger.error(
+            f"[documents/import] Batch failed — rolling back. "
+            f"batch={batch_id} imported_so_far={len(inserted_doc_ids)} err={batch_err}"
+        )
+        if uploaded_blobs:
+            try:
+                supabase.storage.from_(DOCUMENTS_BUCKET).remove(uploaded_blobs)
+            except Exception as rb_err:
+                logger.error(f"[documents/import] storage rollback failed: {rb_err}")
+        try:
+            supabase.table('doc_metadata').delete().eq(
+                'yacht_id', yacht_id
+            ).eq('import_batch_id', batch_id).execute()
+        except Exception as db_rb_err:
+            logger.error(f"[documents/import] doc_metadata rollback failed: {db_rb_err}")
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Bulk import failed: {batch_err}"
+        )
+
+    # -----------------------------------------------------------------------
+    # ONE audit log + ONE ledger event for the whole batch
+    # -----------------------------------------------------------------------
+    zip_basename = zipfile_.filename or 'import.zip'
+    imported_count = len(inserted_doc_ids)
+
+    try:
+        supabase.table('pms_audit_log').insert({
+            'yacht_id': yacht_id,
+            'entity_type': 'document_batch',
+            'entity_id': batch_id,
+            'action': 'documents_bulk_import',
+            'user_id': user_id,
+            'old_values': None,
+            'new_values': {
+                'imported': imported_count,
+                'failed_count': len(failed),
+                'total_bytes': imported_bytes,
+                'zip_filename': zip_basename,
+                'doc_type_default': doc_type_default,
+                'system_tag_default': system_tag_default,
+            },
+            'signature': {
+                'timestamp': datetime.utcnow().isoformat(),
+                'action_version': 'M1',
+                'user_role': user_role,
+                'source': 'bulk_import',
+            },
+            'metadata': {
+                'source': 'bulk_import',
+                'route': '/v1/documents/import',
+                'batch_id': batch_id,
+            },
+            'created_at': datetime.utcnow().isoformat(),
+        }).execute()
+    except Exception as audit_err:
+        logger.warning(f"[documents/import] audit log insert failed (non-fatal): {audit_err}")
+
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id,
+            user_id=user_id,
+            event_type="import",
+            entity_type="document_batch",
+            entity_id=batch_id,
+            action="documents_bulk_import",
+            user_role=user_role,
+            change_summary=f"Imported {imported_count} files from {zip_basename}",
+            metadata={
+                'batch_id': batch_id,
+                'imported': imported_count,
+                'failed_count': len(failed),
+                'total_bytes': imported_bytes,
+            },
+        )
+        supabase.table('ledger_events').insert(ledger_event).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[documents/import] ledger insert failed (non-fatal): {ledger_err}")
+
+    logger.info(
+        f"[documents/import] OK: batch={batch_id[:8]} yacht={yacht_id[:8]} "
+        f"imported={imported_count} failed={len(failed)} bytes={imported_bytes} "
+        f"user={user_id[:8] if user_id else 'unknown'} role={user_role}"
+    )
+
+    return DocumentImportResponse(
+        success=True,
+        batch_id=batch_id,
+        imported=imported_count,
+        failed=failed,
+        total_size_bytes=imported_bytes,
     )
