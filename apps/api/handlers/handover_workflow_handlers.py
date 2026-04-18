@@ -302,6 +302,11 @@ class HandoverWorkflowHandlers:
 
         # Update export record with workflow fields
         try:
+            # DEPRECATED: `status` column retired as state-machine driver (PR #642).
+            # `review_status` is the SSOT. The write below is kept only because
+            # `sign_outgoing` still gates on `status == 'pending_outgoing'` until
+            # the twin /submit+/countersign vs /sign/outgoing+/sign/incoming paths
+            # are consolidated (task T4). Do not rely on this value in new code.
             self.db.table("handover_exports").update({
                 "document_hash": document_hash,
                 "content_hash": content_hash,
@@ -367,7 +372,9 @@ class HandoverWorkflowHandlers:
         2. Require step-up re-auth (password/OTP) - handled by caller
         3. Create signature envelope: { document_hash, export_id, user_id, role, timestamp, method }
         4. Store in handover_exports: outgoing_user_id, outgoing_signed_at, outgoing_notes
-        5. Update status='pending_incoming'
+        5. (Retired in PR #642) The legacy `status` column used to be set to
+           'pending_incoming' here. It is no longer written — `review_status`
+           plus `outgoing_signed_at` / `incoming_signed_at` drive the state.
         6. Send notification to incoming user
 
         Returns signature metadata
@@ -384,6 +391,9 @@ class HandoverWorkflowHandlers:
 
         export = result.data
 
+        # DEPRECATED: reads legacy `status` column. `review_status` is the SSOT
+        # (PR #642). Kept until task T4 consolidates this twin path with
+        # /submit + /countersign. New code must not gate on `status`.
         if export["status"] != "pending_outgoing":
             return {
                 "status": "error",
@@ -418,13 +428,19 @@ class HandoverWorkflowHandlers:
         signatures = export.get("signatures") or {}
         signatures["outgoing"] = signature_envelope
 
+        # DEPRECATED: `status` column retired as state-machine driver (PR #642).
+        # `review_status` is the SSOT. The legacy transition
+        # `status: pending_outgoing -> pending_incoming` is no longer written here.
+        # The dual sign/{outgoing,incoming} path is scheduled for consolidation with
+        # the /submit + /countersign path (see task T4). Until then, sign_outgoing
+        # records only the outgoing signature metadata; downstream readers must use
+        # `review_status + outgoing_signed_at + incoming_signed_at`.
         self.db.table("handover_exports").update({
             "outgoing_user_id": user_id,
             "outgoing_role": user_role,
             "outgoing_signed_at": now.isoformat(),
             "outgoing_comments": note,
             "signatures": json.dumps(signatures),
-            "status": "pending_incoming"
         }).eq("id", export_id).execute()
 
         # Notify incoming user
@@ -761,21 +777,45 @@ class HandoverWorkflowHandlers:
         """
         Get handovers pending signature by this user.
 
-        Filters:
-        - role_filter='outgoing': status='pending_outgoing'
-        - role_filter='incoming': status='pending_incoming'
-        - No filter: all pending
+        Filters (reads `review_status` + `incoming_signed_at` — the real state
+        machine. PR #642 retired the legacy `status` column as state driver):
 
-        Returns list of exports with metadata
+        - role_filter='outgoing': awaiting outgoing (user) signature.
+              review_status IN ('pending_review', 'pending_hod_signature')
+              AND outgoing_signed_at IS NULL
+        - role_filter='incoming': HOD-complete, waiting for incoming ack.
+              review_status = 'complete' AND incoming_signed_at IS NULL
+        - No filter: anything not fully acknowledged (review_status != 'complete'
+              OR incoming_signed_at IS NULL).
+
+        Legacy `status` mappings retired here:
+            status='pending_outgoing'  -> review_status='pending_review'
+                                          AND outgoing_signed_at IS NULL
+            status='pending_incoming'  -> review_status='complete'
+                                          AND incoming_signed_at IS NULL
+            status='completed'         -> review_status='complete'
+                                          AND incoming_signed_at IS NOT NULL
+
+        Returns list of exports with metadata.
         """
         query = self.db.table("handover_exports").select("*").eq("yacht_id", yacht_id)
 
         if role_filter == "outgoing":
-            query = query.eq("status", "pending_outgoing")
+            # Awaiting outgoing/user signature — the export was generated but the
+            # author has not yet signed. `outgoing_signed_at IS NULL` filters by
+            # absence of the outgoing signature; review_status is pre-complete.
+            query = (
+                query.in_("review_status", ["pending_review", "pending_hod_signature"])
+                .is_("outgoing_signed_at", "null")
+            )
         elif role_filter == "incoming":
-            query = query.eq("status", "pending_incoming")
+            # HOD-complete handover that the incoming crew has not yet acknowledged.
+            query = query.eq("review_status", "complete").is_("incoming_signed_at", "null")
         else:
-            query = query.in_("status", ["pending_outgoing", "pending_incoming"])
+            # Anything still pending anywhere in the chain.
+            query = query.or_(
+                "review_status.neq.complete,incoming_signed_at.is.null"
+            )
 
         result = query.order("created_at", desc=True).execute()
         exports = result.data or []
