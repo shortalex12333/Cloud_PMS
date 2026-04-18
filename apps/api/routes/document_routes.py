@@ -706,6 +706,7 @@ async def upload_document(
         'storage_bucket': DOCUMENTS_BUCKET,
         'content_type': content_type,
         'size_bytes': size_bytes,
+        'is_seed': False,
     }
     # Optional columns — only add if the caller supplied them.
     if title:
