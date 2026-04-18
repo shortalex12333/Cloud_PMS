@@ -192,7 +192,11 @@ async function seedCompleteExport(
 
 /** Archive a seeded export by flipping review_status (no delete — handover_exports DENY DELETE). */
 async function archiveExport(exportId: string): Promise<void> {
-  await tenantDb().from('handover_exports').update({ review_status: 'archived' }).eq('id', exportId);
+  const { error } = await tenantDb()
+    .from('handover_exports')
+    .update({ review_status: 'archived' })
+    .eq('id', exportId);
+  if (error) throw new Error(`archiveExport(${exportId}) error: ${error.message}`);
 }
 
 /** For N4: inject a critical item into edited_content so the sign/incoming handler
@@ -201,11 +205,12 @@ async function archiveExport(exportId: string): Promise<void> {
  *  not a real user action, and the sign_incoming handler only reads the shape. */
 async function markExportAsCritical(exportId: string): Promise<void> {
   const db = tenantDb();
-  const { data } = await db
+  const { data, error: readErr } = await db
     .from('handover_exports')
     .select('edited_content')
     .eq('id', exportId)
     .single();
+  if (readErr) throw new Error(`markExportAsCritical read error: ${readErr.message}`);
   const content = ((data?.edited_content as Record<string, unknown>) ?? {}) as any;
   content.sections = [
     ...(Array.isArray(content.sections) ? content.sections : []),
@@ -216,7 +221,11 @@ async function markExportAsCritical(exportId: string): Promise<void> {
       items: [{ id: 'crit-i-1', content: 'Critical item', priority: 'critical' }],
     },
   ];
-  await db.from('handover_exports').update({ edited_content: content }).eq('id', exportId);
+  const { error: updErr } = await db
+    .from('handover_exports')
+    .update({ edited_content: content })
+    .eq('id', exportId);
+  if (updErr) throw new Error(`markExportAsCritical update error: ${updErr.message}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -290,11 +299,12 @@ test.describe('sign_incoming API — wire walk', () => {
 
     // DB: handover_exports row hydrated
     const db = tenantDb();
-    const { data: row } = await db
+    const { data: row, error: rowErr } = await db
       .from('handover_exports')
       .select('id, incoming_user_id, incoming_signed_at, signoff_complete, review_status')
       .eq('id', exportId)
       .single();
+    if (rowErr) throw new Error(`handover_exports query error: ${rowErr.message}`);
     expect(row).toBeTruthy();
     expect(row!.incoming_user_id).toBe(crewUserId);
     expect(typeof row!.incoming_signed_at).toBe('string');
@@ -307,11 +317,18 @@ test.describe('sign_incoming API — wire walk', () => {
     // AND that the actor row exists. Going for "exactly 4" would be brittle — see
     // handler `_emit_handover_acknowledged_events` which pulls captain/manager users
     // from auth_users_roles at run time.
-    const { data: ledgerRows } = await db
+    // NOTE: ledger_events has NO `actor_id` column. build_ledger_event
+    // (apps/api/routes/handlers/ledger_utils.py) writes only: yacht_id,
+    // user_id, event_type, entity_type, entity_id, action, source_context,
+    // metadata, user_role, change_summary, department, actor_name,
+    // event_category, entity_name, new_state, previous_state, proof_hash.
+    // Actor identity for the emitting-user row lives on `user_id`.
+    const { data: ledgerRows, error: ledgerErr } = await db
       .from('ledger_events')
-      .select('id, action, user_id, actor_id, entity_id, proof_hash')
+      .select('id, action, user_id, entity_id, proof_hash')
       .eq('entity_id', exportId)
       .eq('action', 'handover_acknowledged');
+    if (ledgerErr) throw new Error(`ledger_events query error: ${ledgerErr.message}`);
     expect(ledgerRows).toBeTruthy();
     expect(ledgerRows!.length).toBeGreaterThanOrEqual(2);
     const recipientIds = (ledgerRows as any[]).map((r) => r.user_id);
@@ -322,12 +339,17 @@ test.describe('sign_incoming API — wire walk', () => {
       expect((r.proof_hash as string).length).toBe(64); // sha256 hex
     }
 
-    // Audit: pms_audit_log row for the actor
-    const { data: auditRows } = await db
+    // Audit: pms_audit_log row for the actor.
+    // pms_audit_log INSERT at apps/api/handlers/handover_workflow_handlers.py:705
+    // writes: id, yacht_id, entity_type, entity_id, action, user_id, actor_id,
+    // signature, old_values, new_values, metadata, created_at — so actor_id
+    // is a real column here (unlike ledger_events).
+    const { data: auditRows, error: auditErr } = await db
       .from('pms_audit_log')
       .select('id, action, entity_id, actor_id')
       .eq('entity_id', exportId)
       .eq('action', 'handover_acknowledged');
+    if (auditErr) throw new Error(`pms_audit_log query error: ${auditErr.message}`);
     expect(auditRows).toBeTruthy();
     expect(auditRows!.length).toBeGreaterThanOrEqual(1);
     const actorAudit = (auditRows as any[]).find((r) => r.actor_id === crewUserId);

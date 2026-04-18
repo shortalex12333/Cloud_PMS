@@ -71,10 +71,11 @@ const SEEDED_IDS: string[] = [];
 test.afterAll(async () => {
   for (const id of SEEDED_IDS) {
     try {
-      await tenantDb()
+      const { error } = await tenantDb()
         .from('handover_exports')
         .update({ review_status: 'archived' })
         .eq('id', id);
+      if (error) throw new Error(`archive error: ${error.message}`);
     } catch (e) {
       console.warn(`[afterAll] archive ${id}: ${e}`);
     }
@@ -116,11 +117,12 @@ test.describe('Full 3-signature compliance chain', () => {
 
     // DB: pending_review
     {
-      const { data } = await db
+      const { data, error } = await db
         .from('handover_exports')
         .select('review_status, signoff_complete')
         .eq('id', exportId)
         .single();
+      if (error) throw new Error(`step A query error: ${error.message}`);
       expect(data!.review_status).toBe('pending_review');
     }
 
@@ -155,11 +157,12 @@ test.describe('Full 3-signature compliance chain', () => {
 
     // DB: pending_hod_signature + user_sig populated
     {
-      const { data } = await db
+      const { data, error } = await db
         .from('handover_exports')
         .select('review_status, user_signature, user_signed_at')
         .eq('id', exportId)
         .single();
+      if (error) throw new Error(`step B query error: ${error.message}`);
       expect(data!.review_status).toBe('pending_hod_signature');
       expect(data!.user_signature).toBeTruthy();
       expect(data!.user_signed_at).toBeTruthy();
@@ -195,11 +198,12 @@ test.describe('Full 3-signature compliance chain', () => {
 
     // DB: complete + hod_sig populated
     {
-      const { data } = await db
+      const { data, error } = await db
         .from('handover_exports')
         .select('review_status, hod_signature, hod_signed_at')
         .eq('id', exportId)
         .single();
+      if (error) throw new Error(`step C query error: ${error.message}`);
       expect(data!.review_status).toBe('complete');
       expect(data!.hod_signature).toBeTruthy();
       expect(data!.hod_signed_at).toBeTruthy();
@@ -226,13 +230,14 @@ test.describe('Full 3-signature compliance chain', () => {
 
     // ── Step E: Final DB state — all 3 signatures present ───────────────────
     console.log('[LIFECYCLE] Step E: final DB snapshot');
-    const { data: finalRow } = await db
+    const { data: finalRow, error: finalErr } = await db
       .from('handover_exports')
       .select(
         'review_status, signoff_complete, user_signature, hod_signature, incoming_user_id, incoming_signed_at, signatures',
       )
       .eq('id', exportId)
       .single();
+    if (finalErr) throw new Error(`step E query error: ${finalErr.message}`);
     expect(finalRow).toBeTruthy();
     expect(finalRow!.review_status).toBe('complete');
     expect(finalRow!.signoff_complete).toBe(true);
@@ -250,11 +255,14 @@ test.describe('Full 3-signature compliance chain', () => {
       'handover_acknowledged',
     ];
     for (const action of expectedActions) {
-      const { data: rows } = await db
+      // ledger_events columns from build_ledger_event (ledger_utils.py) —
+      // no actor_id column, user_id holds the emitting user.
+      const { data: rows, error: rowsErr } = await db
         .from('ledger_events')
         .select('id, action, user_id, entity_id')
         .eq('entity_id', exportId)
         .eq('action', action);
+      if (rowsErr) throw new Error(`ledger query (${action}) error: ${rowsErr.message}`);
       expect(rows, `ledger rows for action=${action}`).toBeTruthy();
       expect(
         (rows as any[]).length,
@@ -268,11 +276,12 @@ test.describe('Full 3-signature compliance chain', () => {
     // itself, per the domain model). We assert at least 2 distinct user_ids
     // on the acknowledge cascade (actor + outgoing + captain/manager fan-out).
     {
-      const { data: ackRows } = await db
+      const { data: ackRows, error: ackRowsErr } = await db
         .from('ledger_events')
         .select('user_id')
         .eq('entity_id', exportId)
         .eq('action', 'handover_acknowledged');
+      if (ackRowsErr) throw new Error(`ack fan-out query error: ${ackRowsErr.message}`);
       const distinct = new Set((ackRows as any[]).map((r) => r.user_id));
       expect(
         distinct.size,
