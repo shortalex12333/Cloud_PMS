@@ -22,9 +22,11 @@
  *
  * Cleanup (per CEO archive-not-delete rule):
  *   handover_exports has a DENY DELETE grant; there is no archived_at
- *   column. We flip `review_status='archived'` on every seeded row in
- *   afterAll so seeds don't pollute the queue. Ledger / audit rows are
- *   append-only — we do NOT touch them.
+ *   column, and review_status has a CHECK constraint limiting it to the
+ *   state-machine values (no 'archived'). We write a `test_archived`
+ *   marker into the `metadata` JSONB column on every seeded row in
+ *   afterAll so seeds are filterable without polluting the queue's state
+ *   machine. Ledger / audit rows are append-only — we do NOT touch them.
  */
 
 import { test, expect, generateTestId } from '../rbac-fixtures';
@@ -190,11 +192,25 @@ async function seedCompleteExport(
   return exportId;
 }
 
-/** Archive a seeded export by flipping review_status (no delete — handover_exports DENY DELETE). */
+/** Archive a seeded export by writing a metadata marker (no delete — handover_exports DENY DELETE;
+ *  review_status has a CHECK constraint limiting values to the state-machine set, so we cannot
+ *  mutate it to 'archived'). */
 async function archiveExport(exportId: string): Promise<void> {
-  const { error } = await tenantDb()
+  const db = tenantDb();
+  const { data: row } = await db
     .from('handover_exports')
-    .update({ review_status: 'archived' })
+    .select('metadata')
+    .eq('id', exportId)
+    .single();
+  const merged = {
+    ...(row?.metadata ?? {}),
+    test_archived: true,
+    test_archived_at: new Date().toISOString(),
+    test_run: 'handover04-sign-incoming',
+  };
+  const { error } = await db
+    .from('handover_exports')
+    .update({ metadata: merged })
     .eq('id', exportId);
   if (error) throw new Error(`archiveExport(${exportId}) error: ${error.message}`);
 }
