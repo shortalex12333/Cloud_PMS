@@ -25,7 +25,7 @@ ENTITY_TABLE_MAP = {
     "wo_id": "pms_work_orders",
     "checklist_id": "pms_checklists",
     "document_id": "doc_metadata",
-    "certificate_id": "pms_vessel_certificates",
+    "certificate_id": "v_certificates_enriched",
     "purchase_request_id": "purchase_requests",
 }
 

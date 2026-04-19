@@ -137,7 +137,9 @@ export function CertificateContent() {
   function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean; confirmation_message?: string | null }) {
     const fields = mapActionFields(action as any);
     const sigLevel = getSignatureLevel(action as any);
-    setActionPopupConfig({ actionId: action.action_id, title: action.label, subtitle: action.confirmation_message || undefined, fields, signatureLevel: sigLevel });
+    // Cert domain: use name-attestation (SigL2) instead of PIN (SigL3) — PIN input is ceremony-only (no server-side validation)
+    const certSigLevel: 0|1|2|3|4|5 = sigLevel === 3 ? 2 : sigLevel as 0|1|2|3|4|5;
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, subtitle: action.confirmation_message || undefined, fields, signatureLevel: certSigLevel });
   }
 
   const isRenewable = renewAction !== null && !['revoked'].includes(status);
@@ -218,8 +220,16 @@ export function CertificateContent() {
   const primaryDisabledReason = renewAction?.disabled_reason;
 
   const handlePrimary = React.useCallback(() => {
-    if (renewAction) openActionPopup(renewAction as any);
-  }, [renewAction]);
+    if (!renewAction) return;
+    // "Upload Renewed": open attachment modal first (upload the new cert document),
+    // then open the renew dates popup. Fallback to direct popup if user not loaded.
+    if (user?.yachtId && user?.id) {
+      setPendingRenew(true);
+      setUploadOpen(true);
+    } else {
+      openActionPopup(renewAction as any);
+    }
+  }, [renewAction, user?.yachtId, user?.id]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
   const DANGER_ACTIONS = new Set(['suspend_certificate', 'archive_certificate', 'revoke_certificate']);
@@ -227,6 +237,7 @@ export function CertificateContent() {
 
   const dropdownItems: DropdownItem[] = availableActions
     .filter((a) => a.action_id !== primaryActionId)
+    .filter((a) => !['create_vessel_certificate', 'create_crew_certificate', 'assign_certificate', 'supersede_certificate'].includes(a.action_id))
     .map((a) => ({
       label: a.label,
       onClick: SPECIAL_HANDLERS[a.action_id]
@@ -334,6 +345,8 @@ export function CertificateContent() {
 
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
   const [uploadOpen, setUploadOpen] = React.useState(false);
+  // When true: upload modal was opened from "Upload Renewed" — after close, open renew dates popup
+  const [pendingRenew, setPendingRenew] = React.useState(false);
   const handleNoteSubmit = React.useCallback(
     async (noteText: string) => {
       const result = await executeAction('add_certificate_note', { note_text: noteText });
@@ -454,14 +467,28 @@ export function CertificateContent() {
       {user?.yachtId && user?.id && (
         <AttachmentUploadModal
           open={uploadOpen}
-          onClose={() => setUploadOpen(false)}
+          onClose={() => {
+            setUploadOpen(false);
+            // If opened from "Upload Renewed", proceed to renew dates popup even if upload was skipped
+            if (pendingRenew) {
+              setPendingRenew(false);
+              if (renewAction) openActionPopup(renewAction as any);
+            }
+          }}
           entityType="certificate"
           entityId={entityId}
           bucket="pms-certificate-documents"
           category="certificate"
           yachtId={user.yachtId}
           userId={user.id}
-          onComplete={() => { setUploadOpen(false); refetch(); }}
+          onComplete={() => {
+            setUploadOpen(false);
+            refetch();
+            if (pendingRenew) {
+              setPendingRenew(false);
+              if (renewAction) openActionPopup(renewAction as any);
+            }
+          }}
         />
       )}
     </>

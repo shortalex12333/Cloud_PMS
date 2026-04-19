@@ -1581,7 +1581,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     "update_certificate": ActionDefinition(
         action_id="update_certificate",
         label="Update Certificate",
-        endpoint="/v1/certificates/update",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         # Full 8-HOD union; handler-level _cert_mutation_gate narrows by cert
@@ -1629,7 +1629,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     "link_document_to_certificate": ActionDefinition(
         action_id="link_document_to_certificate",
         label="Link Document to Certificate",
-        endpoint="/v1/certificates/link-document",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         # Any department HOD can attach evidence to a cert in their remit.
@@ -1640,16 +1640,27 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             "certificate_id",
             "document_id",
         ],
+        optional_fields=[],
         schema_file=None,
         domain="certificates",
         variant=ActionVariant.MUTATE,
         search_keywords=["link", "attach", "upload", "document", "doc", "file", "pdf", "certificate", "cert"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("certificate_id", FieldClassification.CONTEXT),
+            FieldMetadata(
+                "document_id",
+                FieldClassification.REQUIRED,
+                description="Document",
+                lookup_required=True,
+            ),
+        ],
     ),
 
     "supersede_certificate": ActionDefinition(
         action_id="supersede_certificate",
         label="Supersede Certificate",
-        endpoint="/v1/certificates/supersede",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["captain", "manager"],  # Manager roles for SIGNED action

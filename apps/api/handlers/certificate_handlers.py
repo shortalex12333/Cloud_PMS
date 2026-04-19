@@ -666,8 +666,8 @@ class CertificateHandlers:
             icon="history"
         ))
 
-        # Link document (if not already linked)
-        if not cert.get("document_id"):
+        # Link document (vessel certs only — documents don't apply to crew cert domain)
+        if domain == "vessel" and not cert.get("document_id"):
             actions.append(AvailableAction(
                 action_id="link_document_to_certificate",
                 label="Link Document",
@@ -676,16 +676,6 @@ class CertificateHandlers:
             ))
 
         # Status-based actions
-        if status == "active":
-            # Supersede action (SIGNED - requires confirmation and signature)
-            actions.append(AvailableAction(
-                action_id="supersede_certificate",
-                label="Supersede",
-                variant="MUTATE",
-                icon="refresh-cw",
-                requires_signature=True,
-                confirmation_message="This will mark the current certificate as superseded. This action is logged and cannot be undone."
-            ))
 
         if status not in ("superseded", "revoked"):
             # Update action
@@ -704,14 +694,6 @@ class CertificateHandlers:
                 variant="MUTATE",
                 icon="refresh-cw"
             ))
-
-        # Assign responsible officer
-        actions.append(AvailableAction(
-            action_id="assign_certificate",
-            label="Assign Officer",
-            variant="MUTATE",
-            icon="user-check"
-        ))
 
         # Add note (always available)
         actions.append(AvailableAction(
@@ -823,12 +805,12 @@ def _create_vessel_certificate_adapter(handlers: CertificateHandlers):
             "yacht_id": yacht_id,
             "certificate_type": params["certificate_type"],
             "certificate_name": params["certificate_name"],
-            "certificate_number": params.get("certificate_number"),
+            "certificate_number": params.get("certificate_number") or None,
             "issuing_authority": params["issuing_authority"],
-            "issue_date": params.get("issue_date"),
-            "expiry_date": params.get("expiry_date"),
-            "last_survey_date": params.get("last_survey_date"),
-            "next_survey_due": params.get("next_survey_due"),
+            "issue_date": params.get("issue_date") or None,
+            "expiry_date": params.get("expiry_date") or None,
+            "last_survey_date": params.get("last_survey_date") or None,
+            "next_survey_due": params.get("next_survey_due") or None,
             "status": "valid",
             "document_id": params.get("document_id"),
             "properties": params.get("properties") or {},
