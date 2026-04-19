@@ -1640,7 +1640,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             "certificate_id",
             "document_id",
         ],
-        optional_fields=[],
         schema_file=None,
         domain="certificates",
         variant=ActionVariant.MUTATE,
