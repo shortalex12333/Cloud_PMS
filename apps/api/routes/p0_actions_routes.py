@@ -853,9 +853,6 @@ async def execute_action(
         "upload_photo": ["entity_type", "entity_id", "photo_url"],
         "record_voice_note": ["entity_type", "entity_id"],
         # Tier 6 - Compliance/HoR
-        "view_hours_of_rest": ["crew_id"],
-        "update_hours_of_rest": ["crew_id", "date", "hours"],
-        "export_hours_of_rest": ["crew_id"],
         "view_compliance_status": [],
         "tag_for_survey": ["equipment_id"],
         # Hours of Rest Actions (Crew Lens v3 - Action Registry)

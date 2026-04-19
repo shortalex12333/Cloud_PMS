@@ -2315,27 +2315,6 @@ async def _view_smart_summary(params: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-async def _view_hours_of_rest(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Wrapper for P3 view_hours_of_rest handler."""
-    handlers = _get_p3_handlers()
-    return await handlers.view_hours_of_rest_execute(
-        crew_id=params.get("crew_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        date_from=params.get("date_from"),
-        date_to=params.get("date_to")
-    )
-
-
-async def _export_hours_of_rest(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Wrapper for P3 export_hours_of_rest handler."""
-    handlers = _get_p3_handlers()
-    return await handlers.export_hours_of_rest_execute(
-        crew_id=params.get("crew_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        format=params.get("format", "pdf")
-    )
-
-
 async def _view_compliance_status(params: Dict[str, Any]) -> Dict[str, Any]:
     """Wrapper for P3 view_compliance_status handler."""
     handlers = _get_p3_handlers()
@@ -2356,19 +2335,6 @@ async def _track_delivery(params: Dict[str, Any]) -> Dict[str, Any]:
 # ============================================================================
 # P1 COMPLIANCE WRAPPER FUNCTIONS
 # ============================================================================
-
-
-async def _update_hours_of_rest(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Wrapper for P1 update_hours_of_rest handler."""
-    handlers = _get_p1_compliance_handlers()
-    return await handlers.update_hours_of_rest_execute(
-        crew_id=params.get("crew_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        date=params.get("date"),
-        rest_hours=params.get("rest_hours"),
-        work_hours=params.get("work_hours"),
-        notes=params.get("notes")
-    )
 
 
 async def _log_delivery_received(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -4019,15 +3985,12 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "view_linked_equipment": _view_linked_equipment,
     "export_handover": _export_handover,
     "view_smart_summary": _view_smart_summary,
-    "view_hours_of_rest": _view_hours_of_rest,
-    "export_hours_of_rest": _export_hours_of_rest,
     "view_compliance_status": _view_compliance_status,
     "track_delivery": _track_delivery,
 
     # =========================================================================
     # P1 Compliance Handlers (from p1_compliance_handlers.py)
     # =========================================================================
-    "update_hours_of_rest": _update_hours_of_rest,
     "log_delivery_received": _log_delivery_received,
 
     # =========================================================================

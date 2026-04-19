@@ -94,18 +94,18 @@ function formatWeekLabel(weekStart: string): string {
 }
 
 function restHoursColor(hours: number | null): string {
-  if (hours === null) return 'rgba(255,255,255,0.12)';
-  if (hours < 10) return 'rgba(239,68,68,0.8)';    // MLC violation — minimum is 10h rest/day
-  if (hours < 10.5) return 'rgba(245,158,11,0.8)'; // borderline
-  return 'rgba(90,171,204,0.8)';                    // ok
+  if (hours === null) return 'var(--txt-ghost)';
+  if (hours < 10) return 'var(--red-strong)';    // MLC violation — minimum is 10h rest/day
+  if (hours < 10.5) return 'var(--compliance-warn)'; // borderline
+  return 'var(--mark-strong)';                    // ok
 }
 
 function statusDot(status: CrewDay['status']): string {
   switch (status) {
-    case 'finalized':   return 'rgba(34,197,94,0.8)';
-    case 'hod_signed':  return 'rgba(90,171,204,0.8)';
-    case 'submitted':   return 'rgba(245,158,11,0.6)';
-    default:            return 'rgba(255,255,255,0.12)';
+    case 'finalized':   return 'var(--green-strong)';
+    case 'hod_signed':  return 'var(--mark-strong)';
+    case 'submitted':   return 'var(--amber)';
+    default:            return 'var(--txt-ghost)';
   }
 }
 
@@ -204,6 +204,8 @@ export function DepartmentView() {
   const [signingId, setSigningId] = React.useState<string | null>(null);
   const [signingPopupId, setSigningPopupId] = React.useState<string | null>(null);
   const [viewingUserId, setViewingUserId] = React.useState<string | null>(null);
+  // Per-crew sign popup — opened from the "View" modal
+  const [crewSignPopupUserId, setCrewSignPopupUserId] = React.useState<string | null>(null);
   const [notifications, setNotifications] = React.useState<HoRNotification[]>([]);
   const [correctionPopupSignoff, setCorrectionPopupSignoff] = React.useState<PendingSignoff | null>(null);
   const [submittingCorrection, setSubmittingCorrection] = React.useState(false);
@@ -264,6 +266,7 @@ export function DepartmentView() {
     setSubmittingCorrection(true);
     try {
       const token = session?.access_token;
+      if (!token) return;
       await fetch('/api/v1/hours-of-rest/request-correction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -290,6 +293,7 @@ export function DepartmentView() {
     setSigningId(signoffId);
     try {
       const token = session?.access_token;
+      if (!token) return;
       await fetch('/api/v1/hours-of-rest/signoffs/sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -319,7 +323,7 @@ export function DepartmentView() {
 
   if (loading) {
     return (
-      <div style={{ padding: 32, color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+      <div style={{ padding: 32, color: 'var(--txt-ghost)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         Loading department data…
       </div>
     );
@@ -327,7 +331,7 @@ export function DepartmentView() {
 
   if (error || !data) {
     return (
-      <div style={{ padding: 32, color: 'rgba(239,68,68,0.7)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+      <div style={{ padding: 32, color: 'var(--red)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         {error ?? 'No department data available.'}
       </div>
     );
@@ -339,15 +343,15 @@ export function DepartmentView() {
     : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
 
       {/* ── View identity header ── */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: 10,
-        paddingBottom: 12,
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        paddingBottom: 'var(--space-3)',
+        borderBottom: '1px solid var(--border-sub)',
       }}>
         <span style={{
           fontFamily: 'var(--font-mono)',
@@ -355,23 +359,23 @@ export function DepartmentView() {
           fontWeight: 700,
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
-          color: 'rgba(90,171,204,0.8)',
-          background: 'rgba(90,171,204,0.08)',
-          border: '1px solid rgba(90,171,204,0.20)',
-          borderRadius: 4,
+          color: 'var(--mark-strong)',
+          background: 'var(--teal-bg)',
+          border: '1px solid var(--mark-border)',
+          borderRadius: 'var(--radius-pill)',
           padding: '3px 8px',
         }}>
           {data.department ? `${data.department.toUpperCase()} DEPT` : 'YOUR DEPARTMENT'}
         </span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           HOD view — crew under your supervision only
         </span>
       </div>
 
       {/* ── Week nav ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
         <button onClick={() => shiftWeek(-1)} style={navBtnStyle}>←</button>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.5)', minWidth: 140, textAlign: 'center' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt2)', minWidth: 140, textAlign: 'center' }}>
           {weekLabel}
         </span>
         <button onClick={() => shiftWeek(1)} style={navBtnStyle}>→</button>
@@ -382,13 +386,13 @@ export function DepartmentView() {
         const alerts = notifications.filter(n => n.notification_type === 'violation_alert' && !n.is_read);
         return (
           <div style={{
-            background: 'rgba(239,68,68,0.06)',
-            border: '1px solid rgba(239,68,68,0.25)',
-            borderRadius: 8,
+            background: 'var(--red-bg)',
+            border: '1px solid var(--red-border)',
+            borderRadius: 'var(--radius-sm)',
             padding: '12px 14px',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(239,68,68,0.8)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 MLC Violations — {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
               </span>
               <button
@@ -401,7 +405,7 @@ export function DepartmentView() {
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 9,
-                  color: 'rgba(255,255,255,0.3)',
+                  color: 'var(--txt-ghost)',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
@@ -411,7 +415,7 @@ export function DepartmentView() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {alerts.map(n => (
-                <div key={n.id} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(239,68,68,0.75)' }}>
+                <div key={n.id} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--red)' }}>
                   {n.body || n.title}
                 </div>
               ))}
@@ -426,7 +430,7 @@ export function DepartmentView() {
           <span style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 11,
-            color: 'rgba(255,255,255,0.5)',
+            color: 'var(--txt2)',
             textTransform: 'uppercase',
             letterSpacing: '0.06em',
           }}>Today</span>
@@ -434,21 +438,21 @@ export function DepartmentView() {
             fontFamily: 'var(--font-mono)',
             fontSize: 14,
             fontWeight: 600,
-            color: data.today_submitted === data.today_total ? 'rgba(34,197,94,0.9)' : 'rgba(245,158,11,0.9)',
+            color: data.today_submitted === data.today_total ? 'var(--green-strong)' : 'var(--compliance-warn)',
           }}>
             {data.today_submitted}/{data.today_total} submitted
           </span>
         </div>
         {data.today_missing.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Missing:</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)' }}>Missing:</span>
             {data.today_missing.map(name => (
               <span key={name} style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: 10,
-                color: 'rgba(239,68,68,0.8)',
-                background: 'rgba(239,68,68,0.08)',
-                border: '1px solid rgba(239,68,68,0.2)',
+                color: 'var(--red)',
+                background: 'var(--red-bg)',
+                border: '1px solid var(--red-border)',
                 borderRadius: 3,
                 padding: '1px 6px',
               }}>{name}</span>
@@ -460,15 +464,15 @@ export function DepartmentView() {
       {/* ── Pending counter-signs ── */}
       {data.pending_counter_signs.length > 0 && (
         <div style={cardStyle}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
             Pending Counter-Signs ({data.pending_counter_signs.length})
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {data.pending_counter_signs.map(ps => (
-              <div key={ps.signoff_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div key={ps.signoff_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
                 <div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>{ps.crew_name}</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginLeft: 8 }}>{ps.week_label}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--txt)' }}>{ps.crew_name}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', marginLeft: 'var(--space-2)' }}>{ps.week_label}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
@@ -477,10 +481,10 @@ export function DepartmentView() {
                     style={{
                       fontFamily: 'var(--font-mono)',
                       fontSize: 10,
-                      color: 'rgba(245,158,11,0.8)',
-                      background: 'rgba(245,158,11,0.06)',
-                      border: '1px solid rgba(245,158,11,0.25)',
-                      borderRadius: 4,
+                      color: 'var(--amber)',
+                      background: 'var(--amber-bg)',
+                      border: '1px solid var(--amber-border)',
+                      borderRadius: 'var(--radius-pill)',
                       padding: '4px 10px',
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
@@ -493,10 +497,10 @@ export function DepartmentView() {
                     style={{
                       fontFamily: 'var(--font-mono)',
                       fontSize: 10,
-                      color: signingId === ps.signoff_id ? 'rgba(255,255,255,0.3)' : 'rgba(90,171,204,0.9)',
-                      background: 'rgba(90,171,204,0.08)',
-                      border: '1px solid rgba(90,171,204,0.3)',
-                      borderRadius: 4,
+                      color: signingId === ps.signoff_id ? 'var(--txt-ghost)' : 'var(--mark-strong)',
+                      background: 'var(--teal-bg)',
+                      border: '1px solid var(--mark-border)',
+                      borderRadius: 'var(--radius-pill)',
                       padding: '4px 10px',
                       cursor: signingId === ps.signoff_id ? 'wait' : 'pointer',
                       whiteSpace: 'nowrap',
@@ -513,7 +517,7 @@ export function DepartmentView() {
 
       {/* ── Crew × day grid ── */}
       <div style={cardStyle}>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>
           Crew Hours Grid
         </div>
 
@@ -526,7 +530,7 @@ export function DepartmentView() {
                   <th key={d} style={thStyle({ width: 52, textAlign: 'center' })}>{d}</th>
                 ))}
                 <th style={thStyle({ width: 52, textAlign: 'center' })}>Avg</th>
-                <th style={thStyle({ width: 72, textAlign: 'center' })}>Violation</th>
+                <th style={thStyle({ width: 72, textAlign: 'center' })}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -538,10 +542,10 @@ export function DepartmentView() {
                 const hasViolation = member.is_weekly_compliant === false;
 
                 return (
-                  <tr key={member.user_id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '8px 0', paddingRight: 12 }}>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>{member.name}</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{member.role}</div>
+                  <tr key={member.user_id} style={{ borderTop: '1px solid var(--border-faint)' }}>
+                    <td style={{ padding: '8px 0', paddingRight: 'var(--space-3)' }}>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt)' }}>{member.name}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', marginTop: 1 }}>{member.role}</div>
                     </td>
                     {member.days.map((day) => (
                       <td key={day.date} style={{ padding: '8px 4px', textAlign: 'center' }}>
@@ -552,9 +556,9 @@ export function DepartmentView() {
                             justifyContent: 'center',
                             width: 36,
                             height: 28,
-                            borderRadius: 4,
-                            background: `${restHoursColor(day.rest_hours)}22`,
-                            border: `1px solid ${restHoursColor(day.rest_hours)}55`,
+                            borderRadius: 'var(--radius-pill)',
+                            background: `color-mix(in srgb, ${restHoursColor(day.rest_hours)} 15%, transparent)`,
+                            border: `1px solid color-mix(in srgb, ${restHoursColor(day.rest_hours)} 35%, transparent)`,
                           }}>
                             <span style={{
                               fontFamily: 'var(--font-mono)',
@@ -569,38 +573,40 @@ export function DepartmentView() {
                             justifyContent: 'center',
                             width: 36,
                             height: 28,
-                            borderRadius: 4,
+                            borderRadius: 'var(--radius-pill)',
                           }}>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.15)' }}>—</span>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)' }}>—</span>
                           </div>
                         )}
                       </td>
                     ))}
                     <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{avg}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt2)' }}>{avg}</span>
                     </td>
                     <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                      {member.is_weekly_compliant === null ? (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>—</span>
-                      ) : hasViolation ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <button
                           onClick={() => setViewingUserId(member.user_id)}
                           style={{
                             padding: '3px 8px',
-                            background: 'rgba(239,68,68,0.1)',
-                            border: '1px solid rgba(239,68,68,0.35)',
-                            borderRadius: 4,
-                            color: 'rgba(239,68,68,0.9)',
+                            background: hasViolation ? 'var(--red-bg)' : 'var(--surface-subtle)',
+                            border: `1px solid ${hasViolation ? 'var(--red-border-strong)' : 'var(--border-chrome)'}`,
+                            borderRadius: 'var(--radius-pill)',
+                            color: hasViolation ? 'var(--red-strong)' : 'var(--txt2)',
                             fontFamily: 'var(--font-mono)',
                             fontSize: 9,
-                            fontWeight: 600,
+                            fontWeight: hasViolation ? 600 : 400,
                             cursor: 'pointer',
                             letterSpacing: '0.06em',
                           }}
                         >View</button>
-                      ) : (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'rgba(34,197,94,0.8)' }}>✓</span>
-                      )}
+                        {member.is_weekly_compliant === true && (
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--green-strong)' }}>✓</span>
+                        )}
+                        {hasViolation && (
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--red-strong)' }}>⚠</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -610,16 +616,16 @@ export function DepartmentView() {
         </div>
 
         {/* Status legend */}
-        <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 14, marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
           {[
-            { color: 'rgba(34,197,94,0.8)', label: 'Finalized' },
-            { color: 'rgba(90,171,204,0.8)', label: 'HOD signed' },
-            { color: 'rgba(245,158,11,0.6)', label: 'Submitted' },
-            { color: 'rgba(239,68,68,0.8)', label: '<10h rest (MLC violation)' },
+            { color: 'var(--green-strong)', label: 'Finalized' },
+            { color: 'var(--mark-strong)', label: 'HOD signed' },
+            { color: 'var(--amber)', label: 'Submitted' },
+            { color: 'var(--red-strong)', label: '<10h rest (MLC violation)' },
           ].map(({ color, label }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{label}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>{label}</span>
             </div>
           ))}
         </div>
@@ -627,18 +633,18 @@ export function DepartmentView() {
 
       {/* ── Compliance summary ── */}
       <div style={cardStyle}>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>
           Department Compliance — {weekLabel}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)' }}>
           {[
-            { label: 'Compliance', value: `${compliancePct}%`, color: compliancePct >= 95 ? 'rgba(34,197,94,0.9)' : compliancePct >= 80 ? 'rgba(245,158,11,0.9)' : 'rgba(239,68,68,0.9)' },
-            { label: 'Compliant Days', value: `${data.compliance.compliant_days}/${data.compliance.total_days}`, color: 'rgba(255,255,255,0.7)' },
-            { label: 'Violations', value: String(data.compliance.violations), color: data.compliance.violations > 0 ? 'rgba(239,68,68,0.9)' : 'rgba(34,197,94,0.9)' },
-            { label: 'Avg Rest', value: `${data.compliance.avg_rest_hours.toFixed(1)}h`, color: 'rgba(90,171,204,0.9)' },
+            { label: 'Compliance', value: `${compliancePct}%`, color: compliancePct >= 95 ? 'var(--compliance-good)' : compliancePct >= 80 ? 'var(--compliance-warn)' : 'var(--compliance-crit)' },
+            { label: 'Compliant Days', value: `${data.compliance.compliant_days}/${data.compliance.total_days}`, color: 'var(--txt3)' },
+            { label: 'Violations', value: String(data.compliance.violations), color: data.compliance.violations > 0 ? 'var(--compliance-crit)' : 'var(--compliance-good)' },
+            { label: 'Avg Rest', value: `${data.compliance.avg_rest_hours.toFixed(1)}h`, color: 'var(--mark-strong)' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 600, color }}>{value}</span>
             </div>
           ))}
@@ -706,6 +712,34 @@ export function DepartmentView() {
         );
       })()}
 
+      {/* ── Per-crew HOD sign popup (opened from view modal Sign Off button) ── */}
+      {crewSignPopupUserId && (() => {
+        const member = data.crew.find(m => m.user_id === crewSignPopupUserId);
+        const ps = data.pending_counter_signs.find(p => p.crew_user_id === crewSignPopupUserId);
+        if (!ps) return null;
+        return (
+          <ActionPopup
+            mode="mutate"
+            title="Sign Off for Approval"
+            subtitle="MLC 2006 Reg. 2.3 — HOD Attestation"
+            signatureLevel={2}
+            submitLabel="Sign Off"
+            fields={[
+              { name: 'crew_member', label: 'Crew Member', type: 'kv-read', value: member?.name ?? ps.crew_name },
+              { name: 'week',        label: 'Week',         type: 'kv-read', value: ps.week_label },
+              { name: 'department',  label: 'Department',   type: 'kv-read', value: data.department },
+              { name: 'regulation',  label: 'Regulation',   type: 'kv-read', value: 'MLC 2006 Regulation 2.3 — Rest Hours' },
+            ]}
+            onClose={() => setCrewSignPopupUserId(null)}
+            onSubmit={(values) => {
+              setCrewSignPopupUserId(null);
+              setViewingUserId(null);
+              counterSign(ps.signoff_id, String(values.signature_name ?? ''));
+            }}
+          />
+        );
+      })()}
+
       {/* ── Read-only My Time overlay (HOD viewing a crew member's violation) ── */}
       {viewingUserId && (() => {
         const member = data.crew.find(m => m.user_id === viewingUserId);
@@ -713,33 +747,71 @@ export function DepartmentView() {
           <div
             style={{
               position: 'fixed', inset: 0, zIndex: 50,
-              background: 'rgba(0,0,0,0.6)',
+              background: 'var(--overlay-bg)',
               display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
               paddingTop: 48, overflowY: 'auto',
             }}
             onClick={e => { if (e.target === e.currentTarget) setViewingUserId(null); }}
           >
             <div style={{
-              background: 'var(--surface, #181614)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              borderRadius: 10,
+              background: 'var(--surface)',
+              border: '1px solid var(--border-top)',
+              borderRadius: 'var(--radius-md)',
               width: '100%',
               maxWidth: 720,
-              padding: 24,
+              padding: 'var(--space-6)',
               margin: '0 16px 48px',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
                 <div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, color: 'var(--txt3)' }}>
                     {member?.name ?? 'Crew Member'} — Hours of Rest
                   </span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginLeft: 10 }}>Read-only</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', marginLeft: 10 }}>Read-only</span>
                 </div>
                 <button
                   onClick={() => setViewingUserId(null)}
-                  style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
+                  style={{ background: 'none', border: 'none', color: 'var(--txt2)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}
                 >×</button>
               </div>
+              {/* Sign Off button — shown when this crew member has a pending signoff */}
+              {(() => {
+                const ps = data.pending_counter_signs.find(p => p.crew_user_id === viewingUserId);
+                if (!ps) return null;
+                return (
+                  <div style={{
+                    marginBottom: 'var(--space-4)',
+                    paddingBottom: 'var(--space-4)',
+                    borderBottom: '1px solid var(--border-sub)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}>
+                    <button
+                      onClick={() => setCrewSignPopupUserId(viewingUserId)}
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 10,
+                        color: 'var(--mark-strong)',
+                        background: 'var(--teal-bg)',
+                        border: '1px solid var(--mark-border)',
+                        borderRadius: 'var(--radius-pill)',
+                        padding: '6px 14px',
+                        cursor: 'pointer',
+                        letterSpacing: '0.06em',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >Sign Off for Approval</button>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 9,
+                      color: 'var(--txt-ghost)',
+                    }}>
+                      MLC 2006 — HOD attestation required before captain sign-off
+                    </span>
+                  </div>
+                );
+              })()}
               <MyTimeView targetUserId={viewingUserId} readOnly />
             </div>
           </div>
@@ -753,19 +825,19 @@ export function DepartmentView() {
 // ── Shared styles ────────────────────────────────────────────────────────────
 
 const cardStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.07)',
-  borderRadius: 8,
+  background: 'var(--surface-card)',
+  border: '1px solid var(--border-sub)',
+  borderRadius: 'var(--radius-sm)',
   padding: '14px 16px',
 };
 
 const navBtnStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 12,
-  color: 'rgba(255,255,255,0.5)',
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: 4,
+  color: 'var(--txt2)',
+  background: 'var(--surface-subtle)',
+  border: '1px solid var(--border-chrome)',
+  borderRadius: 'var(--radius-pill)',
   padding: '4px 10px',
   cursor: 'pointer',
 };
@@ -774,11 +846,11 @@ function thStyle(extra: React.CSSProperties): React.CSSProperties {
   return {
     fontFamily: 'var(--font-mono)',
     fontSize: 9,
-    color: 'rgba(255,255,255,0.3)',
+    color: 'var(--txt-ghost)',
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
     fontWeight: 400,
-    paddingBottom: 8,
+    paddingBottom: 'var(--space-2)',
     ...extra,
   };
 }

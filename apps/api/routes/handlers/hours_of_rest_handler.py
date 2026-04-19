@@ -10,17 +10,11 @@ monthly signoff, crew templates, warnings) delegate to the existing
 handlers.hours_of_rest_handlers.HoursOfRestHandlers class. This handler module is a
 thin adapter that translates the Phase 4 handler contract into the existing class API.
 
-INLINE PATTERN: The Tier 6 actions (view_hours_of_rest, update_hours_of_rest,
-export_hours_of_rest) were inline in p0_actions_routes.py with direct DB queries.
-They are copied verbatim here.
-
 NOTE: The original elif blocks used get_user_scoped_client(authorization, ...) for RLS
 enforcement. The Phase 4 dispatcher passes a service-role db_client. The HoursOfRestHandlers
 class accepts any Supabase client — RLS enforcement will be addressed when the dispatcher
 evolves to support user-scoped clients.
 """
-from datetime import datetime, timezone
-import uuid as uuid_module
 import logging
 
 from fastapi import HTTPException
@@ -29,170 +23,6 @@ from supabase import Client
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 
 logger = logging.getLogger(__name__)
-
-
-# ============================================================================
-# TIER 6: view_hours_of_rest  (was L4123-4163 — inline)
-# ============================================================================
-async def view_hours_of_rest(
-    payload: dict,
-    context: dict,
-    yacht_id: str,
-    user_id: str,
-    user_context: dict,
-    db_client: Client,
-) -> dict:
-    crew_id = payload.get("crew_id")
-
-    if not crew_id:
-        raise HTTPException(status_code=400, detail="crew_id is required")
-
-    try:
-        query = db_client.table("hours_of_rest").select(
-            "id, crew_id, date, rest_hours, work_hours, created_at"
-        ).eq("crew_id", crew_id).eq("yacht_id", yacht_id)
-
-        start_date = payload.get("start_date")
-        end_date = payload.get("end_date")
-
-        if start_date:
-            query = query.gte("date", start_date)
-        if end_date:
-            query = query.lte("date", end_date)
-
-        records = query.order("date", desc=True).limit(30).execute()
-
-        return {
-            "status": "success",
-            "success": True,
-            "crew_id": crew_id,
-            "records": records.data or [],
-            "count": len(records.data) if records.data else 0
-        }
-    except Exception:
-        # Table may not exist
-        return {
-            "status": "success",
-            "success": True,
-            "crew_id": crew_id,
-            "records": [],
-            "count": 0,
-            "message": "Hours of rest tracking not yet configured"
-        }
-
-
-# ============================================================================
-# TIER 6: update_hours_of_rest  (was L4165-4226 — inline)
-# ============================================================================
-async def update_hours_of_rest(
-    payload: dict,
-    context: dict,
-    yacht_id: str,
-    user_id: str,
-    user_context: dict,
-    db_client: Client,
-) -> dict:
-    crew_id = payload.get("crew_id")
-    date = payload.get("date")
-    hours = payload.get("hours")
-    rest_hours = payload.get("rest_hours", hours)
-    work_hours = payload.get("work_hours", 24 - float(hours) if hours else None)
-
-    if not crew_id:
-        raise HTTPException(status_code=400, detail="crew_id is required")
-    if not date:
-        raise HTTPException(status_code=400, detail="date is required")
-    if hours is None:
-        raise HTTPException(status_code=400, detail="hours is required")
-
-    try:
-        # Try upsert
-        record_data = {
-            "id": str(uuid_module.uuid4()),
-            "yacht_id": yacht_id,
-            "crew_id": crew_id,
-            "date": date,
-            "rest_hours": float(rest_hours),
-            "work_hours": float(work_hours) if work_hours else 24 - float(rest_hours),
-            "updated_by": user_id,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }
-
-        # Check if record exists
-        existing = db_client.table("hours_of_rest").select("id").eq(
-            "crew_id", crew_id
-        ).eq("date", date).maybe_single().execute()
-
-        if existing.data:
-            db_client.table("hours_of_rest").update({
-                "rest_hours": float(rest_hours),
-                "work_hours": float(work_hours) if work_hours else 24 - float(rest_hours),
-                "updated_by": user_id
-            }).eq("id", existing.data["id"]).execute()
-        else:
-            record_data["created_by"] = user_id
-            db_client.table("hours_of_rest").insert(record_data).execute()
-
-        return {
-            "status": "success",
-            "success": True,
-            "message": f"Hours of rest updated for {date}",
-            "crew_id": crew_id,
-            "date": date,
-            "rest_hours": float(rest_hours)
-        }
-    except Exception:
-        return {
-            "status": "success",
-            "success": True,
-            "message": "Hours of rest tracking not yet configured",
-            "crew_id": crew_id
-        }
-
-
-# ============================================================================
-# TIER 6: export_hours_of_rest  (was L4228-4261 — inline)
-# ============================================================================
-async def export_hours_of_rest(
-    payload: dict,
-    context: dict,
-    yacht_id: str,
-    user_id: str,
-    user_context: dict,
-    db_client: Client,
-) -> dict:
-    crew_id = payload.get("crew_id")
-    export_format = payload.get("format", "csv")
-
-    if not crew_id:
-        raise HTTPException(status_code=400, detail="crew_id is required")
-
-    try:
-        records = db_client.table("hours_of_rest").select(
-            "date, rest_hours, work_hours, created_at"
-        ).eq("crew_id", crew_id).eq("yacht_id", yacht_id).order(
-            "date", desc=True
-        ).limit(90).execute()
-
-        return {
-            "status": "success",
-            "success": True,
-            "crew_id": crew_id,
-            "records": records.data or [],
-            "export_format": export_format,
-            "message": f"Ready for {export_format} export"
-        }
-    except Exception:
-        return {
-            "status": "success",
-            "success": True,
-            "crew_id": crew_id,
-            "records": [],
-            "export_format": export_format,
-            "message": "No hours of rest data available"
-        }
-
-
 
 
 # ============================================================================
@@ -372,10 +202,6 @@ async def sign_monthly_signoff(
 # HANDLER REGISTRY
 # ============================================================================
 HANDLERS: dict = {
-    # Tier 6 — inline HoR (direct DB)
-    "view_hours_of_rest":       view_hours_of_rest,
-    "update_hours_of_rest":     update_hours_of_rest,
-    "export_hours_of_rest":     export_hours_of_rest,
     # Crew Lens v3 — delegation to HoursOfRestHandlers
     "get_hours_of_rest":        get_hours_of_rest,
     "upsert_hours_of_rest":     upsert_hours_of_rest,

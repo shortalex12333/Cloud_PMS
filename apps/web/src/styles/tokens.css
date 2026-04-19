@@ -180,6 +180,19 @@
   --shell-subbar-h:          46px;   /* Subbar row height (hidden on surface/HoR) */
   --shell-sidebar-w:         192px;  /* Full sidebar width (desktop)            */
   --shell-sidebar-compact-w: 48px;   /* Compact sidebar width (tablet)          */
+
+  /* ── Hours-of-Rest additive tokens (dark) ── */
+  --surface-card:        rgba(255,255,255,0.03);
+  --surface-subtle:      rgba(255,255,255,0.05);
+  --red-border-strong:   rgba(192,80,58,0.35);
+  --green-strong:        rgba(76,175,129,0.9);
+  --red-strong:          rgba(192,80,58,0.9);
+  --mark-strong:         rgba(90,171,204,0.8);
+  --mark-border:         rgba(90,171,204,0.30);
+  --compliance-good:     var(--green-strong);
+  --compliance-warn:     rgba(196,137,59,0.9);
+  --compliance-crit:     var(--red-strong);
+  --overlay-subtle:      rgba(0,0,0,0.15);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -339,6 +352,19 @@
   --settings-modal-shadow:   0 0 0 1px rgba(0,0,0,0.05), 0 28px 80px rgba(0,0,0,0.13), 0 8px 24px rgba(0,0,0,0.08), inset 0 1px 0 #fff;
   --settings-header-bg:      rgba(242,240,236,0.88);
   --settings-backdrop:       rgba(0,0,0,0.25);
+
+  /* ── Hours-of-Rest additive tokens (light) ── */
+  --surface-card:        rgba(0,0,0,0.03);
+  --surface-subtle:      rgba(0,0,0,0.05);
+  --red-border-strong:   rgba(192,80,58,0.30);
+  --green-strong:        rgba(61,146,104,0.9);
+  --red-strong:          rgba(192,80,58,0.9);
+  --mark-strong:         rgba(43,123,163,0.85);
+  --mark-border:         rgba(43,123,163,0.28);
+  --compliance-good:     var(--green-strong);
+  --compliance-warn:     rgba(184,122,46,0.9);
+  --compliance-crit:     var(--red-strong);
+  --overlay-subtle:      rgba(0,0,0,0.08);
 }
 
 /* ═══════════════════════════════════════════════════════

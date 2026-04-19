@@ -3062,30 +3062,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         variant=ActionVariant.READ,
     ),
 
-    "view_hours_of_rest": ActionDefinition(
-        action_id="view_hours_of_rest",
-        label="View Hours of Rest",
-        endpoint="/v1/actions/execute",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id"],
-        domain="hours_of_rest",
-        variant=ActionVariant.READ,
-    ),
-
-    "export_hours_of_rest": ActionDefinition(
-        action_id="export_hours_of_rest",
-        label="Export Hours of Rest",
-        endpoint="/v1/actions/execute",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id"],
-        domain="hours_of_rest",
-        variant=ActionVariant.READ,
-    ),
-
     "view_compliance_status": ActionDefinition(
         action_id="view_compliance_status",
         label="View Compliance Status",
@@ -3111,18 +3087,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # -- P1 Compliance/Purchasing --
-    "update_hours_of_rest": ActionDefinition(
-        action_id="update_hours_of_rest",
-        label="Update Hours of Rest",
-        endpoint="/v1/actions/execute",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id"],
-        domain="hours_of_rest",
-        variant=ActionVariant.MUTATE,
-    ),
-
     "log_delivery_received": ActionDefinition(
         action_id="log_delivery_received",
         label="Log Delivery Received",
