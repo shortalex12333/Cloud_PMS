@@ -1,5 +1,8 @@
 # Hours of Rest — Manual Testing Guide
 
+> **RETIRED 2026-04-19** — Superseded by `HOR_SCENARIO_TEST_GUIDE.md` (reflects PRs #640, #641, #646).  
+> This file covers PRs #567–#596 only. Do not use for testing current production.
+
 > Last updated: 2026-04-16 (post PR #596 merge — all HoR PRs #567–#596 merged to main)
 > Use this file to record what you tested, what you saw, and whether it passed.
 > Insert console errors, response JSONs, or observations inline under each scenario.
