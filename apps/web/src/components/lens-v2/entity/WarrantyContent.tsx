@@ -123,6 +123,7 @@ export function WarrantyContent() {
   const composeAction  = getAction('compose_warranty_email');
   const archiveAction  = getAction('archive_warranty');
   const addNoteAction  = getAction('add_warranty_note');
+  const reviseAction   = getAction('revise_warranty_claim');
 
   type PrimaryConfig = { label: string; action: typeof submitAction; confirmFields?: boolean };
   const primaryConfig: PrimaryConfig | null = (() => {
@@ -209,6 +210,12 @@ export function WarrantyContent() {
       disabled: composeAction.disabled,
       testid: 'warranty-compose-btn',
     }] : []),
+    ...(reviseAction && (status === 'draft' || status === 'rejected') ? [{
+      label: 'Revise Claim',
+      onClick: () => openActionPopup(reviseAction as any),
+      disabled: reviseAction.disabled,
+      testid: 'warranty-revise-btn',
+    }] : []),
     ...(addNoteAction ? [{
       label: 'Add Note',
       onClick: () => setAddNoteOpen(true),
@@ -258,7 +265,7 @@ export function WarrantyContent() {
   // ── Notes ──
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
-    author: (n.created_by_role ?? n.author ?? n.user_name) as string ?? 'Unknown',
+    author: (n.author_name ?? n.created_by_role ?? n.author ?? n.user_name) as string ?? 'Unknown',
     timestamp: (n.created_at ?? n.timestamp) as string ?? '',
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
@@ -268,6 +275,7 @@ export function WarrantyContent() {
     id: (a.id as string) ?? `att-${i}`,
     name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
     caption: (a.caption ?? a.description) as string | undefined,
+    uploader: (a.uploaded_by_name) as string | undefined,
     size: (a.size ?? a.file_size) as string | undefined,
     kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
     url: (a.url) as string | undefined,
@@ -275,6 +283,15 @@ export function WarrantyContent() {
 
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
   const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
+
+  const handleDeleteAttachment = React.useCallback(async (attachmentId: string) => {
+    const result = await executeAction('delete_warranty_attachment', { attachment_id: attachmentId });
+    if (result.success) {
+      refetch();
+    } else {
+      setActionFeedback({ type: 'error', message: result.message ?? 'Delete failed' });
+    }
+  }, [executeAction, refetch]);
   const handleNoteSubmit = React.useCallback(
     async (noteText: string) => {
       const result = await executeAction('add_warranty_note', { note_text: noteText });
@@ -391,6 +408,7 @@ export function WarrantyContent() {
           onAddFile={() => setUploadModalOpen(true)}
           canAddFile
           addFileTestId="warranty-upload-btn"
+          onDelete={handleDeleteAttachment}
         />
       </ScrollReveal>
 

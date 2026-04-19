@@ -57,7 +57,7 @@ def _get_attachments(supabase, entity_type: str, entity_id: str, yacht_id: str) 
     """Query pms_attachments, sign each, return list matching frontend Attachment shape."""
     try:
         result = supabase.table("pms_attachments").select(
-            "id, filename, mime_type, storage_path, file_size, category, storage_bucket"
+            "id, filename, mime_type, storage_path, file_size, category, storage_bucket, uploaded_by"
         ).eq("entity_type", entity_type).eq("entity_id", entity_id).eq(
             "yacht_id", yacht_id
         ).is_("deleted_at", "null").execute()
@@ -78,6 +78,7 @@ def _get_attachments(supabase, entity_type: str, entity_id: str, yacht_id: str) 
                 "url": url,
                 "mime_type": att.get("mime_type", "application/octet-stream"),
                 "size_bytes": att.get("file_size") or 0,
+                "uploaded_by": att.get("uploaded_by"),
             })
         return attachments
     except Exception as e:
@@ -559,6 +560,30 @@ async def get_warranty_entity(warranty_id: str, auth: dict = Depends(get_authent
             warranty_audit = audit_r.data or []
         except Exception:
             warranty_audit = []
+
+        # Resolve user names for notes and attachments from auth_users_profiles
+        try:
+            _user_ids = set()
+            for _n in warranty_notes:
+                if _n.get("created_by"):
+                    _user_ids.add(_n["created_by"])
+            for _a in attachments:
+                if _a.get("uploaded_by"):
+                    _user_ids.add(_a["uploaded_by"])
+            _name_map: dict = {}
+            if _user_ids:
+                _names_r = supabase.table("auth_users_profiles").select(
+                    "id, name"
+                ).in_("id", list(_user_ids)).execute()
+                _name_map = {row["id"]: row["name"] for row in (_names_r.data or [])}
+            for _n in warranty_notes:
+                uid = _n.get("created_by")
+                _n["author_name"] = _name_map.get(uid) if uid else None
+            for _a in attachments:
+                uid = _a.get("uploaded_by")
+                _a["uploaded_by_name"] = _name_map.get(uid) if uid else None
+        except Exception:
+            pass
 
         _entity_response = {
             "id": data.get("id"),

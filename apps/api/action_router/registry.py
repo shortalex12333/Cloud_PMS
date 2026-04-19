@@ -2683,6 +2683,44 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         variant=ActionVariant.MUTATE,
     ),
 
+    "delete_warranty_attachment": ActionDefinition(
+        action_id="delete_warranty_attachment",
+        label="Delete Attachment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "warranty_id", "attachment_id"],
+        domain="warranty",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["delete", "remove", "attachment", "warranty"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("warranty_id", FieldClassification.CONTEXT),
+            FieldMetadata("attachment_id", FieldClassification.REQUIRED),
+        ],
+    ),
+
+    "revise_warranty_claim": ActionDefinition(
+        action_id="revise_warranty_claim",
+        label="Revise Claim",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "warranty_id"],
+        domain="warranty",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["revise", "update", "warranty", "claim", "edit"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("warranty_id", FieldClassification.CONTEXT),
+            FieldMetadata("description", FieldClassification.OPTIONAL),
+            FieldMetadata("notes", FieldClassification.OPTIONAL),
+            FieldMetadata("claimed_amount", FieldClassification.OPTIONAL),
+        ],
+    ),
+
     "add_wo_photo": ActionDefinition(
         action_id="add_wo_photo",
         label="Add Work Order Photo",

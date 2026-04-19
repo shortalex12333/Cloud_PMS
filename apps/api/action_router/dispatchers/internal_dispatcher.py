@@ -4024,6 +4024,102 @@ async def _add_warranty_note_handler(params: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
+async def _delete_warranty_attachment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Soft-delete a warranty attachment (sets deleted_at). Permanent removal after 30 days via cron."""
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+    attachment_id = params.get("attachment_id")
+    warranty_id = params.get("warranty_id") or params.get("entity_id")
+    yacht_id = params.get("yacht_id")
+    user_id = params.get("user_id")
+
+    if not attachment_id:
+        raise HTTPException(status_code=400, detail="attachment_id is required")
+
+    now = datetime.utcnow().isoformat()
+    supabase.table("pms_attachments").update({
+        "deleted_at": now,
+        "deleted_by": user_id,
+    }).eq("id", attachment_id).eq("entity_type", "warranty").eq("yacht_id", yacht_id).execute()
+
+    try:
+        supabase.table("pms_audit_log").insert({
+            "id": str(uuid_lib.uuid4()),
+            "yacht_id": yacht_id,
+            "entity_type": "warranty",
+            "entity_id": warranty_id,
+            "action": "delete_warranty_attachment",
+            "user_id": user_id,
+            "new_values": {"attachment_id": attachment_id, "deleted_at": now},
+            "created_at": now,
+        }).execute()
+    except Exception:
+        pass
+
+    return {"status": "success", "attachment_id": attachment_id}
+
+
+async def _revise_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Append a revision record to claim metadata and optionally update fields."""
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+    warranty_id = params.get("warranty_id") or params.get("entity_id")
+    yacht_id = params.get("yacht_id")
+    user_id = params.get("user_id")
+
+    if not warranty_id:
+        raise HTTPException(status_code=400, detail="warranty_id is required")
+
+    r = supabase.table("pms_warranty_claims").select(
+        "metadata, claim_number"
+    ).eq("id", warranty_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not r or not r.data:
+        raise HTTPException(status_code=404, detail="Warranty claim not found")
+
+    existing_meta = r.data.get("metadata") or {}
+    revisions = existing_meta.get("revision_history", [])
+    revisions.append({
+        "revised_at": datetime.utcnow().isoformat(),
+        "revised_by": user_id,
+        "notes": params.get("notes") or "",
+        "description": params.get("description") or "",
+        "claimed_amount": params.get("claimed_amount"),
+    })
+
+    update_data: Dict[str, Any] = {
+        "metadata": {**existing_meta, "revision_history": revisions},
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    if params.get("description"):
+        update_data["description"] = params["description"]
+    if params.get("claimed_amount") is not None:
+        try:
+            update_data["claimed_amount"] = float(params["claimed_amount"])
+        except (ValueError, TypeError):
+            pass
+
+    supabase.table("pms_warranty_claims").update(update_data).eq(
+        "id", warranty_id
+    ).eq("yacht_id", yacht_id).execute()
+
+    try:
+        now = datetime.utcnow().isoformat()
+        supabase.table("pms_audit_log").insert({
+            "id": str(uuid_lib.uuid4()),
+            "yacht_id": yacht_id,
+            "entity_type": "warranty",
+            "entity_id": warranty_id,
+            "action": "revise_warranty_claim",
+            "user_id": user_id,
+            "new_values": {"revision_count": len(revisions)},
+            "created_at": now,
+        }).execute()
+    except Exception:
+        pass
+
+    return {"status": "success", "warranty_id": warranty_id}
+
+
 INTERNAL_HANDLERS: Dict[str, Any] = {
     # Original handlers
     "add_note": add_note,
@@ -4258,6 +4354,8 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "add_part_note": add_note,
     "add_po_note": add_note,
     "add_warranty_note": _add_warranty_note_handler,
+    "delete_warranty_attachment": _delete_warranty_attachment,
+    "revise_warranty_claim": _revise_warranty_claim,
     "add_wo_photo": add_work_order_photo,
     "apply_template": _hor_apply_template,
     "approve_list": _sl_approve_item,
