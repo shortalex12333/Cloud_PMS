@@ -431,6 +431,21 @@ class HoursOfRestHandlers:
             # Check for violations and create warnings
             warnings_created = []
             if record and record.get("id"):
+                # Dedup: delete any pre-existing non-daily warnings for this 7-day window
+                # before calling check_hor_violations, so weekly violations don't accumulate
+                # one row per day-submission (7 duplicates per week).
+                try:
+                    week_end_str = (rd + timedelta(days=6 - rd.weekday())).isoformat()
+                    self.db.table("pms_crew_hours_warnings").delete().eq(
+                        "yacht_id", yacht_id
+                    ).eq("user_id", user_id).neq(
+                        "warning_type", "DAILY_REST"
+                    ).gte("record_date", week_mon).lte(
+                        "record_date", week_end_str
+                    ).execute()
+                except Exception as dedup_err:
+                    logger.warning(f"Weekly warning dedup failed (non-fatal): {dedup_err}")
+
                 # Call check_hor_violations function
                 violation_check = self.db.rpc(
                     "check_hor_violations",
@@ -494,7 +509,15 @@ class HoursOfRestHandlers:
                                 "user_id": hod_uid,
                                 "notification_type": "violation_alert",
                                 "title": f"HoR Violation — {crew_name}",
-                                "body": f"{crew_name} logged only {total_rest_hours:.1f}h rest on {record_date} (MLC minimum: 10h)",
+                                "body": (
+                                    # Period-structure violation: total rest is sufficient but split wrong
+                                    f"{crew_name} logged {total_rest_hours:.1f}h rest on {record_date} "
+                                    f"split across {rest_period_count} periods — MLC 2006 A2.3 requires "
+                                    f"≤2 rest periods, longest ≥6h"
+                                    if total_rest_hours >= 10 and not has_valid_rest_periods
+                                    # Total-rest violation: not enough hours
+                                    else f"{crew_name} logged only {total_rest_hours:.1f}h rest on {record_date} (MLC minimum: 10h)"
+                                ),
                                 "entity_type": "hours_of_rest",
                                 "entity_id": record["id"],
                                 "idempotency_key": f"violation:{record['id']}:{hod_uid}",

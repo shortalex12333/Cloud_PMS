@@ -224,8 +224,8 @@ async def get_my_week(
         # ------------------------------------------------------------------
         tmpl_r = supabase.table("pms_crew_normal_hours").select(
             "id, schedule_name, applies_to, is_active"
-        ).eq("yacht_id", yacht_id).eq("is_active", True).execute()
-        # Include user's own + yacht-wide (user_id IS NULL handled server-side via RLS)
+        ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq("is_active", True).execute()
+        # User's own templates only — no shared/seeded generic templates per MLC independence
         templates = [
             {
                 "id":         t["id"],

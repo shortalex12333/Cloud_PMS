@@ -202,6 +202,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   // Fleet manager (role=manager) is read-only for MLC submission — backend rejects writes,
   // but we also suppress the CTA so they don't see a button that always fails (BUG-HOR-5b fix).
   const canSubmitWeek = user?.role !== 'manager';
+  // Fleet managers cannot write crew schedule data (MLC 2006 Reg 2.3 independence)
+  const canCreateTemplate = user?.role !== 'manager';
 
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
@@ -219,6 +221,12 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
 
   // Template selector
   const [selectedTemplate, setSelectedTemplate] = React.useState('');
+
+  // Create template popup
+  const [createTemplateOpen, setCreateTemplateOpen] = React.useState(false);
+  const [newTemplateName, setNewTemplateName] = React.useState('');
+  const [savingTemplate, setSavingTemplate] = React.useState(false);
+  const [templateSaveError, setTemplateSaveError] = React.useState<string | null>(null);
 
   // Phase 7: week locked when finalized (signoff_status === 'finalized' OR LOCKED error)
   const [weekLocked, setWeekLocked] = React.useState(false);
@@ -510,6 +518,50 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
       console.error('Template apply error:', e);
     } finally {
       setApplyingTemplate(false);
+    }
+  }
+
+  // ── Save as template ──
+
+  async function saveAsTemplate() {
+    if (!newTemplateName.trim() || !data) return;
+    setSavingTemplate(true);
+    setTemplateSaveError(null);
+    try {
+      const auth = await getAuthHeader();
+      // Build 7-day schedule_template from current week's draft periods
+      // Keys: monday–sunday; values: [{start, end}] work periods for that day
+      const DAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const scheduleTemplate: Record<string, Array<{start: string; end: string}>> = {};
+      if (Array.isArray(data.days)) {
+        data.days.forEach((day: any, i: number) => {
+          const dayName = DAY_NAMES[i];
+          const drafted = draftPeriods[day.date ?? day.record_date] ?? day.work_periods ?? [];
+          scheduleTemplate[dayName] = drafted.map((p: any) => ({ start: p.start, end: p.end }));
+        });
+      }
+      const resp = await fetch('/api/v1/hours-of-rest/templates/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+        body: JSON.stringify({
+          schedule_name: newTemplateName.trim(),
+          schedule_template: scheduleTemplate,
+          applies_to: 'normal',
+          is_active: true,
+        }),
+      });
+      if (!resp.ok) {
+        const json = await resp.json().catch(() => null);
+        setTemplateSaveError(json?.message ?? `Save failed (${resp.status})`);
+        return;
+      }
+      setCreateTemplateOpen(false);
+      setNewTemplateName('');
+      await loadWeekData();
+    } catch (e) {
+      setTemplateSaveError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSavingTemplate(false);
     }
   }
 
@@ -1020,8 +1072,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Not submitted</span>
                   )}
 
-                  {/* Submit day button — only when not submitted and has draft */}
-                  {!isSubmitted && (draft?.length ?? 0) > 0 && (
+                  {/* Submit day button — for any unsubmitted day (empty = full rest day is valid) */}
+                  {!isSubmitted && (
                     <button
                       data-testid={`hor-submit-day-${day.date}`}
                       onClick={() => submitDay(day.date)}
@@ -1131,6 +1183,99 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           <p style={{ padding: '0 16px 10px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', lineHeight: 1.5 }}>
             Template populates unsubmitted days only. Your signature is still required.
           </p>
+        </SectionCard>
+      )}
+
+      {/* ── CREATE TEMPLATE ── visible even when no templates exist yet */}
+      {canCreateTemplate && (
+        <SectionCard>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>My Templates</span>
+            <button
+              onClick={() => { setCreateTemplateOpen(o => !o); setTemplateSaveError(null); }}
+              style={{
+                padding: '4px 10px',
+                background: 'none',
+                border: '1px solid rgba(90,171,204,0.35)',
+                borderRadius: 4,
+                color: 'var(--mark, #5AABCC)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 9,
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >
+              + New Template
+            </button>
+          </div>
+          {createTemplateOpen && (
+            <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.35)', lineHeight: 1.5 }}>
+                Saves this week's current schedule as a reusable template.
+              </p>
+              <input
+                type="text"
+                placeholder="Template name…"
+                value={newTemplateName}
+                onChange={e => setNewTemplateName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && saveAsTemplate()}
+                style={{
+                  background: 'var(--surface-el, #1e1b18)',
+                  border: `1px solid ${templateSaveError ? 'var(--compliance-crit, #e85d5d)' : 'rgba(255,255,255,0.12)'}`,
+                  borderRadius: 4,
+                  color: 'rgba(255,255,255,0.80)',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 12,
+                  padding: '6px 10px',
+                  outline: 'none',
+                  width: '100%',
+                  boxSizing: 'border-box' as const,
+                }}
+              />
+              {templateSaveError && (
+                <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--compliance-crit, #e85d5d)' }}>{templateSaveError}</p>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={saveAsTemplate}
+                  disabled={!newTemplateName.trim() || savingTemplate}
+                  style={{
+                    flex: 1,
+                    padding: '6px 0',
+                    background: newTemplateName.trim() ? 'rgba(90,171,204,0.12)' : 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(90,171,204,0.25)',
+                    borderRadius: 4,
+                    color: newTemplateName.trim() ? 'var(--mark, #5AABCC)' : 'rgba(255,255,255,0.25)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 9,
+                    fontWeight: 600,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase' as const,
+                    cursor: newTemplateName.trim() && !savingTemplate ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {savingTemplate ? 'Saving…' : 'Save Template'}
+                </button>
+                <button
+                  onClick={() => { setCreateTemplateOpen(false); setNewTemplateName(''); setTemplateSaveError(null); }}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'none',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 4,
+                    color: 'rgba(255,255,255,0.35)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 9,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </SectionCard>
       )}
 
