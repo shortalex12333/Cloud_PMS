@@ -208,6 +208,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   // Fleet manager (role=manager) is read-only for MLC submission — backend rejects writes,
   // but we also suppress the CTA so they don't see a button that always fails (BUG-HOR-5b fix).
   const canSubmitWeek = user?.role !== 'manager';
+  // MLC 2006 Reg 2.3 independence: fleet managers must not write crew schedule data
+  const canCreateTemplate = user?.role !== 'manager';
 
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
@@ -1249,19 +1251,21 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
       <SectionCard>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 0' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.10em' }}>Templates</span>
-          <button
-            onClick={() => { setCreateTemplateOpen(v => !v); setCreateTemplateError(null); }}
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 9,
-              color: createTemplateOpen ? 'var(--txt-ghost)' : 'var(--mark)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              letterSpacing: '0.06em',
-              padding: '2px 0',
-            }}
-          >{createTemplateOpen ? 'Cancel' : '+ Create Template'}</button>
+          {canCreateTemplate && (
+            <button
+              onClick={() => { setCreateTemplateOpen(v => !v); setCreateTemplateError(null); }}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 9,
+                color: createTemplateOpen ? 'var(--txt-ghost)' : 'var(--mark)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                letterSpacing: '0.06em',
+                padding: '2px 0',
+              }}
+            >{createTemplateOpen ? 'Cancel' : '+ Create Template'}</button>
+          )}
         </div>
 
         {/* ── Apply existing template ── */}
