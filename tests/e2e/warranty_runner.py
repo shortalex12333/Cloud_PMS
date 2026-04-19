@@ -771,10 +771,9 @@ def scenario_8_revise_resubmit(ctx: BrowserContext, state: dict) -> dict:
 
 
 def scenario_9_email_body_renders(ctx: BrowserContext, state: dict) -> dict:
-    """S9 — after S4 composed the email, the Email Draft body renders in the lens.
-    Verifies the testid `warranty-email-body` is visible and contains the claim
-    number (deterministic substring from internal_dispatcher.py email template)."""
-    res = new_result("9", "Email Draft body renders in lens", "chief_engineer")
+    """S9 — after S4 composed the email, the Email Draft section shows a reveal button.
+    Clicking it shows the body (SOC-2: body is hidden by default, shown on demand)."""
+    res = new_result("9", "Email Draft body reveals on click", "chief_engineer")
     claim_id = state.get("claim_id_1")
     if not claim_id:
         res["result"] = "skipped"
@@ -789,20 +788,23 @@ def scenario_9_email_body_renders(ctx: BrowserContext, state: dict) -> dict:
     step(res, "9.1", "Navigate to the approved claim",
          lambda: page.goto(f"{BASE_URL}/warranties/{claim_id}", timeout=NAV_TIMEOUT_MS))
 
-    def email_body_visible():
-        page.get_by_test_id("warranty-email-body").wait_for(
+    def reveal_button_visible():
+        page.get_by_test_id("warranty-show-email-body-btn").wait_for(
             state="visible", timeout=NAV_TIMEOUT_MS,
         )
-    step(res, "9.2", "Email body renders with testid warranty-email-body",
-         email_body_visible)
+    step(res, "9.2", "Show email body button is visible (body hidden by default)",
+         reveal_button_visible)
 
-    def email_body_has_claim_number():
-        # The email template from internal_dispatcher.py:3834-3890 interpolates the
-        # claim_number (e.g., WC-2026-077). The body is not empty and includes it.
+    def click_reveal_and_verify():
+        page.get_by_test_id("warranty-show-email-body-btn").click()
+        page.get_by_test_id("warranty-email-body").wait_for(
+            state="visible", timeout=STEP_TIMEOUT_MS,
+        )
         txt = page.get_by_test_id("warranty-email-body").inner_text(timeout=STEP_TIMEOUT_MS)
-        assert txt and txt.strip(), "email body was empty"
+        assert txt and txt.strip(), "email body was empty after reveal"
         assert re.search(r"WC-\d{4}-\d+", txt), f"claim number missing from body: {txt[:200]}"
-    step(res, "9.3", "Email body contains claim number", email_body_has_claim_number)
+    step(res, "9.3", "Click reveals body containing claim number",
+         click_reveal_and_verify)
 
     page.close()
     return finalize(res)

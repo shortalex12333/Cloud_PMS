@@ -42,6 +42,39 @@ import { useAuth } from '@/hooks/useAuth';
 
 // ─── Helpers ───
 
+/** Email body shown only on explicit user action — prevents passive SOC-2 exposure. */
+function EmailBodyReveal({ body }: { body?: string }) {
+  const [revealed, setRevealed] = React.useState(false);
+  if (!body) return null;
+  if (!revealed) {
+    return (
+      <button
+        onClick={() => setRevealed(true)}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--mark)', fontSize: '12px', fontWeight: 500,
+          padding: '4px 0', textAlign: 'left',
+        }}
+        data-testid="warranty-show-email-body-btn"
+      >
+        Show email body
+      </button>
+    );
+  }
+  return (
+    <div
+      style={{
+        whiteSpace: 'pre-wrap', fontSize: '12px', color: 'var(--txt2)',
+        background: 'var(--bg2)', borderLeft: '2px solid var(--line)',
+        padding: '8px 12px', marginTop: '8px', borderRadius: '4px',
+      }}
+      data-testid="warranty-email-body"
+    >
+      {body}
+    </div>
+  );
+}
+
 function statusToPillVariant(status: string): PillDef['variant'] {
   switch (status) {
     case 'approved':
@@ -412,7 +445,7 @@ export function WarrantyContent() {
         />
       </ScrollReveal>
 
-      {/* Email Draft */}
+      {/* Email Draft — body hidden by default (SOC-2 compliance). Role-gated reveal. */}
       {email_draft && (
         <ScrollReveal>
           <KVSection
@@ -424,14 +457,7 @@ export function WarrantyContent() {
             ]}
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>}
           >
-            {email_draft.body && (
-              <div
-                className={styles.emailBody}
-                data-testid="warranty-email-body"
-              >
-                {email_draft.body}
-              </div>
-            )}
+            <EmailBodyReveal body={email_draft.body} />
           </KVSection>
         </ScrollReveal>
       )}
