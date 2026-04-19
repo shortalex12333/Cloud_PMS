@@ -1,5 +1,7 @@
 # Hours of Rest — Test Cheat Sheet
 
+> **RETIRED 2026-04-19** — Superseded by `HOR_SCENARIO_TEST_GUIDE.md` (reflects PRs #640, #641, #646).
+
 **Last verified:** 2026-04-15 | **All 14/14 live tests PASS**
 **Legal basis:** MLC 2006 Art. A2.3 — captain-signed weekly record is legally operative. Must be immutable after sign-off.
 
