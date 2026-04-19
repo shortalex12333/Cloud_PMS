@@ -694,6 +694,22 @@ def scenario_6_upload_document(ctx: BrowserContext, state: dict) -> dict:
     step(res, "6.7", "File appears in Attachments list",
          lambda: page.get_by_text(UPLOAD_FILENAME, exact=False).first.wait_for(state="visible", timeout=NAV_TIMEOUT_MS))
 
+    # -- delete_warranty_attachment E2E: click trash → file disappears --
+    def click_delete_attachment():
+        # Delete button testid = delete-attachment-{id}. Use attribute prefix selector.
+        btn = page.locator('[data-testid^="delete-attachment-"]').first
+        btn.wait_for(state="visible", timeout=STEP_TIMEOUT_MS)
+        btn.click(timeout=STEP_TIMEOUT_MS)
+    step(res, "6.8", "Click delete button on uploaded attachment", click_delete_attachment)
+
+    def file_gone_after_delete():
+        # After refetch the file should no longer be visible
+        page.wait_for_timeout(2000)  # allow refetch to complete
+        count = page.get_by_text(UPLOAD_FILENAME, exact=False).count()
+        assert count == 0, f"file still visible after delete (count={count})"
+    step(res, "6.9", "Attachment no longer visible after soft-delete", file_gone_after_delete)
+    # -------------------------------------------------------------------------
+
     page.close()
     return finalize(res)
 
