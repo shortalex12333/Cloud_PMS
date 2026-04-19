@@ -33,13 +33,10 @@ const APP_URL = process.env.E2E_BASE_URL || 'https://app.celeste7.ai';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 const MASTER_URL = 'https://qvzmkaamzaqxpzbewjxe.supabase.co';
 const MASTER_REF = 'qvzmkaamzaqxpzbewjxe';
-const MASTER_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzkwNDYsImV4cCI6MjA3OTU1NTA0Nn0.MMzzsRkvbug-u19GBUnD0qLDtMVWEbOf6KE8mAADaxw';
+const MASTER_ANON_KEY = process.env.MASTER_SUPABASE_ANON_KEY || '';
 
 const TENANT_URL = 'https://vzsohavtuotocgrfkfyd.supabase.co';
-const TENANT_SERVICE_KEY =
-  process.env.TENANT_SERVICE_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzU5Mjg3NSwiZXhwIjoyMDc5MTY4ODc1fQ.fC7eC_4xGnCHIebPzfaJ18pFMPKgImE7BuN0I3A-pSY';
+const TENANT_SERVICE_KEY = process.env.TENANT_SERVICE_KEY || '';
 
 const FAKE_SIG_PNG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
