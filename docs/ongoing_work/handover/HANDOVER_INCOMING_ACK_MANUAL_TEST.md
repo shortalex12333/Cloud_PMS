@@ -227,7 +227,7 @@ Log in as **crew** (`crew.test@alex-short.com`) and navigate to `/handover-expor
 ```bash
 # Capture crew token
 CREW_TOKEN=$(curl -s -X POST "https://qvzmkaamzaqxpzbewjxe.supabase.co/auth/v1/token?grant_type=password" \
-  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzkwNDYsImV4cCI6MjA3OTU1NTA0Nn0.MMzzsRkvbug-u19GBUnD0qLDtMVWEbOf6KE8mAADaxw" \
+  -H "apikey: ${MASTER_SUPABASE_ANON_KEY}" \
   -H "Content-Type: application/json" \
   -d '{"email":"crew.test@alex-short.com","password":"Password2!"}' \
   | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
