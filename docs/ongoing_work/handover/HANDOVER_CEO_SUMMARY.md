@@ -424,6 +424,25 @@ generation, especially for handovers with large numbers of items.
 
 **Priority:** Medium. Affects reliability during export, not day-to-day usage.
 
+### 8.4 T4 — Twin Path Consolidation (this PR)
+
+The handover backend had a historical duplicate of the author-sign step:
+`POST /v1/actions/handover/{id}/sign/outgoing` shadowed
+`POST /v1/handover/export/{id}/submit`. Line-by-line parity review showed
+`/submit` is strictly richer (regenerates signed HTML, drives `review_status`,
+stores full signature JSONB, cascades ledger + audit log to HODs) and is the
+only one the frontend calls. `/sign/outgoing` wrote partial data to the
+retired `status` column.
+
+**Decision in this PR:** keep `/submit` + `/countersign` canonical for
+author-sign and HOD-countersign; keep `/sign/incoming` canonical for
+incoming-ack (no twin exists). Mark `/sign/outgoing` as deprecated with a
+WARN log on every call. Do **not** delete yet — one release window to drain
+any stragglers. Removal plan is documented in `ARCHITECTURE.md` §9.
+
+**Priority:** Low. Nothing in production points at the deprecated route today;
+this is debt cleanup, not a user-visible fix.
+
 ---
 
 ## 9. Files Involved

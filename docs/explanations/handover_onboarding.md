@@ -83,9 +83,13 @@ handover_drafts          ← Document container (state machine)
 handover_draft_sections  ← Department groups within draft
 handover_draft_items     ← Individual items with LLM summaries
 handover_draft_edits     ← Audit trail of user edits
-handover_exports         ← Final export record (signatures, storage URLs)
-handover_signoffs        ← Dual signature record
+handover_exports         ← Final export record — SSOT for all three signatures
+                           (user_*, hod_*, incoming_* columns) + storage URLs
 handover_sources         ← External material (future: email integration)
+
+DEPRECATED:
+handover_signoffs        ← Earlier dual-row design. Not created/written/read by current
+                           code. Kept named for backward-compat searches only.
 ```
 
 Full schema details: `docs/Explanations/handover_backend.md`

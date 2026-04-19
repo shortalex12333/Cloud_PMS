@@ -2176,7 +2176,22 @@ async def sign_outgoing_route(
     method: str = "typed",
     auth: dict = Depends(get_authenticated_user)
 ):
-    """Outgoing user signs the export."""
+    """[DEPRECATED — T4 consolidation] Outgoing user signs the export.
+
+    Canonical path is ``POST /v1/handover/export/{id}/submit`` (richer: signed
+    HTML regen, review_status transition, full signature JSONB, ledger
+    cascade). This route is kept for one release to drain any lingering
+    callers; no frontend code path targets it. Fires a WARN log on every call
+    to flag migration.
+    """
+    logger.warning(
+        "DEPRECATED route hit: POST /v1/actions/handover/%s/sign/outgoing "
+        "(caller user=%s role=%s). Migrate to "
+        "POST /v1/handover/export/{id}/submit. Scheduled for removal once "
+        "traffic drains (T4 consolidation, PR #642 follow-up).",
+        export_id, auth.get("user_id"), auth.get("role"),
+    )
+
     yacht_id = auth["yacht_id"]
     user_id = auth["user_id"]
     user_role = auth.get("role")
@@ -2219,15 +2234,18 @@ async def sign_incoming_route(
     method: str = "typed",
     auth: dict = Depends(get_authenticated_user)
 ):
-    """Incoming user countersigns the export."""
+    """Incoming crew acknowledges the handover.
+
+    Per handover.md role matrix (row 'Sign incoming (acknowledge)'): any authenticated
+    user on the yacht may acknowledge a handover addressed to them. Acknowledgement is
+    receipt, not review — yacht_id scoping is already enforced by `auth` dependency.
+    """
     yacht_id = auth["yacht_id"]
     user_id = auth["user_id"]
     user_role = auth.get("role")
 
-    # Require officer+ role
-    officer_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
-    if user_role not in officer_roles:
-        raise HTTPException(status_code=403, detail=f"Requires officer+ role. Your role: {user_role}")
+    # No role gate: any authenticated user on the yacht can acknowledge receipt of a
+    # handover. Review/approval gating happens at countersign (separate endpoint).
 
     handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
     _handover_wf = handlers.get("handover_workflow_handlers")

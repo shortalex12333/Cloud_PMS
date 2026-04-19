@@ -10,3 +10,11 @@ tests/docker/run_rls_tests.py
 # Files with intentionally committed public Supabase anon keys
 # The MASTER_SUPABASE_ANON_KEY is the public key from Supabase dashboard
 # RLS policies enforce security, not the anon key
+2608d5f2ef65d3e1308e5ddaac7255da8be302fb:apps/web/e2e/shard-49-handover-export-e2e/full-3-sign-lifecycle.spec.ts:jwt:26
+2608d5f2ef65d3e1308e5ddaac7255da8be302fb:apps/web/e2e/shard-49-handover-export-e2e/full-3-sign-lifecycle.spec.ts:jwt:31
+2608d5f2ef65d3e1308e5ddaac7255da8be302fb:apps/web/e2e/shard-47-handover-misc/sign-incoming-api.spec.ts:jwt:42
+2608d5f2ef65d3e1308e5ddaac7255da8be302fb:apps/web/e2e/shard-47-handover-misc/sign-incoming-api.spec.ts:jwt:47
+2608d5f2ef65d3e1308e5ddaac7255da8be302fb:apps/web/e2e/shard-54-handover-tester-ui/sign-incoming-ui.spec.ts:jwt:32
+2608d5f2ef65d3e1308e5ddaac7255da8be302fb:apps/web/e2e/shard-54-handover-tester-ui/sign-incoming-ui.spec.ts:jwt:37
+aa7e949284c424ba7d205ba9a5a5e776c7f31696:docs/ongoing_work/handover/HANDOVER_INCOMING_ACK_MANUAL_TEST.md:jwt:230
+aa7e949284c424ba7d205ba9a5a5e776c7f31696:docs/ongoing_work/handover/HANDOVER_INCOMING_ACK_MANUAL_TEST.md:curl-auth-header:229

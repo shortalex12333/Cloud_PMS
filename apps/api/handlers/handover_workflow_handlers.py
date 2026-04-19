@@ -12,8 +12,13 @@ Stage 2: Export
 - export_handover: Generate HTML/PDF, store document_hash
 
 Stage 3: Sign-off (Dual Signature)
-- sign_outgoing: Outgoing user signs export
-- sign_incoming: Incoming user countersigns + acknowledges critical items
+- sign_outgoing: [DEPRECATED — T4] Outgoing user signs export.
+    Author-sign has been consolidated onto
+    POST /v1/handover/export/{id}/submit (routes/handover_export_routes.py).
+    This handler remains only for backwards compatibility during the
+    deprecation window. See docs/ongoing_work/handover/ARCHITECTURE.md §T4.
+- sign_incoming: Incoming user acknowledges the handover.
+    This is CANONICAL — no twin exists; Path A has no incoming-ack equivalent.
 
 Stage 4: Verification
 - get_pending: List handovers awaiting signature
@@ -31,6 +36,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
+from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
@@ -301,6 +307,11 @@ class HandoverWorkflowHandlers:
 
         # Update export record with workflow fields
         try:
+            # DEPRECATED: `status` column retired as state-machine driver (PR #642).
+            # `review_status` is the SSOT. The write below is kept only because
+            # `sign_outgoing` still gates on `status == 'pending_outgoing'` until
+            # the twin /submit+/countersign vs /sign/outgoing+/sign/incoming paths
+            # are consolidated (task T4). Do not rely on this value in new code.
             self.db.table("handover_exports").update({
                 "document_hash": document_hash,
                 "content_hash": content_hash,
@@ -354,6 +365,27 @@ class HandoverWorkflowHandlers:
         method: str = "typed"
     ) -> Dict:
         """
+        [DEPRECATED — T4 consolidation, PR #642 follow-up]
+
+        Author-sign is canonicalised on ``POST /v1/handover/export/{id}/submit``
+        (see ``routes/handover_export_routes.py::submit_export``). That path is
+        richer: it regenerates the signed HTML, uploads to Bucket 2, writes the
+        ``review_status`` state-machine transition (``pending_review →
+        pending_hod_signature``), stores a full ``user_signature`` JSONB
+        (image_base64 + signer_name + signer_id + signed_at), and cascades
+        ledger + pms_audit_log notifications to HODs.
+
+        This ``sign_outgoing`` handler is feature-poor by comparison — it only
+        writes ``outgoing_*`` columns + an HMAC-soft signature envelope, reads
+        the retired legacy ``status`` column as precondition, and does NOT
+        regenerate the signed HTML or transition ``review_status``. No frontend
+        code path calls it; it is retained only for backwards compatibility
+        with shard-47 advisory tests until the deprecation window closes.
+
+        Callers MUST migrate to ``/v1/handover/export/{id}/submit``. This
+        function will be removed in a future PR once traffic has been
+        confirmed absent (see docs/ongoing_work/handover/ARCHITECTURE.md §T4).
+
         Outgoing user signs the export.
 
         Prerequisites:
@@ -366,11 +398,23 @@ class HandoverWorkflowHandlers:
         2. Require step-up re-auth (password/OTP) - handled by caller
         3. Create signature envelope: { document_hash, export_id, user_id, role, timestamp, method }
         4. Store in handover_exports: outgoing_user_id, outgoing_signed_at, outgoing_notes
-        5. Update status='pending_incoming'
+        5. (Retired in PR #642) The legacy `status` column used to be set to
+           'pending_incoming' here. It is no longer written — `review_status`
+           plus `outgoing_signed_at` / `incoming_signed_at` drive the state.
         6. Send notification to incoming user
 
         Returns signature metadata
         """
+        # T4 DEPRECATION WARNING — see docstring. Callers must migrate to
+        # POST /v1/handover/export/{id}/submit. Logged as warning (not error)
+        # so the route still works during the deprecation window.
+        logger.warning(
+            "DEPRECATED: HandoverWorkflowHandlers.sign_outgoing called for "
+            "export=%s user=%s role=%s; migrate to "
+            "POST /v1/handover/export/{id}/submit (T4 consolidation, PR #642 follow-up).",
+            export_id, user_id, user_role,
+        )
+
         # Fetch export
         result = self.db.table("handover_exports").select("*").eq("id", export_id).eq("yacht_id", yacht_id).single().execute()
 
@@ -383,6 +427,9 @@ class HandoverWorkflowHandlers:
 
         export = result.data
 
+        # DEPRECATED: reads legacy `status` column. `review_status` is the SSOT
+        # (PR #642). Kept until task T4 consolidates this twin path with
+        # /submit + /countersign. New code must not gate on `status`.
         if export["status"] != "pending_outgoing":
             return {
                 "status": "error",
@@ -417,13 +464,19 @@ class HandoverWorkflowHandlers:
         signatures = export.get("signatures") or {}
         signatures["outgoing"] = signature_envelope
 
+        # DEPRECATED: `status` column retired as state-machine driver (PR #642).
+        # `review_status` is the SSOT. The legacy transition
+        # `status: pending_outgoing -> pending_incoming` is no longer written here.
+        # The dual sign/{outgoing,incoming} path is scheduled for consolidation with
+        # the /submit + /countersign path (see task T4). Until then, sign_outgoing
+        # records only the outgoing signature metadata; downstream readers must use
+        # `review_status + outgoing_signed_at + incoming_signed_at`.
         self.db.table("handover_exports").update({
             "outgoing_user_id": user_id,
             "outgoing_role": user_role,
             "outgoing_signed_at": now.isoformat(),
             "outgoing_comments": note,
             "signatures": json.dumps(signatures),
-            "status": "pending_incoming"
         }).eq("id", export_id).execute()
 
         # Notify incoming user
@@ -457,25 +510,44 @@ class HandoverWorkflowHandlers:
         method: str = "typed"
     ) -> Dict:
         """
-        Incoming user countersigns the export.
+        Incoming crew acknowledges the handover.
 
         Prerequisites:
-        - Export must exist with status='pending_incoming'
-        - User must have officer+ role
-        - Must acknowledge critical items (checkbox required)
+        - Export must exist with review_status='complete' (countersigned by HOD) AND
+          incoming_signed_at IS NULL (not yet acknowledged).
+        - Any authenticated user on the yacht may acknowledge — no role gate.
+        - Must acknowledge critical items (checkbox required).
+
+        State machine note:
+        `review_status` is the real state machine for handover_exports:
+            pending_review -> pending_hod_signature -> complete -> (ack recorded via
+            incoming_signed_at; `review_status` stays 'complete').
+        The legacy `status` column ('pending_incoming', 'completed') is retained for
+        backward compatibility and is kept in sync here, but new code MUST read
+        `review_status` and `incoming_signed_at` — not `status`.
 
         Steps:
-        1. Verify export status
+        1. Verify review_status='complete' and not already acknowledged
         2. Require acknowledgment of critical items
         3. Create signature envelope
         4. Store incoming_* fields
-        5. Set signoff_complete=true, status='completed'
-        6. Audit log
+        5. Set signoff_complete=true, keep review_status='complete' (ack closes loop)
+        6. Write ledger_events + pms_audit_log and notify outgoing user / captain / manager
 
         Returns completion status
         """
-        # Fetch export
-        result = self.db.table("handover_exports").select("*").eq("id", export_id).eq("yacht_id", yacht_id).single().execute()
+        # Fetch export (include the real state-machine columns)
+        result = (
+            self.db.table("handover_exports")
+            .select(
+                "id, yacht_id, status, review_status, document_hash, signatures, "
+                "incoming_signed_at, outgoing_user_id, exported_by_user_id, department"
+            )
+            .eq("id", export_id)
+            .eq("yacht_id", yacht_id)
+            .single()
+            .execute()
+        )
 
         if not result.data:
             return {
@@ -486,11 +558,23 @@ class HandoverWorkflowHandlers:
 
         export = result.data
 
-        if export["status"] != "pending_incoming":
+        # `review_status` is the real state machine; `status` is legacy (see docstring).
+        review_status = export.get("review_status")
+        if review_status != "complete":
             return {
                 "status": "error",
                 "error_code": "INVALID_STATUS",
-                "message": f"Export status is '{export['status']}', expected 'pending_incoming'"
+                "message": (
+                    f"Export review_status is '{review_status}', expected 'complete' "
+                    "(handover must be HOD-countersigned before incoming ack)."
+                ),
+            }
+
+        if export.get("incoming_signed_at") is not None:
+            return {
+                "status": "error",
+                "error_code": "INVALID_STATUS",
+                "message": "Handover has already been acknowledged by incoming crew.",
             }
 
         if not acknowledge_critical:
@@ -516,8 +600,16 @@ class HandoverWorkflowHandlers:
 
         signature_envelope = self._create_signature_envelope(signature_payload)
 
-        # Update export record
-        signatures = json.loads(export.get("signatures") or "{}")
+        # Update export record. `signatures` may be stored as JSONB (dict) or a JSON
+        # string depending on writer — tolerate both.
+        raw_sigs = export.get("signatures") or {}
+        if isinstance(raw_sigs, str):
+            try:
+                signatures = json.loads(raw_sigs) if raw_sigs else {}
+            except Exception:
+                signatures = {}
+        else:
+            signatures = dict(raw_sigs)
         signatures["incoming"] = signature_envelope
 
         self.db.table("handover_exports").update({
@@ -528,10 +620,30 @@ class HandoverWorkflowHandlers:
             "incoming_acknowledged_critical": acknowledge_critical,
             "signatures": json.dumps(signatures),
             "signoff_complete": True,
+            # Legacy `status` column kept in sync for backward compat; real state is
+            # `review_status` + `incoming_signed_at`.
             "status": "completed"
         }).eq("id", export_id).execute()
 
         logger.info(f"Incoming signature: export={export_id}, user={user_id}, signoff complete")
+
+        # Ledger + audit + notification cascade.
+        # Mirrors the `handover_countersigned` pattern in
+        # routes/handover_export_routes.py (_write_handover_event + _get_role_users).
+        # TODO(handover): consolidate with _write_handover_event helper once cross-module
+        # import is cleaned up (currently duplicated inline to avoid circular deps).
+        self._emit_handover_acknowledged_events(
+            export_id=export_id,
+            yacht_id=yacht_id,
+            actor_id=user_id,
+            actor_role=user_role,
+            acknowledge_critical=acknowledge_critical,
+            outgoing_user_id=(
+                export.get("outgoing_user_id") or export.get("exported_by_user_id")
+            ),
+            department=export.get("department"),
+            now_iso=now.isoformat(),
+        )
 
         return {
             "status": "success",
@@ -563,6 +675,160 @@ class HandoverWorkflowHandlers:
             "typ": "soft"
         }
 
+    def _emit_handover_acknowledged_events(
+        self,
+        export_id: str,
+        yacht_id: str,
+        actor_id: str,
+        actor_role: str,
+        acknowledge_critical: bool,
+        outgoing_user_id: Optional[str],
+        department: Optional[str],
+        now_iso: str,
+    ) -> None:
+        """Write pms_audit_log + ledger_events for handover acknowledgement.
+
+        Mirrors the `handover_countersigned` cascade in handover_export_routes.py
+        (`_write_handover_event` + `_get_role_users`). Duplicated inline here to avoid
+        a circular import between handlers/ and routes/. Every DB write is wrapped in
+        try/except so the ack itself never fails due to notification problems.
+
+        Recipients:
+          - actor (self-audit row)
+          - outgoing_user_id (the person who wrote the handover), if known
+          - all captain + manager users on the yacht (rotation closure notification)
+        """
+        try:
+            from routes.handlers.ledger_utils import build_ledger_event
+        except Exception as e:  # pragma: no cover — import path is stable in app
+            logger.warning("sign_incoming: ledger_utils import failed: %s", e)
+            return
+
+        change_summary = "Handover acknowledged by incoming crew"
+        metadata = {
+            "acknowledged_critical": acknowledge_critical,
+            "export_id": export_id,
+        }
+        new_values = {
+            "incoming_user_id": actor_id,
+            "incoming_signed_at": now_iso,
+            "incoming_acknowledged_critical": acknowledge_critical,
+        }
+
+        # Build recipient list. De-dupe while preserving order.
+        recipients: List[Dict[str, Any]] = [
+            {"user_id": actor_id, "department": department, "role": actor_role}
+        ]
+        if outgoing_user_id and outgoing_user_id != actor_id:
+            recipients.append(
+                {"user_id": outgoing_user_id, "department": department, "role": None}
+            )
+
+        # Captain + manager cascade (rotation-closure notification)
+        try:
+            roles_result = (
+                self.db.table("auth_users_roles")
+                .select("user_id, role, department")
+                .eq("yacht_id", yacht_id)
+                .in_("role", ["captain", "manager"])
+                .eq("is_active", True)
+                .execute()
+            )
+            for r in (roles_result.data or []):
+                recipients.append(
+                    {
+                        "user_id": r["user_id"],
+                        "department": r.get("department") or department,
+                        "role": r.get("role"),
+                    }
+                )
+        except Exception as e:
+            logger.warning("sign_incoming: auth_users_roles lookup failed: %s", e)
+
+        seen_ids = set()
+        for rec in recipients:
+            uid = rec.get("user_id")
+            if not uid or uid in seen_ids:
+                continue
+            seen_ids.add(uid)
+
+            # 1. pms_audit_log (immutable compliance trail)
+            try:
+                self.db.table("pms_audit_log").insert({
+                    "id": str(uuid4()),
+                    "yacht_id": yacht_id,
+                    "entity_type": "handover_export",
+                    "entity_id": export_id,
+                    "action": "handover_acknowledged",
+                    "user_id": uid,
+                    "actor_id": actor_id,
+                    "signature": {
+                        "actor_id": actor_id,
+                        "actor_role": actor_role,
+                        "timestamp": now_iso,
+                    },
+                    "old_values": {},
+                    "new_values": new_values,
+                    "metadata": metadata,
+                    "created_at": now_iso,
+                }).execute()
+            except Exception as e:
+                logger.warning(
+                    "sign_incoming: pms_audit_log insert failed (export=%s, user=%s): %s",
+                    export_id, uid, e,
+                )
+
+            # 2. ledger_events (notification bus + proof_hash chain)
+            try:
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=uid,
+                    event_type="handover",
+                    entity_type="handover_export",
+                    entity_id=export_id,
+                    action="handover_acknowledged",
+                    user_role=actor_role,
+                    change_summary=change_summary,
+                    metadata=metadata,
+                    department=rec.get("department"),
+                    new_state=new_values,
+                )
+                self.db.table("ledger_events").insert(ledger_event).execute()
+            except Exception as e:
+                logger.warning(
+                    "sign_incoming: ledger_events insert failed (export=%s, user=%s): %s",
+                    export_id, uid, e,
+                )
+
+            # 3. pms_notifications (bell) — skip self, skip current actor.
+            # The bell reads `pms_notifications`, NOT `ledger_events`, so this
+            # is the row the recipient's UI will actually render. Schema +
+            # idempotency_key convention mirrors certificate_handlers
+            # `_notify_cert_stakeholders` and internal_dispatcher warranty flow.
+            if uid == actor_id:
+                continue
+            try:
+                self.db.table("pms_notifications").upsert({
+                    "id": str(uuid4()),
+                    "yacht_id": yacht_id,
+                    "user_id": uid,
+                    "notification_type": "handover_acknowledged",
+                    "title": "Handover acknowledged",
+                    "body": change_summary,
+                    "priority": "normal",
+                    "entity_type": "handover_export",
+                    "entity_id": export_id,
+                    "triggered_by": actor_id,
+                    "idempotency_key": f"handover_acknowledged:{export_id}:{uid}",
+                    "is_read": False,
+                    "created_at": now_iso,
+                }, on_conflict="yacht_id,user_id,idempotency_key").execute()
+            except Exception as e:
+                logger.warning(
+                    "sign_incoming: pms_notifications upsert failed (export=%s, user=%s): %s",
+                    export_id, uid, e,
+                )
+
     # =========================================================================
     # STAGE 4: VERIFICATION & PENDING
     # =========================================================================
@@ -576,21 +842,45 @@ class HandoverWorkflowHandlers:
         """
         Get handovers pending signature by this user.
 
-        Filters:
-        - role_filter='outgoing': status='pending_outgoing'
-        - role_filter='incoming': status='pending_incoming'
-        - No filter: all pending
+        Filters (reads `review_status` + `incoming_signed_at` — the real state
+        machine. PR #642 retired the legacy `status` column as state driver):
 
-        Returns list of exports with metadata
+        - role_filter='outgoing': awaiting outgoing (user) signature.
+              review_status IN ('pending_review', 'pending_hod_signature')
+              AND outgoing_signed_at IS NULL
+        - role_filter='incoming': HOD-complete, waiting for incoming ack.
+              review_status = 'complete' AND incoming_signed_at IS NULL
+        - No filter: anything not fully acknowledged (review_status != 'complete'
+              OR incoming_signed_at IS NULL).
+
+        Legacy `status` mappings retired here:
+            status='pending_outgoing'  -> review_status='pending_review'
+                                          AND outgoing_signed_at IS NULL
+            status='pending_incoming'  -> review_status='complete'
+                                          AND incoming_signed_at IS NULL
+            status='completed'         -> review_status='complete'
+                                          AND incoming_signed_at IS NOT NULL
+
+        Returns list of exports with metadata.
         """
         query = self.db.table("handover_exports").select("*").eq("yacht_id", yacht_id)
 
         if role_filter == "outgoing":
-            query = query.eq("status", "pending_outgoing")
+            # Awaiting outgoing/user signature — the export was generated but the
+            # author has not yet signed. `outgoing_signed_at IS NULL` filters by
+            # absence of the outgoing signature; review_status is pre-complete.
+            query = (
+                query.in_("review_status", ["pending_review", "pending_hod_signature"])
+                .is_("outgoing_signed_at", "null")
+            )
         elif role_filter == "incoming":
-            query = query.eq("status", "pending_incoming")
+            # HOD-complete handover that the incoming crew has not yet acknowledged.
+            query = query.eq("review_status", "complete").is_("incoming_signed_at", "null")
         else:
-            query = query.in_("status", ["pending_outgoing", "pending_incoming"])
+            # Anything still pending anywhere in the chain.
+            query = query.or_(
+                "review_status.neq.complete,incoming_signed_at.is.null"
+            )
 
         result = query.order("created_at", desc=True).execute()
         exports = result.data or []

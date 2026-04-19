@@ -68,8 +68,8 @@ Every role generates their own handover — deckhand, stew, engineer, captain. E
 
 ### Step 6 — Incoming crew receives
 - Incoming crew member sees the completed handover on their device
-- Reads it, signs to acknowledge (uses same `/sign/incoming` route)
-- `signoff_complete = true` in `handover_signoffs` table
+- Reads it, signs to acknowledge (uses `/sign/incoming` route)
+- `incoming_signature`, `incoming_signed_at`, `incoming_user_id` set on the `handover_exports` row; `signoff_complete` flips to `true` once all three signatures are present
 
 ---
 
@@ -115,13 +115,24 @@ All tables live in **TENANT DB** (`vzsohavtuotocgrfkfyd`).
 | Table | Purpose | Key columns |
 |---|---|---|
 | `handover_items` | The draft queue. One row per "Add to Handover" tap | `id, yacht_id, added_by, entity_type, entity_id, summary, category, section, is_critical, export_status, status, deleted_at` |
-| `handover_exports` | The generated document record | `id, yacht_id, draft_id, review_status, outgoing_signed_at, incoming_signed_at, hod_signed_at, signoff_complete, document_hash, original_storage_url, signed_storage_url` |
+| `handover_exports` | **Single source of truth for the generated document AND all three signatures.** One row per export. | `id, yacht_id, draft_id, review_status, status` (legacy), `user_signature, user_signed_at, hod_signature, hod_signed_at, incoming_signature, incoming_signed_at, incoming_user_id, incoming_acknowledged_critical, incoming_comments, incoming_role, signoff_complete, document_hash, original_storage_url, signed_storage_url` |
 | `handover_drafts` | The LLM-assembled document metadata | `id, yacht_id, state, period_start, period_end, department, generated_by_user_id, total_entries, critical_entries` |
 | `handover_draft_sections` | Department sections within a draft | `id, draft_id, bucket_name, section_order, display_title, item_count, critical_count` |
 | `handover_draft_items` | Individual LLM-summarised items | `id, draft_id, section_id, section_bucket, summary_text, domain_code, is_critical, item_order, entity_url, source_entry_ids` |
 | `handover_entries` | Immutable truth seeds from LLM merge | `id, yacht_id, narrative_text, source_entity_type, is_critical, status` — **NO DELETE policy — permanent** |
-| `handover_signoffs` | Outgoing/incoming signature records | `id, draft_id, outgoing_user_id, outgoing_signed_at, incoming_user_id, incoming_signed_at, signoff_complete, document_hash` |
 | `handover_sources` | Email/document sources for handover items | `id, yacht_id, source_type, is_processed, classification` |
+
+### Signatures on `handover_exports` — the three sign columns
+
+All three signatures live on the same row. The collapse from the earlier two-table design (draft + signoff row) to one export row is deliberate — one document, one signature surface.
+
+| Sign stage | Columns | When written |
+|---|---|---|
+| Outgoing (crew prepares) | `user_signature, user_signed_at` | POST `/v1/handover/export/{id}/submit` → `review_status` moves to `pending_hod_signature` |
+| HOD countersign | `hod_signature, hod_signed_at` | POST `/v1/handover/export/{id}/countersign` → `review_status` moves to `complete` |
+| Incoming acknowledgment | `incoming_signature, incoming_signed_at, incoming_user_id, incoming_acknowledged_critical, incoming_comments, incoming_role` | POST `/v1/handover/export/{id}/sign/incoming` — only valid after `review_status='complete'` |
+
+`signoff_complete` is set to `true` only when all three signatures are present.
 
 ### Views
 
@@ -129,7 +140,13 @@ All tables live in **TENANT DB** (`vzsohavtuotocgrfkfyd`).
 |---|---|
 | `v_handover_draft_complete` | Aggregates draft + sections as nested JSON. Use this to fetch a full document in one query. |
 | `v_handover_export_items` | Items joined to their section with section title, order, entity links. Use for export rendering. |
-| `v_handover_signoffs` | Flattens outgoing/incoming as separate rows with `signoff_type` column. |
+
+### Deprecated — do not use
+
+| Name | Reason |
+|---|---|
+| `handover_signoffs` (table) | Earlier dual-row design for outgoing + incoming signatures. Superseded by the sign columns on `handover_exports` above. **Not created by any migration, not written by any handler, not read by any route** in the current code. The name is kept in this doc for backward-compat searches only — do not reference it in new code. |
+| `v_handover_signoffs` (view) | Companion view that flattened the retired table. Same status as above. |
 
 ### Audit / Notification tables
 
