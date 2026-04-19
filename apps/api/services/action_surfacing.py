@@ -27,12 +27,12 @@ Usage:
         "domain_boost": 0.30,
         "actions": [
             {
-                "action": "view_hours_of_rest",
+                "action": "get_hours_of_rest",
                 "label": "View Hours of Rest",
                 "side_effect": "read_only",
                 "requires_confirm": false,
                 "prefill": {
-                    "crew_id": "uuid-from-top-result"
+                    "user_id": "uuid-from-top-result"
                 }
             },
             ...

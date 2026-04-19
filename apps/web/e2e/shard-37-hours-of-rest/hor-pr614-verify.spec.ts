@@ -10,7 +10,16 @@
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
 
+// This spec runs exclusively against the production deployment.
+// Skip automatically when E2E_BASE_URL points to a local Docker instance.
 const BASE_URL = 'https://app.celeste7.ai';
+const isLocalRun = (process.env.E2E_BASE_URL ?? '').startsWith('http://localhost');
+
+test.beforeEach(async ({}, testInfo) => {
+  if (isLocalRun) {
+    testInfo.skip(true, 'hor-pr614-verify runs against app.celeste7.ai only');
+  }
+});
 const AUTH_DIR = path.join(__dirname, '../../playwright/.auth');
 const YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598';
 

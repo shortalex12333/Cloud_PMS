@@ -76,13 +76,14 @@ type FilterStatus = 'all' | 'pending' | 'awaiting_hod' | 'finalized';
 // If new roles are added to the DB trigger, update this map too.
 // 'captain' maps to 'all' here (meaning: don't send department filter → see everything).
 
-// 'captain' and 'manager' map to 'all' — these roles see all departments.
+// 'captain' maps to 'all' — these roles see all departments.
 // Omitting a role from this map makes getUserDepartment return null → no dept filter → sees all.
+// BUG-HOR-4 fix: removed stale 'manager' → 'interior' mapping. Fleet managers now
+// fall through to getUserDepartment() returning null, so they see all departments.
 const DEPARTMENT_MAP: Record<string, string> = {
   captain: 'all',
   chief_engineer: 'engineering',
   eto: 'engineering',
-  manager: 'all',  // fleet managers see all departments, not just interior
 };
 
 function getUserDepartment(role: string): string | null {
@@ -236,9 +237,9 @@ function SignoffRow({
         padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 500,
         whiteSpace: 'nowrap',
         ...(signoff.status === 'finalized'
-          ? { background: 'rgba(74,148,104,0.12)', color: 'var(--green)' }
+          ? { background: 'var(--green-bg)', color: 'var(--green)' }
           : signoff.status === 'crew_signed' || signoff.status === 'hod_signed'
-            ? { background: 'rgba(196,137,59,0.12)', color: 'var(--amber)' }
+            ? { background: 'var(--amber-bg)', color: 'var(--amber)' }
             : { background: 'var(--surface-hover)', color: 'var(--txt3)' }),
       }}>
         <span style={{
@@ -284,7 +285,7 @@ function FilterTabs({
             fontFamily: 'var(--font-sans)', transition: 'all 120ms',
             color: active === t.key ? 'var(--txt)' : 'var(--txt3)',
             background: active === t.key ? 'var(--surface)' : 'transparent',
-            boxShadow: active === t.key ? '0 1px 3px rgba(0,0,0,0.2)' : 'none',
+            boxShadow: active === t.key ? 'var(--shadow-tip)' : 'none',
           }}
         >
           {t.label}
@@ -392,7 +393,7 @@ function SignoffsPageContent() {
             <span style={{
               fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600,
               padding: '2px 8px', borderRadius: 4,
-              background: 'rgba(196,137,59,0.12)', color: 'var(--amber)',
+              background: 'var(--amber-bg)', color: 'var(--amber)',
             }}>
               {pendingCount} awaiting
             </span>

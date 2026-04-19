@@ -34,11 +34,12 @@
 //     HTTP 200 envelope with success=false, error.code=DATABASE_ERROR,
 //     status_code=500. Should return proper 403 when role is not authorized.
 //
-//   BUG-HOR-4 (UI) JWT injection doesn't survive frontend auth bootstrap.
-//     The Supabase client re-validates the session on page load. If the JWT
-//     sub doesn't correspond to an active Supabase session, the client may
-//     redirect to login. UI tab-visibility tests require real browser login,
-//     not just JWT injection.
+//   BUG-HOR-4 (UI) [RESOLVED 2026-04-17] JWT injection didn't survive
+//     frontend auth bootstrap — the Supabase client re-validated the
+//     session on page load and rejected self-minted tokens. Fixed by
+//     switching global-setup.ts to real supabase.auth.signInWithPassword()
+//     calls, writing the returned session into storageState in the exact
+//     shape supabase-js expects. UI tab-visibility tests no longer skip.
 
 import { test, expect, RBAC_CONFIG } from '../rbac-fixtures';
 import { callActionDirect, callActionAs, generateFreshJwt } from '../shard-34-lens-actions/helpers';
@@ -724,14 +725,12 @@ test.describe('[Security] Cross-yacht write must not succeed', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// UI TAB VISIBILITY — JWT injection + real page navigation
+// UI TAB VISIBILITY — real Supabase session + page navigation
 //
-// NOTE BUG-HOR-4: The Supabase client re-validates the session on page load.
-// If the injected JWT doesn't correspond to an active Supabase session, the
-// client redirects to login and tabs never appear.
-//
-// These tests use a softer assertion: check the URL to determine whether
-// the auth state was accepted or rejected.
+// BUG-HOR-4 (RESOLVED 2026-04-17): global-setup now uses
+// supabase.auth.signInWithPassword() to produce real sessions, so the
+// Supabase client accepts the storage state on page load without
+// redirecting. These tests are no longer conditionally skipped.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 test.describe('[UI] Crew — auth state and page load', () => {
@@ -744,16 +743,6 @@ test.describe('[UI] Crew — auth state and page load', () => {
 
     const url = crewPage.url();
     console.log(`[UI] crew url: ${url}`);
-
-    // Check if any HoR tab element is present — if not, PMS is not running here
-    // (could be wrong port, auth redirect, or wrong app entirely).
-    const tabCount = await crewPage.locator('[data-testid^="hor-tab"]').count();
-    console.log(`[UI] crew hor-tab count: ${tabCount}`);
-    if (tabCount === 0) {
-      console.warn(`[BUG-HOR-4] No hor-tab elements found at ${url}. PMS frontend not running at ${BASE_URL}, or JWT injection rejected (BUG-HOR-4). Needs real Supabase session.`);
-      test.skip();
-      return;
-    }
 
     // PMS HoR page is loaded — verify crew sees My Time but not Department
     const myTimeTab = crewPage.locator('[data-testid="hor-tab-my-time"]');
@@ -775,14 +764,6 @@ test.describe('[UI] Captain — auth state and tab visibility', () => {
 
     const url = captainPage.url();
     console.log(`[UI] captain url: ${url}`);
-
-    const tabCount = await captainPage.locator('[data-testid^="hor-tab"]').count();
-    console.log(`[UI] captain hor-tab count: ${tabCount}`);
-    if (tabCount === 0) {
-      console.warn(`[BUG-HOR-4] No hor-tab elements found at ${url}. PMS frontend not running at ${BASE_URL} or JWT rejected.`);
-      test.skip();
-      return;
-    }
 
     const myTimeTab  = captainPage.locator('[data-testid="hor-tab-my-time"]');
     const vesselTab  = captainPage.locator('[data-testid="hor-tab-vessel"]');

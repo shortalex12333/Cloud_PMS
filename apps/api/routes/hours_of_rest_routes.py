@@ -10,7 +10,7 @@ Endpoints (19 total):
 Daily HOR Records:
 - GET  /v1/hours-of-rest                    - View HOR records (READ) [get_hours_of_rest]
 - POST /v1/hours-of-rest/upsert             - Upsert HOR record (MUTATE) [upsert_hours_of_rest]
-- POST /v1/hours-of-rest/export             - Export HOR data (READ) [export_hours_of_rest]
+- POST /v1/hours-of-rest/export             - Export HOR data (READ) — direct route, reuses get_hours_of_rest handler
 - POST /v1/hours-of-rest/undo               - Undo submitted day (MUTATE) [undo_hours_of_rest]
 
 MLC 2006 Corrections:
@@ -127,6 +127,7 @@ class UpdateHoursRequest(BaseModel):
     rest_periods: Optional[list] = Field(None, description="DEPRECATED: ignored. Backend derives rest from work_periods complement.")
     signature: Optional[Dict[str, Any]] = Field(None, description="Digital signature (optional, included in audit trail)")
     daily_compliance_notes: Optional[str] = Field(None, description="Optional notes")
+    crew_comment: Optional[str] = Field(None, description="Required justification when logging non-compliant hours (MLC A2.3)")
 
 
 class ExportHoursRequest(BaseModel):
@@ -275,7 +276,7 @@ async def get_hours_of_rest_route(
         return JSONResponse(content=result)
 
     except Exception as e:
-        logger.error(f"view_hours_of_rest error: {e}", exc_info=True)
+        logger.error(f"get_hours_of_rest error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={
@@ -322,14 +323,15 @@ async def upsert_hours_of_rest_route(
                 "record_date": request.record_date,
                 "work_periods": work_periods,
                 "signature": request.signature,
-                "daily_compliance_notes": request.daily_compliance_notes
+                "daily_compliance_notes": request.daily_compliance_notes,
+                "crew_comment": request.crew_comment
             }
         )
 
         return JSONResponse(content=result)
 
     except Exception as e:
-        logger.error(f"update_hours_of_rest error: {e}", exc_info=True)
+        logger.error(f"upsert_hours_of_rest error: {e}", exc_info=True)
 
         # Map known errors to proper 4xx codes
         error_str = str(e).lower()
@@ -628,6 +630,36 @@ async def list_crew_templates_route(
         return JSONResponse(content=result)
     except Exception as e:
         logger.error(f"list_crew_templates error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.get("/templates/{template_id}")
+async def get_crew_template_route(
+    template_id: str,
+    yacht_id: str,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Get single schedule template by ID.
+
+    **Action**: get_crew_template
+    **Variant**: READ
+    **Endpoint**: GET /v1/hours-of-rest/templates/{template_id}
+    """
+    user_id = auth["user_id"]
+    tenant_key_alias = auth["tenant_key_alias"]
+    yacht_id = resolve_yacht_id(auth, yacht_id)
+    hor_handlers = get_hor_handlers(tenant_key_alias)
+    try:
+        result = await hor_handlers.get_crew_template(
+            template_id=template_id,
+            entity_id=user_id,
+            yacht_id=yacht_id,
+            user_id=user_id,
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"get_crew_template error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
 
 

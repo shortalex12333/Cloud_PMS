@@ -12,6 +12,11 @@
  *   /api/v1/hours-of-rest/templates/apply
  *   /api/v1/hours-of-rest/notifications/unread
  *   /api/v1/hours-of-rest/warnings/*
+ *   /api/v1/hours-of-rest/schedule/preview
+ *   /api/v1/hours-of-rest/fleet-compliance
+ *   /api/v1/hours-of-rest/exceptions
+ *   /api/v1/hours-of-rest/exceptions/create
+ *   /api/v1/hours-of-rest/exceptions/revoke
  *
  * → ${RENDER_API_URL}/v1/hours-of-rest/...
  *

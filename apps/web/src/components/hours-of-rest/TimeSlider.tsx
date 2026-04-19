@@ -272,7 +272,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                 transform: hour === 0 ? 'none' : hour === 24 ? 'translateX(-100%)' : 'translateX(-50%)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 8,
-                color: 'rgba(255,255,255,0.25)',
+                color: 'var(--txt-ghost)',
                 letterSpacing: '0.04em',
                 lineHeight: '12px',
                 pointerEvents: 'none',
@@ -292,9 +292,9 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
         style={{
           position: 'relative',
           height: 28,
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: 4,
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'var(--surface-subtle)',
+          borderRadius: 'var(--radius-pill)',
+          border: '1px solid var(--border-chrome)',
           cursor: readOnly ? 'default' : 'crosshair',
           overflow: 'visible',
         }}
@@ -307,7 +307,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
             top: 0,
             bottom: 0,
             width: 1,
-            background: i % 6 === 0 ? 'rgba(255,255,255,0.12)' : i % 2 === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
+            background: i % 6 === 0 ? 'var(--border-top)' : i % 2 === 0 ? 'var(--border-sub)' : 'var(--border-faint)',
             pointerEvents: 'none',
           }} />
         ))}
@@ -328,8 +328,8 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                 width: `${width}%`,
                 top: 1,
                 bottom: 1,
-                background: 'rgba(245,158,11,0.25)',
-                border: '1px solid rgba(245,158,11,0.50)',
+                background: 'var(--amber-bg)',
+                border: '1px solid var(--amber-border)',
                 borderRadius: 3,
                 display: 'flex',
                 alignItems: 'center',
@@ -354,7 +354,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                     justifyContent: 'center',
                   }}
                 >
-                  <div style={{ width: 2, height: 10, background: 'rgba(245,158,11,0.8)', borderRadius: 1 }} />
+                  <div style={{ width: 2, height: 10, background: 'var(--amber)', borderRadius: 1 }} />
                 </div>
               )}
 
@@ -375,7 +375,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                   <span style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: 8,
-                    color: 'rgba(245,158,11,0.9)',
+                    color: 'var(--amber)',
                     whiteSpace: 'nowrap',
                     pointerEvents: 'none',
                   }}>{label}</span>
@@ -399,7 +399,7 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                     justifyContent: 'center',
                   }}
                 >
-                  <div style={{ width: 2, height: 10, background: 'rgba(245,158,11,0.8)', borderRadius: 1 }} />
+                  <div style={{ width: 2, height: 10, background: 'var(--amber)', borderRadius: 1 }} />
                 </div>
               )}
 
@@ -414,10 +414,10 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
                     right: -8,
                     width: 14,
                     height: 14,
-                    borderRadius: '50%',
-                    background: 'var(--surface-el, #1e1b18)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: 'rgba(255,255,255,0.6)',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'var(--surface-el)',
+                    border: '1px solid var(--border-top)',
+                    color: 'var(--txt2)',
                     fontFamily: 'var(--font-mono)',
                     fontSize: 8,
                     cursor: 'pointer',
@@ -438,16 +438,16 @@ export function TimeSlider({ value, onChange, readOnly = false }: TimeSliderProp
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 'var(--space-3)',
         marginTop: 5,
         fontFamily: 'var(--font-mono)',
         fontSize: 9,
-        color: 'rgba(255,255,255,0.35)',
+        color: 'var(--txt-ghost)',
       }}>
-        <span style={{ color: 'rgba(245,158,11,0.7)' }}>WORK {totalWorkH}h</span>
+        <span style={{ color: 'var(--amber)' }}>WORK {totalWorkH}h</span>
         <span>REST {totalRestH}h</span>
         {!readOnly && blocks.length === 0 && (
-          <span style={{ color: 'rgba(255,255,255,0.22)', fontStyle: 'italic' }}>
+          <span style={{ color: 'var(--txt-ghost)', fontStyle: 'italic' }}>
             click track to add work period — blank = 24h rest
           </span>
         )}

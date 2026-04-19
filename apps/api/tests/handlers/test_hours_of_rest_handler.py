@@ -2,7 +2,6 @@
 Unit tests for hours_of_rest_handler.py — migrated from p0_actions_routes.py elif blocks.
 Tests import from routes.handlers.hours_of_rest_handler which must exist for tests to pass.
 
-Tier 6 handlers (view/update/export_hours_of_rest) have inline DB logic — tested with mock db.
 Crew Lens v3 handlers delegate to HoursOfRestHandlers class — tested for registry + delegation.
 """
 import inspect
@@ -28,7 +27,6 @@ def make_db(rows=None):
     chain.order.return_value = chain
     chain.limit.return_value = chain
     chain.execute.return_value.data = rows
-    # maybe_single for update_hours_of_rest existence check
     chain.maybe_single.return_value.execute.return_value.data = rows[0] if rows else None
     # update chain
     db.table.return_value.update.return_value.eq.return_value.execute.return_value.data = rows
@@ -67,9 +65,6 @@ def base_uc():
 
 def test_all_hor_actions_registered():
     expected = [
-        "view_hours_of_rest",
-        "update_hours_of_rest",
-        "export_hours_of_rest",
         "get_hours_of_rest",
         "upsert_hours_of_rest",
         "get_monthly_signoff",
@@ -90,155 +85,6 @@ def test_handler_signatures_match_contract():
         assert actual_params == expected_params, (
             f"Handler '{action_name}' has params {actual_params}, expected {expected_params}"
         )
-
-
-# ============================================================================
-# TIER 6: view_hours_of_rest
-# ============================================================================
-
-@pytest.mark.asyncio
-async def test_view_hours_of_rest_success():
-    result = await HANDLERS["view_hours_of_rest"](
-        payload={"crew_id": "c-1"},
-        context=base_ctx(), yacht_id="y-1", user_id="u-1",
-        user_context=base_uc(), db_client=make_db(),
-    )
-    assert result["status"] == "success"
-    assert result["crew_id"] == "c-1"
-    assert "records" in result
-
-
-@pytest.mark.asyncio
-async def test_view_hours_of_rest_missing_crew_id():
-    from fastapi import HTTPException
-    with pytest.raises(HTTPException) as exc:
-        await HANDLERS["view_hours_of_rest"](
-            payload={},
-            context=base_ctx(), yacht_id="y-1", user_id="u-1",
-            user_context=base_uc(), db_client=make_db(),
-        )
-    assert exc.value.status_code == 400
-
-
-@pytest.mark.asyncio
-async def test_view_hours_of_rest_with_date_filters():
-    result = await HANDLERS["view_hours_of_rest"](
-        payload={"crew_id": "c-1", "start_date": "2026-03-01", "end_date": "2026-03-17"},
-        context=base_ctx(), yacht_id="y-1", user_id="u-1",
-        user_context=base_uc(), db_client=make_db(),
-    )
-    assert result["status"] == "success"
-
-
-@pytest.mark.asyncio
-async def test_view_hours_of_rest_table_not_exist():
-    """When table doesn't exist, returns graceful fallback."""
-    db = MagicMock()
-    chain = db.table.return_value.select.return_value
-    chain.eq.return_value = chain
-    chain.gte.return_value = chain
-    chain.lte.return_value = chain
-    chain.order.return_value = chain
-    chain.limit.return_value = chain
-    chain.execute.side_effect = Exception("relation does not exist")
-
-    result = await HANDLERS["view_hours_of_rest"](
-        payload={"crew_id": "c-1"},
-        context=base_ctx(), yacht_id="y-1", user_id="u-1",
-        user_context=base_uc(), db_client=db,
-    )
-    assert result["status"] == "success"
-    assert result["records"] == []
-    assert "not yet configured" in result.get("message", "")
-
-
-# ============================================================================
-# TIER 6: update_hours_of_rest
-# ============================================================================
-
-@pytest.mark.asyncio
-async def test_update_hours_of_rest_success():
-    result = await HANDLERS["update_hours_of_rest"](
-        payload={"crew_id": "c-1", "date": "2026-03-17", "hours": "8"},
-        context=base_ctx(), yacht_id="y-1", user_id="u-1",
-        user_context=base_uc(), db_client=make_db(),
-    )
-    assert result["status"] == "success"
-    assert result["rest_hours"] == 8.0
-
-
-@pytest.mark.asyncio
-async def test_update_hours_of_rest_missing_crew_id():
-    from fastapi import HTTPException
-    with pytest.raises(HTTPException) as exc:
-        await HANDLERS["update_hours_of_rest"](
-            payload={"date": "2026-03-17", "hours": "8"},
-            context=base_ctx(), yacht_id="y-1", user_id="u-1",
-            user_context=base_uc(), db_client=make_db(),
-        )
-    assert exc.value.status_code == 400
-
-
-@pytest.mark.asyncio
-async def test_update_hours_of_rest_missing_date():
-    from fastapi import HTTPException
-    with pytest.raises(HTTPException) as exc:
-        await HANDLERS["update_hours_of_rest"](
-            payload={"crew_id": "c-1", "hours": "8"},
-            context=base_ctx(), yacht_id="y-1", user_id="u-1",
-            user_context=base_uc(), db_client=make_db(),
-        )
-    assert exc.value.status_code == 400
-
-
-@pytest.mark.asyncio
-async def test_update_hours_of_rest_missing_hours():
-    from fastapi import HTTPException
-    with pytest.raises(HTTPException) as exc:
-        await HANDLERS["update_hours_of_rest"](
-            payload={"crew_id": "c-1", "date": "2026-03-17"},
-            context=base_ctx(), yacht_id="y-1", user_id="u-1",
-            user_context=base_uc(), db_client=make_db(),
-        )
-    assert exc.value.status_code == 400
-
-
-# ============================================================================
-# TIER 6: export_hours_of_rest
-# ============================================================================
-
-@pytest.mark.asyncio
-async def test_export_hours_of_rest_success():
-    result = await HANDLERS["export_hours_of_rest"](
-        payload={"crew_id": "c-1"},
-        context=base_ctx(), yacht_id="y-1", user_id="u-1",
-        user_context=base_uc(), db_client=make_db(),
-    )
-    assert result["status"] == "success"
-    assert "records" in result
-    assert result["export_format"] == "csv"
-
-
-@pytest.mark.asyncio
-async def test_export_hours_of_rest_missing_crew_id():
-    from fastapi import HTTPException
-    with pytest.raises(HTTPException) as exc:
-        await HANDLERS["export_hours_of_rest"](
-            payload={},
-            context=base_ctx(), yacht_id="y-1", user_id="u-1",
-            user_context=base_uc(), db_client=make_db(),
-        )
-    assert exc.value.status_code == 400
-
-
-@pytest.mark.asyncio
-async def test_export_hours_of_rest_custom_format():
-    result = await HANDLERS["export_hours_of_rest"](
-        payload={"crew_id": "c-1", "format": "pdf"},
-        context=base_ctx(), yacht_id="y-1", user_id="u-1",
-        user_context=base_uc(), db_client=make_db(),
-    )
-    assert result["export_format"] == "pdf"
 
 
 # ============================================================================

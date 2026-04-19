@@ -40,7 +40,7 @@ ENTITY_EXTRACTION_VERSION = "2026.02.09.002"  # MUST ACTIVATE Shopping List + Pa
 @dataclass
 class MicroactionDef:
     """Definition of a microaction button."""
-    action: str           # Action ID (e.g., 'view_hours_of_rest')
+    action: str           # Action ID (e.g., 'get_hours_of_rest')
     label: str            # Button label (e.g., 'View Hours of Rest')
     side_effect: str      # 'read_only' | 'mutation' | 'mutation_heavy'
     requires_confirm: bool
@@ -59,13 +59,15 @@ DOMAIN_MICROACTIONS: Dict[tuple, List[MicroactionDef]] = {
     # =========================================================================
     # HOURS OF REST
     # =========================================================================
+    # view_hours_of_rest / update_hours_of_rest / export_hours_of_rest removed —
+    # use get_hours_of_rest / upsert_hours_of_rest (Crew Lens v3, pms_hours_of_rest).
     ('hours_of_rest', 'READ'): [
         MicroactionDef(
-            action='view_hours_of_rest',
+            action='get_hours_of_rest',
             label='View Hours of Rest',
             side_effect='read_only',
             requires_confirm=False,
-            prefill_fields=['crew_id', 'date_range'],
+            prefill_fields=['user_id', 'start_date', 'end_date'],
             allowed_roles=['crew', 'hod', 'captain', 'admin']
         ),
         MicroactionDef(
@@ -79,22 +81,12 @@ DOMAIN_MICROACTIONS: Dict[tuple, List[MicroactionDef]] = {
     ],
     ('hours_of_rest', 'UPDATE'): [
         MicroactionDef(
-            action='update_hours_of_rest',
+            action='upsert_hours_of_rest',
             label='Update Hours',
             side_effect='mutation_heavy',
             requires_confirm=True,
-            prefill_fields=['crew_id', 'record_id', 'date'],
+            prefill_fields=['user_id', 'record_date', 'work_periods'],
             allowed_roles=['crew', 'hod', 'captain', 'admin']
-        ),
-    ],
-    ('hours_of_rest', 'EXPORT'): [
-        MicroactionDef(
-            action='export_hours_of_rest',
-            label='Export Logs',
-            side_effect='read_only',
-            requires_confirm=False,
-            prefill_fields=['crew_id', 'date_range', 'format'],
-            allowed_roles=['hod', 'captain', 'admin']
         ),
     ],
     ('hours_of_rest', 'APPROVE'): [

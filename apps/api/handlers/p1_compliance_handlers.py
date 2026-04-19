@@ -3,7 +3,6 @@ P1 Compliance & Receiving Handlers
 ===================================
 
 P1 Actions:
-- update_hours_of_rest (P1 #12) - MUTATE - Log crew rest hours
 - log_delivery_received (P1 #15) - MUTATE - Record delivery receipt
 
 Based on specs: MLC 2006, STCW compliance
@@ -28,222 +27,11 @@ class P1ComplianceHandlers:
     P1 Compliance and Receiving handlers.
 
     Implements P1 actions:
-    - update_hours_of_rest
     - log_delivery_received
     """
 
     def __init__(self, supabase_client):
         self.db = supabase_client
-
-    # =========================================================================
-    # P1 ACTION #12: update_hours_of_rest
-    # =========================================================================
-
-    async def update_hours_of_rest_execute(
-        self,
-        user_id: str,
-        record_date: str,
-        rest_periods: List[Dict],
-        yacht_id: str,
-        requesting_user_id: str,
-        location: Optional[str] = None,
-        voyage_type: Optional[str] = None,
-        signature: Optional[Dict] = None
-    ) -> Dict:
-        """
-        POST /v1/actions/execute (action=update_hours_of_rest)
-
-        Log or update hours of rest for a crew member.
-
-        MUTATE action - creates/updates HOR record.
-
-        Args:
-            user_id: UUID of crew member (from auth.users)
-            record_date: Date string YYYY-MM-DD
-            rest_periods: List of {start: "HH:MM", end: "HH:MM", hours: float}
-            location: Port name or "At Sea"
-            voyage_type: at_sea, in_port, shipyard
-
-        Returns:
-            - HOR record with compliance status
-            - Daily compliance (MLC 2006: 10 hrs)
-            - Weekly compliance (STCW: 77 hrs)
-        """
-        try:
-            # Validate signature
-            if not signature or signature.get("user_id") != requesting_user_id:
-                return ResponseBuilder.error(
-                    action="update_hours_of_rest",
-                    error_code="INVALID_SIGNATURE",
-                    message="Signature does not match user"
-                )
-
-            # Validate rest_periods
-            if not rest_periods or len(rest_periods) == 0:
-                return ResponseBuilder.error(
-                    action="update_hours_of_rest",
-                    error_code="VALIDATION_ERROR",
-                    message="At least one rest period is required"
-                )
-
-            # Validate each period has required fields
-            total_hours = 0
-            for i, period in enumerate(rest_periods):
-                if "hours" not in period:
-                    return ResponseBuilder.error(
-                        action="update_hours_of_rest",
-                        error_code="VALIDATION_ERROR",
-                        message=f"Rest period {i+1} missing 'hours' field"
-                    )
-                hours = float(period.get("hours", 0))
-                if hours < 0 or hours > 24:
-                    return ResponseBuilder.error(
-                        action="update_hours_of_rest",
-                        error_code="VALIDATION_ERROR",
-                        message=f"Rest period {i+1} hours must be 0-24"
-                    )
-                total_hours += hours
-
-            if total_hours > 24:
-                return ResponseBuilder.error(
-                    action="update_hours_of_rest",
-                    error_code="VALIDATION_ERROR",
-                    message=f"Total rest hours ({total_hours}) cannot exceed 24"
-                )
-
-            # Validate voyage_type
-            valid_voyage_types = ["at_sea", "in_port", "shipyard", None]
-            if voyage_type and voyage_type not in valid_voyage_types:
-                return ResponseBuilder.error(
-                    action="update_hours_of_rest",
-                    error_code="VALIDATION_ERROR",
-                    message=f"Invalid voyage_type: {voyage_type}"
-                )
-
-            # Check if record exists for this user/date
-            existing = self.db.table("pms_hours_of_rest").select(
-                "id"
-            ).eq("yacht_id", yacht_id).eq(
-                "user_id", user_id
-            ).eq("record_date", record_date).limit(1).execute()
-
-            now = datetime.now(timezone.utc).isoformat()
-
-            if existing.data and len(existing.data) > 0:
-                # Update existing record
-                record_id = existing.data[0]["id"]
-                update_data = {
-                    "rest_periods": rest_periods,
-                    "location": location,
-                    "voyage_type": voyage_type,
-                    "updated_at": now,
-                    "updated_by": requesting_user_id
-                }
-
-                result = self.db.table("pms_hours_of_rest").update(
-                    update_data
-                ).eq("id", record_id).execute()
-
-                action_type = "updated"
-            else:
-                # Create new record
-                record_id = str(uuid.uuid4())
-                insert_data = {
-                    "id": record_id,
-                    "yacht_id": yacht_id,
-                    "user_id": user_id,
-                    "record_date": record_date,
-                    "rest_periods": rest_periods,
-                    "location": location,
-                    "voyage_type": voyage_type,
-                    "status": "draft",
-                    "created_at": now,
-                    "created_by": requesting_user_id,
-                    "updated_at": now
-                }
-
-                result = self.db.table("pms_hours_of_rest").insert(
-                    insert_data
-                ).execute()
-
-                action_type = "created"
-
-            if not result.data:
-                return ResponseBuilder.error(
-                    action="update_hours_of_rest",
-                    error_code="INTERNAL_ERROR",
-                    message="Failed to save hours of rest record"
-                )
-
-            record = result.data[0]
-
-            # Create audit log entry
-            audit_log_id = await self._create_audit_log(
-                yacht_id=yacht_id,
-                action="update_hours_of_rest",
-                entity_type="hours_of_rest",
-                entity_id=record_id,
-                user_id=requesting_user_id,
-                new_values={
-                    "record_date": record_date,
-                    "total_rest_hours": record.get("total_rest_hours"),
-                    "is_daily_compliant": record.get("is_daily_compliant"),
-                    "is_weekly_compliant": record.get("is_weekly_compliant"),
-                    "is_compliant": record.get("is_compliant")
-                },
-                signature=signature
-            )
-
-            # Build response
-            compliance_status = "COMPLIANT" if record.get("is_compliant") else "VIOLATION"
-            if not record.get("is_daily_compliant"):
-                compliance_status = "DAILY_VIOLATION"
-            elif not record.get("is_weekly_compliant"):
-                compliance_status = "WEEKLY_VIOLATION"
-
-            return ResponseBuilder.success(
-                action="update_hours_of_rest",
-                result={
-                    "record": {
-                        "id": record["id"],
-                        "user_id": record["user_id"],
-                        "record_date": record["record_date"],
-                        "rest_periods": record["rest_periods"],
-                        "location": record.get("location"),
-                        "voyage_type": record.get("voyage_type"),
-                        "status": record["status"]
-                    },
-                    "daily_compliance": {
-                        "total_rest_hours": float(record.get("total_rest_hours", 0)),
-                        "total_work_hours": float(record.get("total_work_hours", 0)),
-                        "is_compliant": record.get("is_daily_compliant"),
-                        "requirement": "10 hrs minimum (MLC 2006)",
-                        "notes": record.get("daily_compliance_notes")
-                    },
-                    "weekly_compliance": {
-                        "weekly_rest_hours": float(record.get("weekly_rest_hours", 0)),
-                        "is_compliant": record.get("is_weekly_compliant"),
-                        "requirement": "77 hrs minimum per 7 days (STCW)",
-                        "notes": record.get("weekly_compliance_notes")
-                    },
-                    "overall_compliant": record.get("is_compliant"),
-                    "compliance_status": compliance_status,
-                    "audit_log_id": audit_log_id,
-                    "next_actions": [
-                        "view_hours_of_rest",
-                        "export_hours_of_rest"
-                    ]
-                },
-                message=f"Hours of rest {action_type} for {record_date}"
-            )
-
-        except Exception as e:
-            logger.exception(f"update_hours_of_rest failed: {e}")
-            return ResponseBuilder.error(
-                action="update_hours_of_rest",
-                error_code="INTERNAL_ERROR",
-                message=f"Failed to update hours of rest: {str(e)}"
-            )
 
     # =========================================================================
     # P1 ACTION #15: log_delivery_received
@@ -550,7 +338,6 @@ def get_p1_compliance_handlers(supabase_client) -> Dict[str, callable]:
     handlers = P1ComplianceHandlers(supabase_client)
 
     return {
-        "update_hours_of_rest": handlers.update_hours_of_rest_execute,
         "log_delivery_received": handlers.log_delivery_received_execute,
     }
 

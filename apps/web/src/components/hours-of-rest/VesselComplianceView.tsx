@@ -100,16 +100,16 @@ function formatWeekLabel(weekStart: string): string {
 }
 
 function complianceColor(pct: number): string {
-  if (pct >= 95) return 'rgba(34,197,94,0.9)';
-  if (pct >= 80) return 'rgba(245,158,11,0.9)';
-  return 'rgba(239,68,68,0.9)';
+  if (pct >= 95) return 'var(--compliance-good)';
+  if (pct >= 80) return 'var(--compliance-warn)';
+  return 'var(--compliance-crit)';
 }
 
 function restHoursColor(hours: number | null): string {
-  if (hours === null) return 'rgba(255,255,255,0.12)';
-  if (hours < 10) return 'rgba(239,68,68,0.8)';    // MLC violation — minimum is 10h rest/day
-  if (hours < 10.5) return 'rgba(245,158,11,0.8)'; // borderline
-  return 'rgba(90,171,204,0.8)';                    // ok
+  if (hours === null) return 'var(--txt-ghost)';
+  if (hours < 10) return 'var(--red-strong)';    // MLC violation — minimum is 10h rest/day
+  if (hours < 10.5) return 'var(--compliance-warn)'; // borderline
+  return 'var(--mark-strong)';                    // ok
 }
 
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -250,6 +250,10 @@ export function VesselComplianceView() {
 
   async function signAllDepartments(signatureName: string) {
     if (!data) return;
+    // BUG-HOR-1 fix: guard session token BEFORE the loop — prevents `Bearer undefined`
+    // being sent for every dept when the user has no active session.
+    if (!session?.access_token) return;
+    const token = session.access_token;
     const signable = data.departments.filter(d => d.status === 'hod_signed' && d.signoff_id);
     const skipped = data.departments.filter(d => d.status !== 'hod_signed' && d.status !== 'finalized');
     if (skipped.length > 0) {
@@ -258,7 +262,6 @@ export function VesselComplianceView() {
     }
     setSigningAll(true);
     try {
-      const token = session?.access_token;
       for (const dept of signable) {
         await fetch('/api/v1/hours-of-rest/signoffs/sign', {
           method: 'POST',
@@ -284,6 +287,7 @@ export function VesselComplianceView() {
     setSigningId(signoffId);
     try {
       const token = session?.access_token;
+      if (!token) return;
       await fetch('/api/v1/hours-of-rest/signoffs/sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -311,7 +315,7 @@ export function VesselComplianceView() {
 
   if (loading) {
     return (
-      <div style={{ padding: 32, color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+      <div style={{ padding: 32, color: 'var(--txt-ghost)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         Loading vessel compliance…
       </div>
     );
@@ -319,7 +323,7 @@ export function VesselComplianceView() {
 
   if (error || !data) {
     return (
-      <div style={{ padding: 32, color: 'rgba(239,68,68,0.7)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+      <div style={{ padding: 32, color: 'var(--red)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         {error ?? 'No vessel compliance data available.'}
       </div>
     );
@@ -329,16 +333,18 @@ export function VesselComplianceView() {
   const va = data.vessel_analytics;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
 
       {/* ── View identity header ── */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: 10,
-        paddingBottom: 12,
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        paddingBottom: 'var(--space-3)',
+        borderBottom: '1px solid var(--border-sub)',
       }}>
+        {/* NOTE: VESSEL OVERVIEW badge uses purple inline — no purple token exists yet.
+            Flagged for design decision; keeping inline rgba to avoid invented tokens. */}
         <span style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 9,
@@ -348,52 +354,52 @@ export function VesselComplianceView() {
           color: 'rgba(168,85,247,0.8)',
           background: 'rgba(168,85,247,0.08)',
           border: '1px solid rgba(168,85,247,0.20)',
-          borderRadius: 4,
+          borderRadius: 'var(--radius-pill)',
           padding: '3px 8px',
         }}>
           VESSEL OVERVIEW
         </span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           All departments — captain / fleet manager view
         </span>
       </div>
 
       {/* ── Week nav ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
         <button onClick={() => shiftWeek(-1)} style={navBtnStyle}>←</button>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.5)', minWidth: 140, textAlign: 'center' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt2)', minWidth: 140, textAlign: 'center' }}>
           {weekLabel}
         </span>
         <button onClick={() => shiftWeek(1)} style={navBtnStyle}>→</button>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginLeft: 4 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', marginLeft: 4 }}>
           {data.vessel_name}
         </span>
       </div>
 
       {/* ── Vessel analytics ── */}
       <div style={cardStyle}>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>
           Vessel Analytics — {weekLabel}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--space-3)' }}>
           {[
             { label: 'Compliance', value: `${va.overall_compliance_pct.toFixed(1)}%`, color: complianceColor(va.overall_compliance_pct) },
-            { label: 'Violations', value: String(va.total_violations), color: va.total_violations > 0 ? 'rgba(239,68,68,0.9)' : 'rgba(34,197,94,0.9)' },
-            { label: 'Total Crew', value: String(va.total_crew), color: 'rgba(255,255,255,0.7)' },
-            { label: 'Dept OK', value: `${va.fully_compliant_departments}/${data.departments.length}`, color: 'rgba(34,197,94,0.9)' },
+            { label: 'Violations', value: String(va.total_violations), color: va.total_violations > 0 ? 'var(--compliance-crit)' : 'var(--compliance-good)' },
+            { label: 'Total Crew', value: String(va.total_crew), color: 'var(--txt3)' },
+            { label: 'Dept OK', value: `${va.fully_compliant_departments}/${data.departments.length}`, color: 'var(--compliance-good)' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 600, color }}>{value}</span>
             </div>
           ))}
           {/* Avg Work — two lines: per day and per week */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Avg Work</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 600, color: 'rgba(90,171,204,0.9)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Avg Work</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 600, color: 'var(--mark-strong)' }}>
               {va.avg_work_hours_per_day.toFixed(1)}h/day
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(90,171,204,0.55)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--mark)' }}>
               {va.avg_work_hours.toFixed(1)}h/wk
             </span>
           </div>
@@ -403,55 +409,85 @@ export function VesselComplianceView() {
       {/* ── Captain sign chain card ── */}
       {(() => {
         const sc = data.sign_chain;
+        const hodSigned = data.departments.filter(d => d.status === 'hod_signed' || d.status === 'finalized');
+        const hodPending = data.departments.filter(d => d.status !== 'hod_signed' && d.status !== 'finalized');
         const signable = data.departments.filter(d => d.status === 'hod_signed' && d.signoff_id);
-        const notReady = data.departments.filter(d => d.status !== 'hod_signed' && d.status !== 'finalized');
 
         if (sc.captain_signed) {
           return (
-            <div style={{ ...cardStyle, borderColor: 'rgba(34,197,94,0.2)' }}>
+            <div style={{ ...cardStyle, borderColor: 'var(--green-border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(34,197,94,0.8)' }}>Master Signed ✓</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--green-strong)' }}>Master Signed ✓</span>
                 {sc.fleet_manager_reviewed
-                  ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(34,197,94,0.6)' }}>Fleet Reviewed ✓</span>
-                  : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Pending fleet review</span>
+                  ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--green)' }}>Fleet Reviewed ✓</span>
+                  : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)' }}>Pending fleet review</span>
                 }
               </div>
             </div>
           );
         }
 
-        if (signable.length === 0) return null;
+        if (hodSigned.length === 0 && hodPending.length === 0) return null;
 
         return (
-          <div style={{ ...cardStyle, borderColor: 'rgba(90,171,204,0.2)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ ...cardStyle, borderColor: sc.all_hods_signed ? 'var(--mark-border)' : 'var(--amber-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', marginBottom: 10 }}>
               <div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                  Captain Attestation Required
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt3)', fontWeight: 600 }}>
+                  Captain Attestation
                 </div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>
-                  {signable.length} dept{signable.length !== 1 ? 's' : ''} ready
-                  {notReady.length > 0 && ` · ${notReady.length} dept${notReady.length !== 1 ? 's' : ''} awaiting HOD`}
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', marginTop: 3 }}>
+                  {sc.all_hods_signed
+                    ? 'All departments HOD-signed — ready for captain sign-off'
+                    : `${hodPending.length} dept${hodPending.length !== 1 ? 's' : ''} awaiting HOD sign-off`}
                 </div>
               </div>
               <button
                 data-testid="hor-sign-all-depts"
                 onClick={() => setSignAllPopupOpen(true)}
-                disabled={signingAll}
+                disabled={signingAll || !sc.all_hods_signed}
+                title={sc.all_hods_signed ? undefined : 'All departments must be HOD-signed before captain sign-off'}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 10,
-                  color: signingAll ? 'rgba(255,255,255,0.3)' : 'rgba(34,197,94,0.9)',
-                  background: 'rgba(34,197,94,0.08)',
-                  border: '1px solid rgba(34,197,94,0.3)',
-                  borderRadius: 4,
+                  color: (signingAll || !sc.all_hods_signed) ? 'var(--txt-ghost)' : 'var(--green-strong)',
+                  background: sc.all_hods_signed ? 'var(--green-bg)' : 'var(--surface-subtle)',
+                  border: `1px solid ${sc.all_hods_signed ? 'var(--green-border)' : 'var(--border-chrome)'}`,
+                  borderRadius: 'var(--radius-pill)',
                   padding: '5px 14px',
-                  cursor: signingAll ? 'wait' : 'pointer',
+                  cursor: (signingAll || !sc.all_hods_signed) ? 'not-allowed' : 'pointer',
                   whiteSpace: 'nowrap',
+                  opacity: sc.all_hods_signed ? 1 : 0.5,
                 }}
               >
                 {signingAll ? 'Signing…' : `Sign ${signable.length} Dept${signable.length !== 1 ? 's' : ''}`}
               </button>
+            </div>
+
+            {/* Per-department HOD sign status */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {data.departments.map(d => {
+                const dSigned = d.status === 'hod_signed' || d.status === 'finalized';
+                return (
+                  <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 9,
+                      color: dSigned ? 'var(--green-strong)' : 'var(--amber)',
+                    }}>
+                      {dSigned ? '✓' : '○'}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: dSigned ? 'var(--txt2)' : 'var(--txt-ghost)' }}>
+                      {d.name}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>
+                      {dSigned
+                        ? (d.hod_signed_at ? `HOD signed ${new Date(d.hod_signed_at).toLocaleDateString()}` : 'HOD signed')
+                        : 'Awaiting HOD'}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -459,18 +495,18 @@ export function VesselComplianceView() {
 
       {/* ── Pending final signs (legacy — individual dept HOD signoffs) ── */}
       {data.pending_final_signs.length > 0 && (
-        <div style={{ ...cardStyle, borderColor: 'rgba(245,158,11,0.25)' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(245,158,11,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+        <div style={{ ...cardStyle, borderColor: 'var(--amber-border)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--amber)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
             Pending Final Signs ({data.pending_final_signs.length})
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {data.pending_final_signs.map(ps => (
-              <div key={ps.signoff_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div key={ps.signoff_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
                 <div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--txt)' }}>
                     {ps.department}
                   </span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginLeft: 8 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', marginLeft: 'var(--space-2)' }}>
                     {ps.week_label} · signed by {ps.hod_name}
                   </span>
                 </div>
@@ -480,10 +516,10 @@ export function VesselComplianceView() {
                   style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: 10,
-                    color: signingId === ps.signoff_id ? 'rgba(255,255,255,0.3)' : 'rgba(34,197,94,0.9)',
-                    background: 'rgba(34,197,94,0.08)',
-                    border: '1px solid rgba(34,197,94,0.3)',
-                    borderRadius: 4,
+                    color: signingId === ps.signoff_id ? 'var(--txt-ghost)' : 'var(--green-strong)',
+                    background: 'var(--green-bg)',
+                    border: '1px solid var(--green-border)',
+                    borderRadius: 'var(--radius-pill)',
                     padding: '4px 10px',
                     cursor: signingId === ps.signoff_id ? 'wait' : 'pointer',
                     whiteSpace: 'nowrap',
@@ -505,22 +541,22 @@ export function VesselComplianceView() {
           return (
             <div key={dept.name} style={{
               ...cardStyle,
-              borderColor: isExpanded ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)',
+              borderColor: isExpanded ? 'var(--txt-ghost)' : 'var(--border-sub)',
               cursor: 'pointer',
               transition: 'border-color 0.15s',
             }}
               onClick={() => setExpandedDept(isExpanded ? null : dept.name)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt3)', fontWeight: 600 }}>
                   {dept.name}
                 </span>
                 <span style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 10,
                   color: statusColor,
-                  background: `${statusColor}15`,
-                  border: `1px solid ${statusColor}40`,
+                  background: `color-mix(in srgb, ${statusColor} 12%, transparent)`,
+                  border: `1px solid color-mix(in srgb, ${statusColor} 30%, transparent)`,
                   borderRadius: 3,
                   padding: '1px 6px',
                 }}>
@@ -528,30 +564,30 @@ export function VesselComplianceView() {
                 </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                <Stat label="Today" value={`${dept.submitted_today}/${dept.total_today}`} color="rgba(255,255,255,0.6)" />
-                <Stat label="Avg Work" value={`${dept.avg_work_hours.toFixed(1)}h`} color="rgba(90,171,204,0.8)" />
-                <Stat label="Crew" value={String(dept.crew_count)} color="rgba(255,255,255,0.4)" />
-                <Stat label="Violations" value={String(dept.violations)} color={dept.violations > 0 ? 'rgba(239,68,68,0.8)' : 'rgba(34,197,94,0.7)'} />
+                <Stat label="Today" value={`${dept.submitted_today}/${dept.total_today}`} color="var(--txt2)" />
+                <Stat label="Avg Work" value={`${dept.avg_work_hours.toFixed(1)}h`} color="var(--mark-strong)" />
+                <Stat label="Crew" value={String(dept.crew_count)} color="var(--txt-ghost)" />
+                <Stat label="Violations" value={String(dept.violations)} color={dept.violations > 0 ? 'var(--red-strong)' : 'var(--green)'} />
               </div>
               {/* Sign chain status badges */}
-              <div style={{ display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 4, marginTop: 'var(--space-2)', flexWrap: 'wrap' }}>
                 {dept.status === 'hod_signed' && (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(34,197,94,0.8)', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 3, padding: '1px 5px' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--green-strong)', background: 'var(--green-bg)', border: '1px solid var(--green-border)', borderRadius: 3, padding: '1px 5px' }}>
                     HOD Signed ✓
                   </span>
                 )}
                 {dept.status === 'finalized' && (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(34,197,94,0.9)', background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 3, padding: '1px 5px' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--green-strong)', background: 'var(--green-bg)', border: '1px solid var(--green-border)', borderRadius: 3, padding: '1px 5px' }}>
                     Finalized ✓
                   </span>
                 )}
                 {dept.correction_requested && (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(245,158,11,0.9)', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 3, padding: '1px 5px' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--compliance-warn)', background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', borderRadius: 3, padding: '1px 5px' }}>
                     Correction Requested
                   </span>
                 )}
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 6, textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', marginTop: 6, textAlign: 'center' }}>
                 {isExpanded ? '▲ collapse' : '▼ show crew'}
               </div>
             </div>
@@ -635,7 +671,7 @@ export function VesselComplianceView() {
         if (!dept) return null;
         return (
           <div style={cardStyle}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>
               {dept.name} — Crew Hours Grid
             </div>
             <div style={{ overflowX: 'auto' }}>
@@ -647,6 +683,7 @@ export function VesselComplianceView() {
                       <th key={d} style={thStyle({ width: 52, textAlign: 'center' })}>{d}</th>
                     ))}
                     <th style={thStyle({ width: 52, textAlign: 'center' })}>Avg</th>
+                    <th style={thStyle({ width: 60, textAlign: 'center' })}>HOD</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -655,20 +692,23 @@ export function VesselComplianceView() {
                     const avg = submitted.length
                       ? (submitted.reduce((s, d) => s + (d.rest_hours ?? 0), 0) / submitted.length).toFixed(1)
                       : '—';
+                    // HOD-signed if the department is hod_signed/finalized (sign is per-dept in this system)
+                    const hodSignedForDept = dept.status === 'hod_signed' || dept.status === 'finalized';
+                    const hasSubmitted = submitted.length > 0;
                     return (
-                      <tr key={member.user_id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                        <td style={{ padding: '8px 0', paddingRight: 12 }}>
-                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>{member.name}</div>
-                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{member.role}</div>
+                      <tr key={member.user_id} style={{ borderTop: '1px solid var(--border-faint)' }}>
+                        <td style={{ padding: '8px 0', paddingRight: 'var(--space-3)' }}>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt)' }}>{member.name}</div>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', marginTop: 1 }}>{member.role}</div>
                         </td>
                         {member.days.map(day => (
                           <td key={day.date} style={{ padding: '8px 4px', textAlign: 'center' }}>
                             {day.rest_hours !== null ? (
                               <div style={{
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                width: 36, height: 28, borderRadius: 4,
-                                background: `${restHoursColor(day.rest_hours)}22`,
-                                border: `1px solid ${restHoursColor(day.rest_hours)}55`,
+                                width: 36, height: 28, borderRadius: 'var(--radius-pill)',
+                                background: `color-mix(in srgb, ${restHoursColor(day.rest_hours)} 15%, transparent)`,
+                                border: `1px solid color-mix(in srgb, ${restHoursColor(day.rest_hours)} 35%, transparent)`,
                               }}>
                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: restHoursColor(day.rest_hours) }}>
                                   {day.rest_hours.toFixed(1)}
@@ -676,13 +716,30 @@ export function VesselComplianceView() {
                               </div>
                             ) : (
                               <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 28 }}>
-                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.15)' }}>—</span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)' }}>—</span>
                               </div>
                             )}
                           </td>
                         ))}
                         <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{avg}</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--txt2)' }}>{avg}</span>
+                        </td>
+                        <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                          {!hasSubmitted ? (
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--txt-ghost)' }}>—</span>
+                          ) : hodSignedForDept ? (
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--green-strong)' }}>✓</span>
+                          ) : (
+                            <span style={{
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: 8,
+                              color: 'var(--amber)',
+                              background: 'var(--amber-bg)',
+                              border: '1px solid var(--amber-border)',
+                              borderRadius: 3,
+                              padding: '1px 4px',
+                            }}>Pending</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -703,7 +760,7 @@ export function VesselComplianceView() {
 function Stat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color }}>{value}</span>
     </div>
   );
@@ -712,19 +769,19 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
 // ── Shared styles ────────────────────────────────────────────────────────────
 
 const cardStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.07)',
-  borderRadius: 8,
+  background: 'var(--surface-card)',
+  border: '1px solid var(--border-sub)',
+  borderRadius: 'var(--radius-sm)',
   padding: '14px 16px',
 };
 
 const navBtnStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 12,
-  color: 'rgba(255,255,255,0.5)',
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: 4,
+  color: 'var(--txt2)',
+  background: 'var(--surface-subtle)',
+  border: '1px solid var(--border-chrome)',
+  borderRadius: 'var(--radius-pill)',
   padding: '4px 10px',
   cursor: 'pointer',
 };
@@ -733,11 +790,11 @@ function thStyle(extra: React.CSSProperties): React.CSSProperties {
   return {
     fontFamily: 'var(--font-mono)',
     fontSize: 9,
-    color: 'rgba(255,255,255,0.3)',
+    color: 'var(--txt-ghost)',
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
     fontWeight: 400,
-    paddingBottom: 8,
+    paddingBottom: 'var(--space-2)',
     ...extra,
   };
 }
