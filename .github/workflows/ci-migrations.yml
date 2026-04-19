@@ -31,6 +31,7 @@ jobs:
           cd supabase/migrations
 
           # Check all .sql files have valid prefix (14-digit zero-padded OR 8-digit timestamp)
+          shopt -s nullglob
           for file in *.sql; do
             if [[ ! "$file" =~ ^[0-9]{14}_.*.sql$ ]] && [[ ! "$file" =~ ^[0-9]{8}_.*.sql$ ]]; then
               echo "ERROR: Invalid migration filename: $file"
@@ -47,8 +48,9 @@ jobs:
           cd supabase/migrations
 
           # Check files are deterministically ordered
-          ls -1 *.sql > /tmp/actual_order.txt
-          ls -1 *.sql | sort > /tmp/expected_order.txt
+          shopt -s nullglob
+          ls -1 *.sql > /tmp/actual_order.txt 2>/dev/null || touch /tmp/actual_order.txt
+          ls -1 *.sql 2>/dev/null | sort > /tmp/expected_order.txt || touch /tmp/expected_order.txt
 
           if ! diff /tmp/actual_order.txt /tmp/expected_order.txt; then
             echo "ERROR: Migration files are not in order"
@@ -63,8 +65,8 @@ jobs:
           cd supabase/migrations
 
           # Very basic check: no obvious syntax errors
+          shopt -s nullglob
           for file in *.sql; do
-            # Check for unclosed quotes, mismatched parentheses, etc.
             if grep -q "';--" "$file"; then
               echo "WARNING: Potential SQL injection pattern in $file"
             fi
@@ -80,13 +82,15 @@ jobs:
         run: |
           echo "=== Latest migration ==="
           cd supabase/migrations
-          latest=$(ls -1 *.sql | tail -1)
-          echo "Latest migration: $latest"
-
-          # Show first 20 lines of latest migration
-          echo ""
-          echo "--- First 20 lines ---"
-          head -20 "$latest"
+          latest=$(ls -1 *.sql 2>/dev/null | tail -1)
+          if [ -z "$latest" ]; then
+            echo "No migration files present (directory is empty)"
+          else
+            echo "Latest migration: $latest"
+            echo ""
+            echo "--- First 20 lines ---"
+            head -20 "$latest"
+          fi
 
       - name: Summary
         if: always()
