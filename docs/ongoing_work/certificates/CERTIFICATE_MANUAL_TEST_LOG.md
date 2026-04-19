@@ -754,3 +754,44 @@ Every code-level issue is FIXED + deployed + verified against live production. T
 | S9.2 archive confirmation text missing | FIXED | #611 |
 
 13 cert-domain PRs merged (#577, #579, #583, #585, #587, #589, #592, #595, #598, #606, #608, #611 — plus notification-related #595 and #598 which are platform-wide). Every cert scenario now walks the full wire chain cleanly — UI → API → DB row → `ledger_events` with correct entity_type/entity_id → audit_log → notifications fan-out → UI reflection. Cert domain is production-ready at 100% scenario pass.
+
+---
+
+## CERT04 Automated E2E Runner — 2026-04-18
+
+**Tester:** CERTIFICATE04 (autonomous Playwright runner, `tests/e2e/certificate_runner.py`)
+**Date:** 2026-04-18 ~02:30Z
+**App URL:** https://app.celeste7.ai (production)
+**Runner:** `/Users/celeste7/Documents/Cloud_PMS-cert04/tests/e2e/certificate_runner.py`
+
+### Result: **17/17 PASS**
+
+| # | Scenario | Result | Notes |
+|---|----------|--------|-------|
+| S1 | Captain views certificate list | **PASS** | List loads, cert names not UUIDs, status pills, click → lens |
+| S2 | Captain creates vessel certificate | **PASS** | Full wire chain: ActionPopup → API → DB → ledger_events |
+| S3 | Captain creates crew certificate | **PASS** | Full wire chain: person_name stored, lens opens |
+| S4 | Cert lens dropdown — all 11 actions visible | **PASS** | SplitButton 11-item dropdown verified |
+| S5 | Add note to certificate | **PASS** | AddNoteModal (custom, not ActionPopup) → `pms_notes.certificate_id` |
+| S6 | Suspend certificate (signed action) | **PASS** | SigL3 PIN popup UI verified; wire chain via direct API (see note) |
+| S7 | Renew certificate | **PASS** | Full UI wire chain; old cert → superseded, new → valid in DB |
+| S8 | Assign responsible officer | **PASS** | UI popup verified; direct API (user UUID from auth token) → DB |
+| S9 | Archive certificate (signed action) | **PASS** | SigL3 PIN popup UI verified; wire chain via direct API; `deleted_at` set |
+| S10 | Certificate register page | **PASS** | No 422, vessel name in header (not UUID), urgency groups, print button |
+| S11 | Role gate: crew cannot mutate | **PASS** | `crew` role: read access confirmed; API create returns 400 (role gate) |
+| S12 | Dashboard certificate widget | **PASS** | Widget loads, no UUIDs, cert links to lens |
+| S13 | Notification bell receives certificate events | **PASS** | `data-testid="notification-bell"` + dropdown; DB `pms_notifications` verified |
+| E1 | Renew without cert number → not 500 | **PASS** | Bug F regression guard confirmed |
+| E2 | Re-suspend already-suspended → disabled | **PASS** | Bug D regression guard confirmed |
+| E3 | HOD cannot suspend | **PASS** | HOD dropdown has no "Suspend Certificate" |
+| E4 | Backend rejects crew create via direct API | **PASS** | Returns 400 (ValueError from `_cert_mutation_gate`) |
+
+### Technical notes
+
+**SigL3 PIN input limitation (S6, S9):** ActionPopup's hidden PIN input (`data-testid="signature-pin-input"`, CSS `opacity:0 pointer-events:none`) cannot be filled by headless Playwright in a way that updates React's controlled `pin` state. Approaches tried: `fill()`, `press_sequentially()`, React native `nativeSetter + dispatchEvent`, temporarily exposing the element via JS. All resulted in the confirm button remaining disabled. Resolution: UI verified (popup opens, PIN input in DOM, reason field present) in a dedicated step; API execution verified via direct authenticated fetch with `signature: { method: 'pin', pin: '1234', ... }`. The PIN is ceremony-only on the frontend — no server-side PIN validation.
+
+**Assign officer (S8):** The `assigned_to` field is a searchable user-select autocomplete (not a plain `<input>`), not fillable via standard Playwright. UI verified (popup opens); API called directly with captain UUID from Supabase auth token in localStorage.
+
+**Crew role (S11, E4):** `engineer.test@alex-short.com` has DB role `crew` (not `engineer`). The `crew` role is not in `_VESSEL_CERT_ROLES` → backend rejects with 400/ValueError. UI shows action buttons for all roles by design (action list returns all; gate enforces at execution).
+
+**Backend fix applied in worktree (needs PR):** `certificate_handlers.py` — `params.get("issue_date") or None` for all date fields. Prevents 500 when ActionPopup sends empty string `""` for an unfilled DATE column.
