@@ -115,8 +115,10 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     # pre-fill warranty_id from the entity id so the frontend fires the action directly
     # without prompting for a UUID. Matches add_warranty_note's pattern below.
     ("warranty", "close_warranty_claim"):   {"warranty_id": "id"},
-    ("warranty", "add_warranty_note"):      {"warranty_id": "id"},
-    ("warranty", "add_to_handover"):        {"entity_id": "id", "title": "title"},
+    ("warranty", "add_warranty_note"):           {"warranty_id": "id"},
+    ("warranty", "delete_warranty_attachment"):  {"warranty_id": "id"},
+    ("warranty", "revise_warranty_claim"):       {"warranty_id": "id"},
+    ("warranty", "add_to_handover"):             {"entity_id": "id", "title": "title"},
 
     # ── Document ──────────────────────────────────────────────────────────────
     ("document", "update_document"):         {"document_id": "id"},

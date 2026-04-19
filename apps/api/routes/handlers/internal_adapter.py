@@ -95,6 +95,8 @@ _ACTIONS_TO_ADAPT = [
     "add_warranty_note",
     "add_wo_photo",
     "approve_warranty_claim",
+    "delete_warranty_attachment",
+    "revise_warranty_claim",
     "adjust_receiving_item",
     "apply_template",
     "approve_list",

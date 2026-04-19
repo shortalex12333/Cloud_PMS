@@ -635,6 +635,8 @@ _WARRANTY_ACTIONS = frozenset({
     "file_warranty_claim", "draft_warranty_claim",
     "archive_warranty", "void_warranty",
     "add_warranty_note",
+    "delete_warranty_attachment",
+    "revise_warranty_claim",
 })
 
 _CERT_ACTIONS = frozenset({
