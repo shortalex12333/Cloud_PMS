@@ -6,7 +6,7 @@ Handles fast actions directly via Supabase.
 These are simple CRUD operations that don't require complex workflow orchestration.
 """
 
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, Optional
 import os
 import logging
 from datetime import datetime
@@ -3470,7 +3470,7 @@ async def _sign_handover(params: Dict[str, Any]) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _coerce_optional_uuid(value: Any) -> str | None:
+def _coerce_optional_uuid(value: Any) -> Optional[str]:
     """Return a str-UUID, or None for empty/invalid input.
 
     Caller may distinguish "missing" from "bad" by checking the raw value
@@ -3485,7 +3485,7 @@ def _coerce_optional_uuid(value: Any) -> str | None:
         return None
 
 
-def _coerce_optional_numeric(value: Any) -> float | None:
+def _coerce_optional_numeric(value: Any) -> Optional[float]:
     """Return a float, or None for empty. Raises ValueError for non-numeric.
 
     Empty string and None both resolve to None (i.e. "user cleared the field").
