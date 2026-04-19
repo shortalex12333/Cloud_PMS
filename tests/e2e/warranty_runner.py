@@ -760,6 +760,29 @@ def scenario_8_revise_resubmit(ctx: BrowserContext, state: dict) -> dict:
         page.get_by_test_id("warranty-status-pill").wait_for(state="visible", timeout=45_000)
     step(res, "8.1", "Open the rejected claim (wait for entity load)", nav_to_rejected_claim)
     step(res, "8.1b", "Status pill = Rejected", lambda: assert_pill_label(page, "Rejected"))
+
+    # -- revise_warranty_claim E2E: dropdown → popup → submit → popup closed --
+    def open_revise_dropdown():
+        page.get_by_role("button", name="More actions").first.click(timeout=STEP_TIMEOUT_MS)
+        page.get_by_test_id("warranty-revise-btn").wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+    step(res, "8.1c", "Open SplitButton dropdown + Revise Claim visible", open_revise_dropdown)
+
+    step(res, "8.1d", "Click Revise Claim",
+         lambda: page.get_by_test_id("warranty-revise-btn").click(timeout=STEP_TIMEOUT_MS))
+
+    step(res, "8.1e", "Revise popup appears",
+         lambda: page.get_by_test_id("action-popup").wait_for(state="visible", timeout=POPUP_TIMEOUT_MS))
+
+    def submit_revise_and_wait():
+        page.get_by_test_id("signature-confirm-button").click(timeout=STEP_TIMEOUT_MS)
+        # Popup should close after successful execute; wait up to POPUP_TIMEOUT_MS
+        page.get_by_test_id("action-popup").wait_for(state="hidden", timeout=POPUP_TIMEOUT_MS)
+    step(res, "8.1f", "Submit revise popup (all optional fields empty)", submit_revise_and_wait)
+
+    step(res, "8.1g", "Status still Rejected after revise (revise does not change status)",
+         lambda: assert_pill_label(page, "Rejected"))
+    # -------------------------------------------------------------------------
+
     step(res, "8.2", "Primary = Revise & Resubmit (warranty-submit-btn)",
          lambda: page.get_by_test_id("warranty-submit-btn").wait_for(state="visible", timeout=STEP_TIMEOUT_MS))
     step(res, "8.3", "Click Revise & Resubmit",
