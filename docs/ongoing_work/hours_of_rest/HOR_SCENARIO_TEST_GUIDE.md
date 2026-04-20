@@ -1,9 +1,21 @@
-# Hours of Rest — Live Scenario Test Guide
+# Hours of Rest — Current State + Test Status
 
-> **Status:** CURRENT — reflects PRs #640, #641, #646 + post-live-test bug fixes  
-> **Vercel:** https://app.celeste7.ai  
-> **API:** https://pipeline-core.int.celeste7.ai  
-> **Last updated:** 2026-04-19
+> **Last live tested:** 2026-04-19 on https://app.celeste7.ai  
+> **Pending commit (NOT deployed):** `55749db6` on local branch `fix/hor-live-bugs-post-test` — network was down, push blocked  
+> **Pending DB migration (NOT applied):** `DELETE FROM pms_crew_normal_hours WHERE user_id IS NULL` against TENANT DB  
+> **API:** https://pipeline-core.int.celeste7.ai
+
+---
+
+## ⚠ Read This First
+
+Local branch `fix/hor-live-bugs-post-test` (commit `55749db6`) contains 5 bug fixes that are **not yet on production**. All statuses below reflect **what is live right now** on app.celeste7.ai + Render backend.
+
+To unblock: push the branch and open the PR.
+
+```bash
+git push -u origin fix/hor-live-bugs-post-test
+```
 
 ---
 
@@ -12,280 +24,113 @@
 | Role | Email | Password |
 |------|-------|---------|
 | Crew | engineer.test@alex-short.com | Password2! |
-| HOD (Chief Engineer) | eto.test@alex-short.com | Password2! |
+| HOD | eto.test@alex-short.com | Password2! |
 | Captain | x@alex-short.com | Password2! |
 | Fleet Manager | fleet-test-1775570624@celeste7.ai | Password2! |
 
-**Yacht:** M/Y Test Vessel — `85fe1119-b04c-41ac-80f1-829d23322598`
+**Yacht:** `85fe1119-b04c-41ac-80f1-829d23322598`
 
 ---
 
-## Navigation by Role
+## Scenario Status
 
-| Role | Tabs visible |
-|------|-------------|
-| Crew | My Time |
-| HOD (chief_engineer / chief_officer / eto) | My Time · Department |
-| Captain | My Time · All Departments |
-| Fleet Manager | My Time · All Departments · Fleet |
-
-Source: `apps/web/src/app/hours-of-rest/page.tsx:84–87`
-
----
-
-## S1 — Submit Day (compliant, empty = full rest day)
-
-**Login as:** Crew  
-**Steps:**
-1. Go to Hours of Rest → My Time
-2. Select any week with an unsubmitted day
-3. Leave the day empty (no work periods) OR add work periods totalling < 14h
-4. Click **Submit Day**
-
-**Expected:** Day submits. Empty day = 24h rest = Compliant badge.
-
-**Code citations:**
-- Submit button: `MyTimeView.tsx:1024` — `{!isSubmitted && (` — no draft length gate (fixed)
-- `submitDay()`: `MyTimeView.tsx:445`
-- Work periods default to `[]` if none entered: `hours_of_rest_routes.py:316` — `work_periods = request.work_periods if request.work_periods is not None else []`
-- Empty day yields 24h rest: `hours_of_rest_handlers.py:304–320` — `_complement([])` → `[{start:"00:00", end:"24:00", hours:24.0}]`
-- `is_daily_compliant = total_rest_hours >= 10`: `hours_of_rest_handlers.py:328`
-- Badge render: `MyTimeView.tsx:1136` — `ok={displayDay.is_compliant ?? displayDay.is_daily_compliant ?? null}`
+| # | Scenario | Status | Notes |
+|---|----------|--------|-------|
+| S1 | Submit Day — compliant day with work periods | ✅ WORKING | Verified live |
+| S1 | Submit Day — empty day (no work periods = full rest) | ❌ BROKEN on prod | Button hidden. **Fixed in `55749db6`** (`MyTimeView.tsx:1024`) — not deployed |
+| S2 | Non-compliant day — period-structure violation (3+ rest windows) | ⚠ UNTESTED | Code path exists. Violation badge expected. Warning message will be inaccurate (see open bugs) |
+| S3 | Non-compliant day — total rest < 10h | ⚠ UNTESTED | Code path exists. Needs >14h work periods |
+| S4 | Badge accuracy (Compliant vs Violation) | ✅ WORKING | Server-authoritative, verified live |
+| S5 | Apply Template to week | ❌ BROKEN on prod | Template dropdown shows generic seeded templates (not crew-owned). Fixed by user_id filter in `55749db6` + DB migration not yet applied |
+| S6 | Create Template | ❌ BROKEN on prod | UI does not exist on current production. **Added in `55749db6`** — not deployed |
+| S7 | Submit Week For Approval (crew) | ✅ WORKING | Verified live. Gated correctly |
+| S7 | Submit Week button absent for fleet manager | ✅ WORKING | Verified live |
+| S8 | HOD countersign from Department tab | ✅ WORKING | Browser + API verified. Department tab shows for HOD roles, not captain |
+| S9 | Captain sees My Time + All Departments only (no Dept tab) | ✅ WORKING | Verified live |
+| S10 | Captain Sign All disabled until all HODs signed | ✅ WORKING | Verified live. Greyed with correct tooltip |
+| S11 | Fleet Manager: read-only across all tabs | ✅ WORKING | No sign/submit/create buttons. Verified live |
+| Warnings | Violation warning created after non-compliant submit | ✅ WORKING (fires) | Warning row created. Message may be wrong — see open bugs |
+| Warnings | Crew acknowledges warning | ✅ WORKING | API + DB verified |
+| Warnings | HOD/captain dismisses warning | ✅ WORKING | API + DB verified |
+| Sign chain | crew_signed → hod_signed → finalized progression | ✅ WORKING | Full chain API-verified. Immutable after finalized |
+| MLC S11 | Same person cannot sign HOD + master | ✅ WORKING | API returns FORBIDDEN + correct MLC message |
 
 ---
 
-## S2 — Submit Day (non-compliant — rest period structure violation)
+## Open Bugs (unresolved on production)
 
-**Login as:** Crew  
-**Steps:**
-1. Add 3+ separate work periods (e.g. 00:00–02:00, 06:00–08:00, 14:00–16:00) — this creates 3+ rest windows
-2. Click Submit Day
+### BUG-1 — Submit Day hidden for empty days
+- **Where:** `MyTimeView.tsx:1024`
+- **Current behaviour:** `(draft?.length ?? 0) > 0` hides the button when no work periods are drafted. Empty day (crew did not work = 24h rest) cannot be submitted.
+- **Fix:** Remove draft length condition. Already in `55749db6`.
+- **Status:** Fixed locally, not deployed.
 
-**Expected:** Red **Violation** badge. Day submits.
+### BUG-2 — Warning message wrong for period-structure violations
+- **Where:** `check_hor_violations` — Supabase PostgreSQL function (not in Python layer)
+- **Current behaviour:** When crew has ≥ 10h rest but split into 3+ periods, warning message says `"Daily rest violation: 12.00 hours (minimum 10h required)"` — the hours figure is correct but the label is wrong. 12h > 10h is not an hours violation; it's a period-structure violation.
+- **Fix required:** Update `check_hor_violations` SQL function in TENANT Supabase to distinguish violation type in the message. Cannot be fixed from Python layer (the message is written by the SQL function, not the handler).
+- **Python HOD notification body:** Fixed in `55749db6` — now says "X periods — MLC A2.3 requires ≤2". But the warning row seen by crew still has the wrong message.
+- **Status:** Partially fixed, SQL function needs update.
 
-**Why it's a violation:** MLC 2006 A2.3 requires ≤2 rest periods, with the longer ≥6h.
+### BUG-3 — Weekly violation warnings create 7 duplicate rows per week
+- **Where:** `check_hor_violations` SQL function, called from `hours_of_rest_handlers.py:449`
+- **Current behaviour:** Each day-submission triggers the RPC. For weekly violations (< 77h/7 days), the function likely creates a warning row per day submitted, each with that day's `record_date`. Result: up to 7 warning rows for one non-compliant week.
+- **Fix attempt in `55749db6`:** Pre-delete non-`DAILY_REST` warnings for the 7-day window before calling the RPC (`hours_of_rest_handlers.py:434–447`). Effectiveness depends on whether the SQL function uses `warning_type = 'DAILY_REST'` for daily warnings (assumed, not confirmed).
+- **Status:** Fix in `55749db6`, not deployed. If the SQL function uses a different type name the fix won't catch it.
 
-**Code citations:**
-- Period count check: `hours_of_rest_handlers.py:332–335`
-  ```python
-  has_valid_rest_periods = (
-      rest_period_count <= 2 and
-      longest_rest_period >= 6
-  )
-  ```
-- `is_daily_compliant` stored: `hours_of_rest_handlers.py:346` — `is_daily_compliant and has_valid_rest_periods`
-- Violation badge: `MyTimeView.tsx:1138` — `label='Violation'` when `is_daily_compliant === false`
+### BUG-4 — Generic seeded templates visible to all crew
+- **Where:** `hor_compliance_routes.py:225–227`
+- **Current behaviour:** Query has no `user_id` filter — returns all templates with `is_active = True` for the yacht including 3 seeded generic templates (`user_id IS NULL`).
+- **Fix:** Added `.eq("user_id", user_id)` in `55749db6`. Also requires DB migration: `DELETE FROM pms_crew_normal_hours WHERE user_id IS NULL`.
+- **Status:** Fixed locally, not deployed. DB migration not applied.
 
-**Known warning message issue:** `check_hor_violations` SQL RPC creates a warning row. If the only violation is period structure (not total hours), the warning message will say "Daily rest violation: 12.00 hours (minimum 10h required)" — misleading because 12h > 10h. Root is in the Supabase `check_hor_violations` function (not in Python layer). HOD notification body was fixed: `hours_of_rest_handlers.py:511–515`.
+### BUG-5 — Create Template UI missing
+- **Where:** `MyTimeView.tsx` — frontend only
+- **Current behaviour:** No **+ New Template** button or form exists in production. The `POST /templates/create` backend endpoint works correctly. The `list_crew_templates` handler also works. Only the UI is missing.
+- **Fix:** Added `canCreateTemplate` gate + **My Templates** section with inline popup form in `55749db6`. `saveAsTemplate()` builds 7-day `schedule_template` from current week's draft and calls the backend.
+- **Status:** Added locally, not deployed.
 
----
-
-## S3 — Submit Day (insufficient total rest)
-
-**Login as:** Crew  
-**Steps:**
-1. Add work periods totalling > 14h (rest < 10h)
-2. Click Submit Day
-
-**Expected:** Red **Violation** badge. Warning generated.
-
-**Code citations:**
-- `is_daily_compliant = total_rest_hours >= 10`: `hours_of_rest_handlers.py:328`
-- Notification body (accurate for this case): `hours_of_rest_handlers.py:511–515`
-
----
-
-## S4 — Daily compliance badge accuracy
-
-**Login as:** Crew  
-**Steps:**
-1. Submit a compliant day (rest ≥ 10h, ≤2 periods). Confirm badge says **Compliant**.
-2. Submit a non-compliant day. Confirm badge says **Violation**.
-
-**Expected:** Badge reflects server `is_daily_compliant`, not client recalculation.
-
-**Code citations:**
-- Load-time remap: `MyTimeView.tsx:66–68`
-  ```ts
-  const is_compliant = d.is_compliant ?? d.is_daily_compliant ?? null;
-  return { ...d, date, label, is_compliant };
-  ```
+### BUG-6 — NoneType.strip() error on some date entries (S1)
+- **Reported:** "NoneType.strip() error on random date entry" during live test
+- **Where:** Unknown. Not found in any current Python code. Searched: `hours_of_rest_handlers.py`, `hours_of_rest_routes.py`, `hor_compliance_routes.py`. All `.strip()` calls are on Pydantic-required fields (protected from null by model validation) or correction handlers.
+- **Possible cause:** Could be inside `check_hor_violations` Supabase SQL function. Could be from a previous deploy version no longer in code.
+- **Status:** Unresolved. If it recurs, capture the full server error trace from Render logs.
 
 ---
 
-## S5 — Apply Template (populates unsubmitted days)
+## What Must Happen Before Next Test Run
 
-**Login as:** Crew (must have at least one saved personal template)  
-**Steps:**
-1. Select a template from the dropdown in the Templates section
-2. Click **Insert My Template**
-3. Verify unsubmitted days show template work blocks
+1. **Push + merge `fix/hor-live-bugs-post-test`** — fixes BUG-1, BUG-4, BUG-5, partial BUG-3
+   ```bash
+   git push -u origin fix/hor-live-bugs-post-test
+   gh pr create --base main --head fix/hor-live-bugs-post-test --title "fix(hor): post-live-test bugs — submit day, templates, violations"
+   ```
 
-**Expected:** Unsubmitted days populated. Already-submitted days unchanged.
+2. **Apply DB migration on TENANT Supabase** (`vzsohavtuotocgrfkfyd`):
+   ```sql
+   DELETE FROM pms_crew_normal_hours WHERE user_id IS NULL;
+   ```
 
-**Code citations:**
-- `applyTemplate()`: `MyTimeView.tsx:501`
-- Route: `hours_of_rest_routes.py:671` — `POST /templates/apply`
-- Handler: `hours_of_rest_handlers.py:1430–1500` — `apply_crew_template()`
-- Templates query (user-scoped only): `hor_compliance_routes.py:225–227` — `.eq("user_id", user_id)`
+3. **Wait for Render deploy** to pick up backend changes from the merged PR.
 
-**Note:** The Templates section only appears if the user has saved templates (`data.templates.length > 0`). See S6 to create one.
-
----
-
-## S6 — Create Template (crew only; fleet manager blocked)
-
-**Login as:** Crew  
-**Steps:**
-1. In Hours of Rest → My Time, scroll to **My Templates** section
-2. Click **+ New Template**
-3. Enter a name, click **Save Template**
-
-**Login as:** Fleet Manager  
-**Steps:**
-1. Go to Hours of Rest → My Time
-2. Confirm **My Templates** section / **+ New Template** button is absent
-
-**Expected (crew):** Template saved. Appears in Templates dropdown.  
-**Expected (fleet):** Section not rendered.
-
-**Code citations:**
-- Gate: `MyTimeView.tsx:204` — `const canCreateTemplate = user?.role !== 'manager'`
-- Section gated render: `MyTimeView.tsx` — `{canCreateTemplate && (<SectionCard>…+ New Template…</SectionCard>)}`
-- `saveAsTemplate()`: `MyTimeView.tsx` — builds 7-day `schedule_template` from draftPeriods → `POST /templates/create`
-- Route: `hours_of_rest_routes.py:634` — `POST /templates/create`
-- Handler: `hours_of_rest_handlers.py:1326` — `create_crew_template()` — inserts with `user_id` (not global)
+4. **Fix `check_hor_violations` SQL function** (BUG-2, BUG-3) — requires Supabase access to update the function body. This is the root cause of both the misleading warning message and the weekly duplicate rows.
 
 ---
 
-## S7 — Submit Week For Approval (crew only; fleet blocked)
+## Code Locations (verified from current files)
 
-**Login as:** Crew  
-**Steps:**
-1. Submit all 7 days of the current week
-2. **Submit Week For Approval** button appears — click it
-
-**Login as:** Fleet Manager  
-**Steps:**
-1. Go to My Time — confirm button absent
-
-**Expected (crew):** Week signed off.  
-**Expected (fleet):** Button absent.
-
-**Code citations:**
-- Gate: `MyTimeView.tsx:204` — `const canSubmitWeek = user?.role !== 'manager'`
-- Conditional render: `MyTimeView.tsx:927` — `isCurrentWeek && canSubmitWeek`
-- Two-step flow (create signoff + sign at crew level): `MyTimeView.tsx:529–558` — `handleSignWeek()`
-
----
-
-## S8 — HOD: Sign Off for Approval (per-crew)
-
-**Login as:** HOD (eto.test)  
-**Pre-condition:** Crew must have submitted a week (run S7 first as crew)  
-**Steps:**
-1. Go to Hours of Rest → Department tab
-2. Find a crew member row — click View
-3. See weekly grid and **Sign Off for Approval** button
-4. Click → enter signed name → confirm
-
-**Expected:** HOD signature recorded.
-
-**Code citations:**
-- Department tab gating: `apps/web/src/app/hours-of-rest/page.tsx:84` — `const showDept = isHODRole(role)`
-- `isHODRole()`: `page.tsx:29–33` — `['chief_engineer', 'chief_officer', 'eto']`
-- Sign Off button: `DepartmentView.tsx:779` — gated on `pending_counter_signs.find`
-
----
-
-## S9 — Captain: Department tab absent
-
-**Login as:** Captain  
-**Steps:**
-1. Go to Hours of Rest
-2. Confirm tabs: **My Time** and **All Departments** only
-3. Confirm **Department** tab is absent
-
-**Expected:** Captain does not see the HOD-only Department tab.
-
-**Code citations:**
-- Tab routing: `page.tsx:84–87`
-  ```ts
-  const showDept    = isHODRole(role);    // false for captain
-  const showVessel  = isCaptainRole(role) || isFleetManagerRole(role);
-  ```
-
----
-
-## S10 — Captain: Sign All blocked until all HODs signed
-
-**Login as:** Captain → All Departments  
-**Steps:**
-1. Observe Sign All button before all departments are HOD-signed
-2. Confirm button is disabled with tooltip
-
-**Expected:** Greyed with tooltip "All departments must be HOD-signed before captain sign-off".
-
-**Code citations:**
-- `all_hods_signed` source: `VesselComplianceView.tsx:185`
-- Disable gate: `VesselComplianceView.tsx:448–449`
-
----
-
-## S11 — Fleet Manager: All Departments read-only
-
-**Login as:** Fleet Manager  
-**Steps:**
-1. Verify tabs: My Time · All Departments · Fleet
-2. On My Time: Submit Week For Approval absent, + New Template absent
-3. On All Departments: vessel overview only, no sign buttons
-
-**Expected:** Fleet sees but cannot write.
-
-**Code citations:**
-- `canSubmitWeek` false for fleet: `MyTimeView.tsx:204`
-- `canCreateTemplate` false for fleet: `MyTimeView.tsx:205`
-- Fleet tab visible: `page.tsx:86–87`
-
----
-
-## Known Data State Gaps
-
-| Scenario | Gap | How to unblock |
-|----------|-----|---------------|
-| S5 template dropdown visible | Requires user to have saved templates (S6 must run first) | Run S6 to create a template |
-| S8 HOD Sign Off button visible | Requires crew to have a pending signoff in `pending_counter_signs` | Complete S7 as crew first |
-| S10 Captain Sign All enabled | Requires all departments HOD-signed | Complete S8 as HOD across all departments |
-
----
-
-## Known Open Bugs (not yet fixed in SQL layer)
-
-| Bug | Source | Status |
-|-----|--------|--------|
-| Warning message "Daily rest violation: 12.00 hours (minimum 10h required)" fires when rest ≥ 10h but period structure violated | `check_hor_violations` Supabase SQL function uses total_rest_hours in message regardless of violation type | HOD notification body fixed in Python; SQL warning message needs DB-level fix |
-| Weekly violation warnings may still accumulate if `check_hor_violations` SQL uses daily `record_date` as key | `check_hor_violations` SQL function | Python-layer pre-delete dedup added at `hours_of_rest_handlers.py:432–444` — covers non-DAILY_REST types |
-
----
-
-## DB Writes Reference
-
-| Table | Written by | Handler location |
-|-------|-----------|-----------------|
-| `pms_hours_of_rest` | submitDay | `hours_of_rest_handlers.py:369–389` |
-| `pms_crew_hours_warnings` | check_hor_violations RPC | `hours_of_rest_handlers.py:434–457` |
-| `pms_hor_monthly_signoffs` | create_monthly_signoff | `hours_of_rest_handlers.py:726–850` |
-| `pms_crew_normal_hours` | createTemplate | `hours_of_rest_handlers.py:1370–1387` |
-| `ledger_events` | every sign / warning / signoff action | `hours_of_rest_handlers.py` — `_write_hor_audit_log()` + `build_ledger_event()` |
-
----
-
-## SQL Migration Needed
-
-Run on TENANT DB to remove generic seeded templates (no user_id):
-
-```sql
-DELETE FROM pms_crew_normal_hours WHERE user_id IS NULL;
-```
-
-File: `supabase/migrations/20260419_delete_seeded_global_templates.sql`
+| Feature | File | Line |
+|---------|------|------|
+| Submit Day button gate | `MyTimeView.tsx` | 1024 |
+| `canSubmitWeek` / `canCreateTemplate` gates | `MyTimeView.tsx` | 204–206 |
+| `saveAsTemplate()` function | `MyTimeView.tsx` | ~535 |
+| `applyTemplate()` function | `MyTimeView.tsx` | 501 |
+| Upsert handler — compliance calc | `hours_of_rest_handlers.py` | 328–335 |
+| `has_valid_rest_periods` (period count rule) | `hours_of_rest_handlers.py` | 332–335 |
+| Weekly warning dedup pre-delete | `hours_of_rest_handlers.py` | 434–447 |
+| `check_hor_violations` RPC call | `hours_of_rest_handlers.py` | 449–456 |
+| HOD notification body (fixed) | `hours_of_rest_handlers.py` | 511–518 |
+| Template query — user_id filter | `hor_compliance_routes.py` | 225–227 |
+| Tab routing by role | `hours-of-rest/page.tsx` | 84–87 |
+| HOD sign button gate | `DepartmentView.tsx` | 779 |
+| Captain Sign All disabled gate | `VesselComplianceView.tsx` | 448–449 |
