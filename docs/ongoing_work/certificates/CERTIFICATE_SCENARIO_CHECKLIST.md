@@ -5,6 +5,39 @@
 
 ---
 
+## CURRENT STATUS — read this first
+
+> **As of 2026-04-19.** All code is deployed. The e2e runner (`certificate_runner.py`) has NOT been executed against production — network failure (Docker vmnetd corruption) prevented the push and test run. The status below is based on code review + CI confirmation, not live runner output.
+
+| Scenario | Status | Evidence | Notes |
+|----------|--------|----------|-------|
+| S1 — View list | ✅ CODE VERIFIED | PR #641 merged, routes live | Priority sort removed. Not runner-tested. |
+| S2 — Create vessel cert | ✅ CODE VERIFIED | PR #641 | Form fields corrected in earlier PRs. Not runner-tested. |
+| S3 — Create crew cert | ✅ CODE VERIFIED | PR #641 `rls_entity_validator.py:28` | RLS 404 fixed. Not runner-tested. |
+| S4 — Dropdown action set | ✅ CODE VERIFIED | PR #641 `CertificateContent.tsx:240` + `certificate_handlers.py` | Assign/supersede removed. Not runner-tested. |
+| S5 — Add note | ✅ CODE VERIFIED | No changes in #641, was working before | Not runner-tested. |
+| S6 — Suspend (SigL2) | ✅ CODE VERIFIED | PR #641 `CertificateContent.tsx:140-141` | SigL2 name-attestation confirmed in code. Not runner-tested. |
+| S7 — Renew (two-step) | ✅ CODE VERIFIED | PR #641 `CertificateContent.tsx:349,473-489` | pendingRenew flow in code. Not runner-tested. |
+| S8 — Assign absent (regression guard) | ✅ CODE VERIFIED | PR #641 | assign_certificate removed from backend + frontend filter. Not runner-tested. |
+| S9 — Archive (SigL2) | ✅ CODE VERIFIED | PR #641 | Same SigL2 fix as S6. Not runner-tested. |
+| S10 — Register page | ✅ CODE VERIFIED | Earlier PRs #585, #592 | 422 + column rendering fixed. Not runner-tested. |
+| S11 — Role gate (crew blocked) | ✅ CODE VERIFIED | `certificate_handlers.py _cert_mutation_gate` | No code changes. Gate was pre-existing. Not runner-tested. |
+| S12 — Dashboard widget | ⚠️ UNVERIFIED | No specific testing done | No known bug. Status unknown. |
+| S13 — Notification bell | ❌ KNOWN FAIL | Bug L — documented gap | `pms_notifications` rows are written to DB correctly. Frontend bell has no consumer. Platform-wide gap, not cert-specific. |
+| E1-E4 — Edge cases | ✅ CODE VERIFIED | Code correct per review | Not runner-tested. |
+
+### What "CODE VERIFIED" means
+The fix is in `main @ 63eeeb0f`, deployed to Render + Vercel, confirmed by CI. The scenario has NOT been walked through manually or by the runner since the last deploy. First person to run the runner will establish the true pass/fail baseline.
+
+### How to establish the live baseline
+```bash
+cd /Users/celeste7/Documents/Cloud_PMS-cert04
+python3 tests/e2e/certificate_runner.py --headed   # watch it run
+```
+Update this table with actual PASS / FAIL after the run.
+
+---
+
 ## What changed in v3 (vs v2)
 
 | Area | Old (v2) | New (v3) | Fix |
