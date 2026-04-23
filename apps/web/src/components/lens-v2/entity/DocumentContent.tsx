@@ -1,19 +1,36 @@
 'use client';
 
 /**
- * DocumentContent — lens-v2 entity view.
- * Prototype: public/prototypes/lens-document.html
+ * DocumentContent — lens-v2 entity view (v3 redesign).
+ *
+ * Per doc_cert_ux_change.md (2026-04-23), the file being rendered is the
+ * primary focus of the lens. Metadata is subsidiary. The section order and
+ * section list is:
+ *
+ *   Identity strip (overline + title + pills + action slot)
+ *   ───────────────────────────────────────────────────────
+ *   LensFileViewer hero (PDF / image / fallback)            ← primary focus
+ *   ───────────────────────────────────────────────────────
+ *   Renewal History      ─ collapsible (prior superseded versions)
+ *   Notes                ─ collapsible
+ *   Supporting Documents ─ collapsible (renamed from "Attachments")
+ *   Related Equipment    ─ collapsible (NEW: picker + Visit button)
+ *   Audit Trail          ─ collapsible (CUD events; soft-delete linethrough)
  *
  * Data flow:
- * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
- * - Actions from availableActions[] → backend /v1/actions/execute
- * - ActionPopup auto-builds form fields from action.required_fields
+ *   - Entity data (resolved names/roles, related_equipment[], audit_trail[])
+ *     comes pre-hydrated from GET /v1/entity/document/{id} — the frontend
+ *     never sees raw UUIDs for users or vessel names.
+ *   - Signed URL for the viewer is fetched by loadDocumentWithBackend(); we
+ *     intentionally keep the two fetches separate so the lens can render
+ *     metadata + related equipment before the (potentially large) PDF blob
+ *     arrives.
+ *   - Mutations (link equipment, unlink equipment, note, upload) go through
+ *     executeAction() → /v1/actions/execute.
  *
- * Sections: Identity → Preview → Details → Revision History → History → Audit Trail → Acknowledgements → Notes → Attachments → Related
- *
- * TODO notes for next engineer:
- * - Add Note handler not wired
- * - File upload modal not wired
+ * Width: the lens panel expands to `--lens-max-width-wide` (1120px) when any
+ * descendant sets `data-lens-wide="true"` — see lens.module.css. We set it
+ * at the root div of this component so the expansion applies automatically.
  */
 
 import * as React from 'react';
@@ -26,20 +43,25 @@ import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { loadDocumentWithBackend } from '@/lib/documentLoader';
 import { getEntityRoute } from '@/lib/entityRoutes';
+import { supabase } from '@/lib/supabaseClient';
 
 import {
   NotesSection,
   AuditTrailSection,
   AttachmentsSection,
-  DocRowsSection,
   KVSection,
-  HistorySection,
+  LensFileViewer,
+  RelatedEquipmentSection,
+  EquipmentPickerModal,
+  RenewalHistorySection,
+  SupersededBanner,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
-  type DocRowItem,
   type KVItem,
-  type HistoryPeriod,
+  type RelatedEquipmentItem,
+  type EquipmentPickerItem,
+  type RenewalHistoryPeriod,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
@@ -115,33 +137,47 @@ export function DocumentContent() {
   }, [entityId]);
 
   // ── Extract entity fields ──
-  const payload = (entity?.payload as Record<string, unknown>) ?? {};
+  // Memoised so downstream callbacks that depend on payload don't rebuild on
+  // every render (eslint react-hooks/exhaustive-deps requires this).
+  const payload = React.useMemo(
+    () => (entity?.payload as Record<string, unknown>) ?? {},
+    [entity?.payload]
+  );
   const document_code = (entity?.document_code ?? payload.document_code) as string | undefined;
   const title = ((entity?.title ?? payload.title) as string | undefined) ?? 'Document';
   const document_type = (entity?.document_type ?? payload.document_type) as string | undefined;
+  const doc_type = (entity?.doc_type ?? payload.doc_type) as string | undefined;
+  const system_type = (entity?.system_type ?? payload.system_type) as string | undefined;
+  const oem = (entity?.oem ?? payload.oem) as string | undefined;
+  const model = (entity?.model ?? payload.model) as string | undefined;
   const category = (entity?.category ?? payload.category) as string | undefined;
   const revision = (entity?.revision ?? payload.revision) as string | number | undefined;
   const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
   const author = (entity?.author ?? payload.author) as string | undefined;
   const effective_date = (entity?.effective_date ?? payload.effective_date) as string | undefined;
   const file_name = (entity?.file_name ?? entity?.filename ?? payload.file_name ?? payload.filename) as string | undefined;
-  const file_size = (entity?.file_size ?? payload.file_size) as number | undefined;
+  const file_size = ((entity?.size_bytes ?? entity?.file_size ?? payload.file_size) as number | undefined);
   const mime_type = ((entity?.mime_type ?? payload.mime_type) as string | undefined) ?? 'application/octet-stream';
-  const file_url = (entity?.file_url ?? entity?.url ?? payload.file_url ?? payload.url) as string | undefined;
+  const file_url = (entity?.url ?? entity?.file_url ?? payload.file_url ?? payload.url) as string | undefined;
   const description = (entity?.description ?? payload.description) as string | undefined;
   const supersedes = (entity?.supersedes ?? payload.supersedes) as string | undefined;
-  const equipment_id = (entity?.equipment_id ?? payload.equipment_id) as string | undefined;
-  const equipment_name = (entity?.equipment_name ?? payload.equipment_name) as string | undefined;
+  const superseded_by = (entity?.superseded_by ?? payload.superseded_by) as string | undefined;
   const department = (entity?.department ?? payload.department) as string | undefined;
-  const vessel_name = (entity?.vessel_name ?? payload.vessel_name) as string | undefined;
   const page_count = (entity?.page_count ?? payload.page_count) as number | undefined;
 
+  // ── Resolved display labels from backend (/v1/entity/document/{id}) ──
+  // All UUIDs resolved to name+role; the frontend never renders a raw UUID.
+  const yacht_name = (entity?.yacht_name ?? payload.yacht_name) as string | undefined;
+  const uploaded_by_name = (entity?.uploaded_by_name ?? payload.uploaded_by_name) as string | undefined;
+  const uploaded_by_role = (entity?.uploaded_by_role ?? payload.uploaded_by_role) as string | undefined;
+
+  // Related equipment — comes pre-hydrated from backend with full row shape
+  const related_equipment = ((entity?.related_equipment ?? payload.related_equipment) as RelatedEquipmentItem[] | undefined) ?? [];
+  const equipment_ids = ((entity?.equipment_ids ?? payload.equipment_ids) as string[] | undefined) ?? [];
+
   // Section data
-  const revisions = ((entity?.revisions ?? payload.revisions ?? entity?.revision_history ?? payload.revision_history) as Array<Record<string, unknown>> | undefined) ?? [];
-  const acknowledgements = ((entity?.acknowledgements ?? payload.acknowledgements ?? entity?.read_acknowledgements ?? payload.read_acknowledgements) as Array<Record<string, unknown>> | undefined) ?? [];
   const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
   const notes = ((entity?.notes ?? payload.notes) as Array<Record<string, unknown>> | undefined) ?? [];
-  const related_entities = ((entity?.related_entities ?? payload.related_entities) as Array<Record<string, unknown>> | undefined) ?? [];
 
   const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
   const auditTrail = ((entity?.audit_trail ?? payload.audit_trail ?? entity?.audit_history ?? payload.audit_history) as Array<Record<string, unknown>> | undefined) ?? [];
@@ -149,6 +185,60 @@ export function DocumentContent() {
   // ── Action gates ──
   const archiveAction = getAction('archive_document');
   const addNoteAction = getAction('add_document_note');
+  const linkEquipmentAction = getAction('link_equipment_to_document');
+  const unlinkEquipmentAction = getAction('unlink_equipment_from_document');
+  const canLinkEquipment = !!linkEquipmentAction && !linkEquipmentAction.disabled;
+
+  // ── Equipment picker state ──
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+
+  const loadEquipmentCandidates = React.useCallback(async (): Promise<EquipmentPickerItem[]> => {
+    // Fetch all non-deleted equipment for the current yacht via Supabase anon
+    // (RLS-filtered to the caller's yacht). Alphabetical ordering is applied
+    // inside the picker modal; we just fetch the list here.
+    const yachtId = (entity?.yacht_id ?? payload.yacht_id) as string | undefined;
+    if (!yachtId) return [];
+    const { data, error } = await supabase
+      .from('pms_equipment')
+      .select('id, code, name, manufacturer, description')
+      .eq('yacht_id', yachtId)
+      .is('deleted_at', null)
+      .limit(2000);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as EquipmentPickerItem[];
+  }, [entity, payload]);
+
+  const handleLinkEquipment = React.useCallback(
+    async (equipmentId: string) => {
+      await executeAction('link_equipment_to_document', {
+        equipment_id: equipmentId,
+      });
+    },
+    [executeAction]
+  );
+
+  const handleUnlinkEquipment = React.useCallback(
+    async (equipmentId: string) => {
+      if (!canLinkEquipment) return;
+      const ok = typeof window !== 'undefined'
+        ? window.confirm('Unlink this equipment from the document?')
+        : true;
+      if (!ok) return;
+      await executeAction('unlink_equipment_from_document', {
+        equipment_id: equipmentId,
+      });
+    },
+    [executeAction, canLinkEquipment]
+  );
+
+  const handleVisitEquipment = React.useCallback(
+    (equipmentId: string) => {
+      router.push(
+        getEntityRoute('equipment' as Parameters<typeof getEntityRoute>[0], equipmentId)
+      );
+    },
+    [router]
+  );
 
   // BACKEND_AUTO moved to mapActionFields.ts
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
@@ -200,18 +290,26 @@ export function DocumentContent() {
   if (file_name) {
     details.push({ label: 'Filename', value: file_name, mono: true });
   }
-  if (author) {
+  if (uploaded_by_name) {
+    // Per spec: always show NAME + ROLE where applicable, never UUID
+    const roleSuffix = uploaded_by_role ? ` · ${uploaded_by_role.replace(/_/g, ' ')}` : '';
+    details.push({ label: 'Uploaded by', value: `${uploaded_by_name}${roleSuffix}` });
+  } else if (author) {
     details.push({ label: 'Author', value: author });
   }
+  if (oem) details.push({ label: 'OEM', value: oem });
+  if (model) details.push({ label: 'Model', value: model, mono: true });
   if (supersedes) {
     details.push({ label: 'Supersedes', value: supersedes });
   }
 
-  // Context line
+  // Context line (overline-like text under title)
   const contextParts: string[] = [];
-  if (category ?? document_type) contextParts.push((category ?? document_type) as string);
+  const primaryType = (doc_type ?? document_type ?? category) as string | undefined;
+  if (primaryType) contextParts.push(primaryType);
+  if (system_type) contextParts.push(system_type);
   if (department) contextParts.push(department);
-  if (vessel_name) contextParts.push(vessel_name);
+  if (yacht_name) contextParts.push(yacht_name);
   const contextNode = contextParts.length > 0 ? (
     <>{contextParts.join(' · ')}</>
   ) : undefined;
@@ -230,7 +328,20 @@ export function DocumentContent() {
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
   const DANGER_ACTIONS = new Set(['archive_document', 'delete_document']);
 
+  // ── Hidden-in-dropdown list ──
+  // Per doc_cert_ux_change.md: the old "Link document to certificate" search
+  // modal is removed for MVP — supporting documents / attachments cover the
+  // need. Related equipment has its own dedicated section + picker, so we
+  // also hide the backend link action from the generic action dropdown
+  // (users open the picker via the section's "+ Link equipment" button).
+  const HIDDEN_FROM_DROPDOWN = new Set([
+    'link_document_to_certificate',
+    'link_equipment_to_document',
+    'unlink_equipment_from_document',
+  ]);
+
   const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => !HIDDEN_FROM_DROPDOWN.has(a.action_id))
     .map((a) => ({
       label: a.label,
       onClick: SPECIAL_HANDLERS[a.action_id]
@@ -246,30 +357,16 @@ export function DocumentContent() {
 
   // ── Map section data ──
 
-  // Revision history → AuditTrail events
-  const revisionEvents: AuditEvent[] = revisions.map((r, i) => ({
-    id: (r.id as string) ?? `rev-${i}`,
-    action: `Rev. ${r.revision ?? r.version ?? i + 1}${r.note ? ` — ${r.note}` : ''}${r.description ? ` — ${r.description}` : ''}`,
-    actor: (r.author ?? r.created_by ?? r.user_name) as string | undefined,
-    timestamp: (r.effective_date ?? r.created_at ?? r.date) as string ?? '',
-  }));
-
-  // Read acknowledgements → KV items
-  const ackItems: KVItem[] = acknowledgements.map((a, i) => ({
-    label: (a.user_name ?? a.acknowledged_by ?? `User ${i + 1}`) as string,
-    value: (a.acknowledged_at ?? a.date ?? a.timestamp) as string ?? '—',
-    mono: true,
-  }));
-
-  // Notes
+  // Notes: actor + role resolved upstream where possible
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
-    author: (n.author ?? n.created_by ?? n.user_name) as string ?? 'Unknown',
+    author:
+      ((n.author_name ?? n.author ?? n.created_by_name ?? n.user_name) as string | undefined) ?? 'Unknown',
     timestamp: (n.created_at ?? n.timestamp) as string ?? '',
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
 
-  // Attachments
+  // Supporting documents (renamed from "attachments" per spec): no type change in storage
   const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
     id: (a.id as string) ?? `att-${i}`,
     name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
@@ -278,59 +375,55 @@ export function DocumentContent() {
     kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
   }));
 
-  // Related entities → DocRows
-  const relatedItems: DocRowItem[] = related_entities.map((r, i) => ({
-    id: (r.id as string) ?? `rel-${i}`,
-    name: (r.name ?? r.title) as string ?? 'Entity',
-    code: (r.code ?? r.reference) as string | undefined,
-    meta: (r.type ?? r.entity_type) as string | undefined,
-    onClick: r.id && r.entity_type
-      ? () => router.push(getEntityRoute(r.entity_type as Parameters<typeof getEntityRoute>[0], r.id as string))
-      : undefined,
-  }));
-
-  // History periods
-  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
+  // Renewal history: prior version rows. Generic shape — maps flexibly from
+  // either a dedicated revision_history field (legacy) or prior_periods.
+  const renewalPeriods: RenewalHistoryPeriod[] = priorPeriods.map((p, i) => ({
     id: (p.id as string) ?? `period-${i}`,
-    year: (p.year ?? p.period_year) as string ?? '',
-    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
-    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
-    summary: (p.summary ?? p.period_summary) as string ?? '',
+    label:
+      ((p.label ?? p.period_label ?? p.version_label ?? p.filename) as string | undefined) ??
+      `Version ${i + 1}`,
+    period:
+      ((p.effective_date ?? p.issue_date ?? p.created_at ?? p.year ?? p.period_year) as string | undefined) ?? '',
+    actor_name: (p.actor_name ?? p.user_name ?? p.author_name ?? p.created_by_name) as string | undefined,
+    actor_role: (p.actor_role ?? p.user_role) as string | undefined,
+    summary: (p.summary ?? p.period_summary ?? p.change_summary ?? p.description) as string | undefined,
+    is_active: false,
   }));
 
-  // Audit trail events
+  // Audit trail: already pre-resolved server-side (actor_name / actor_role /
+  // deleted flag). Fall back defensively for legacy entries still coming
+  // through with raw fields.
   const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
     id: (h.id as string) ?? `audit-${i}`,
     action: (h.action ?? h.description ?? h.event) as string ?? '',
-    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
+    actor: (h.actor ?? h.actor_name ?? h.user_name ?? h.performed_by) as string | undefined,
+    actor_role: (h.actor_role ?? h.user_role) as string | undefined,
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
+    deleted: Boolean(h.deleted),
   }));
 
-  // Document Details KV
-  const docDetailItems: KVItem[] = [];
-  if (document_type) docDetailItems.push({ label: 'Type', value: formatLabel(document_type) });
-  if (category) docDetailItems.push({ label: 'Category', value: category });
-  if (mime_type !== 'application/octet-stream') docDetailItems.push({ label: 'MIME Type', value: mime_type, mono: true });
-  if (file_size) docDetailItems.push({ label: 'File Size', value: sizeDisplay });
-  if (page_count) docDetailItems.push({ label: 'Pages', value: `${page_count}` });
-  if (effective_date) docDetailItems.push({ label: 'Effective Date', value: effective_date, mono: true });
-  if (equipment_name) {
-    docDetailItems.push({
-      label: 'Equipment',
-      value: equipment_id ? (
-        <span
-          className={styles.equipLink}
-          onClick={() => router.push(getEntityRoute('equipment' as Parameters<typeof getEntityRoute>[0], equipment_id))}
-        >
-          {equipment_name}
-        </span>
-      ) : equipment_name,
-    });
-  }
+  // ── Open file in new tab callback (shared by the viewer header button) ──
+  const openInNewTab = React.useCallback(() => {
+    const url = blobUrl ?? file_url;
+    if (url && typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  }, [blobUrl, file_url]);
 
   return (
-    <div data-testid="document-content">
-      {/* Identity Strip */}
+    <div data-testid="document-content" data-lens-wide="true">
+      {/* ── Optional: "This is an old version" banner when the user is viewing a
+           superseded document. Resolved from the backend superseded_by field. */}
+      {superseded_by && (
+        <SupersededBanner
+          entityLabel="document"
+          onViewCurrent={() =>
+            router.push(getEntityRoute('document' as Parameters<typeof getEntityRoute>[0], superseded_by))
+          }
+        />
+      )}
+
+      {/* ── Identity strip (metadata header — unchanged per spec) ── */}
       <IdentityStrip
         overline={document_code}
         title={title}
@@ -353,112 +446,36 @@ export function DocumentContent() {
               items={dropdownItems}
             />
           ) : dropdownItems.length > 0 ? (
-            <SplitButton
-              label="Actions"
-              onClick={() => {}}
-              items={dropdownItems}
-            />
+            <SplitButton label="Actions" onClick={() => { /* dropdown-only mode */ }} items={dropdownItems} />
           ) : undefined
         }
       />
 
-      {/* Document Preview / Viewer */}
+      {/* ── HERO: file viewer ── */}
       <ScrollReveal>
-        <div className={styles.section}>
-          <div className={styles.previewArea}>
-            {fileLoading ? (
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                height: 120, gap: 10, color: 'var(--txt3)', fontSize: 13,
-              }}>
-                <div style={{
-                  width: 20, height: 20,
-                  border: '2px solid var(--border-sub)',
-                  borderTopColor: 'var(--mark)',
-                  borderRadius: '50%',
-                  animation: 'spin 0.8s linear infinite',
-                }} />
-                Loading document…
-              </div>
-            ) : blobUrl && mime_type.startsWith('image/') ? (
-              <img
-                src={blobUrl}
-                alt={file_name ?? title}
-                style={{ maxWidth: '100%', borderRadius: 4, border: '1px solid var(--border-sub)' }}
-              />
-            ) : blobUrl ? (
-              <iframe
-                src={blobUrl}
-                title={file_name ?? title}
-                style={{
-                  width: '100%',
-                  height: 680,
-                  border: '1px solid var(--border-sub)',
-                  borderRadius: 4,
-                  background: 'var(--surface-sub)',
-                }}
-              />
-            ) : fileError ? (
-              <div style={{
-                width: '100%', maxWidth: 560,
-                padding: '24px 20px',
-                background: 'var(--surface-base)',
-                border: '1px solid var(--border-sub)',
-                borderRadius: 4,
-                color: 'var(--red)',
-                fontSize: 12,
-                textAlign: 'center',
-              }}>
-                {fileError}
-              </div>
-            ) : null}
-          </div>
+        <div className={styles.section} style={{ padding: 'var(--space-3) 0' }}>
+          <LensFileViewer
+            url={blobUrl}
+            filename={file_name ?? title}
+            mimeType={mime_type}
+            isLoading={fileLoading}
+            error={fileError}
+            onOpenNewTab={blobUrl ? openInNewTab : undefined}
+          />
         </div>
       </ScrollReveal>
 
-      {/* Document Details */}
-      {docDetailItems.length > 0 && (
-        <ScrollReveal>
-          <KVSection
-            title="Document Details"
-            items={docDetailItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M9 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V5L9 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Revision History */}
+      {/* ── Renewal History (prior superseded versions) ── */}
       <ScrollReveal>
-        <AuditTrailSection events={revisionEvents} defaultCollapsed={false} />
+        <RenewalHistorySection
+          periods={renewalPeriods}
+          onNavigate={(periodId) =>
+            router.push(getEntityRoute('document' as Parameters<typeof getEntityRoute>[0], periodId))
+          }
+        />
       </ScrollReveal>
 
-      {/* History */}
-      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
-
-      {/* Audit Trail */}
-      <ScrollReveal><AuditTrailSection events={auditEvents} defaultCollapsed /></ScrollReveal>
-
-      {/* Read Acknowledgements */}
-      {ackItems.length > 0 && (
-        <ScrollReveal>
-          <KVSection
-            title="Read Acknowledgements"
-            items={ackItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M14 4L6 12l-4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Notes */}
+      {/* ── Notes ── */}
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
@@ -467,22 +484,36 @@ export function DocumentContent() {
         />
       </ScrollReveal>
 
-      {/* Attachments */}
+      {/* ── Supporting Documents (renamed from Attachments per spec) ──
+           CopyNote to CEO: the add-file action popup displays "DOES NOT
+           OVERWRITE THE DOCUMENT — to replace, use Update Document." — that
+           copy lives in the action popup layer, not here. */}
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
+          onAddFile={() => {/* File upload modal wiring tracked in a separate task */}}
           canAddFile
+          title="Supporting Documents"
         />
       </ScrollReveal>
 
-      {/* Related Entities */}
-      {relatedItems.length > 0 && (
-        <ScrollReveal>
-          <DocRowsSection title="Related Entities" docs={relatedItems} />
-        </ScrollReveal>
-      )}
+      {/* ── Related Equipment (NEW per spec) ── */}
+      <ScrollReveal>
+        <RelatedEquipmentSection
+          items={related_equipment}
+          onOpenPicker={() => setPickerOpen(true)}
+          onVisitEquipment={handleVisitEquipment}
+          onUnlink={canLinkEquipment ? handleUnlinkEquipment : undefined}
+          canLink={canLinkEquipment}
+        />
+      </ScrollReveal>
 
+      {/* ── Audit Trail (CUD events; soft-delete linethrough) ── */}
+      <ScrollReveal>
+        <AuditTrailSection events={auditEvents} defaultCollapsed />
+      </ScrollReveal>
+
+      {/* ── Modals ── */}
       {actionPopupConfig && (
         <ActionPopup
           mode="mutate"
@@ -493,11 +524,20 @@ export function DocumentContent() {
           onClose={() => setActionPopupConfig(null)}
         />
       )}
+
       <AddNoteModal
         open={addNoteOpen}
         onClose={() => setAddNoteOpen(false)}
         onSubmit={handleNoteSubmit}
         isLoading={isLoading}
+      />
+
+      <EquipmentPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        loadEquipment={loadEquipmentCandidates}
+        alreadyLinkedIds={equipment_ids}
+        onSelect={handleLinkEquipment}
       />
     </div>
   );
