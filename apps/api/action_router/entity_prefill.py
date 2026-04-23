@@ -92,6 +92,8 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("certificate", "update_certificate"):          {"certificate_id": "id"},
     ("certificate", "link_document_to_certificate"):{"certificate_id": "id"},
     ("certificate", "supersede_certificate"):       {"certificate_id": "id"},
+    ("certificate", "add_certificate_note"):        {"certificate_id": "id"},
+    ("certificate", "renew_certificate"):           {"certificate_id": "id"},
 
     # ── Receiving ─────────────────────────────────────────────────────────────
     ("receiving", "add_receiving_item"):                  {"receiving_id": "id"},
@@ -154,7 +156,7 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("fault", "add_to_handover"):        {"entity_id": "id", "title": "title"},
     ("equipment", "add_to_handover"):    {"entity_id": "id", "title": "name"},
     ("part", "add_to_handover"):         {"entity_id": "id", "title": "name"},
-    ("certificate", "add_to_handover"):  {"entity_id": "id", "title": "certificate_name"},
+    ("certificate", "add_to_handover"):  {"entity_id": "id", "title": "name"},
     ("document", "add_to_handover"):     {"entity_id": "id", "title": "name"},
     ("receiving", "add_to_handover"):    {"entity_id": "id", "title": "vendor_name"},
     ("shopping_list", "add_to_handover"):{"entity_id": "id", "title": "item_name"},

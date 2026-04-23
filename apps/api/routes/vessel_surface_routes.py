@@ -668,6 +668,7 @@ async def get_domain_records(
     q: Optional[str] = Query(None, description="NLP search query (Tier 2)"),
     status: Optional[str] = Query(None, description="Status filter chip value"),
     assigned: Optional[str] = Query(None, description="Assigned to filter"),
+    cert_domain: Optional[str] = Query(None, description="Cert sub-domain filter: 'vessel' or 'crew'"),
     sort: Optional[str] = Query(None, description="Sort field"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
@@ -732,6 +733,10 @@ async def get_domain_records(
         # Apply assigned filter
         if assigned and domain in ("work_orders",):
             query = query.eq("assigned_to", assigned)
+
+        # Apply cert sub-domain filter (vessel vs crew) — v_certificates_enriched has a `domain` column
+        if cert_domain and domain == "certificates" and cert_domain in ("vessel", "crew"):
+            query = query.eq("domain", cert_domain)
 
         # Soft-delete filter for documents
         if domain == "documents":
