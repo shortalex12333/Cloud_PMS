@@ -214,9 +214,23 @@ export const RECEIVING_FILTERS: FilterFieldConfig[] = [
   },
   {
     key: 'received_date',
-    label: 'Received',
+    label: 'Received Date',
     type: 'date-range',
     category: 'dates',
+  },
+  {
+    key: 'vendor_name',
+    label: 'Vendor',
+    type: 'text',
+    placeholder: 'Filter by vendor...',
+    category: 'properties',
+  },
+  {
+    key: 'po_number',
+    label: 'PO Number',
+    type: 'text',
+    placeholder: 'Filter by PO number...',
+    category: 'properties',
   },
 ];
 
@@ -228,8 +242,11 @@ export const SHOPPING_LIST_FILTERS: FilterFieldConfig[] = [
     options: [
       { value: 'candidate', label: 'Candidate' },
       { value: 'under_review', label: 'Under Review' },
+      { value: 'approved', label: 'Approved' },
+      { value: 'rejected', label: 'Rejected' },
       { value: 'ordered', label: 'Ordered' },
       { value: 'partially_fulfilled', label: 'Partially Fulfilled' },
+      { value: 'fulfilled', label: 'Fulfilled' },
       { value: 'installed', label: 'Installed' },
     ],
     category: 'status-priority',
@@ -245,6 +262,36 @@ export const SHOPPING_LIST_FILTERS: FilterFieldConfig[] = [
       { value: 'low', label: 'Low' },
     ],
     category: 'status-priority',
+  },
+  {
+    key: 'source_type',
+    label: 'Source',
+    type: 'select',
+    options: [
+      { value: 'manual_add', label: 'Manual Add' },
+      { value: 'inventory_low', label: 'Inventory Low' },
+      { value: 'inventory_oos', label: 'Out of Stock' },
+      { value: 'work_order_usage', label: 'Work Order' },
+      { value: 'receiving_damaged', label: 'Damaged on Receipt' },
+      { value: 'receiving_missing', label: 'Missing on Receipt' },
+    ],
+    category: 'properties',
+  },
+  {
+    key: 'is_candidate_part',
+    label: 'Candidate Part',
+    type: 'select',
+    options: [
+      { value: 'true', label: 'Candidates only' },
+      { value: 'false', label: 'Catalogued only' },
+    ],
+    category: 'properties',
+  },
+  {
+    key: 'required_by_date',
+    label: 'Required By',
+    type: 'date-range',
+    category: 'dates',
   },
 ];
 
