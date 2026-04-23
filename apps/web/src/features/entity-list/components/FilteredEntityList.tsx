@@ -57,12 +57,10 @@ interface FilteredEntityListProps<T extends { id: string }> {
   /** Domain slug for FilterPanel (drives domain pills + presets) */
   domain?: string;
   /**
-   * Opt-in tabulated list view. When present, renders `EntityTableList`
-   * with sortable column headers instead of the default row/card list.
-   * Accessors run against `EntityListResult` — use the adapter's
-   * `metadata` bag (cast to your domain row type) to read raw DB columns
-   * the flat EntityListResult shape doesn't expose.
-   * See docs/ongoing_work/documents/ENTITY_TABLE_LIST_SPEC_2026-04-23.md.
+   * Optional opt-in: when provided, results render via the shared
+   * EntityTableList (tabulated columnar view, sortable headers) instead of
+   * the legacy SpotlightResultRow / EntityRecordRow cards.
+   * Per CEO directive 2026-04-23 — every lens migrates to columnar.
    */
   tableColumns?: EntityTableColumn<EntityListResult>[];
 }
@@ -267,20 +265,18 @@ export function FilteredEntityList<T extends { id: string }>({
         </button>
       </div>
     );
-  } else if (tableColumns && tableColumns.length > 0) {
-    // ── Tabulated list view (opt-in per-domain) ──
-    // Renders EntityTableList with sortable headers. Bypasses the card/row
-    // path entirely when the consumer passes `tableColumns`. Keeps the same
-    // empty/loading/error branches as the default list view so the behaviour
-    // is interchangeable from the caller's perspective.
+  } else if (tableColumns) {
+    // Columnar tabular view (CEO 2026-04-23). Sort, sticky header, keyboard
+    // nav, sessionStorage persistence — all in EntityTableList.
     resultsContent = (
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         <EntityTableList
           rows={items}
           columns={tableColumns}
-          domain={domain ?? 'list'}
-          selectedId={selectedId}
           onSelect={(id, yachtId) => handleSelect(id, yachtId)}
+          selectedId={selectedId}
+          domain={activeDomain}
+          isLoading={false}
         />
         <div ref={loadMoreRef} style={{ height: 16 }} />
         {isFetchingNextPage && (

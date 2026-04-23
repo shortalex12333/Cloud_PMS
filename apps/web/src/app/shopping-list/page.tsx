@@ -5,15 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
-import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
+import { FilterPanel } from '@/features/entity-list/components/FilterPanel';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
+import { useFilteredEntityList } from '@/features/entity-list/hooks/useFilteredEntityList';
+import type { ActiveFilters } from '@/features/entity-list/types/filter-config';
 import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
 import { ShoppingListContent } from '@/components/lens-v2/entity/ShoppingListContent';
 import { ActionPopup } from '@/components/lens-v2/ActionPopup';
 import lensStyles from '@/components/lens-v2/lens.module.css';
+import ShoppingListTableList from '@/components/shopping-list/ShoppingListTableList';
 import { shoppingListToListResult } from '@/features/shopping-list/adapter';
 import { SHOPPING_LIST_FILTERS } from '@/features/entity-list/types/filter-config';
-import { API_BASE } from '@/lib/apiBase';
 import { supabase } from '@/lib/supabaseClient';
 import type { ShoppingListItem } from '@/features/shopping-list/types';
 
@@ -106,6 +108,20 @@ function ShoppingListPageContent() {
   const queryClient = useQueryClient();
   const selectedId = searchParams.get('id');
   const [showCreate, setShowCreate] = React.useState(false);
+  const [activeFilters, setActiveFilters] = React.useState<ActiveFilters>({});
+
+  // Fetch rows via the shared hook — backend applies all SHOPPING_LIST_FILTERS
+  // keys as URL params (vessel_surface_routes.py get_domain_records
+  // shopping_list branch). Client side just renders.
+  const { items, isLoading } = useFilteredEntityList<ShoppingListItem>({
+    queryKey: ['shopping-list'],
+    table: 'pms_shopping_list_items',
+    columns: '*',
+    adapter: shoppingListToListResult,
+    filters: activeFilters,
+    sortBy: 'created_at',
+    sortDir: 'desc',
+  });
 
   const handleSelect = React.useCallback(
     (id: string, yachtId?: string) => {
@@ -129,18 +145,30 @@ function ShoppingListPageContent() {
   }, [queryClient]);
 
   return (
-    <div className="h-full bg-surface-base" style={{ position: 'relative' }}>
-      <FilteredEntityList<ShoppingListItem>
-        domain="shopping-list"
-        queryKey={['shopping-list']}
-        table="pms_shopping_list_items"
-        columns="id, part_name, part_number, manufacturer, quantity_requested, unit, status, urgency, requested_by, required_by_date, created_at, updated_at"
-        adapter={shoppingListToListResult}
-        filterConfig={SHOPPING_LIST_FILTERS}
-        selectedId={selectedId}
-        onSelect={handleSelect}
-        emptyMessage="No shopping list items found"
-      />
+    <div className="h-full bg-surface-base" style={{ position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+        {/* Shared FilterPanel — same component used by documents/certificates/
+            receiving/purchasing. Reads SHOPPING_LIST_FILTERS from filter-config.ts.
+            Each filter key maps 1:1 to a Query param on the backend route. */}
+        <FilterPanel
+          filters={SHOPPING_LIST_FILTERS}
+          activeFilters={activeFilters}
+          onChange={setActiveFilters}
+          activeDomain="shopping-list"
+          totalCount={items.length}
+        />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          {/* Tabulated, sortable list — shared EntityTableList wrapped with
+              SHOPPING_LIST_COLUMNS. Replaces the previous card-style list
+              (EntityRecordRow/SpotlightResultRow) per CEO 2026-04-23 directive. */}
+          <ShoppingListTableList
+            rows={items}
+            onSelect={handleSelect}
+            selectedId={selectedId}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
 
       {/* Add Item button — fixed bottom-right */}
       <button

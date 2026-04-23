@@ -175,3 +175,29 @@ grep -rn "shopping-list/api\|useShoppingListActions\|fetchShoppingList" apps/web
 # Action registry enumeration
 awk '/^    "[a-z_]+": ActionDefinition\(/{a=$0} /domain="shopping_list"/{…print a}' apps/api/action_router/registry.py
 ```
+
+---
+
+## 7. Timeline of shipped PRs (2026-04-23 night)
+
+| PR | Scope | Merged |
+|---|---|---|
+| #653 | EntityLensPage wiring — fixed 404 (MASTER→TENANT) + 400 (entity_prefill item_id) | ✓ |
+| #656 | Rich filter backend + SHOPPING_LIST_FILTERS config + adapter type alignment | ✓ |
+| #660 | Dead-code deletion (api.ts, useShoppingListActions.ts) + audit doc created | ✓ |
+| #665 | 4 follow-ups: hide 6 legacy actions, register mark_shopping_list_ordered, surface audit_history, extend lifecycle stepper | ✓ |
+| #666 | Audit doc §6 marked closed | ✓ |
+| #670 | Rich filter additions (ilike: part_name/part_number/manufacturer/preferred_supplier + created_at range) — shipped under PURCHASE05's umbrella PR | ✓ |
+| #671 | Adapter row-render contract fix (B-01 + B-02) + metadata cleanup | ✓ |
+| #675 | **Tabulated list view** — replaces card-style with shared `EntityTableList` + `SHOPPING_LIST_COLUMNS` (9 columns, business-rank sort on status/urgency, pill render slot) | ✓ |
+
+## 8. Current state of the shopping lens (end of 2026-04-23)
+
+- **List view**: sortable column table via shared `EntityTableList`. 9 columns: Part # / Item / Status / Urgency / Qty Req / Source / Requester / Required By / Created. Sort state persists per-domain in sessionStorage.
+- **Filter panel**: 10 filter fields across 3 canonical categories (status-priority / dates / properties). Backend applies every filter server-side via URL params on `vessel_surface_routes.get_domain_records` shopping_list branch.
+- **Detail view**: `EntityLensPage` + `ShoppingListContent` — TENANT-DB-routed, prefilled action payloads, lifecycle stepper covering all 7 happy-path statuses + rejected terminal banner, audit trail backed by `pms_shopping_list_state_history`.
+- **Actions**: 6 canonical (create/approve/reject/promote/view-history/mark-ordered) + delete + add-to-handover cross-domain. 6 legacy list-level actions hidden from UI. `mark_shopping_list_ordered` state-gated to `approved` status.
+- **Dead code**: removed (`api.ts`, `useShoppingListActions.ts`).
+- **Docs**: this audit doc, co-owned with the peer squad (DOCUMENTS04, CERTIFICATE04, RECEIVING05, PURCHASE05).
+
+No open follow-ups on the shopping lens itself. Next cross-domain work is the remaining lenses adopting `EntityTableList` — tracked by their respective owners.
