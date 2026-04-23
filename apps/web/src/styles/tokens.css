@@ -477,6 +477,13 @@
   --lens-padding-mobile: 16px;
   --lens-body-max-line: 680px;
 
+  /* Lens — wide variant for lenses that embed a rendered document
+     (certificate lens, document lens). Use .lens-container-wide (defined in
+     lens.css) or apply inline via style={{ maxWidth: 'var(--lens-max-width-wide)' }}.
+     The viewer height adapts to viewport via clamp(min, preferred, max). */
+  --lens-max-width-wide: 1120px;
+  --lens-doc-viewer-h: clamp(480px, 70vh, 760px);
+
   /* Sidebar */
   --sidebar-width: 420px;
 

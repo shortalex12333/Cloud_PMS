@@ -12,8 +12,18 @@ import { CollapsibleSection } from '../CollapsibleSection';
 export interface AuditEvent {
   id: string;
   action: string;
+  /** Human name (resolved from user_id). Never a raw UUID. */
   actor?: string;
+  /** Resolved role (e.g. "chief_engineer") — rendered as small suffix after the actor name. */
+  actor_role?: string;
+  /** ISO timestamp or pre-formatted string. */
   timestamp: string;
+  /**
+   * When true, the row is rendered struck-through with a "(deleted)" suffix.
+   * Per spec: we NEVER hard-delete audit rows — soft-delete keeps them visible
+   * with visual emphasis for the audit trail.
+   */
+  deleted?: boolean;
 }
 
 export interface AuditTrailSectionProps {
@@ -22,6 +32,10 @@ export interface AuditTrailSectionProps {
   title?: string;
 }
 
+/**
+ * Audit trail dot-timeline. Each event = `<actor> <action> · <role>` + timestamp.
+ * Deleted rows kept visible with line-through (soft-delete per spec).
+ */
 export function AuditTrailSection({ events, defaultCollapsed = true, title = 'Audit Trail' }: AuditTrailSectionProps) {
   return (
     <CollapsibleSection
@@ -40,12 +54,42 @@ export function AuditTrailSection({ events, defaultCollapsed = true, title = 'Au
         <div className={styles.emptyState}>No history.</div>
       ) : (
         events.map((event) => (
-          <div key={event.id} className={styles.auditEvent}>
+          <div
+            key={event.id}
+            className={styles.auditEvent}
+            style={event.deleted ? { opacity: 0.6 } : undefined}
+          >
             <div className={styles.auditDot} />
             <div className={styles.auditInfo}>
-              <div className={styles.auditAction}>
-                {event.actor && <span className={styles.auditCrew}>{event.actor}</span>}{' '}
+              <div
+                className={styles.auditAction}
+                style={event.deleted ? { textDecoration: 'line-through' } : undefined}
+              >
+                {event.actor && <span className={styles.auditCrew}>{event.actor}</span>}
+                {event.actor_role && (
+                  <span
+                    style={{
+                      fontSize: 'var(--font-size-caption)',
+                      color: 'var(--text-tertiary)',
+                      marginLeft: '6px',
+                    }}
+                  >
+                    · {event.actor_role.replace(/_/g, ' ')}
+                  </span>
+                )}{' '}
                 {event.action}
+                {event.deleted && (
+                  <span
+                    style={{
+                      fontSize: 'var(--font-size-caption)',
+                      color: 'var(--status-critical)',
+                      marginLeft: '8px',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    (deleted)
+                  </span>
+                )}
               </div>
               <div className={styles.auditTime}>{event.timestamp}</div>
             </div>

@@ -11,3 +11,25 @@ export { ChecklistSection, type ChecklistItem, type ChecklistSectionProps } from
 export { DocRowsSection, type DocRowItem, type DocRowsSectionProps } from './DocRowsSection';
 export { KVSection, type KVItem, type KVSectionProps } from './KVSection';
 export { HistorySection, type HistoryPeriod, type HistorySectionProps } from './HistorySection';
+
+// ── Shared components introduced for Certificate + Document lens redesign ──
+// See: docs/ongoing_work/documents/DOCUMENT_LENS_REDESIGN_2026-04-23.md
+// See: /Users/celeste7/Desktop/celeste-screenshots/doc_cert_ux_change.md
+export { LensFileViewer, type LensFileViewerProps } from './LensFileViewer';
+export {
+  RelatedEquipmentSection,
+  type RelatedEquipmentItem,
+  type RelatedEquipmentSectionProps,
+} from './RelatedEquipmentSection';
+export {
+  EquipmentPickerModal,
+  type EquipmentPickerItem,
+  type EquipmentPickerModalProps,
+} from './EquipmentPickerModal';
+export {
+  RenewalHistorySection,
+  SupersededBanner,
+  type RenewalHistoryPeriod,
+  type RenewalHistorySectionProps,
+  type SupersededBannerProps,
+} from './RenewalHistorySection';
