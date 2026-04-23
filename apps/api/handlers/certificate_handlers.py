@@ -816,6 +816,7 @@ def _create_vessel_certificate_adapter(handlers: CertificateHandlers):
             "properties": params.get("properties") or {},
             "created_by": user_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
+            "is_seed": False,  # DB default is TRUE; must be FALSE to appear in v_certificates_enriched
         }
 
         # Insert certificate (RLS enforces yacht + role via policies)
