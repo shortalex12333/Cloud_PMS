@@ -670,7 +670,7 @@ async def get_domain_records(
     assigned: Optional[str] = Query(None, description="Assigned to filter"),
     cert_domain: Optional[str] = Query(None, description="Cert sub-domain filter: 'vessel' or 'crew'"),
     sort: Optional[str] = Query(None, description="Sort field"),
-    limit: int = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=2000),
     offset: int = Query(0, ge=0),
 ):
     """
@@ -955,6 +955,23 @@ def _format_record(domain: str, record: dict) -> dict:
             "received_date": record.get("received_date"),
             "meta": f"{record.get('received_by', '')} · {record.get('status', '').upper()}",
         })
+    elif domain == "documents":
+        filename = record.get("filename") or "Untitled"
+        doc_type = record.get("doc_type")
+        base.update({
+            "ref": f"D-{str(record.get('id', ''))[:6]}",
+            "title": filename,
+            "filename": filename,
+            "doc_type": doc_type,
+            "original_path": record.get("original_path"),
+            "storage_path": record.get("storage_path", ""),
+            "size_bytes": record.get("size_bytes"),
+            "uploaded_by_name": record.get("uploaded_by_name"),
+            "created_at": record.get("created_at"),
+            "content_type": record.get("content_type"),
+            "tags": record.get("tags") or [],
+            "meta": f"{doc_type or 'Document'} · {_age_display(record.get('created_at'))}",
+        })
     elif domain == "warranty":
         claim_number = record.get("claim_number") or f"WC-{str(record.get('id', ''))[:6]}"
         base.update({
@@ -1059,7 +1076,7 @@ def _name_column(domain: str) -> str:
         "equipment": "name",
         "parts": "name",
         "certificates": "certificate_name",
-        "documents": "name",
+        "documents": "filename",
         "handover": "title",
         "shopping_list": "item_name",
         "purchase_orders": "supplier_name",
@@ -1123,15 +1140,15 @@ def _format_inline_result(domain: str, record: dict) -> dict:
     elif domain == "documents":
         base.update({
             "ref": str(record.get("id", ""))[:8],
-            "display_name": record.get("name", ""),
-            "meta": record.get("document_type", ""),
-            "status_display": record.get("document_type", ""),
+            "display_name": record.get("filename", ""),
+            "meta": record.get("doc_type", ""),
+            "status_display": record.get("doc_type", ""),
             "status_level": "ok",
             "prefill_fields": {
                 k: v for k, v in {
                     "document_id": record.get("id"),
-                    "document_name": record.get("name"),
-                    "document_type": record.get("document_type"),
+                    "document_name": record.get("filename"),
+                    "document_type": record.get("doc_type"),
                 }.items() if v is not None
             },
         })
