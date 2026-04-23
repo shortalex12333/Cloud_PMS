@@ -71,18 +71,25 @@ export function ReceivingContent() {
   const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // -- Extract entity fields --
+  // Identity rules — every value appears AT MOST once across the strip:
+  //   title    = vendor_name (or "Draft Receiving")
+  //   pills    = [status, item count, optional total/currency money line]
+  //   details  = vendor_reference, received_date, received_by NAME, vessel
+  //   context  = clickable PO link (no supplier echo)
+  // entity_routes.py:get_receiving_entity already resolves received_by UUID -> name.
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
-  const receiving_number = (entity?.receiving_number ?? payload.receiving_number) as string | undefined;
-  const title = ((entity?.title ?? payload.title ?? entity?.description ?? payload.description) as string | undefined) ?? 'Receiving';
-  const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'pending';
+  const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
   const po_number = (entity?.po_number ?? payload.po_number) as string | undefined;
   const po_id = (entity?.po_id ?? payload.po_id) as string | undefined;
-  const supplier = (entity?.supplier ?? payload.supplier ?? entity?.vendor_name ?? payload.vendor_name) as string | undefined;
-  const supplier_ref = (entity?.supplier_ref ?? payload.supplier_ref ?? entity?.vendor_reference ?? payload.vendor_reference) as string | undefined;
-  const delivery_date = (entity?.delivery_date ?? payload.delivery_date ?? entity?.expected_date ?? payload.expected_date) as string | undefined;
+  const vendor_name = (entity?.vendor_name ?? payload.vendor_name ?? entity?.supplier ?? payload.supplier) as string | undefined;
+  const vendor_reference = (entity?.vendor_reference ?? payload.vendor_reference ?? entity?.supplier_ref ?? payload.supplier_ref) as string | undefined;
+  const received_date = (entity?.received_date ?? payload.received_date) as string | undefined;
   const received_by = (entity?.received_by ?? payload.received_by) as string | undefined;
-  const vessel = (entity?.vessel ?? payload.vessel ?? entity?.yacht_name ?? payload.yacht_name) as string | undefined;
+  const yacht_name = (entity?.yacht_name ?? payload.yacht_name ?? entity?.vessel ?? payload.vessel) as string | undefined;
+  const total = (entity?.total ?? payload.total) as number | undefined;
+  const currency = (entity?.currency ?? payload.currency) as string | undefined;
   const total_items = (entity?.total_items ?? payload.total_items) as number | undefined;
+  const title = vendor_name ?? 'Draft Receiving';
 
   // Section data
   const items = ((entity?.items ?? payload.items) as Array<Record<string, unknown>> | undefined) ?? [];
@@ -127,49 +134,39 @@ export function ReceivingContent() {
   if (itemCount > 0) {
     pills.push({ label: `${itemCount} Item${itemCount === 1 ? '' : 's'}`, variant: 'neutral' });
   }
+  if (typeof total === 'number' && total > 0) {
+    const money = currency ? `${currency} ${total.toFixed(2)}` : total.toFixed(2);
+    pills.push({ label: money, variant: 'neutral' });
+  }
 
   const details: DetailLine[] = [];
-  if (supplier) {
-    details.push({ label: 'Supplier', value: supplier });
+  if (vendor_reference) {
+    details.push({ label: 'Vendor Ref', value: vendor_reference, mono: true });
   }
-  if (supplier_ref) {
-    details.push({ label: 'Supplier Ref', value: supplier_ref, mono: true });
-  }
-  if (po_number) {
-    details.push({ label: 'PO Reference', value: po_number, mono: true });
-  }
-  if (delivery_date) {
-    details.push({ label: 'Expected', value: delivery_date, mono: true });
+  if (received_date) {
+    details.push({ label: 'Received', value: received_date, mono: true });
   }
   if (received_by) {
     details.push({ label: 'Received By', value: received_by });
   }
-  if (vessel) {
-    details.push({ label: 'Vessel', value: vessel });
+  if (yacht_name) {
+    details.push({ label: 'Vessel', value: yacht_name });
   }
 
-  // Context line
-  const contextParts: string[] = [];
-  if (supplier) contextParts.push(supplier);
-  const contextNode = (
+  // Context line — show only the PO link (no supplier echo; supplier IS the title above)
+  const contextNode = po_number ? (
     <>
-      {contextParts.join(' · ')}
-      {po_number && (
-        <>
-          {contextParts.length > 0 && ' · '}
-          PO Reference:{' '}
-          <span
-            className={styles.crewLink}
-            onClick={po_id ? () => router.push(getEntityRoute('purchase-orders' as Parameters<typeof getEntityRoute>[0], po_id)) : undefined}
-            role={po_id ? 'link' : undefined}
-            tabIndex={po_id ? 0 : undefined}
-          >
-            {po_number}
-          </span>
-        </>
-      )}
+      PO Reference:{' '}
+      <span
+        className={styles.crewLink}
+        onClick={po_id ? () => router.push(getEntityRoute('purchase-orders' as Parameters<typeof getEntityRoute>[0], po_id)) : undefined}
+        role={po_id ? 'link' : undefined}
+        tabIndex={po_id ? 0 : undefined}
+      >
+        {po_number}
+      </span>
     </>
-  );
+  ) : undefined;
 
   // -- Split button config --
   const primaryLabel = 'Confirm Receipt';
@@ -280,7 +277,6 @@ export function ReceivingContent() {
     <>
       {/* Identity Strip */}
       <IdentityStrip
-        overline={receiving_number}
         title={title}
         context={contextNode}
         pills={pills}

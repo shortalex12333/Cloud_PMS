@@ -33,7 +33,11 @@ export function receivingToListResult(item: ReceivingItem): EntityListResult {
     ? new Date(item.received_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
     : '';
 
-  const subtitleParts: string[] = [statusDisplay];
+  // Subtitle shows context the row pill does NOT already render.
+  // Status is on the pill — don't repeat it. Vendor is the title — don't repeat it.
+  const vendorRef = (raw.vendor_reference as string | undefined) || '';
+  const subtitleParts: string[] = [];
+  if (vendorRef) subtitleParts.push(vendorRef);
   if (dateDisplay) subtitleParts.push(dateDisplay);
   if (poNum) subtitleParts.push(`PO ${poNum}`);
 

@@ -681,6 +681,11 @@ async def get_domain_records(
     preferred_supplier: Optional[str] = Query(None, description="Preferred supplier ilike (shopping_list)"),
     created_from: Optional[str] = Query(None, description="Created_at date from (YYYY-MM-DD, shopping_list)"),
     created_to: Optional[str] = Query(None, description="Created_at date to (YYYY-MM-DD, shopping_list)"),
+    # Receiving-specific filters (2026-04-23, RECEIVING05)
+    vendor_name: Optional[str] = Query(None, description="Vendor name ilike (receiving)"),
+    vendor_reference: Optional[str] = Query(None, description="Vendor reference ilike (receiving)"),
+    po_number: Optional[str] = Query(None, description="PO number ilike (receiving)"),
+    currency: Optional[str] = Query(None, description="Currency exact match (receiving)"),
     sort: Optional[str] = Query(None, description="Sort field"),
     limit: int = Query(50, ge=1, le=2000),
     offset: int = Query(0, ge=0),
@@ -775,6 +780,24 @@ async def get_domain_records(
                 query = query.ilike("manufacturer", f"%{manufacturer}%")
             if preferred_supplier:
                 query = query.ilike("preferred_supplier", f"%{preferred_supplier}%")
+
+        # Receiving-specific filters. Safe no-ops on any other domain.
+        # Each branch maps 1:1 to a key in RECEIVING_FILTERS on the frontend
+        # (apps/web/src/features/entity-list/types/filter-config.ts).
+        # ilike values are wrapped in %..% for substring match.
+        if domain == "receiving":
+            if vendor_name:
+                query = query.ilike("vendor_name", f"%{vendor_name}%")
+            if vendor_reference:
+                query = query.ilike("vendor_reference", f"%{vendor_reference}%")
+            if po_number:
+                query = query.ilike("po_number", f"%{po_number}%")
+            if currency:
+                query = query.eq("currency", currency)
+            if date_from:
+                query = query.gte("received_date", date_from)
+            if date_to:
+                query = query.lte("received_date", date_to)
 
         # Soft-delete filter — hide deleted records
         if domain in ("documents", "purchase_orders"):
