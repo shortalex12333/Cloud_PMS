@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
 import { CERTIFICATE_FILTERS } from '@/features/entity-list/types/filter-config';
+import { CERTIFICATE_COLUMNS } from '@/features/entity-list/types/certificate-columns';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
 import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
 import { CertificateContent } from '@/components/lens-v2/entity';
@@ -70,6 +71,10 @@ function certAdapter(c: Certificate): EntityListResult {
     statusVariant: c.status === 'expired' ? 'critical' : c.status === 'revoked' ? 'critical' : c.status === 'suspended' ? 'warning' : c.status === 'expiring_soon' ? 'warning' : c.status === 'superseded' ? 'cancelled' : c.status === 'valid' ? 'completed' : 'open',
     severity: c.status === 'expired' ? 'critical' : c.status === 'revoked' ? 'critical' : c.status === 'suspended' ? 'warning' : c.status === 'expiring_soon' ? 'warning' : null,
     age: daysLeft !== null ? (daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d`) : '\u2014',
+    // Raw row tunnelled through so CERTIFICATE_COLUMNS accessors can read
+    // every DB column without reshaping EntityListResult. Consumers still
+    // get .title/.subtitle/.status etc for the card/row fallback view.
+    metadata: c as unknown as Record<string, unknown>,
   };
 }
 
@@ -304,6 +309,7 @@ function CertificatesPageContent() {
           columns="id,certificate_name,certificate_number,certificate_type,issuing_authority,issue_date,expiry_date,status,domain,person_name,created_at"
           adapter={certAdapter}
           filterConfig={CERTIFICATE_FILTERS}
+          tableColumns={CERTIFICATE_COLUMNS}
           selectedId={selectedId}
           onSelect={handleSelect}
           emptyMessage="No certificates recorded"
