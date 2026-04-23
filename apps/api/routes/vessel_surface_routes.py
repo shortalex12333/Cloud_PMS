@@ -1022,6 +1022,7 @@ def _format_record(domain: str, record: dict) -> dict:
         po_num = record.get("po_number") or f"PO-{str(record.get('id', ''))[:6]}"
         base.update({
             "ref": po_num,
+            "po_number": record.get("po_number"),
             "title": po_num,
             "status": record.get("status", "draft"),
             "supplier_id": record.get("supplier_id"),

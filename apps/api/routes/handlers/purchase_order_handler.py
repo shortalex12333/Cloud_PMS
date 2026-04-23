@@ -176,6 +176,43 @@ async def cancel_purchase_order(
 
 
 # ============================================================================
+# delete_purchase_order
+# ============================================================================
+async def delete_purchase_order(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
+    if not po_id:
+        raise HTTPException(status_code=400, detail="purchase_order_id is required")
+    user_role = user_context.get("role", "")
+    if user_role not in _HOD_ROLES:
+        return {"status": "error", "error_code": "FORBIDDEN",
+                "message": f"Role '{user_role}' is not permitted to delete a purchase order"}
+    now = datetime.now(timezone.utc).isoformat()
+    result_data = db_client.table("pms_purchase_orders").update({
+        "deleted_at": now, "deleted_by": user_id, "updated_at": now,
+    }).eq("id", po_id).eq("yacht_id", yacht_id).is_("deleted_at", "null").execute()
+    if not result_data.data:
+        return {"status": "error", "error_code": "UPDATE_FAILED",
+                "message": "Purchase order not found or already deleted"}
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+            entity_type="purchase_order", entity_id=po_id, action="delete_po",
+            user_role=user_role, change_summary="Purchase order deleted",
+        )
+        db_client.table("ledger_events").insert(ledger_event).execute()
+    except Exception as ledger_err:
+        logger.warning(f"[Ledger] Failed to record delete_po: {ledger_err}")
+    return {"status": "success", "purchase_order_id": po_id, "deleted_at": now}
+
+
+# ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
 HANDLERS: dict = {
@@ -183,8 +220,11 @@ HANDLERS: dict = {
     "approve_purchase_order": approve_purchase_order,
     "mark_po_received": mark_po_received,
     "cancel_purchase_order": cancel_purchase_order,
+    "delete_purchase_order": delete_purchase_order,
     # Frontend-facing aliases (match action IDs used by PurchaseOrderContent.tsx)
     "submit_po": submit_purchase_order,
     "approve_po": approve_purchase_order,
     "receive_po": mark_po_received,
+    "cancel_po": cancel_purchase_order,
+    "delete_po": delete_purchase_order,
 }

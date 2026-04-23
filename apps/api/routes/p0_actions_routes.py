@@ -93,10 +93,13 @@ _ACTION_ENTITY_MAP = {
     "approve_purchase_order":      ("purchase_order", "purchase_order_id"),
     "mark_po_received":            ("purchase_order", "purchase_order_id"),
     "cancel_purchase_order":       ("purchase_order", "purchase_order_id"),
+    "delete_purchase_order":       ("purchase_order", "purchase_order_id"),
     # Frontend aliases
     "submit_po":                   ("purchase_order", "purchase_order_id"),
     "approve_po":                  ("purchase_order", "purchase_order_id"),
     "receive_po":                  ("purchase_order", "purchase_order_id"),
+    "cancel_po":                   ("purchase_order", "purchase_order_id"),
+    "delete_po":                   ("purchase_order", "purchase_order_id"),
 }
 
 
@@ -609,10 +612,10 @@ _PART_ACTIONS = frozenset({
 
 _PO_ACTIONS = frozenset({
     "submit_purchase_order", "approve_purchase_order",
-    "mark_po_received", "cancel_purchase_order",
+    "mark_po_received", "cancel_purchase_order", "delete_purchase_order",
     "convert_to_po",
     # Frontend-facing aliases + additional PO actions
-    "submit_po", "approve_po", "receive_po",
+    "submit_po", "approve_po", "receive_po", "cancel_po", "delete_po",
     "add_po_note", "order_part", "approve_purchase",
     "add_item_to_purchase", "update_purchase_status", "upload_invoice",
 })
