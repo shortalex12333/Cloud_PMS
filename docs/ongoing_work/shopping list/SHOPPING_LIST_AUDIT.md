@@ -138,14 +138,21 @@ FK-link only (no fetch from the shopping lens):
 
 ---
 
-## 6. Follow-ups — NOT executed in this pass
+## 6. Follow-ups — CLOSED (PR #665, merged 2026-04-23)
 
-1. Decide fate of `mark_shopping_list_ordered`: add `ActionDefinition` or delete handler + prefill entry.
-2. Filter the 6 legacy list-level actions out of shopping_list entity responses (either remove from `ACTION_REGISTRY` or add a hidden-action set in `entity_actions.py`).
-3. Surface `pms_shopping_list_state_history` as `audit_history` on the entity endpoint.
-4. Extend lifecycle stepper in `ShoppingListContent.tsx:205` to include `rejected`, `partially_fulfilled`, `installed`.
+All four items from the original follow-up list have been executed and shipped.
 
-Each of these is additive or local to the shopping lens and can be shipped as a single follow-up PR without touching other domains.
+1. **✅ `mark_shopping_list_ordered` registered.** `ActionDefinition` added at `registry.py` adjacent to `view_shopping_list_history`; roles mirror `_MARK_ORDERED_ROLES` (`chief_engineer / captain / manager`). REQUIRED_FIELDS entry added at `p0_actions_routes.py` (`["item_id"]`). State gate added at `entity_actions.py` so the action is disabled unless `status == 'approved'`; the same gate disables `approve / reject / promote / mark_ordered` with a human-readable reason when the status is terminal (`rejected / fulfilled / installed`).
+
+2. **✅ 6 legacy list-level actions hidden.** `_SHOPPING_LIST_HIDDEN_ACTIONS = {approve_list, add_list_item, archive_list, delete_list, convert_to_po, submit_list}` in `entity_actions.py`. `get_available_actions` skips any action in this set when `entity_type='shopping_list'`. Registry entries and internal_dispatcher handlers are left intact so programmatic callers still work. Verified by Python smoke test — captain on a shopping_list entity no longer sees these 6 in the response.
+
+3. **✅ `audit_history` surfaced.** `entity_routes.py` shopping_list endpoint fetches `pms_shopping_list_state_history` ordered by `changed_at`, batches every actor UUID (requester + approver + every history actor) into a single `auth_users_profiles` query (no N+1), projects rows into `{action, actor, timestamp, previous_state, new_state, transition_notes}`. The existing `ShoppingListContent.tsx:158-163` reader consumes `{action, actor, timestamp}` directly. Failure mode is fail-soft: `audit_history = []` on any DB error.
+
+4. **✅ Lifecycle stepper extended.** `LIFECYCLE` in `ShoppingListContent.tsx:205` is now `[candidate, under_review, approved, ordered, partially_fulfilled, fulfilled, installed]`. `rejected` is handled as a terminal off-ramp: a red banner (uses existing design tokens `--red` / `--red-bg`) with the rejection reason replaces the stepper entirely — previously `currentIdx === -1` silently produced a stepper with no active step.
+
+### New follow-ups surfaced during this pass
+
+- `add_to_shopping_list` is registered with `domain="shopping_list"` (registry.py:3454) AND as a cross-domain action on `part` entities (entity_actions.py:151). Because of the domain field it is also returned by `get_available_actions` for the shopping_list entity itself, where it duplicates the floating "+ Add Item" button's intent. Low-priority UX cleanup — consider either dropping it from the shopping_list dropdown via `_SHOPPING_LIST_HIDDEN_ACTIONS` or moving it to cross-domain-only (domain=parts, injected to shopping_list? — no, actually the cleanest fix is hide-from-UI).
 
 ---
 
