@@ -8,6 +8,7 @@ import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
 import { PurchaseOrderContent } from '@/components/lens-v2/entity';
 import lensStyles from '@/components/lens-v2/lens.module.css';
 import { PURCHASE_ORDER_FILTERS } from '@/features/entity-list/types/filter-config';
+import { PURCHASE_ORDER_COLUMNS } from '@/features/purchasing/columns';
 import type { EntityListResult } from '@/features/entity-list/types';
 
 interface PurchaseOrder {
@@ -57,6 +58,17 @@ function poAdapter(po: PurchaseOrder): EntityListResult {
     statusVariant: poStatusVariant(po.status),
     severity: null,
     age: po.ordered_at ? formatAge(po.ordered_at) : (po.created_at ? formatAge(po.created_at) : '\u2014'),
+    // Raw fields for PURCHASE_ORDER_COLUMNS (tabulated view). Matches the
+    // RECEIVING_COLUMNS pattern at apps/web/src/features/receiving/columns.tsx.
+    metadata: {
+      status: po.status || '',
+      supplier_name: po.supplier_name || '',
+      currency: po.currency || '',
+      total_amount: po.total_amount ?? null,
+      ordered_at: po.ordered_at || '',
+      received_at: po.received_at || '',
+      created_at: po.created_at || '',
+    },
   };
 }
 
@@ -103,6 +115,7 @@ function PurchasingPageContent() {
         columns="id, po_number, status, supplier_id, ordered_at, received_at, currency, created_at, updated_at"
         adapter={poAdapter}
         filterConfig={PURCHASE_ORDER_FILTERS}
+        tableColumns={PURCHASE_ORDER_COLUMNS}
         selectedId={selectedId}
         onSelect={handleSelect}
         emptyMessage="No purchase orders recorded"
