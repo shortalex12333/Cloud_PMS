@@ -11,6 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import { FilterPanel } from './FilterPanel';
 import SpotlightResultRow from '@/components/spotlight/SpotlightResultRow';
 import { EntityRecordRow, type RecordRowData } from './EntityRecordRow';
+import { EntityTableList, type EntityTableColumn } from './EntityTableList';
 import { EmptyState } from './EmptyState';
 import { useFilteredEntityList } from '../hooks/useFilteredEntityList';
 import type { FilterFieldConfig, ActiveFilters } from '../types/filter-config';
@@ -55,6 +56,15 @@ interface FilteredEntityListProps<T extends { id: string }> {
   sortBy?: string;
   /** Domain slug for FilterPanel (drives domain pills + presets) */
   domain?: string;
+  /**
+   * Opt-in tabulated list view. When present, renders `EntityTableList`
+   * with sortable column headers instead of the default row/card list.
+   * Accessors run against `EntityListResult` — use the adapter's
+   * `metadata` bag (cast to your domain row type) to read raw DB columns
+   * the flat EntityListResult shape doesn't expose.
+   * See docs/ongoing_work/documents/ENTITY_TABLE_LIST_SPEC_2026-04-23.md.
+   */
+  tableColumns?: EntityTableColumn<EntityListResult>[];
 }
 
 export function FilteredEntityList<T extends { id: string }>({
@@ -68,6 +78,7 @@ export function FilteredEntityList<T extends { id: string }>({
   emptyMessage,
   sortBy = 'created_at',
   domain,
+  tableColumns,
 }: FilteredEntityListProps<T>) {
   const searchParams = useSearchParams();
 
@@ -254,6 +265,29 @@ export function FilteredEntityList<T extends { id: string }>({
         >
           Clear filters
         </button>
+      </div>
+    );
+  } else if (tableColumns && tableColumns.length > 0) {
+    // ── Tabulated list view (opt-in per-domain) ──
+    // Renders EntityTableList with sortable headers. Bypasses the card/row
+    // path entirely when the consumer passes `tableColumns`. Keeps the same
+    // empty/loading/error branches as the default list view so the behaviour
+    // is interchangeable from the caller's perspective.
+    resultsContent = (
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <EntityTableList
+          rows={items}
+          columns={tableColumns}
+          domain={domain ?? 'list'}
+          selectedId={selectedId}
+          onSelect={(id, yachtId) => handleSelect(id, yachtId)}
+        />
+        <div ref={loadMoreRef} style={{ height: 16 }} />
+        {isFetchingNextPage && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ width: 20, height: 20, border: '2px solid var(--border-sub)', borderTopColor: 'var(--txt2)', borderRadius: '50%' }} className="animate-spin" />
+          </div>
+        )}
       </div>
     );
   } else {
