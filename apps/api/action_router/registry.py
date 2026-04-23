@@ -3894,7 +3894,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
 # - export_handover               (N8N handler not deployed)
 # - open_document                 (handler not deployed)
 # - delete_document               (handler not deployed)
-# - delete_shopping_item          (handler not deployed)
+# - delete_shopping_item          (deployed 2026-04-23 via routes/handlers/shopping_handler.py:256)
 # - order_part                    (N8N handler not deployed)
 # - classify_fault                (handler not deployed)
 # - suggest_parts                 (handler not deployed)
