@@ -1515,7 +1515,9 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
 
     "reject_receiving": ActionDefinition(
         action_id="reject_receiving",
-        label="Flag Receiving Issue",
+        # Renamed from "Flag Receiving Issue" — that label collided with
+        # flag_discrepancy in the dropdown.
+        label="Reject Receiving",
         endpoint="/v1/receiving/reject",
         handler_type=HandlerType.INTERNAL,
         method="POST",
@@ -2818,6 +2820,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "purchase_order_id", "note_text"],
         domain="purchase_orders",
         variant=ActionVariant.MUTATE,
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("purchase_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("note_text", FieldClassification.REQUIRED),
+        ],
     ),
 
     "add_warranty_note": ActionDefinition(
@@ -3333,6 +3340,14 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "purchase_order_id"],
         domain="purchase_orders",
         variant=ActionVariant.MUTATE,
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("purchase_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("description", FieldClassification.REQUIRED),
+            FieldMetadata("quantity_ordered", FieldClassification.OPTIONAL),
+            FieldMetadata("unit_price", FieldClassification.OPTIONAL),
+            FieldMetadata("currency", FieldClassification.OPTIONAL),
+        ],
     ),
 
     "add_predictive_insight_to_handover": ActionDefinition(
@@ -3417,6 +3432,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "purchase_order_id", "status"],
         domain="purchase_orders",
         variant=ActionVariant.MUTATE,
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("purchase_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("status", FieldClassification.REQUIRED),
+        ],
     ),
 
     "update_worklist_progress": ActionDefinition(
