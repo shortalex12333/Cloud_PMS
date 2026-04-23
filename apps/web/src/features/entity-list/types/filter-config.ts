@@ -115,24 +115,145 @@ export const WORK_ORDER_FILTERS: FilterFieldConfig[] = [
   },
 ];
 
+/**
+ * CERTIFICATE_FILTERS — 2026-04-23 rich filter spec.
+ *
+ * Source of truth for every frontend-filterable column on
+ * `v_certificates_enriched` (UNION of pms_vessel_certificates +
+ * pms_crew_certificates). All keys must exist on that view.
+ *
+ * Filter-type rules (enforced by the framework):
+ *   - `text`         → server-side ILIKE '%input%' (substring match)
+ *   - `select`       → server-side `eq` on enum value
+ *   - `date-range`   → server-side `gte` + `lte` on a date/timestamp column
+ *
+ * UUID columns (id, yacht_id, document_id, person_node_id, created_by,
+ * deleted_by, import_session_id) are NEVER surfaced to users per CEO
+ * directive — they are backend scoping only.
+ *
+ * See: docs/ongoing_work/certificates/CERTIFICATE_FILTER_SPEC_2026_04_23.md
+ */
 export const CERTIFICATE_FILTERS: FilterFieldConfig[] = [
+  // ── Status & Priority ──────────────────────────────────────────────────
   {
     key: 'status',
     label: 'Status',
     type: 'select',
     options: [
       { value: 'valid', label: 'Valid' },
-      { value: 'expiring_soon', label: 'Expiring Soon' },
       { value: 'expired', label: 'Expired' },
+      { value: 'suspended', label: 'Suspended' },
+      { value: 'revoked', label: 'Revoked' },
       { value: 'superseded', label: 'Superseded' },
     ],
     category: 'status-priority',
   },
   {
+    key: 'certificate_type',
+    label: 'Certificate Type',
+    type: 'select',
+    options: [
+      // Vessel cert types
+      { value: 'ISM', label: 'ISM' },
+      { value: 'ISPS', label: 'ISPS' },
+      { value: 'SOLAS', label: 'SOLAS' },
+      { value: 'MLC', label: 'MLC' },
+      { value: 'CLASS', label: 'Classification' },
+      { value: 'FLAG', label: 'Flag State' },
+      { value: 'LOAD_LINE', label: 'Load Line' },
+      { value: 'TONNAGE', label: 'Tonnage' },
+      { value: 'MARPOL', label: 'MARPOL' },
+      { value: 'IOPP', label: 'IOPP' },
+      { value: 'SEC', label: 'Security' },
+      { value: 'SRC', label: 'Safety Radio' },
+      { value: 'SCC', label: 'Safety Construction' },
+      // Crew cert types
+      { value: 'STCW', label: 'STCW' },
+      { value: 'ENG1', label: 'ENG1 Medical' },
+      { value: 'COC', label: 'Certificate of Competency' },
+      { value: 'GMDSS', label: 'GMDSS' },
+      { value: 'BST', label: 'Basic Safety Training' },
+      { value: 'PSC', label: 'Personal Survival Craft' },
+      { value: 'AFF', label: 'Advanced Fire Fighting' },
+      { value: 'MEDICAL_CARE', label: 'Medical Care' },
+    ],
+    category: 'status-priority',
+  },
+  {
+    key: 'domain',
+    label: 'Category',
+    type: 'select',
+    options: [
+      { value: 'vessel', label: 'Vessel Certificate' },
+      { value: 'crew', label: 'Crew Certificate' },
+    ],
+    category: 'status-priority',
+  },
+
+  // ── Dates & Deadlines ──────────────────────────────────────────────────
+  {
     key: 'expiry_date',
     label: 'Expiry Date',
     type: 'date-range',
     category: 'dates',
+  },
+  {
+    key: 'issue_date',
+    label: 'Issue Date',
+    type: 'date-range',
+    category: 'dates',
+  },
+  {
+    key: 'next_survey_due',
+    label: 'Next Survey Due',
+    type: 'date-range',
+    category: 'dates',
+  },
+  {
+    key: 'created_at',
+    label: 'Added to PMS',
+    type: 'date-range',
+    category: 'dates',
+  },
+
+  // ── Properties ─────────────────────────────────────────────────────────
+  {
+    key: 'certificate_name',
+    label: 'Name',
+    type: 'text',
+    placeholder: 'e.g. EPIRB, Load Line',
+    category: 'properties',
+  },
+  {
+    key: 'certificate_number',
+    label: 'Certificate No.',
+    type: 'text',
+    placeholder: 'e.g. EPT-2025',
+    category: 'properties',
+  },
+  {
+    key: 'issuing_authority',
+    label: 'Issuing Authority',
+    type: 'text',
+    placeholder: 'e.g. MCA, Lloyd’s, DNV',
+    category: 'properties',
+  },
+  {
+    key: 'person_name',
+    label: 'Crew Member',
+    type: 'text',
+    placeholder: 'Filter crew certs by person',
+    category: 'properties',
+  },
+  {
+    key: 'source',
+    label: 'Source',
+    type: 'select',
+    options: [
+      { value: 'manual', label: 'Manual entry' },
+      { value: 'imported', label: 'Bulk imported' },
+    ],
+    category: 'properties',
   },
 ];
 
@@ -234,7 +355,12 @@ export const RECEIVING_FILTERS: FilterFieldConfig[] = [
   },
 ];
 
+// SHOPPING LIST — every filterable column on pms_shopping_list_items (no UUIDs).
+// Aligns with the shared FilterPanel spec (DOCUMENTS04, CERTIFICATE04, RECEIVING05).
+// Backend wiring in apps/api/routes/vessel_surface_routes.py:get_domain_records
+// shopping_list branch — each key below maps 1:1 to a Query param on that route.
 export const SHOPPING_LIST_FILTERS: FilterFieldConfig[] = [
+  // ── status-priority ─────────────────────────────────────────────────────
   {
     key: 'status',
     label: 'Status',
@@ -264,6 +390,30 @@ export const SHOPPING_LIST_FILTERS: FilterFieldConfig[] = [
     category: 'status-priority',
   },
   {
+    key: 'is_candidate_part',
+    label: 'Candidate Part',
+    type: 'select',
+    options: [
+      { value: 'true', label: 'Candidates only' },
+      { value: 'false', label: 'Catalogued only' },
+    ],
+    category: 'status-priority',
+  },
+  // ── dates ───────────────────────────────────────────────────────────────
+  {
+    key: 'required_by_date',
+    label: 'Required By',
+    type: 'date-range',
+    category: 'dates',
+  },
+  {
+    key: 'created_at',
+    label: 'Created',
+    type: 'date-range',
+    category: 'dates',
+  },
+  // ── properties ──────────────────────────────────────────────────────────
+  {
     key: 'source_type',
     label: 'Source',
     type: 'select',
@@ -278,20 +428,32 @@ export const SHOPPING_LIST_FILTERS: FilterFieldConfig[] = [
     category: 'properties',
   },
   {
-    key: 'is_candidate_part',
-    label: 'Candidate Part',
-    type: 'select',
-    options: [
-      { value: 'true', label: 'Candidates only' },
-      { value: 'false', label: 'Catalogued only' },
-    ],
+    key: 'part_name',
+    label: 'Item / Part Name',
+    type: 'text',
+    placeholder: 'e.g. fuel filter...',
     category: 'properties',
   },
   {
-    key: 'required_by_date',
-    label: 'Required By',
-    type: 'date-range',
-    category: 'dates',
+    key: 'part_number',
+    label: 'Part Number',
+    type: 'text',
+    placeholder: 'e.g. FLT-0033...',
+    category: 'properties',
+  },
+  {
+    key: 'manufacturer',
+    label: 'Manufacturer',
+    type: 'text',
+    placeholder: 'e.g. Caterpillar...',
+    category: 'properties',
+  },
+  {
+    key: 'preferred_supplier',
+    label: 'Preferred Supplier',
+    type: 'text',
+    placeholder: 'Filter by supplier name...',
+    category: 'properties',
   },
 ];
 
@@ -320,6 +482,97 @@ export const HANDOVER_FILTERS: FilterFieldConfig[] = [
 // DOMAIN → FILTER CONFIG MAPPING
 // =============================================================================
 
+// =============================================================================
+// Documents lens filters (DOCUMENTS04, 2026-04-23)
+// =============================================================================
+//
+// Rich filtration panel for /documents per CEO directive. Spec coordinated
+// with CERT04 + RECEIVING05 + SHOPPING_LIST via claude-peers:
+//   - No new filter types (keep union: select | multi-select | date-range | text)
+//   - No new tokens (FilterPanel already token-driven)
+//   - No new categories (status-priority / dates / equipment-systems / properties)
+//   - Resolved-name filters use `text` ILIKE on the already-resolved display name
+//   - Client-side application (MVP) — rationale: tree view fetches full corpus
+//     upfront (TREE_PAGE_SIZE=1000) so list filter is memory-local, no
+//     duplicate fetch. Migrate to FilteredEntityList server-side path when
+//     corpus > 1000 live rows per yacht.
+//
+// Columns intentionally NOT filterable per the spec:
+//   - UUIDs (id, yacht_id, uploaded_by[uuid], deleted_by) — backend-only
+//   - Storage paths (storage_path, original_path, system_path) — not human-useful
+//   - Technical (sha256, embedding, metadata jsonb, indexed) — backend-only
+//   - filename — already covered by the subbar search bar (q=)
+//
+export const DOCUMENT_FILTERS: FilterFieldConfig[] = [
+  {
+    key: 'content_type_group',
+    label: 'File Type',
+    type: 'select',
+    options: [
+      { value: 'pdf',         label: 'PDF' },
+      { value: 'image',       label: 'Image' },
+      { value: 'spreadsheet', label: 'Spreadsheet' },
+      { value: 'word',        label: 'Word / Text' },
+      { value: 'other',       label: 'Other' },
+    ],
+    category: 'properties',
+  },
+  {
+    key: 'doc_type',
+    label: 'Document Type',
+    type: 'text',
+    placeholder: 'e.g. manual, procedure, drawing…',
+    category: 'properties',
+  },
+  {
+    key: 'system_type',
+    label: 'System',
+    type: 'text',
+    placeholder: 'e.g. bridge, engineering…',
+    category: 'equipment-systems',
+  },
+  {
+    key: 'oem',
+    label: 'OEM / Manufacturer',
+    type: 'text',
+    placeholder: 'e.g. MTU, ABB, Furuno…',
+    category: 'equipment-systems',
+  },
+  {
+    key: 'model',
+    label: 'Model',
+    type: 'text',
+    placeholder: 'e.g. 16V4000, V100…',
+    category: 'equipment-systems',
+  },
+  {
+    key: 'uploaded_by_name',
+    label: 'Uploaded by',
+    type: 'text',
+    placeholder: 'Name…',
+    category: 'properties',
+  },
+  {
+    key: 'tags_text',
+    label: 'Tags',
+    type: 'text',
+    placeholder: 'Any tag contains…',
+    category: 'properties',
+  },
+  {
+    key: 'created_at',
+    label: 'Created',
+    type: 'date-range',
+    category: 'dates',
+  },
+  {
+    key: 'updated_at',
+    label: 'Updated',
+    type: 'date-range',
+    category: 'dates',
+  },
+];
+
 export const FILTER_CONFIGS: Record<string, FilterFieldConfig[]> = {
   faults: FAULT_FILTERS,
   'work-orders': WORK_ORDER_FILTERS,
@@ -329,4 +582,5 @@ export const FILTER_CONFIGS: Record<string, FilterFieldConfig[]> = {
   receiving: RECEIVING_FILTERS,
   'shopping-list': SHOPPING_LIST_FILTERS,
   handover: HANDOVER_FILTERS,
+  documents: DOCUMENT_FILTERS,
 };
