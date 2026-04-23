@@ -272,7 +272,7 @@ def main():
     print()
     print("Next steps:")
     print("  1. Verify with: python3 scripts/verify_user_mappings.py")
-    print("  2. Run E2E tests: docker-compose -f docker-compose.test.yml up")
+    print("  2. Start the full local stack: make docker   (see Makefile)")
 
 if __name__ == "__main__":
     main()

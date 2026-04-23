@@ -1,5 +1,10 @@
 /**
  * Query tenant DB to verify document chunks exist
+ *
+ * ⚠ BROKEN as of 2026-04-23: this file imports `../tests/helpers/supabase_tenant`
+ * but that module no longer exists in the repo (`tests/helpers/` was removed).
+ * Not runnable without first re-creating a tenant-supabase helper.
+ * Zero callers — retained in scripts/one-off/ as a reference for the query shape only.
  */
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
