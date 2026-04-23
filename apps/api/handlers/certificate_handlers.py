@@ -887,7 +887,7 @@ def _link_document_to_certificate_adapter(handlers: CertificateHandlers):
 
         # Auto-detect domain from the actual cert row (don't trust client)
         domain, table_key, _cert_row = _resolve_cert_domain(db, yacht_id, cert_id)
-        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "link_document_to_certificate")
+        _cert_mutation_gate(domain, params.get("role", ""), "link_document_to_certificate")
         table = get_table(table_key)
 
         # Basic existence checks (defensive against client return shapes)
@@ -955,7 +955,7 @@ def _update_certificate_adapter(handlers: CertificateHandlers):
 
         # Auto-detect domain from the actual cert row
         domain, table_key, old_values = _resolve_cert_domain(db, yacht_id, cert_id)
-        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "update_certificate")
+        _cert_mutation_gate(domain, params.get("role", ""), "update_certificate")
         table = get_table(table_key)
 
         # Don't allow updates to superseded/revoked certificates
@@ -1318,7 +1318,7 @@ def _renew_certificate_adapter(handlers: "CertificateHandlers"):
             raise ValueError("new_expiry_date must be after new_issue_date")
 
         domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
-        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "renew_certificate")
+        _cert_mutation_gate(domain, params.get("role", ""), "renew_certificate")
         table = get_table(table_key)
 
         if old_cert.get("status") in ("superseded", "revoked"):
@@ -1413,7 +1413,7 @@ def _change_certificate_status_adapter(new_status: str):
                 raise ValueError("entity_id (certificate id) is required")
 
             domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
-            _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), f"{new_status}_certificate")
+            _cert_mutation_gate(domain, params.get("role", ""), f"{new_status}_certificate")
             table = get_table(table_key)
 
             current_status = old_cert.get("status")
@@ -1484,7 +1484,7 @@ def _archive_certificate_adapter(handlers: "CertificateHandlers"):
             raise ValueError("entity_id (certificate id) is required")
 
         domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
-        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "archive_certificate")
+        _cert_mutation_gate(domain, params.get("role", ""), "archive_certificate")
         table = get_table(table_key)
 
         now = datetime.now(timezone.utc).isoformat()
@@ -1552,7 +1552,7 @@ def _assign_certificate_adapter(handlers: "CertificateHandlers"):
 
         # Find the cert (vessel or crew) — reuses domain resolver
         domain, table_key, old_cert = _resolve_cert_domain(db, yacht_id, cert_id)
-        _cert_mutation_gate(domain, (params.get("user_context") or {}).get("role", ""), "assign_certificate")
+        _cert_mutation_gate(domain, params.get("role", ""), "assign_certificate")
         table = get_table(table_key)
 
         now = datetime.now(timezone.utc).isoformat()

@@ -295,6 +295,11 @@ async def execute_action(
                     },
                 )
 
+            # Inject server-authoritative fields — frontend only sends {method, name, signed_at}
+            signature.setdefault("user_id", user_context["user_id"])
+            signature.setdefault("role_at_signing", user_context["role"])
+            signature.setdefault("signature_type", signature.get("method", "name_attestation"))
+
             # Validate signature structure
             required_keys = ["signed_at", "user_id", "role_at_signing", "signature_type"]
             missing_keys = [k for k in required_keys if k not in signature]

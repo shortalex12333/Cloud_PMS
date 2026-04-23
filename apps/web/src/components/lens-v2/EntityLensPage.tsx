@@ -205,7 +205,10 @@ export function EntityLensPage({
     bodyContent = (
       <EntityLensProvider value={contextValue}>
         <Content />
-        <LedgerHistory entityType={entityType} entityId={entityId} />
+        {/* Certificate lens renders its own AuditTrailSection from pms_audit_log — skip generic ledger */}
+        {entityType !== 'certificate' && (
+          <LedgerHistory entityType={entityType} entityId={entityId} />
+        )}
       </EntityLensProvider>
     );
   }

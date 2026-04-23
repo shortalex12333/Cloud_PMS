@@ -112,6 +112,9 @@ export function CertificateContent() {
   const survey_window_start = (entity?.survey_window_start ?? payload.survey_window_start) as string | undefined;
   const survey_window_end = (entity?.survey_window_end ?? payload.survey_window_end) as string | undefined;
 
+  // Primary cert document (linked via document_id FK on cert row)
+  const document_id = (entity?.document_id ?? payload.document_id) as string | undefined;
+
   // Section data
   const notes = ((entity?.notes ?? payload.notes) as Array<Record<string, unknown>> | undefined) ?? [];
   const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
@@ -121,6 +124,15 @@ export function CertificateContent() {
   const holder_certificates = ((entity?.holder_certificates ?? payload.holder_certificates) as Array<Record<string, unknown>> | undefined) ?? [];
   const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
   const auditTrail = ((entity?.audit_trail ?? payload.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
+
+  // Resolve primary certificate document for inline viewer
+  const certDocAttachment = document_id
+    ? attachments.find((a) => (a.id as string) === document_id) ?? null
+    : null;
+  const certDocUrl = (certDocAttachment?.url ?? certDocAttachment?.signed_url) as string | undefined;
+  const certDocName = (certDocAttachment?.filename ?? certDocAttachment?.name ?? certDocAttachment?.file_name) as string | undefined;
+  const certDocMime = (certDocAttachment?.mime_type ?? certDocAttachment?.content_type) as string | undefined;
+  const certDocIsPdf = certDocMime ? certDocMime.includes('pdf') : (certDocName ? certDocName.toLowerCase().endsWith('.pdf') : false);
 
   // ── Action gates ──
   const renewAction = getAction('renew_certificate');
@@ -281,12 +293,12 @@ export function CertificateContent() {
     timestamp: (h.created_at ?? h.date ?? h.timestamp) as string ?? '',
   }));
 
-  // History periods
+  // History periods — prior superseded certs in the renewal chain (backend: entity_routes.py prior_periods query)
   const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
     id: (p.id as string) ?? `period-${i}`,
     year: (p.year ?? p.period_year) as string ?? '',
-    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
-    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
+    label: (p.label ?? p.period_label ?? p.certificate_number ?? p.description) as string ?? 'Prior Certificate',
+    status: 'closed' as const,
     summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
@@ -442,6 +454,48 @@ export function CertificateContent() {
           canAddNote={!!addNoteAction}
         />
       </ScrollReveal>
+
+      {/* Certificate Document Viewer */}
+      {certDocUrl && (
+        <ScrollReveal>
+          <div className={styles.section}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12 }}>
+              <span className={styles.secTitle}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: 16, height: 16, display: 'inline-block', marginRight: 8, verticalAlign: 'middle', color: 'var(--txt3)' }}>
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                Certificate Document
+              </span>
+              <a
+                href={certDocUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 13, fontWeight: 500, color: 'var(--mark)', textDecoration: 'none', padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-sub)', background: 'var(--surface-el)', transition: 'background 60ms' }}
+              >
+                Open in new tab ↗
+              </a>
+            </div>
+            {certDocIsPdf ? (
+              <iframe
+                src={certDocUrl}
+                title={certDocName ?? 'Certificate Document'}
+                style={{ width: '100%', height: 640, border: 'none', borderRadius: 8, background: 'var(--surface-el)' }}
+              />
+            ) : (
+              <div style={{ padding: '20px 16px', background: 'var(--surface-el)', borderRadius: 8, border: '1px solid var(--border-sub)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ width: 20, height: 20, color: 'var(--txt3)', flexShrink: 0 }}>
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <a href={certDocUrl} download={certDocName} style={{ color: 'var(--mark)', fontSize: 14, textDecoration: 'none', wordBreak: 'break-all' }}>
+                  {certDocName ?? 'Download Document'}
+                </a>
+              </div>
+            )}
+          </div>
+        </ScrollReveal>
+      )}
 
       {/* Attachments */}
       <ScrollReveal>

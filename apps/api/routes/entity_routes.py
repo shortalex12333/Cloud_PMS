@@ -185,6 +185,42 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
             _nav("document", doc_id, "Document"),
         ] if n]
 
+        # Cert chain — follow the `renews` pointer one level back to find prior superseded certs.
+        # properties.renews = UUID of the cert this cert was renewed from.
+        prior_periods = []
+        renews_id = properties.get("renews")
+        depth = 0
+        while renews_id and depth < 10:
+            try:
+                prior_rows = (
+                    supabase.table(f"pms_{'vessel' if domain == 'vessel' else 'crew'}_certificates")
+                    .select("id, certificate_name, person_name, status, issue_date, expiry_date, certificate_number, properties")
+                    .eq("id", renews_id).eq("yacht_id", yacht_id).limit(1).execute()
+                )
+                prior_data = (getattr(prior_rows, "data", None) or [])
+                if not prior_data:
+                    break
+                p = prior_data[0]
+                p_props = p.get("properties") or {}
+                if isinstance(p_props, str):
+                    import json as _pj
+                    try:
+                        p_props = _pj.loads(p_props) if p_props else {}
+                    except Exception:
+                        p_props = {}
+                prior_periods.append({
+                    "id": p.get("id"),
+                    "label": p.get("certificate_name") or p.get("person_name") or "Certificate",
+                    "year": str(p.get("issue_date") or "")[:4] or "—",
+                    "status": p.get("status"),
+                    "summary": f"{p.get('issue_date', '?')} → {p.get('expiry_date', '?')}",
+                    "certificate_number": p.get("certificate_number"),
+                })
+                renews_id = p_props.get("renews")
+                depth += 1
+            except Exception:
+                break
+
         _entity_response = {
             "id": data.get("id"),
             "name": data.get("certificate_name") or data.get("person_name") or data.get("certificate_type"),
@@ -206,6 +242,7 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
             "attachments": attachments,
             "notes": cert_notes,
             "audit_trail": cert_audit,
+            "prior_periods": prior_periods,
             "related_entities": nav,
         }
         _entity_response["available_actions"] = get_available_actions(
