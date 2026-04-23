@@ -405,6 +405,82 @@ async def add_item_to_purchase(
 
 
 # ============================================================================
+# upload_invoice — attach an invoice document to a PO (Issue #14, 2026-04-23)
+#
+# Frontend uploads the file to the "pms-finance-documents" bucket first
+# (Supabase Storage). That call returns the storage_path, which is passed
+# to this action. We just record the pms_attachments row — no byte movement.
+# ============================================================================
+async def upload_invoice(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    if user_context.get("role", "") not in _HOD_ROLES:
+        raise HTTPException(status_code=403, detail={
+            "status": "error", "error_code": "FORBIDDEN",
+            "message": f"Role '{user_context.get('role', '')}' is not permitted to upload invoices",
+            "required_roles": _HOD_ROLES,
+        })
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
+    if not po_id:
+        raise HTTPException(status_code=400, detail="purchase_order_id is required")
+    storage_path = (payload.get("storage_path") or "").strip()
+    if not storage_path:
+        raise HTTPException(status_code=400, detail="storage_path is required (upload file first)")
+    filename = (payload.get("filename") or payload.get("original_filename") or "invoice").strip()
+    mime_type = payload.get("mime_type") or "application/octet-stream"
+    file_size = payload.get("file_size") or 0
+
+    po = db_client.table("pms_purchase_orders").select("id").eq(
+        "id", po_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not po or not po.data:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+    att_row = {
+        "yacht_id":          yacht_id,
+        "entity_type":       "purchase_order",
+        "entity_id":         po_id,
+        "filename":          filename,
+        "original_filename": filename,
+        "mime_type":         mime_type,
+        "file_size":         int(file_size or 0),
+        "storage_path":      storage_path,
+        "storage_bucket":    payload.get("storage_bucket") or "pms-finance-documents",
+        "category":          "invoice",
+        "description":       payload.get("description") or payload.get("notes"),
+        "uploaded_by":       user_id,
+        "uploaded_at":       now,
+    }
+    ins = db_client.table("pms_attachments").insert(att_row).execute()
+    if not ins.data:
+        return {"status": "error", "error_code": "INSERT_FAILED",
+                "message": "Failed to record invoice attachment"}
+    attachment_id = ins.data[0].get("id") if isinstance(ins.data, list) else None
+
+    db_client.table("pms_purchase_orders").update(
+        {"updated_at": now}
+    ).eq("id", po_id).eq("yacht_id", yacht_id).execute()
+
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id, user_id=user_id, event_type="annotation",
+            entity_type="purchase_order", entity_id=po_id, action="upload_invoice",
+            user_role=user_context.get("role"),
+            change_summary=f"Invoice attached: {filename}",
+        )
+        db_client.table("ledger_events").insert(ledger_event).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[Ledger] Failed to record upload_invoice: {ledger_err}")
+    return {"status": "success", "purchase_order_id": po_id, "attachment_id": attachment_id}
+
+
+# ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
 HANDLERS: dict = {
@@ -416,6 +492,7 @@ HANDLERS: dict = {
     "add_po_note": add_po_note,
     "update_purchase_status": update_purchase_status,
     "add_item_to_purchase": add_item_to_purchase,
+    "upload_invoice": upload_invoice,
     # Frontend-facing aliases (match action IDs used by PurchaseOrderContent.tsx)
     "submit_po": submit_purchase_order,
     "approve_po": approve_purchase_order,

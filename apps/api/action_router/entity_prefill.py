@@ -198,6 +198,26 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
         "department": "department",
     },
 
+    # ── Purchase Order action prefill (Issue #14 — 400 fix, 2026-04-23) ──
+    # Without these entries the action popup has no purchase_order_id and the
+    # router's required-fields gate rejects every PO button. Same pattern
+    # CERT04 used to unbreak the cert dropdown in PR #681.
+    ("purchase_order", "submit_po"):              {"purchase_order_id": "id"},
+    ("purchase_order", "submit_purchase_order"):  {"purchase_order_id": "id"},
+    ("purchase_order", "approve_po"):             {"purchase_order_id": "id"},
+    ("purchase_order", "approve_purchase_order"): {"purchase_order_id": "id"},
+    ("purchase_order", "approve_purchase"):       {"purchase_order_id": "id"},
+    ("purchase_order", "receive_po"):             {"purchase_order_id": "id"},
+    ("purchase_order", "mark_po_received"):       {"purchase_order_id": "id"},
+    ("purchase_order", "cancel_po"):              {"purchase_order_id": "id"},
+    ("purchase_order", "cancel_purchase_order"):  {"purchase_order_id": "id"},
+    ("purchase_order", "delete_po"):              {"purchase_order_id": "id"},
+    ("purchase_order", "delete_purchase_order"):  {"purchase_order_id": "id"},
+    ("purchase_order", "add_po_note"):            {"purchase_order_id": "id"},
+    ("purchase_order", "update_purchase_status"): {"purchase_order_id": "id"},
+    ("purchase_order", "add_item_to_purchase"):   {"purchase_order_id": "id"},
+    ("purchase_order", "upload_invoice"):         {"purchase_order_id": "id"},
+
     # add_to_shopping_list from parts: pre-populates part reference
     ("part", "add_to_shopping_list"):    {"part_id": "id", "part_name": "name", "part_number": "part_number"},
 
