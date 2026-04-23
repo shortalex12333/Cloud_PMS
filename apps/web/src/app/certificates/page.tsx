@@ -302,7 +302,7 @@ function CertificatesPageContent() {
           adapter={certAdapter}
           filterConfig={[
             {
-              key: 'domain',
+              key: 'cert_domain',
               label: 'Type',
               type: 'select' as const,
               options: [
