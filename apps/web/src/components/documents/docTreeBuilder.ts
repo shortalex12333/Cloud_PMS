@@ -138,8 +138,19 @@ export function buildDocTree(docs: Doc[]): TreeNode[] {
     return getOrCreateFolder(rest, depth + 1, folder.children, folderMap, fullPath);
   };
 
+  // UUID pattern — first storage_path segment is the yacht UUID prefix; strip it.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   for (const doc of docs) {
-    const allSegments = doc.original_path ? splitPath(doc.original_path) : [];
+    // Use storage_path (the real bucket path) to build the folder hierarchy.
+    // storage_path format: {yacht_uuid}/{folder_1}/.../{folder_n}/{filename}
+    // Strip the leading yacht UUID so the tree mirrors the bucket folder structure.
+    const rawPath = doc.storage_path || '';
+    const allSegments = (() => {
+      if (!rawPath) return [];
+      const segs = splitPath(rawPath);
+      return segs.length > 0 && UUID_RE.test(segs[0]) ? segs.slice(1) : segs;
+    })();
     // Drop the final segment — it's the file itself, not a folder.
     const folderSegments = allSegments.length > 0 ? allSegments.slice(0, -1) : [];
 

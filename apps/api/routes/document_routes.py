@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 import logging
+import time
 import os
 import uuid
 import io
@@ -1229,3 +1230,55 @@ async def import_documents(
         failed=failed,
         total_size_bytes=imported_bytes,
     )
+
+
+# ============================================================================
+# POST /v1/documents/{doc_id}/sign
+# ============================================================================
+
+@router.post("/{doc_id}/sign")
+async def sign_document_url(
+    doc_id: str,
+    auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None),
+):
+    """
+    POST /v1/documents/{doc_id}/sign
+
+    Returns a short-lived signed URL (10 min) for a doc_metadata record.
+    Scoped to the requesting user's yacht — no cross-yacht access.
+    """
+    resolved_yacht_id = resolve_yacht_id(auth, yacht_id)
+    supabase = _get_tenant_client(auth["tenant_key_alias"])
+
+    result = supabase.table("doc_metadata").select(
+        "id, filename, storage_path, content_type, size_bytes"
+    ).eq("id", doc_id).eq("yacht_id", resolved_yacht_id).maybe_single().execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Document not found or access denied")
+
+    doc = result.data
+    storage_path = doc.get("storage_path") or ""
+    if not storage_path:
+        raise HTTPException(status_code=422, detail="Document has no storage path")
+
+    try:
+        signed = supabase.storage.from_(DOCUMENTS_BUCKET).create_signed_url(
+            storage_path, expires_in=600
+        )
+        signed_url = signed.get("signedURL") or signed.get("signedUrl") or ""
+    except Exception as e:
+        logger.error(f"[documents/sign] Storage signing failed doc={doc_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate document URL")
+
+    if not signed_url:
+        raise HTTPException(status_code=500, detail="Failed to generate document URL")
+
+    return {
+        "signed_url": signed_url,
+        "filename": doc.get("filename", "document"),
+        "content_type": doc.get("content_type", "application/octet-stream"),
+        "size_bytes": doc.get("size_bytes"),
+        "expires_at": int(time.time()) + 600,
+    }
