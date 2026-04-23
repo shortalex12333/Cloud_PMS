@@ -359,6 +359,151 @@ The docs/ongoing_work/readme.md actually claims this file is **already deleted**
 
 ---
 
+## Finding 12 — Byte-identical duplicate `.md` files in `docs/` and `docs/explanations/`
+
+**Evidence:**
+```
+$ find docs -type f -name "*.md" | awk -F/ '{print $NF}' | sort | uniq -d
+ACTION_BUTTON_INVENTORY.md
+CLICKTHROUGH_CHECKLIST.md
+README.md               # (3 legitimate READMEs in different dirs — expected)
+
+$ ls -la docs/ACTION_BUTTON_INVENTORY.md docs/explanations/ACTION_BUTTON_INVENTORY.md
+-rw-r--r--  1  14509 bytes  docs/ACTION_BUTTON_INVENTORY.md
+-rw-r--r--  1  14509 bytes  docs/explanations/ACTION_BUTTON_INVENTORY.md
+
+$ diff docs/ACTION_BUTTON_INVENTORY.md docs/explanations/ACTION_BUTTON_INVENTORY.md
+# (empty — byte-identical)
+
+$ diff docs/CLICKTHROUGH_CHECKLIST.md docs/explanations/CLICKTHROUGH_CHECKLIST.md
+# (empty — byte-identical)
+```
+
+**History trace:**
+- `docs/ACTION_BUTTON_INVENTORY.md` → introduced by commit `91c07f16` (dedicated "docs: Add ACTION_BUTTON_INVENTORY.md" commit)
+- `docs/explanations/ACTION_BUTTON_INVENTORY.md` → introduced by commit `bfb5ed1a` (a certs-domain commit that accidentally copied rather than moved)
+- `docs/CLICKTHROUGH_CHECKLIST.md` → introduced by commit `bfb5ed1a`
+- `docs/explanations/CLICKTHROUGH_CHECKLIST.md` → introduced by commit `1e872ee9` ("chore(repo): docs reorganisation")
+
+Both duplicates are **artifacts of incomplete reorg commits** — someone reorganised into `docs/explanations/` but left the root copies behind.
+
+**External references (excluding this proposal):** zero for all four paths.
+
+**Proposal (LOW risk):**
+Delete the `docs/` root copies:
+- `rm docs/ACTION_BUTTON_INVENTORY.md`
+- `rm docs/CLICKTHROUGH_CHECKLIST.md`
+
+Keep the `docs/explanations/` copies — correct domain location for explanatory docs.
+
+**Verification commands (before/after):**
+```bash
+# Before (should return: ACTION_BUTTON_INVENTORY.md + CLICKTHROUGH_CHECKLIST.md)
+find docs -type f -name "*.md" | awk -F/ '{print $NF}' | sort | uniq -d | grep -v README
+
+# After (should be empty)
+find docs -type f -name "*.md" | awk -F/ '{print $NF}' | sort | uniq -d | grep -v README
+
+# Confirm zero external refs (should be empty)
+grep -rln "ACTION_BUTTON_INVENTORY\|CLICKTHROUGH_CHECKLIST" . 2>/dev/null | grep -v node_modules | grep -v "docs/explanations/"
+```
+
+**Decision:** EXECUTE — genuinely safe; zero refs, byte-identical. Batch with Findings 5 + 6 in one cleanup commit.
+
+---
+
+## Finding 13 — `apps/api/migrations/` has 1 stale file violating the "apply-and-delete" convention
+
+**Evidence:**
+```
+$ ls apps/api/migrations/
+20260418_doc_metadata_is_seed_default_false.sql   # 1 file
+
+$ ls supabase/migrations/
+# (empty — per convention)
+
+$ head -3 apps/api/migrations/20260418_doc_metadata_is_seed_default_false.sql
+-- Migration: flip doc_metadata.is_seed default from TRUE → FALSE
+-- Context: doc_metadata.is_seed defaults to TRUE so that bulk-imported NAS
+-- documents are treated as seed data ...
+```
+
+Memory note `feedback_migration_convention.md`:
+> Migration SQL files are temporary: apply to Supabase, verify, delete. Never commit long-term.
+
+And memory note `project_overnight_merge_2026_04_19.md`:
+> is_seed fix confirmed — the `is_seed=False` default flip was merged via PR #644 on 2026-04-19.
+
+So the SQL has been applied already. The file in `apps/api/migrations/` is residue.
+
+**Secondary issue:** The canonical location (per CI trigger watchers in `.github/workflows/ci-migrations.yml`, `rls-proof.yml`) is `supabase/migrations/**`. The `apps/api/migrations/` dir exists outside that watcher — if a future engineer drops a migration there expecting it to trigger CI, it silently won't.
+
+**Proposal (LOW risk):**
+1. Confirm via TENANT DB that the is_seed default is `FALSE` (`SELECT column_default FROM information_schema.columns WHERE table_name='doc_metadata' AND column_name='is_seed'`).
+2. Delete `apps/api/migrations/20260418_doc_metadata_is_seed_default_false.sql`.
+3. Remove the empty `apps/api/migrations/` dir.
+
+**Decision:** EXECUTE after DB confirmation. Cannot verify step 1 from repo alone — need TENANT DB query. Flag for CEO or DB-enabled peer.
+
+---
+
+## Finding 14 — `deploy/local/.env` + `deploy/local/.env.web` are untracked by design; document it
+
+**Evidence:**
+```
+$ ls deploy/local/
+.env      # header: "ALL secrets and connection strings live HERE."
+.env.web  # header: "Frontend — local env — no secrets, only public keys"
+
+$ git ls-files deploy/local/
+# (empty — both files matched by .gitignore patterns .env / .env.*)
+
+$ grep -E "env_file" docker-compose.yml | head
+# (reads from these files via env_file directive)
+```
+
+This is INTENTIONAL — local dev secrets live here, `.gitignore` excludes them. But the fact that **the `deploy/` dir exists in git with only an empty `local/` subdir** makes it look empty and deletable. It is not.
+
+**Proposal (LOW risk):**
+- Add `deploy/local/README.md` (tracked) explaining: "This dir holds untracked .env files consumed by docker-compose.yml. Populate via `cp deploy/local/.env.template deploy/local/.env`. Never commit values." Pattern used by most pro repos.
+- Optionally provide an `.env.template` at `deploy/local/.env.template` with all required keys but empty values.
+
+**Decision:** EXECUTE — creates clarity without touching anything untracked. Propose as a small separate commit once CEO ack-ed.
+
+---
+
+## Finding 15 — `docs/ongoing_work/readme.md` (untracked) is valuable; should be committed and renamed
+
+**Evidence:**
+```
+$ head -4 docs/ongoing_work/readme.md
+ Here is the exact state of everything.
+
+  ---
+  The short answer
+```
+
+Contains the authoritative description of the **worktree architecture** (`Cloud_PMS-handover04`, `-cert04`, etc. are git worktrees, not clones). This is critical context for any peer working in this repo; the file has been sitting untracked, at risk of `git clean` erasure per `feedback_shared_checkout_hazard.md`.
+
+**Proposal (LOW risk):**
+- Rename `readme.md` → `README.md` (uppercase convention).
+- Commit it as-is.
+
+**Decision:** DEFER — file ownership unclear (I didn't write it, and agent attribution inside the file is ambiguous). Ping peers to identify author, then commit with their sign-off.
+
+---
+
+## Additional structural observations (not fully traced — staged for later inspection)
+
+| Obs | Notes | Blast radius | Owner |
+|---|---|---|---|
+| `apps/web/src/features/{equipment,faults,work-orders,shopping-list,inventory}` vs `apps/web/src/components/{documents,handover,hours-of-rest}` — inconsistent architectural split | Some lenses put code in features/, others in components/. `receiving` has BOTH (+ a `_deprecated/` subdir created in-flight by an unknown peer) | HIGH — touches every lens and every importer | PURCHASE05 per scope split |
+| `apps/api/receipts/` (new untracked dir) | HMAC04's in-flight work | None for cleanup pass | HMAC04 |
+| `scripts/hor-proof/{diag.config.ts,diag.spec.ts}` (untracked) | HoR diagnostic runner, not committed | None for cleanup pass | HOR agent |
+| `docs/ongoing_work/receiving/*` (untracked 7 files) | RECEIVING agent's session notes | None for cleanup pass | RECEIVING agent |
+
+---
+
 ## Consolidated execution plan (post-ack)
 
 **To execute in a single commit once PURCHASE05 ack'd AND CERT04 pushed:**
@@ -367,6 +512,8 @@ The docs/ongoing_work/readme.md actually claims this file is **already deleted**
 |---|--------|------|--------------|
 | 5 | Add `# BROKEN` comment at top of `scripts/one-off/query_tenant_db.ts` | ~zero | File still parses as valid TS |
 | 6 | Fix print statement in `scripts/one-off/provision_test_user_mappings.py:275` to reference real compose file | ~zero | `python -c "compile(open('scripts/one-off/provision_test_user_mappings.py').read(),'x','exec')"` |
+| 12 | Delete `docs/ACTION_BUTTON_INVENTORY.md` + `docs/CLICKTHROUGH_CHECKLIST.md` (exact byte-identical duplicates of the `docs/explanations/` copies) | ~zero — zero external refs, byte-identical, confirmed via `diff` empty | `find docs -type f -name "*.md" \| awk -F/ '{print $NF}' \| sort \| uniq -d \| grep -v README` returns empty |
+| 14 | Add `deploy/local/README.md` + `deploy/local/.env.template` | ~zero | `git ls-files deploy/local/` shows new files, untracked `.env` preserved |
 
 **To defer until co-signed with PURCHASE05 / CEO:**
 
@@ -379,6 +526,8 @@ The docs/ongoing_work/readme.md actually claims this file is **already deleted**
 | 8 | `docs/ongoing_work/` kebab-case standardization | Cross-ref heavy, per-domain sign-off needed |
 | 9 | Move `SettingsModal.tsx` / `SuggestedActions.tsx` into subdirs | PURCHASE05's scope |
 | 11 | Delete `docker-compose.combined.yml` | CEO call on free-tier testing pathway |
+| 13 | Delete `apps/api/migrations/20260418_doc_metadata_is_seed_default_false.sql` | Requires TENANT DB confirmation that default is already FALSE |
+| 15 | Commit `docs/ongoing_work/readme.md` after rename | Unclear author; needs peer attribution sign-off |
 
 **To flag for user — NOT action without explicit approval:**
 

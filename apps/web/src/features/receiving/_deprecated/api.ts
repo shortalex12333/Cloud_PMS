@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import type { FetchParams, FetchResponse } from '@/features/entity-list/types';
-import type { ReceivingItem, ReceivingAttachment } from './types';
+import type { ReceivingItem, ReceivingAttachment } from '../types';
 
 export async function fetchReceivingItems(params: FetchParams): Promise<FetchResponse<ReceivingItem>> {
   const { offset, limit } = params;

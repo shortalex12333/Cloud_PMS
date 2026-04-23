@@ -1405,7 +1405,15 @@ async def get_part_entity(part_id: str, auth: dict = Depends(get_authenticated_u
 
 @router.get("/v1/entity/receiving/{receiving_id}")
 async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
-    """Fetch receiving by ID for entity viewer (DeepLinkHandler)."""
+    """Fetch receiving by ID for entity viewer (DeepLinkHandler).
+
+    Contract notes (kept in sync with components/lens-v2/entity/ReceivingContent.tsx):
+      - received_by  -> resolved to user NAME (UUID never exposed to UI)
+      - po_id        -> top-level so PO link in lens header navigates
+      - yacht_name   -> resolved from yacht_registry
+      - audit_history-> pulled from ledger_events for entity_type='receiving'
+      - total_items  -> derived from items array length
+    """
     try:
         yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
@@ -1438,42 +1446,88 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
             if (a.get("mime_type") or "").startswith("image/")
         ]
 
-        # Nav links: items' part_id → Part, po_number → Purchase Order
+        # Resolve received_by UUID -> user name. Lens displays this verbatim,
+        # so handing it the UUID would expose it on the screen (Issue #3).
+        received_by_id = data.get('received_by')
+        received_by_name = None
+        if received_by_id:
+            try:
+                u_r = supabase.table('auth_users_profiles').select('name, email').eq(
+                    'id', received_by_id
+                ).maybe_single().execute()
+                if u_r and u_r.data:
+                    received_by_name = u_r.data.get('name') or u_r.data.get('email')
+            except Exception as e:
+                logger.warning(f"received_by lookup failed for {received_by_id}: {e}")
+
+        # Resolve yacht_name (lens shows it in IdentityStrip details)
+        yacht_name = None
+        try:
+            y_r = supabase.table('yacht_registry').select('name').eq(
+                'id', yacht_id
+            ).maybe_single().execute()
+            if y_r and y_r.data:
+                yacht_name = y_r.data.get('name')
+        except Exception as e:
+            logger.warning(f"yacht_name lookup failed for {yacht_id}: {e}")
+
+        # Nav links: items' part_id -> Part, po_number -> Purchase Order.
+        # Surface po_id at top level so the "PO Reference" link in the lens
+        # header (ReceivingContent.tsx:154-162) can navigate.
         nav = []
         for it in raw_items[:5]:
             n = _nav("part", it.get("part_id"), it.get("description") or "Part")
             if n:
                 nav.append(n)
         po_num = data.get("po_number")
+        po_id = None
         if po_num:
             try:
                 po_r = supabase.table("pms_purchase_orders").select("id").eq(
                     "po_number", po_num
                 ).eq("yacht_id", yacht_id).maybe_single().execute()
                 if po_r and po_r.data:
-                    n = _nav("purchase_order", po_r.data["id"], f"PO {po_num}")
+                    po_id = po_r.data["id"]
+                    n = _nav("purchase_order", po_id, f"PO {po_num}")
                     if n:
                         nav.append(n)
             except Exception:
                 pass
+
+        # Audit history from ledger_events (lens AuditTrailSection)
+        audit_history = []
+        try:
+            lh_r = supabase.table('ledger_events').select(
+                'id, action, change_summary, user_id, user_role, created_at'
+            ).eq('entity_type', 'receiving').eq('entity_id', receiving_id).eq(
+                'yacht_id', yacht_id
+            ).order('created_at', desc=True).limit(50).execute()
+            audit_history = lh_r.data or []
+        except Exception as e:
+            logger.warning(f"audit_history lookup failed for receiving/{receiving_id}: {e}")
 
         _entity_response = {
             "id": data.get('id'),
             "vendor_name": data.get('vendor_name'),
             "vendor_reference": data.get('vendor_reference'),
             "po_number": po_num,
+            "po_id": po_id,
             "received_date": data.get('received_date'),
             "status": data.get('status', 'draft'),
             "total": data.get('total'),
             "currency": data.get('currency'),
             "notes": data.get('notes'),
-            "received_by": data.get('received_by'),
+            # received_by exposes the human-readable name; UUID stays server-side
+            "received_by": received_by_name,
+            "yacht_name": yacht_name,
             "items": raw_items,
+            "total_items": len(raw_items),
             "created_at": data.get('created_at'),
             "updated_at": data.get('updated_at'),
             "invoice_images": invoice_images,
             "attachments": attachments,
             "related_entities": nav,
+            "audit_history": audit_history,
         }
         _entity_response["available_actions"] = get_available_actions(
             "receiving", _entity_response, auth.get("role", "crew")
