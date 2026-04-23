@@ -3,10 +3,9 @@ CelesteOS Action Router
 
 Central gateway for all user-initiated mutations in CelesteOS.
 
-Single endpoint: POST /v1/actions/execute
+Live endpoint: POST /v1/actions/execute — served by routes/p0_actions_routes.py
 """
 
-from .router import router, execute_action
 from .registry import (
     ACTION_REGISTRY,
     ActionDefinition,
@@ -17,8 +16,6 @@ from .registry import (
 )
 
 __all__ = [
-    "router",
-    "execute_action",
     "ACTION_REGISTRY",
     "ActionDefinition",
     "HandlerType",
