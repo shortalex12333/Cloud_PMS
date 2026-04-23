@@ -66,6 +66,8 @@ import {
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Colour mapping helpers ───
 
@@ -107,7 +109,8 @@ function getDocTypeLabel(mimeType: string): string {
 
 export function DocumentContent() {
   const router = useRouter();
-  const { entity, entityId, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, entityId, availableActions, executeAction, getAction, isLoading, refetch } = useEntityLensContext();
+  const { user } = useAuth();
 
   // ── PDF / file loading ──
   const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
@@ -189,6 +192,10 @@ export function DocumentContent() {
   const linkEquipmentAction = getAction('link_equipment_to_document');
   const unlinkEquipmentAction = getAction('unlink_equipment_from_document');
   const canLinkEquipment = !!linkEquipmentAction && !linkEquipmentAction.disabled;
+  const uploadDocAction = getAction('upload_document');
+
+  // ── Supporting-document upload modal state ──
+  const [uploadOpen, setUploadOpen] = React.useState(false);
 
   // ── Equipment picker state ──
   const [pickerOpen, setPickerOpen] = React.useState(false);
@@ -486,15 +493,16 @@ export function DocumentContent() {
       </ScrollReveal>
 
       {/* ── Supporting Documents (renamed from Attachments per spec) ──
-           CopyNote to CEO: the add-file action popup displays "DOES NOT
-           OVERWRITE THE DOCUMENT — to replace, use Update Document." — that
-           copy lives in the action popup layer, not here. */}
+           The upload modal carries the "DOES NOT OVERWRITE" warning copy
+           per doc_cert_ux_change.md:279 — passed via AttachmentUploadModal's
+           `description` prop at the render site below, mirroring CERT04's
+           pattern on CertificateContent.tsx. */}
       <ScrollReveal>
         <AttachmentsSection
-          attachments={attachmentItems}
-          onAddFile={() => {/* File upload modal wiring tracked in a separate task */}}
-          canAddFile
           title="Supporting Documents"
+          attachments={attachmentItems}
+          onAddFile={user?.yachtId && uploadDocAction ? () => setUploadOpen(true) : undefined}
+          canAddFile={!!uploadDocAction}
         />
       </ScrollReveal>
 
@@ -540,6 +548,30 @@ export function DocumentContent() {
         alreadyLinkedIds={equipment_ids}
         onSelect={handleLinkEquipment}
       />
+
+      {/* Supporting-document upload. Lands in pms_attachments (NOT doc_metadata)
+          so it sits alongside the primary document; replacing the primary
+          file goes through the "Update Document" action instead. The
+          description prop carries the spec-required warning copy so the
+          user can't confuse the two paths. */}
+      {user?.yachtId && user?.id && (
+        <AttachmentUploadModal
+          open={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          entityType="document"
+          entityId={entityId}
+          bucket="documents"
+          category="document"
+          yachtId={user.yachtId}
+          userId={user.id}
+          onComplete={() => {
+            setUploadOpen(false);
+            refetch();
+          }}
+          title="Upload Supporting Document"
+          description="Adds a supporting document attached to this document record. This does NOT overwrite the document itself. To replace the document's file or metadata, use the Update Document action."
+        />
+      )}
     </div>
   );
 }
