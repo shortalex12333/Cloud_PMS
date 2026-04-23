@@ -86,7 +86,15 @@ export function ReceivingContent() {
 
   // Section data
   const items = ((entity?.items ?? payload.items) as Array<Record<string, unknown>> | undefined) ?? [];
-  const notes = ((entity?.notes ?? payload.notes) as Array<Record<string, unknown>> | undefined) ?? [];
+  // pms_receiving.notes is a single text column. Wrap into a single note row so
+  // the NotesSection can render it without crashing on `.map`. If a future
+  // backend hands us an array (e.g. joined pms_notes rows), we use it directly.
+  const rawNotes = entity?.notes ?? payload.notes;
+  const notes: Array<Record<string, unknown>> = Array.isArray(rawNotes)
+    ? (rawNotes as Array<Record<string, unknown>>)
+    : (typeof rawNotes === 'string' && rawNotes.trim().length > 0
+        ? [{ id: 'receiving-note', body: rawNotes, author: 'Receiving record', timestamp: (entity?.created_at ?? payload.created_at) as string ?? '' }]
+        : []);
   const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
   const history = ((entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
   const linked_entities = ((entity?.linked_entities ?? payload.linked_entities ?? entity?.related_entities ?? payload.related_entities) as Array<Record<string, unknown>> | undefined) ?? [];

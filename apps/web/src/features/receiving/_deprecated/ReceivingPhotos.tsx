@@ -15,7 +15,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Image as ImageIcon, FileText, ChevronDown, ChevronUp } from 'lucide-react';
-import { fetchReceivingAttachments } from '../api';
+import { fetchReceivingAttachments } from './api';
 import type { ReceivingAttachment } from '../types';
 import { MediaRenderer } from '@/components/media/MediaRenderer';
 import { DocumentCard } from '@/components/media/DocumentCard';
@@ -202,7 +202,7 @@ export function ReceivingPhotos({
           {!isLoading && !error && count === 0 && <EmptyPhotos />}
           {!isLoading && !error && attachments && attachments.length > 0 && (
             <div>
-              {attachments.map((attachment) => (
+              {attachments.map((attachment: ReceivingAttachment) => (
                 <AttachmentItem
                   key={attachment.id}
                   attachment={attachment}
