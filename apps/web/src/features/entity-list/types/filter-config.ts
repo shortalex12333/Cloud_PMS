@@ -355,7 +355,12 @@ export const RECEIVING_FILTERS: FilterFieldConfig[] = [
   },
 ];
 
+// SHOPPING LIST — every filterable column on pms_shopping_list_items (no UUIDs).
+// Aligns with the shared FilterPanel spec (DOCUMENTS04, CERTIFICATE04, RECEIVING05).
+// Backend wiring in apps/api/routes/vessel_surface_routes.py:get_domain_records
+// shopping_list branch — each key below maps 1:1 to a Query param on that route.
 export const SHOPPING_LIST_FILTERS: FilterFieldConfig[] = [
+  // ── status-priority ─────────────────────────────────────────────────────
   {
     key: 'status',
     label: 'Status',
@@ -385,6 +390,30 @@ export const SHOPPING_LIST_FILTERS: FilterFieldConfig[] = [
     category: 'status-priority',
   },
   {
+    key: 'is_candidate_part',
+    label: 'Candidate Part',
+    type: 'select',
+    options: [
+      { value: 'true', label: 'Candidates only' },
+      { value: 'false', label: 'Catalogued only' },
+    ],
+    category: 'status-priority',
+  },
+  // ── dates ───────────────────────────────────────────────────────────────
+  {
+    key: 'required_by_date',
+    label: 'Required By',
+    type: 'date-range',
+    category: 'dates',
+  },
+  {
+    key: 'created_at',
+    label: 'Created',
+    type: 'date-range',
+    category: 'dates',
+  },
+  // ── properties ──────────────────────────────────────────────────────────
+  {
     key: 'source_type',
     label: 'Source',
     type: 'select',
@@ -399,20 +428,32 @@ export const SHOPPING_LIST_FILTERS: FilterFieldConfig[] = [
     category: 'properties',
   },
   {
-    key: 'is_candidate_part',
-    label: 'Candidate Part',
-    type: 'select',
-    options: [
-      { value: 'true', label: 'Candidates only' },
-      { value: 'false', label: 'Catalogued only' },
-    ],
+    key: 'part_name',
+    label: 'Item / Part Name',
+    type: 'text',
+    placeholder: 'e.g. fuel filter...',
     category: 'properties',
   },
   {
-    key: 'required_by_date',
-    label: 'Required By',
-    type: 'date-range',
-    category: 'dates',
+    key: 'part_number',
+    label: 'Part Number',
+    type: 'text',
+    placeholder: 'e.g. FLT-0033...',
+    category: 'properties',
+  },
+  {
+    key: 'manufacturer',
+    label: 'Manufacturer',
+    type: 'text',
+    placeholder: 'e.g. Caterpillar...',
+    category: 'properties',
+  },
+  {
+    key: 'preferred_supplier',
+    label: 'Preferred Supplier',
+    type: 'text',
+    placeholder: 'Filter by supplier name...',
+    category: 'properties',
   },
 ];
 
@@ -441,6 +482,97 @@ export const HANDOVER_FILTERS: FilterFieldConfig[] = [
 // DOMAIN → FILTER CONFIG MAPPING
 // =============================================================================
 
+// =============================================================================
+// Documents lens filters (DOCUMENTS04, 2026-04-23)
+// =============================================================================
+//
+// Rich filtration panel for /documents per CEO directive. Spec coordinated
+// with CERT04 + RECEIVING05 + SHOPPING_LIST via claude-peers:
+//   - No new filter types (keep union: select | multi-select | date-range | text)
+//   - No new tokens (FilterPanel already token-driven)
+//   - No new categories (status-priority / dates / equipment-systems / properties)
+//   - Resolved-name filters use `text` ILIKE on the already-resolved display name
+//   - Client-side application (MVP) — rationale: tree view fetches full corpus
+//     upfront (TREE_PAGE_SIZE=1000) so list filter is memory-local, no
+//     duplicate fetch. Migrate to FilteredEntityList server-side path when
+//     corpus > 1000 live rows per yacht.
+//
+// Columns intentionally NOT filterable per the spec:
+//   - UUIDs (id, yacht_id, uploaded_by[uuid], deleted_by) — backend-only
+//   - Storage paths (storage_path, original_path, system_path) — not human-useful
+//   - Technical (sha256, embedding, metadata jsonb, indexed) — backend-only
+//   - filename — already covered by the subbar search bar (q=)
+//
+export const DOCUMENT_FILTERS: FilterFieldConfig[] = [
+  {
+    key: 'content_type_group',
+    label: 'File Type',
+    type: 'select',
+    options: [
+      { value: 'pdf',         label: 'PDF' },
+      { value: 'image',       label: 'Image' },
+      { value: 'spreadsheet', label: 'Spreadsheet' },
+      { value: 'word',        label: 'Word / Text' },
+      { value: 'other',       label: 'Other' },
+    ],
+    category: 'properties',
+  },
+  {
+    key: 'doc_type',
+    label: 'Document Type',
+    type: 'text',
+    placeholder: 'e.g. manual, procedure, drawing…',
+    category: 'properties',
+  },
+  {
+    key: 'system_type',
+    label: 'System',
+    type: 'text',
+    placeholder: 'e.g. bridge, engineering…',
+    category: 'equipment-systems',
+  },
+  {
+    key: 'oem',
+    label: 'OEM / Manufacturer',
+    type: 'text',
+    placeholder: 'e.g. MTU, ABB, Furuno…',
+    category: 'equipment-systems',
+  },
+  {
+    key: 'model',
+    label: 'Model',
+    type: 'text',
+    placeholder: 'e.g. 16V4000, V100…',
+    category: 'equipment-systems',
+  },
+  {
+    key: 'uploaded_by_name',
+    label: 'Uploaded by',
+    type: 'text',
+    placeholder: 'Name…',
+    category: 'properties',
+  },
+  {
+    key: 'tags_text',
+    label: 'Tags',
+    type: 'text',
+    placeholder: 'Any tag contains…',
+    category: 'properties',
+  },
+  {
+    key: 'created_at',
+    label: 'Created',
+    type: 'date-range',
+    category: 'dates',
+  },
+  {
+    key: 'updated_at',
+    label: 'Updated',
+    type: 'date-range',
+    category: 'dates',
+  },
+];
+
 export const FILTER_CONFIGS: Record<string, FilterFieldConfig[]> = {
   faults: FAULT_FILTERS,
   'work-orders': WORK_ORDER_FILTERS,
@@ -450,4 +582,5 @@ export const FILTER_CONFIGS: Record<string, FilterFieldConfig[]> = {
   receiving: RECEIVING_FILTERS,
   'shopping-list': SHOPPING_LIST_FILTERS,
   handover: HANDOVER_FILTERS,
+  documents: DOCUMENT_FILTERS,
 };

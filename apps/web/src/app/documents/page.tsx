@@ -28,7 +28,10 @@ import { supabase } from '@/lib/supabaseClient';
 import DocumentTree from '@/components/documents/DocumentTree';
 import DocumentsSearchResults from '@/components/documents/DocumentsSearchResults';
 import DocumentsTableList from '@/components/documents/DocumentsTableList';
+import { filterDocs, type DocRich } from '@/components/documents/filterDocs';
 import type { Doc } from '@/components/documents/docTreeBuilder';
+import { FilterPanel } from '@/features/entity-list/components/FilterPanel';
+import { DOCUMENT_FILTERS, type ActiveFilters } from '@/features/entity-list/types/filter-config';
 
 /**
  * Three view modes for /documents:
@@ -58,6 +61,36 @@ function persistViewMode(mode: DocsViewMode): void {
   } catch { /* ignore quota */ }
 }
 
+/**
+ * Active-filter persistence — lives in sessionStorage so filter state
+ * survives tab-local refreshes but is dropped on close. Matches the same
+ * pattern used by the view-mode and table-sort state in this page.
+ */
+const FILTERS_KEY = 'celeste:documents:filters';
+
+function loadFilters(): ActiveFilters {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.sessionStorage.getItem(FILTERS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as ActiveFilters) : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistFilters(filters: ActiveFilters): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (Object.keys(filters).length === 0) {
+      window.sessionStorage.removeItem(FILTERS_KEY);
+    } else {
+      window.sessionStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+    }
+  } catch { /* ignore quota */ }
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 const TREE_PAGE_SIZE = 1000;
 
@@ -73,11 +106,16 @@ interface DocApiRecord {
   created_at?: string | null;
   updated_at?: string | null;
   content_type?: string | null;
+  // Filter-only columns (fed through to DocRich for client-side filterDocs)
+  system_type?: string | null;
+  oem?: string | null;
+  model?: string | null;
+  tags?: string[] | null;
   // Formatter fallbacks from the API (title, meta, etc.) — ignored here.
   [key: string]: unknown;
 }
 
-function toDoc(record: DocApiRecord): Doc | null {
+function toDoc(record: DocApiRecord): DocRich | null {
   if (!record.id || typeof record.id !== 'string') return null;
   return {
     id: record.id,
@@ -92,6 +130,11 @@ function toDoc(record: DocApiRecord): Doc | null {
     created_at: (record.created_at as string) ?? new Date(0).toISOString(),
     updated_at: (record.updated_at as string | null) ?? null,
     content_type: (record.content_type as string | null) ?? null,
+    // Filter-only fields (ignored by the tree builder, read by filterDocs)
+    system_type: (record.system_type as string | null) ?? null,
+    oem: (record.oem as string | null) ?? null,
+    model: (record.model as string | null) ?? null,
+    tags: Array.isArray(record.tags) ? (record.tags as string[]) : null,
   };
 }
 
@@ -120,6 +163,22 @@ function DocumentsPageContent() {
     persistViewMode(mode);
   }, []);
 
+  // ── Filter state (list view only) ────────────────────────────────────────
+  // Per CEO directive 2026-04-23 — rich filtration panel for /documents.
+  // Spec coordinated with CERT04 + RECEIVING05 + SHOPPING_LIST (see
+  // `docs/ongoing_work/certificates/CERTIFICATE_FILTER_SPEC_2026_04_23.md`).
+  //
+  // Filter application is CLIENT-SIDE here — the tree view already fetches the
+  // full corpus (TREE_PAGE_SIZE=1000) upfront for folder assembly, so the list
+  // view reuses that same in-memory data and runs `filterDocs()` over it. When
+  // we eventually need true pagination (corpus > 1000 live rows), we'll migrate
+  // to FilteredEntityList's server-side path that cert/receiving/shopping use.
+  const [activeFilters, setActiveFilters] = React.useState<ActiveFilters>(() => loadFilters());
+  const handleFilterChange = React.useCallback((next: ActiveFilters) => {
+    setActiveFilters(next);
+    persistFilters(next);
+  }, []);
+
   const handleSelect = React.useCallback(
     (id: string, yachtIdArg?: string) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -139,7 +198,9 @@ function DocumentsPageContent() {
 
   // Fetch docs for the tree. Uses pipeline-core API with a large page size so
   // the entire vessel corpus is available for folder assembly.
-  const docsQuery = useQuery<Doc[]>({
+  // DocRich[] — includes the filter-only fields (system_type/oem/model/tags)
+  // read by filterDocs() in list view. Tree code ignores the extras.
+  const docsQuery = useQuery<DocRich[]>({
     queryKey: ['documents', 'tree', yachtId],
     enabled: !!yachtId,
     staleTime: 30_000,
@@ -166,7 +227,7 @@ function DocumentsPageContent() {
       }
       const payload = await response.json();
       const records: DocApiRecord[] = payload.records || payload.items || [];
-      const docs: Doc[] = [];
+      const docs: DocRich[] = [];
       for (const r of records) {
         const d = toDoc(r);
         if (d) docs.push(d);
@@ -260,12 +321,28 @@ function DocumentsPageContent() {
           Failed to load documents.
         </div>
       ) : viewMode === 'list' ? (
-        <DocumentsTableList
-          docs={docsQuery.data ?? []}
-          onSelect={(id) => handleSelect(id)}
-          selectedDocId={selectedId}
-          isLoading={docsQuery.isLoading}
-        />
+        <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+          {/* Shared FilterPanel — same component cert/receiving/shopping use.
+              Reads DOCUMENT_FILTERS from filter-config.ts. Categories are the
+              canonical four (status-priority / dates / equipment-systems /
+              properties); tokens are the canonical lens tokens — no new
+              filter-scoped variables introduced. */}
+          <FilterPanel
+            filters={DOCUMENT_FILTERS}
+            activeFilters={activeFilters}
+            onChange={handleFilterChange}
+            activeDomain="documents"
+            totalCount={(docsQuery.data ?? []).length}
+          />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <DocumentsTableList
+              docs={filterDocs(docsQuery.data ?? [], activeFilters)}
+              onSelect={(id) => handleSelect(id)}
+              selectedDocId={selectedId}
+              isLoading={docsQuery.isLoading}
+            />
+          </div>
+        </div>
       ) : (
         <DocumentTree
           docs={docsQuery.data ?? []}
