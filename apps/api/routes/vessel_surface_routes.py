@@ -669,6 +669,11 @@ async def get_domain_records(
     status: Optional[str] = Query(None, description="Status filter chip value"),
     assigned: Optional[str] = Query(None, description="Assigned to filter"),
     cert_domain: Optional[str] = Query(None, description="Cert sub-domain filter: 'vessel' or 'crew'"),
+    urgency: Optional[str] = Query(None, description="Urgency filter (shopping_list)"),
+    source_type: Optional[str] = Query(None, description="Source type filter (shopping_list)"),
+    is_candidate_part: Optional[str] = Query(None, description="Candidate flag filter 'true'/'false' (shopping_list)"),
+    date_from: Optional[str] = Query(None, description="Required-by date from (YYYY-MM-DD, shopping_list)"),
+    date_to: Optional[str] = Query(None, description="Required-by date to (YYYY-MM-DD, shopping_list)"),
     sort: Optional[str] = Query(None, description="Sort field"),
     limit: int = Query(50, ge=1, le=2000),
     offset: int = Query(0, ge=0),
@@ -738,6 +743,19 @@ async def get_domain_records(
         if cert_domain and domain == "certificates" and cert_domain in ("vessel", "crew"):
             query = query.eq("domain", cert_domain)
 
+        # Shopping-list-specific filters. Safe no-ops on any other domain.
+        if domain == "shopping_list":
+            if urgency:
+                query = query.eq("urgency", urgency)
+            if source_type:
+                query = query.eq("source_type", source_type)
+            if is_candidate_part in ("true", "false"):
+                query = query.eq("is_candidate_part", is_candidate_part == "true")
+            if date_from:
+                query = query.gte("required_by_date", date_from)
+            if date_to:
+                query = query.lte("required_by_date", date_to)
+
         # Soft-delete filter — hide deleted records
         if domain in ("documents", "purchase_orders"):
             query = query.is_("deleted_at", "null")
@@ -760,6 +778,70 @@ async def get_domain_records(
 
         # Format records for frontend (include yacht_id for overview attribution)
         formatted = [_format_record(domain, r) for r in records]
+
+        # Shopping list: batch-resolve requester names from auth_users_profiles
+        # (pms_shopping_list_items has no FK to the profiles table, so _format_record
+        # cannot do the lookup row-by-row without N+1 queries).
+        if domain == "shopping_list" and records:
+            user_ids = list({
+                r.get("requested_by") or r.get("created_by")
+                for r in records
+                if r.get("requested_by") or r.get("created_by")
+            })
+            name_map: Dict[str, str] = {}
+            if user_ids:
+                try:
+                    profiles = supabase.table("auth_users_profiles").select("id, name").in_("id", user_ids).execute()
+                    name_map = {p["id"]: p.get("name") for p in (profiles.data or []) if p.get("id")}
+                except Exception as e:
+                    logger.warning(f"[DomainRecords] shopping_list name resolve failed: {e}")
+            for raw, fmt in zip(records, formatted):
+                uid = raw.get("requested_by") or raw.get("created_by")
+                if uid:
+                    fmt["requested_by_name"] = name_map.get(uid)
+
+        # Purchase orders: batch-resolve supplier names + compute totals
+        if domain == "purchase_orders" and records:
+            supplier_ids = list({
+                r.get("supplier_id") for r in records if r.get("supplier_id")
+            })
+            supplier_map: Dict[str, str] = {}
+            if supplier_ids:
+                try:
+                    suppliers = supabase.table("pms_suppliers").select("id, name").in_("id", supplier_ids).execute()
+                    supplier_map = {s["id"]: s.get("name", "") for s in (suppliers.data or []) if s.get("id")}
+                except Exception as e:
+                    logger.warning(f"[DomainRecords] purchase_orders supplier resolve failed: {e}")
+            # Batch-fetch item totals per PO
+            po_ids = [r.get("id") for r in records if r.get("id")]
+            total_map: Dict[str, float] = {}
+            if po_ids:
+                try:
+                    items = supabase.table("pms_purchase_order_items").select(
+                        "purchase_order_id, quantity_ordered, unit_price"
+                    ).in_("purchase_order_id", po_ids).execute()
+                    for item in (items.data or []):
+                        pid = item.get("purchase_order_id")
+                        qty = item.get("quantity_ordered") or 0
+                        price = item.get("unit_price") or 0
+                        if pid:
+                            total_map[pid] = total_map.get(pid, 0.0) + float(qty) * float(price)
+                except Exception as e:
+                    logger.warning(f"[DomainRecords] purchase_orders total compute failed: {e}")
+            for raw, fmt in zip(records, formatted):
+                sid = raw.get("supplier_id")
+                if sid:
+                    sname = supplier_map.get(sid, "")
+                    fmt["supplier_name"] = sname
+                    fmt["title"] = f"{raw.get('po_number', 'PO')} — {sname}" if sname else raw.get("po_number", "PO")
+                    fmt["meta"] = f"{sname} · {raw.get('status', '').upper()}" if sname else raw.get("status", "").upper()
+                po_id = raw.get("id")
+                if po_id and po_id in total_map:
+                    fmt["total_amount"] = round(total_map[po_id], 2)
+                # Surface metadata notes as description
+                meta = raw.get("metadata") or {}
+                if isinstance(meta, dict) and meta.get("notes"):
+                    fmt["description"] = meta["notes"]
 
         # Enrich with yacht_name in overview mode (resolve from auth context)
         if is_overview and auth.get("fleet_vessels"):
@@ -1004,6 +1086,41 @@ def _format_record(domain: str, record: dict) -> dict:
             "warranty_expiry": record.get("warranty_expiry"),
             "created_at": record.get("created_at"),
             "meta": f"{(record.get('status') or 'draft').upper()} · {record.get('vendor_name', '')}",
+        })
+    elif domain == "shopping_list":
+        status_val = record.get("status") or "candidate"
+        urgency = record.get("urgency") or "normal"
+        qty_req = record.get("quantity_requested")
+        qty_app = record.get("quantity_approved")
+        unit = record.get("unit") or ""
+        part_num = record.get("part_number")
+        source_type_val = record.get("source_type")
+        qty_display = f"{qty_req}{' ' + unit if unit else ''}" if qty_req is not None else ""
+        meta_bits = [urgency.upper(), status_val.replace("_", " ").upper()]
+        if qty_display:
+            meta_bits.append(f"Qty {qty_display}")
+        if source_type_val:
+            meta_bits.append(source_type_val.replace("_", " ").title())
+        base.update({
+            "ref": part_num or f"SL-{str(record.get('id', ''))[:6]}",
+            "title": record.get("part_name") or "Shopping List Item",
+            "status": status_val,
+            "urgency": urgency,
+            # priority mirrors urgency so list rows can reuse the generic priority chip
+            "priority": urgency,
+            "part_number": part_num,
+            "manufacturer": record.get("manufacturer"),
+            "quantity_requested": qty_req,
+            "quantity_approved": qty_app,
+            "unit": unit,
+            "source_type": source_type_val,
+            "source_notes": record.get("source_notes"),
+            "required_by_date": record.get("required_by_date"),
+            "is_candidate_part": bool(record.get("is_candidate_part")),
+            "estimated_unit_price": record.get("estimated_unit_price"),
+            "preferred_supplier": record.get("preferred_supplier"),
+            "created_at": record.get("created_at"),
+            "meta": " · ".join(meta_bits),
         })
     else:
         # Generic fallback for other domains
