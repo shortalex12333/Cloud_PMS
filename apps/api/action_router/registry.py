@@ -2175,6 +2175,29 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
+    # mark_shopping_list_ordered: handler already lives at
+    # routes/handlers/shopping_handler.py:213 (and was wired into SHOP_HANDLERS
+    # at __init__.py:24 from day one of Phase 4). Missing ACTION_REGISTRY entry
+    # meant get_available_actions never surfaced it → UI SplitButton could not
+    # trigger it. Roles + required fields mirror the handler (_MARK_ORDERED_ROLES
+    # at shopping_handler.py:40). Transition is approved → ordered.
+    "mark_shopping_list_ordered": ActionDefinition(
+        action_id="mark_shopping_list_ordered",
+        label="Mark as Ordered",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "captain", "manager"],
+        required_fields=["yacht_id", "item_id"],
+        domain="shopping_list",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["order", "ordered", "placed", "shopping", "purchase"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("item_id", FieldClassification.REQUIRED, description="Shopping list item ID (must be approved)"),
+        ],
+    ),
+
     "consume_part": ActionDefinition(
         action_id="consume_part",
         label="Consume Part",

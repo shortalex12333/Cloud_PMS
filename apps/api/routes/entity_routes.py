@@ -719,20 +719,61 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
 
         data = r.data
 
-        # Look up names for requester and approver in one query
-        requester_name = None
-        approver_name = None
+        # Load state-machine history (drives the AuditTrailSection on the lens).
+        # Fail-soft: an empty history is the pre-existing behavior.
+        raw_history: list[dict] = []
+        try:
+            hist_r = supabase.table("pms_shopping_list_state_history").select(
+                "id, previous_state, new_state, transition_reason, transition_notes, changed_by, changed_at"
+            ).eq("shopping_list_item_id", item_id).eq("yacht_id", yacht_id) \
+             .order("changed_at", desc=False).execute()
+            raw_history = hist_r.data or []
+        except Exception as e:
+            logger.warning(f"[entity.shopping_list] state_history fetch failed for {item_id}: {e}")
+
+        # Single batched profile lookup: requester + approver + every actor in history.
         requester_id = data.get("requested_by") or data.get("created_by")
         approver_id = data.get("approved_by")
-        lookup_ids = [uid for uid in [requester_id, approver_id] if uid]
+        history_actor_ids = {h.get("changed_by") for h in raw_history if h.get("changed_by")}
+        lookup_ids = list({uid for uid in ({requester_id, approver_id} | history_actor_ids) if uid})
+        profile_map: dict[str, str] = {}
         if lookup_ids:
             try:
                 profiles = supabase.table("auth_users_profiles").select("id, name").in_("id", lookup_ids).execute()
-                profile_map = {p["id"]: p.get("name") for p in (profiles.data or [])}
-                requester_name = profile_map.get(requester_id)
-                approver_name = profile_map.get(approver_id)
-            except Exception:
-                pass
+                profile_map = {p["id"]: p.get("name") for p in (profiles.data or []) if p.get("id")}
+            except Exception as e:
+                logger.warning(f"[entity.shopping_list] profile lookup failed: {e}")
+        requester_name = profile_map.get(requester_id) if requester_id else None
+        approver_name = profile_map.get(approver_id) if approver_id else None
+
+        # Project history rows into the shape ShoppingListContent.tsx expects.
+        # AuditTrailSection reads `action`, `actor`, `timestamp` per event
+        # (ShoppingListContent.tsx:158-163 normalises these aliases).
+        def _event_label(row: dict) -> str:
+            prev = row.get("previous_state")
+            new = row.get("new_state")
+            reason = row.get("transition_reason")
+            if prev and new:
+                label = f"{prev} → {new}"
+            elif new:
+                label = f"Status: {new}"
+            else:
+                label = reason or "State change"
+            return label if not reason or label == reason else f"{label} — {reason}"
+
+        audit_history = [
+            {
+                "id": h.get("id"),
+                "action": _event_label(h),
+                "actor": profile_map.get(h.get("changed_by")) if h.get("changed_by") else None,
+                "timestamp": h.get("changed_at"),
+                # kept for callers that read the raw shape
+                "previous_state": h.get("previous_state"),
+                "new_state": h.get("new_state"),
+                "transition_notes": h.get("transition_notes"),
+            }
+            for h in raw_history
+        ]
 
         item = {
             "id": data.get("id"),
@@ -791,6 +832,7 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             "yacht_id": data.get("yacht_id"),
             "attachments": [],
             "related_entities": nav,
+            "audit_history": audit_history,
         }
         _entity_response["available_actions"] = get_available_actions(
             "shopping_list", _entity_response, auth.get("role", "crew")

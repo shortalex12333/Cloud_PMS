@@ -50,6 +50,25 @@ _RECEIVING_TERMINAL_DISABLED = {
     "reject_receiving", "attach_receiving_image_with_comment", "update_receiving_fields",
 }
 
+# ── Shopping-list legacy action hide-list ──────────────────────────────────────
+# These 6 actions date back to an abandoned parent-list design (there was going
+# to be a `pms_shopping_lists` header row with items underneath). That table
+# never existed in production — every action now operates on a single
+# pms_shopping_list_items row. Their registry entries and handlers still work
+# for programmatic callers, but their labels ("Approve Shopping List Item",
+# "Archive Shopping List", etc.) overlap and duplicate the canonical 5
+# per-item actions, so surfacing them in the UI confuses users.
+# Hiding them here is the least-disruptive fix — reversible, no cross-domain
+# fallout, and no registry/handler deletions required.
+_SHOPPING_LIST_HIDDEN_ACTIONS = {
+    "approve_list",
+    "add_list_item",
+    "archive_list",
+    "delete_list",
+    "convert_to_po",
+    "submit_list",
+}
+
 
 def get_available_actions(
     entity_type: str,
@@ -77,6 +96,10 @@ def get_available_actions(
         # Full ActionDefinition — use .get() to safely skip missing IDs
         action_def = ACTION_REGISTRY.get(action_id)
         if not action_def:
+            continue
+
+        # Hide legacy/shadowed actions for specific entity types
+        if entity_type == "shopping_list" and action_id in _SHOPPING_LIST_HIDDEN_ACTIONS:
             continue
 
         # Role gate: omit entirely if not permitted
@@ -312,6 +335,19 @@ def _apply_state_gate(
         _PO_DRAFT_ONLY = {"add_item_to_purchase"}
         if status not in ("draft", "") and action_id in _PO_DRAFT_ONLY:
             return True, f"Cannot add items to a PO with status '{status}'"
+
+    elif entity_type == "shopping_list":
+        # mark_shopping_list_ordered requires the item to be approved first.
+        # approve/reject/promote_candidate_to_part become no-ops on terminal states.
+        _SL_TERMINAL_STATUSES = {"rejected", "fulfilled", "installed"}
+        _SL_TERMINAL_DISABLED = {
+            "approve_shopping_list_item", "reject_shopping_list_item",
+            "promote_candidate_to_part", "mark_shopping_list_ordered",
+        }
+        if status in _SL_TERMINAL_STATUSES and action_id in _SL_TERMINAL_DISABLED:
+            return True, f"Item is {status.replace('_', ' ')} — no further transitions"
+        if action_id == "mark_shopping_list_ordered" and status != "approved":
+            return True, "Item must be approved before it can be marked as ordered"
 
     elif entity_type == "certificate":
         _CERT_TERMINAL = {"superseded", "revoked"}
