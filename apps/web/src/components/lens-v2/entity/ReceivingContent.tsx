@@ -107,11 +107,14 @@ export function ReceivingContent() {
   const linked_entities = ((entity?.linked_entities ?? payload.linked_entities ?? entity?.related_entities ?? payload.related_entities) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // -- Action gates --
+  // Primary CTA = SIGNED accept_receiving (every status->accepted must be
+  // cryptographically attested). confirm_receiving was the unsigned alias —
+  // hidden via entity_actions.py:_RECEIVING_HIDDEN_ACTIONS.
   const acceptAction = getAction('accept_receiving');
   const flagAction = getAction('flag_discrepancy');
-  const confirmAction = getAction('confirm_receiving');
 
-  const isConfirmable = ['pending', 'in_progress'].includes(status);
+  // pms_receiving.status enum = draft|in_review|accepted|rejected
+  const isAcceptable = ['draft', 'in_review'].includes(status);
 
   // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
@@ -169,19 +172,22 @@ export function ReceivingContent() {
   ) : undefined;
 
   // -- Split button config --
-  const primaryLabel = 'Confirm Receipt';
-  const primaryDisabled = confirmAction
-    ? (confirmAction.disabled ?? false) || !isConfirmable
+  const primaryLabel = 'Accept (Sign)';
+  const primaryDisabled = acceptAction
+    ? (acceptAction.disabled ?? false) || !isAcceptable
     : true;
-  const primaryDisabledReason = confirmAction?.disabled_reason;
+  const primaryDisabledReason = acceptAction?.disabled_reason;
 
   const handlePrimary = React.useCallback(async () => {
-    await executeAction('confirm_receiving', {});
+    // safeExecute (parent EntityLensPage) raises PIN modal for SIGNED actions
+    await executeAction('accept_receiving', {});
   }, [executeAction]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
-  const DANGER_ACTIONS = new Set(['flag_discrepancy']);
-  const primaryActionId = 'confirm_receiving';
+  // reject_receiving = terminal status change. flag_discrepancy = structured
+  // issue logging (no status change) — surfaced as a normal item, not danger.
+  const DANGER_ACTIONS = new Set(['reject_receiving']);
+  const primaryActionId = 'accept_receiving';
 
   const dropdownItems: DropdownItem[] = availableActions
     .filter((a) => a.action_id !== primaryActionId)
@@ -282,7 +288,7 @@ export function ReceivingContent() {
         pills={pills}
         details={details}
         actionSlot={
-          (confirmAction || acceptAction) ? (
+          acceptAction ? (
             <SplitButton
               label={primaryLabel}
               onClick={handlePrimary}
