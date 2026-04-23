@@ -11,12 +11,14 @@
  */
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import styles from '../lens.module.css';
 import { IdentityStrip, type PillDef, type DetailLine } from '../IdentityStrip';
 import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActionFields';
 import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
+import { getEntityRoute } from '@/lib/entityRoutes';
 
 import {
   AuditTrailSection,
@@ -61,6 +63,7 @@ function formatDate(d?: string): string {
 
 export function ShoppingListContent() {
   const { entity, availableActions, executeAction, getAction } = useEntityLensContext();
+  const router = useRouter();
 
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
   const get = <T = unknown>(key: string): T | undefined =>
@@ -145,13 +148,27 @@ export function ShoppingListContent() {
   if (rejectionReason) kvItems.push({ label: 'Rejection Reason', value: rejectionReason });
 
   // ── Related entity links ─────────────────────────────────────────────────────
-  const docItems: DocRowItem[] = relatedEntities.map((e, i) => ({
-    id: (e.entity_id as string) ?? `link-${i}`,
-    name: (e.label as string) ?? 'Linked Entity',
-    code: (e.entity_type as string) ?? undefined,
-    meta: undefined,
-    date: undefined,
-  }));
+  // Each nav item becomes a clickable row routing to /parts/[id] or
+  // /work-orders/[id] etc. `getEntityRoute` is the cross-domain slug→route
+  // mapper (apps/web/src/lib/entityRoutes.ts) that every other lens uses.
+  // Without this onClick, the "Linked Entities" rows render but go nowhere —
+  // was an interlinking gap flagged in the Issue 13 follow-up audit.
+  const docItems: DocRowItem[] = relatedEntities.map((e, i) => {
+    const entityId = e.entity_id as string | undefined;
+    const entityType = e.entity_type as string | undefined;
+    return {
+      id: entityId ?? `link-${i}`,
+      name: (e.label as string) ?? 'Linked Entity',
+      code: entityType ?? undefined,
+      meta: undefined,
+      date: undefined,
+      onClick: entityId && entityType
+        ? () => router.push(
+            getEntityRoute(entityType as Parameters<typeof getEntityRoute>[0], entityId),
+          )
+        : undefined,
+    };
+  });
 
   // ── Audit events ─────────────────────────────────────────────────────────────
   const history = (get<Array<Record<string, unknown>>>('audit_history') ?? []);
