@@ -2,186 +2,101 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
 import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { fetchShoppingListItem } from '@/features/shopping-list/api';
+import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
+import { ShoppingListContent } from '@/components/lens-v2/entity/ShoppingListContent';
+import { ActionPopup } from '@/components/lens-v2/ActionPopup';
+import lensStyles from '@/components/lens-v2/lens.module.css';
 import { shoppingListToListResult } from '@/features/shopping-list/adapter';
-import { executeAction } from '@/lib/actionClient';
 import { SHOPPING_LIST_FILTERS } from '@/features/entity-list/types/filter-config';
+import { API_BASE } from '@/lib/apiBase';
+import { supabase } from '@/lib/supabaseClient';
 import type { ShoppingListItem } from '@/features/shopping-list/types';
 
-function ShoppingListDetail({ id, onRefresh }: { id: string; onRefresh: () => void }) {
-  const { session, user } = useAuth();
+function LensContent() {
+  return <div className={lensStyles.root}><ShoppingListContent /></div>;
+}
+
+function CreateItemModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { session } = useAuth();
   const { vesselId: activeVesselId } = useActiveVessel();
-  const token = session?.access_token;
-  const [isActionLoading, setIsActionLoading] = React.useState(false);
+  const { user } = useAuth();
+  const yachtId = activeVesselId || user?.yachtId || '';
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['shopping-list-item', id],
-    queryFn: () => fetchShoppingListItem(id, token || ''),
-    enabled: !!token,
-    staleTime: 30000,
-  });
-
-  // Action: Approve Item (HOD)
-  const handleApprove = React.useCallback(async () => {
-    if (!(activeVesselId || user?.yachtId) || !id) return;
-
-    setIsActionLoading(true);
+  const handleSubmit = React.useCallback(async (values: Record<string, unknown>) => {
+    if (!yachtId) { setError('No vessel selected'); return; }
+    setIsSubmitting(true);
+    setError(null);
     try {
-      await executeAction(
-        'approve_shopping_list_item',
-        { yacht_id: activeVesselId || user?.yachtId || "", shopping_list_item_id: id },
-        {}
-      );
-      onRefresh();
-    } catch (error) {
-      console.error('[ShoppingListDetail] Approve item failed:', error);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) { setError('Not authenticated'); return; }
+
+      const res = await fetch('/api/v1/actions/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: 'create_shopping_list_item',
+          context: { yacht_id: yachtId },
+          payload: {
+            part_name: values.part_name,
+            quantity_requested: Number(values.quantity_requested) || 1,
+            source_type: 'manual_add',
+            urgency: values.urgency || 'normal',
+            source_notes: values.source_notes || undefined,
+            estimated_unit_price: values.estimated_unit_price ? Number(values.estimated_unit_price) : undefined,
+            required_by_date: values.required_by_date || undefined,
+            source_work_order_id: values.source_work_order_id || undefined,
+          },
+        }),
+      });
+
+      const result = await res.json();
+      if (!res.ok || result.status === 'error') {
+        setError(result.message || 'Failed to create item');
+        return;
+      }
+      onSuccess();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Network error');
     } finally {
-      setIsActionLoading(false);
+      setIsSubmitting(false);
     }
-  }, [id, activeVesselId || user?.yachtId, onRefresh]);
-
-  // Action: Reject Item (HOD)
-  const handleReject = React.useCallback(async () => {
-    if (!(activeVesselId || user?.yachtId) || !id) return;
-
-    setIsActionLoading(true);
-    try {
-      await executeAction(
-        'reject_shopping_list_item',
-        { yacht_id: activeVesselId || user?.yachtId || "", shopping_list_item_id: id },
-        {}
-      );
-      onRefresh();
-    } catch (error) {
-      console.error('[ShoppingListDetail] Reject item failed:', error);
-    } finally {
-      setIsActionLoading(false);
-    }
-  }, [id, activeVesselId || user?.yachtId, onRefresh]);
-
-  // Action: Promote to Part (engineers)
-  const handlePromoteToPart = React.useCallback(async () => {
-    if (!(activeVesselId || user?.yachtId) || !id) return;
-
-    setIsActionLoading(true);
-    try {
-      await executeAction(
-        'promote_candidate_to_part',
-        { yacht_id: activeVesselId || user?.yachtId || "", shopping_list_item_id: id },
-        {}
-      );
-      onRefresh();
-    } catch (error) {
-      console.error('[ShoppingListDetail] Promote to part failed:', error);
-    } finally {
-      setIsActionLoading(false);
-    }
-  }, [id, activeVesselId || user?.yachtId, onRefresh]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-red-400">Failed to load shopping list item</p>
-      </div>
-    );
-  }
-
-  // Determine if actions should be shown based on status
-  const canApproveReject = data.status === 'pending' || data.status === 'requested';
-  const canPromoteToPart = !data.part_id && (data.status === 'approved' || data.status === 'pending');
+  }, [yachtId, onClose, onSuccess]);
 
   return (
-    <div className="p-6 space-y-4">
-      <div>
-        {data.part_number && (
-          <p className="text-xs text-txt-tertiary font-mono">{data.part_number}</p>
-        )}
-        <h2 className="text-xl font-semibold text-txt-primary">
-          {data.part_name || `Item ${data.part_number || 'Item'}`}
-        </h2>
-      </div>
-      <div className="flex gap-2">
-        <span className="px-2 py-1 text-xs rounded bg-surface-hover text-txt-secondary">
-          {data.status?.replace(/_/g, ' ') || 'Pending'}
-        </span>
-        {data.priority && (
-          <span className="px-2 py-1 text-xs rounded bg-surface-hover text-txt-secondary">
-            {data.priority}
-          </span>
-        )}
-        <span className="px-2 py-1 text-xs rounded bg-surface-hover text-txt-secondary">
-          Qty: {data.quantity_requested}{data.unit_of_measure ? ` ${data.unit_of_measure}` : ''}
-        </span>
-      </div>
-      {data.description && (
-        <p className="text-sm text-txt-tertiary">{data.description}</p>
-      )}
-      {data.requested_by_name && (
-        <div className="text-sm">
-          <span className="text-txt-tertiary">Requested by: </span>
-          <span className="text-txt-secondary">{data.requested_by_name}</span>
-        </div>
-      )}
-      {data.approved_by_name && (
-        <div className="text-sm">
-          <span className="text-txt-tertiary">Approved by: </span>
-          <span className="text-txt-secondary">{data.approved_by_name}</span>
-        </div>
-      )}
-      {data.notes && (
-        <div className="text-sm">
-          <span className="text-txt-tertiary">Notes: </span>
-          <span className="text-txt-secondary">{data.notes}</span>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-2 pt-4 border-t border-surface-border">
-        {canApproveReject && (
-          <>
-            <button
-              onClick={handleApprove}
-              disabled={isActionLoading}
-              className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
-              data-action-id="approve_shopping_list_item"
-            >
-              {isActionLoading ? 'Processing...' : 'Approve Item'}
-            </button>
-            <button
-              onClick={handleReject}
-              disabled={isActionLoading}
-              className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
-              data-action-id="reject_shopping_list_item"
-            >
-              {isActionLoading ? 'Processing...' : 'Reject Item'}
-            </button>
-          </>
-        )}
-        {canPromoteToPart && (
-          <button
-            onClick={handlePromoteToPart}
-            disabled={isActionLoading}
-            className="px-3 py-1.5 text-xs rounded bg-surface-hover text-txt-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
-            data-action-id="promote_candidate_to_part"
-          >
-            {isActionLoading ? 'Processing...' : 'Promote to Part'}
-          </button>
-        )}
-      </div>
-    </div>
+    <ActionPopup
+      mode="mutate"
+      title="Add to Shopping List"
+      subtitle="All crew can add items. HoD approves before ordering."
+      fields={[
+        { name: 'part_name', label: 'Item / Part Name', type: 'kv-edit', placeholder: 'e.g. Fuel filter, Safety harness', required: true },
+        { name: 'quantity_requested', label: 'Quantity', type: 'kv-edit', placeholder: '1', required: true },
+        { name: 'urgency', label: 'Urgency', type: 'select', options: [
+          { value: 'low', label: 'Low' },
+          { value: 'normal', label: 'Normal' },
+          { value: 'high', label: 'High' },
+          { value: 'critical', label: 'Critical' },
+        ]},
+        { name: 'estimated_unit_price', label: 'Estimated Price (per unit)', type: 'kv-edit', placeholder: '0.00' },
+        { name: 'source_notes', label: 'Reason / Notes', type: 'text-area', placeholder: 'Why is this item needed?' },
+        { name: 'required_by_date', label: 'Required By', type: 'date-pick' },
+        { name: 'source_work_order_id', label: 'Link to Work Order (optional)', type: 'entity-search', search_domain: 'work_orders', placeholder: 'Search work orders...' },
+      ]}
+      signatureLevel={1}
+      submitLabel={isSubmitting ? 'Adding...' : 'Add Item'}
+      submitDisabled={isSubmitting}
+      previewRows={error ? [{ key: 'Error', value: error }] : undefined}
+      onSubmit={handleSubmit}
+      onClose={onClose}
+    />
   );
 }
 
@@ -190,34 +105,35 @@ function ShoppingListPageContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const selectedId = searchParams.get('id');
+  const [showCreate, setShowCreate] = React.useState(false);
 
   const handleSelect = React.useCallback(
     (id: string, yachtId?: string) => {
-      const qs = yachtId ? `id=${id}&yacht_id=${yachtId}` : `id=${id}`;
-      router.push(`/shopping-list?${qs}`, { scroll: false });
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('id', id);
+      if (yachtId) params.set('yacht_id', yachtId);
+      router.push(`/shopping-list?${params.toString()}`, { scroll: false });
     },
-    [router]
+    [router, searchParams]
   );
 
   const handleCloseDetail = React.useCallback(() => {
-    router.push('/shopping-list', { scroll: false });
-  }, [router]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('id');
+    const qs = params.toString();
+    router.push(`/shopping-list${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [router, searchParams]);
 
-  // Refresh handler for after actions complete
-  const handleRefresh = React.useCallback(() => {
-    // Invalidate both the list and the specific item queries
+  const handleCreated = React.useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
-    if (selectedId) {
-      queryClient.invalidateQueries({ queryKey: ['shopping-list-item', selectedId] });
-    }
-  }, [queryClient, selectedId]);
+  }, [queryClient]);
 
   return (
-    <div className="h-full bg-surface-base">
+    <div className="h-full bg-surface-base" style={{ position: 'relative' }}>
       <FilteredEntityList<ShoppingListItem>
         domain="shopping-list"
         queryKey={['shopping-list']}
-        table="v_shopping_list_enriched"
+        table="pms_shopping_list_items"
         columns="id, part_name, part_number, manufacturer, quantity_requested, unit, status, urgency, requested_by, required_by_date, created_at, updated_at"
         adapter={shoppingListToListResult}
         filterConfig={SHOPPING_LIST_FILTERS}
@@ -226,9 +142,52 @@ function ShoppingListPageContent() {
         emptyMessage="No shopping list items found"
       />
 
+      {/* Add Item button — fixed bottom-right */}
+      <button
+        onClick={() => setShowCreate(true)}
+        aria-label="Add item to shopping list"
+        style={{
+          position: 'fixed',
+          bottom: 32,
+          right: 32,
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '10px 18px',
+          background: 'var(--mark)',
+          color: 'var(--surface-base)',
+          border: 'none',
+          borderRadius: 8,
+          fontSize: 13,
+          fontWeight: 600,
+          fontFamily: 'var(--font-sans)',
+          cursor: 'pointer',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+        Add Item
+      </button>
+
       <EntityDetailOverlay isOpen={!!selectedId} onClose={handleCloseDetail}>
-        {selectedId && <ShoppingListDetail id={selectedId} onRefresh={handleRefresh} />}
+        {selectedId && (
+          <EntityLensPage
+            entityType="shopping_list"
+            entityId={selectedId}
+            content={LensContent}
+          />
+        )}
       </EntityDetailOverlay>
+
+      {showCreate && (
+        <CreateItemModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={handleCreated}
+        />
+      )}
     </div>
   );
 }

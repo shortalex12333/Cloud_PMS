@@ -37,7 +37,7 @@ export function useShoppingListActions(options: UseShoppingListActionsOptions = 
   // Action: Create Shopping List Item (All crew)
   const createItem = useCallback(
     async (payload: CreateShoppingListItemPayload) => {
-      if (!activeVesselId || user?.yachtId) {
+      if (!activeVesselId && !user?.yachtId) {
         const error = new Error('No yacht context available');
         onError?.(error);
         throw error;

@@ -491,6 +491,22 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             raise HTTPException(status_code=404, detail="Shopping list item not found")
 
         data = r.data
+
+        # Look up names for requester and approver in one query
+        requester_name = None
+        approver_name = None
+        requester_id = data.get("requested_by") or data.get("created_by")
+        approver_id = data.get("approved_by")
+        lookup_ids = [uid for uid in [requester_id, approver_id] if uid]
+        if lookup_ids:
+            try:
+                profiles = supabase.table("auth_users_profiles").select("id, name").in_("id", lookup_ids).execute()
+                profile_map = {p["id"]: p.get("name") for p in (profiles.data or [])}
+                requester_name = profile_map.get(requester_id)
+                approver_name = profile_map.get(approver_id)
+            except Exception:
+                pass
+
         item = {
             "id": data.get("id"),
             "part_name": data.get("part_name"),
@@ -498,23 +514,53 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             "manufacturer": data.get("manufacturer"),
             "unit": data.get("unit"),
             "quantity_requested": data.get("quantity_requested"),
+            "quantity_approved": data.get("quantity_approved"),
+            "estimated_unit_price": data.get("estimated_unit_price"),
+            "preferred_supplier": data.get("preferred_supplier"),
             "urgency": data.get("urgency"),
             "status": data.get("status"),
+            "source_type": data.get("source_type"),
+            "source_notes": data.get("source_notes"),
             "required_by_date": data.get("required_by_date"),
             "is_candidate_part": data.get("is_candidate_part", False),
+            "rejection_reason": data.get("rejection_reason"),
+            "rejection_notes": data.get("rejection_notes"),
+            "approval_notes": data.get("approval_notes"),
+            "approved_at": data.get("approved_at"),
+            "source_work_order_id": data.get("source_work_order_id"),
         }
         nav = [n for n in [
-            _nav("part", data.get("part_id"), "Part"),
+            _nav("part", data.get("part_id"), "Linked Part"),
+            _nav("work_order", data.get("source_work_order_id"), "Source Work Order"),
         ] if n]
 
         _entity_response = {
             "id": data.get("id"),
-            "title": data.get("part_name"),
-            "status": data.get("status"),
-            "requester_id": data.get("created_by"),
-            "requester_name": None,
+            "title": data.get("part_name") or "Shopping List Item",
+            "status": data.get("status", "candidate"),
+            "urgency": data.get("urgency"),
+            "priority": data.get("urgency"),
+            "requester_id": requester_id,
+            "requester_name": requester_name,
+            "created_by": requester_name,
+            "approver_name": approver_name,
+            "approved_at": data.get("approved_at"),
+            "approval_notes": data.get("approval_notes"),
+            "rejection_reason": data.get("rejection_reason"),
             "created_at": data.get("created_at"),
+            "updated_at": data.get("updated_at"),
+            "source_type": data.get("source_type"),
+            "source_notes": data.get("source_notes"),
+            "description": data.get("source_notes"),
+            "quantity_requested": data.get("quantity_requested"),
+            "quantity_approved": data.get("quantity_approved"),
+            "estimated_unit_price": data.get("estimated_unit_price"),
+            "preferred_supplier": data.get("preferred_supplier"),
+            "unit": data.get("unit"),
+            "required_by_date": data.get("required_by_date"),
+            "is_candidate_part": data.get("is_candidate_part", False),
             "items": [item],
+            "notes": [],
             "yacht_id": data.get("yacht_id"),
             "attachments": [],
             "related_entities": nav,
