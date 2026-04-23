@@ -96,6 +96,18 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("certificate", "renew_certificate"):           {"certificate_id": "id"},
     ("certificate", "link_equipment_to_certificate"):   {"certificate_id": "id"},
     ("certificate", "unlink_equipment_from_certificate"):{"certificate_id": "id"},
+    # Archive / suspend / revoke registry rows declare `entity_id` (not
+    # `certificate_id`) as the required key, matching the generic
+    # archive/suspend/revoke pattern other domains use. Without these prefill
+    # rows the router's required-fields gate rejected every dropdown click
+    # with 400 before the handler ever ran (Issue 6 pattern in
+    # /Users/celeste7/Desktop/list_of_faults.md — "every button gives 400").
+    # Handler bodies already accept either key (certificate_handlers.py:1528,
+    # 1600) so this is a wiring fix only — no behavioural change.
+    ("certificate", "archive_certificate"):         {"entity_id": "id"},
+    ("certificate", "suspend_certificate"):         {"entity_id": "id"},
+    ("certificate", "revoke_certificate"):          {"entity_id": "id"},
+    ("certificate", "assign_certificate"):          {"certificate_id": "id"},
 
     # ── Receiving ─────────────────────────────────────────────────────────────
     ("receiving", "add_receiving_item"):                  {"receiving_id": "id"},

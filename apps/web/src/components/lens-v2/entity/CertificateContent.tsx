@@ -131,16 +131,20 @@ const DELETED_AUDIT_ACTIONS = new Set([
 
 /** Dropdown filter: actions hidden from the lens dropdown.
  *  - create_* : only reachable from the list page, not a lens action.
- *  - assign_certificate : captain-only, surfaced elsewhere.
  *  - supersede_certificate : manual "Renew" supersedes via chain; the raw
- *    supersede action is an admin escape hatch.
- *  - link_document_to_certificate : removed from MVP surface per spec
- *    ("for mvp this is too complex. the attachments section will suffice.").
+ *    supersede action is an admin escape hatch not surfaced to crew.
+ *  - link_document_to_certificate : removed from MVP surface per
+ *    doc_cert_ux_change.md — the "Supporting Documents" section already
+ *    covers the upload path. Handler kept for API compat, UI gone.
+ *
+ * NOTE: `assign_certificate` is INTENTIONALLY visible. Backend gates it to
+ * captain/manager via allowed_roles, so engineers never see the action in
+ * `availableActions` anyway. Hiding it here stranded captains with no way
+ * to assign a responsible officer from the lens.
  */
 const HIDDEN_FROM_DROPDOWN = new Set([
   'create_vessel_certificate',
   'create_crew_certificate',
-  'assign_certificate',
   'supersede_certificate',
   'link_document_to_certificate',
 ]);
