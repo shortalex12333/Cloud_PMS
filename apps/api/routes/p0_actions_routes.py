@@ -912,6 +912,7 @@ async def execute_action(
         "reject_shopping_list_item": ["item_id", "rejection_reason"],
         "promote_candidate_to_part": ["item_id"],
         "view_shopping_list_history": ["item_id"],
+        "mark_shopping_list_ordered": ["item_id"],
     }
 
     if action in REQUIRED_FIELDS:

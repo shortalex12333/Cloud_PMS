@@ -202,8 +202,21 @@ export function ShoppingListContent() {
     }));
 
   // ── Lifecycle steps ──────────────────────────────────────────────────────────
-  const LIFECYCLE = ['candidate', 'under_review', 'approved', 'ordered', 'fulfilled'] as const;
-  const currentIdx = LIFECYCLE.indexOf(status as typeof LIFECYCLE[number]);
+  // Happy-path statuses from pms_shopping_list_items.status (live DB enum).
+  // `rejected` is a terminal off-ramp rendered separately (see below).
+  const LIFECYCLE = [
+    'candidate',
+    'under_review',
+    'approved',
+    'ordered',
+    'partially_fulfilled',
+    'fulfilled',
+    'installed',
+  ] as const;
+  const isRejected = status === 'rejected';
+  const currentIdx = isRejected
+    ? -1
+    : LIFECYCLE.indexOf(status as typeof LIFECYCLE[number]);
 
   return (
     <>
@@ -226,49 +239,82 @@ export function ShoppingListContent() {
         }
       />
 
-      {/* Lifecycle progress */}
+      {/* Lifecycle progress — rejected items render a terminal banner instead */}
       <ScrollReveal>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, padding: '16px 0', marginBottom: 8 }}>
-          {LIFECYCLE.map((step, i) => {
-            const isCompleted = currentIdx >= 0 && i < currentIdx;
-            const isActive = i === currentIdx;
+        {isRejected ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 16px', margin: '16px 0 8px',
+            borderRadius: 8,
+            background: 'var(--red-bg, rgba(220, 53, 69, 0.1))',
+            border: '1px solid var(--red, #dc3545)',
+          }}>
+            <div style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: 'var(--red, #dc3545)',
+              boxShadow: '0 0 0 4px var(--red-bg, rgba(220, 53, 69, 0.15))',
+              flexShrink: 0,
+            }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+              <span style={{
+                fontSize: 11, fontWeight: 600, letterSpacing: '0.03em',
+                color: 'var(--red, #dc3545)', textTransform: 'uppercase',
+              }}>
+                Rejected
+              </span>
+              {rejectionReason && (
+                <span style={{
+                  fontSize: 12, color: 'var(--txt2, #bbb)', whiteSpace: 'nowrap',
+                  overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {rejectionReason}
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, padding: '16px 0', marginBottom: 8 }}>
+            {LIFECYCLE.map((step, i) => {
+              const isCompleted = currentIdx >= 0 && i < currentIdx;
+              const isActive = i === currentIdx;
 
-            return (
-              <React.Fragment key={step}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    width: isActive ? 12 : 10, height: isActive ? 12 : 10, borderRadius: '50%',
-                    background: isCompleted || isActive ? 'var(--green, #4caf50)' : 'none',
-                    border: `2px solid ${isCompleted || isActive ? 'var(--green, #4caf50)' : 'var(--txt-ghost, #666)'}`,
-                    boxShadow: isActive ? '0 0 0 4px var(--green-bg, rgba(76,175,80,0.15))' : 'none',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {isCompleted && (
-                      <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
-                        <polyline points="2.5 6 5 8.5 9.5 3.5" />
-                      </svg>
-                    )}
+              return (
+                <React.Fragment key={step}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      width: isActive ? 12 : 10, height: isActive ? 12 : 10, borderRadius: '50%',
+                      background: isCompleted || isActive ? 'var(--green, #4caf50)' : 'none',
+                      border: `2px solid ${isCompleted || isActive ? 'var(--green, #4caf50)' : 'var(--txt-ghost, #666)'}`,
+                      boxShadow: isActive ? '0 0 0 4px var(--green-bg, rgba(76,175,80,0.15))' : 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {isCompleted && (
+                        <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
+                          <polyline points="2.5 6 5 8.5 9.5 3.5" />
+                        </svg>
+                      )}
+                    </div>
+                    <span style={{
+                      fontSize: 10, fontWeight: isActive ? 600 : 500,
+                      letterSpacing: '0.03em',
+                      color: isActive ? 'var(--green, #4caf50)' : isCompleted ? 'var(--txt3, #999)' : 'var(--txt-ghost, #666)',
+                      marginTop: 8, textTransform: 'uppercase', whiteSpace: 'nowrap',
+                    }}>
+                      {fmt(step)}
+                    </span>
                   </div>
-                  <span style={{
-                    fontSize: 10, fontWeight: isActive ? 600 : 500,
-                    letterSpacing: '0.03em',
-                    color: isActive ? 'var(--green, #4caf50)' : isCompleted ? 'var(--txt3, #999)' : 'var(--txt-ghost, #666)',
-                    marginTop: 8, textTransform: 'uppercase', whiteSpace: 'nowrap',
-                  }}>
-                    {fmt(step)}
-                  </span>
-                </div>
-                {i < LIFECYCLE.length - 1 && (
-                  <div style={{
-                    flex: 1, height: 2,
-                    background: isCompleted ? 'var(--green, #4caf50)' : 'var(--border-sub, #444)',
-                    alignSelf: 'flex-start', marginTop: isActive ? 6 : 5, minWidth: 8,
-                  }} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
+                  {i < LIFECYCLE.length - 1 && (
+                    <div style={{
+                      flex: 1, height: 2,
+                      background: isCompleted ? 'var(--green, #4caf50)' : 'var(--border-sub, #444)',
+                      alignSelf: 'flex-start', marginTop: isActive ? 6 : 5, minWidth: 8,
+                    }} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
       </ScrollReveal>
 
       {/* Item detail KV rows */}
