@@ -8,6 +8,7 @@ import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
 import { ReceivingContent } from '@/components/lens-v2/entity';
 import { RECEIVING_FILTERS } from '@/features/entity-list/types/filter-config';
 import { receivingToListResult } from '@/features/receiving/adapter';
+import { RECEIVING_COLUMNS } from '@/features/receiving/columns';
 import type { ReceivingItem } from '@/features/receiving/types';
 import lensStyles from '@/components/lens-v2/lens.module.css';
 
@@ -46,6 +47,7 @@ function ReceivingPageContent() {
         columns="id, vendor_name, vendor_reference, status, received_date, notes, po_number, created_at"
         adapter={receivingToListResult}
         filterConfig={RECEIVING_FILTERS}
+        tableColumns={RECEIVING_COLUMNS}
         selectedId={selectedId}
         onSelect={handleSelect}
         emptyMessage="No receiving records found"

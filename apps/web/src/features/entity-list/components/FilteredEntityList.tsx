@@ -11,6 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import { FilterPanel } from './FilterPanel';
 import SpotlightResultRow from '@/components/spotlight/SpotlightResultRow';
 import { EntityRecordRow, type RecordRowData } from './EntityRecordRow';
+import { EntityTableList, type EntityTableColumn } from './EntityTableList';
 import { EmptyState } from './EmptyState';
 import { useFilteredEntityList } from '../hooks/useFilteredEntityList';
 import type { FilterFieldConfig, ActiveFilters } from '../types/filter-config';
@@ -55,6 +56,13 @@ interface FilteredEntityListProps<T extends { id: string }> {
   sortBy?: string;
   /** Domain slug for FilterPanel (drives domain pills + presets) */
   domain?: string;
+  /**
+   * Optional opt-in: when provided, results render via the shared
+   * EntityTableList (tabulated columnar view, sortable headers) instead of
+   * the legacy SpotlightResultRow / EntityRecordRow cards.
+   * Per CEO directive 2026-04-23 — every lens migrates to columnar.
+   */
+  tableColumns?: EntityTableColumn<EntityListResult>[];
 }
 
 export function FilteredEntityList<T extends { id: string }>({
@@ -68,6 +76,7 @@ export function FilteredEntityList<T extends { id: string }>({
   emptyMessage,
   sortBy = 'created_at',
   domain,
+  tableColumns,
 }: FilteredEntityListProps<T>) {
   const searchParams = useSearchParams();
 
@@ -254,6 +263,27 @@ export function FilteredEntityList<T extends { id: string }>({
         >
           Clear filters
         </button>
+      </div>
+    );
+  } else if (tableColumns) {
+    // Columnar tabular view (CEO 2026-04-23). Sort, sticky header, keyboard
+    // nav, sessionStorage persistence — all in EntityTableList.
+    resultsContent = (
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <EntityTableList
+          rows={items}
+          columns={tableColumns}
+          onSelect={(id, yachtId) => handleSelect(id, yachtId)}
+          selectedId={selectedId}
+          domain={activeDomain}
+          isLoading={false}
+        />
+        <div ref={loadMoreRef} style={{ height: 16 }} />
+        {isFetchingNextPage && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ width: 20, height: 20, border: '2px solid var(--border-sub)', borderTopColor: 'var(--txt2)', borderRadius: '50%' }} className="animate-spin" />
+          </div>
+        )}
       </div>
     );
   } else {
