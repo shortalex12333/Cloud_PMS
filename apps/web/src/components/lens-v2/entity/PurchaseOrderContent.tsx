@@ -81,17 +81,17 @@ export function PurchaseOrderContent() {
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
   const po_number = (entity?.po_number ?? payload.po_number) as string | undefined;
-  const title = ((entity?.title ?? payload.title ?? entity?.description ?? payload.description) as string | undefined) ?? 'Purchase Order';
-  const supplier = ((entity?.supplier ?? entity?.supplier_name ?? entity?.vendor_name ?? payload.supplier ?? payload.supplier_name ?? payload.vendor_name) as string | undefined);
+  const title = po_number ? `PO ${po_number}` : ((entity?.title ?? payload.title) as string | undefined) ?? 'Purchase Order';
+  const supplier = ((entity?.supplier_name ?? entity?.supplier ?? entity?.vendor_name ?? payload.supplier_name ?? payload.supplier ?? payload.vendor_name) as string | undefined);
   const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
   const total_amount = (entity?.total_amount ?? payload.total_amount) as number | undefined;
   const currency = ((entity?.currency ?? payload.currency) as string | undefined) ?? 'USD';
-  const ordered_date = (entity?.ordered_date ?? entity?.order_date ?? payload.ordered_date ?? payload.order_date) as string | undefined;
+  const ordered_date = (entity?.ordered_at ?? entity?.order_date ?? entity?.ordered_date ?? payload.ordered_at ?? payload.order_date) as string | undefined;
   const expected_delivery = (entity?.expected_delivery ?? payload.expected_delivery) as string | undefined;
   const approved_by = (entity?.approved_by ?? entity?.approved_by_name ?? payload.approved_by ?? payload.approved_by_name) as string | undefined;
-  const requested_by = (entity?.requested_by ?? entity?.requested_by_name ?? payload.requested_by ?? payload.requested_by_name) as string | undefined;
+  const requested_by = (entity?.ordered_by ?? entity?.requested_by ?? entity?.requested_by_name ?? payload.ordered_by ?? payload.requested_by ?? payload.requested_by_name) as string | undefined;
   const department = (entity?.department ?? payload.department) as string | undefined;
-  const description = (entity?.description ?? payload.description) as string | undefined;
+  const description = (entity?.description ?? entity?.notes ?? payload.description ?? payload.notes) as string | undefined;
   const shipping_cost = (entity?.shipping_cost ?? payload.shipping_cost) as number | undefined;
 
   // Section data
@@ -133,7 +133,8 @@ export function PurchaseOrderContent() {
 
   const details: DetailLine[] = [];
   if (ordered_date) {
-    details.push({ label: 'Order Date', value: ordered_date, mono: true });
+    const d = new Date(ordered_date);
+    details.push({ label: 'Order Date', value: isNaN(d.getTime()) ? ordered_date : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), mono: true });
   }
   if (expected_delivery) {
     details.push({ label: 'Expected Delivery', value: expected_delivery, mono: true });

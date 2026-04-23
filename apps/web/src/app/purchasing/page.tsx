@@ -14,25 +14,43 @@ interface PurchaseOrder {
   po_number?: string;
   status?: string;
   supplier_id?: string;
+  supplier_name?: string;
   ordered_at?: string;
   received_at?: string;
   currency?: string;
+  total_amount?: number;
+  description?: string;
   created_at: string;
   updated_at?: string;
 }
 
+function poStatusVariant(status?: string): EntityListResult['statusVariant'] {
+  switch (status) {
+    case 'received': return 'signed';
+    case 'cancelled': return 'cancelled';
+    case 'ordered':
+    case 'approved':
+    case 'partially_received': return 'in_progress';
+    default: return 'open';
+  }
+}
+
 function poAdapter(po: PurchaseOrder): EntityListResult {
   const status = po.status?.replace(/_/g, ' ') || 'Draft';
+  const supplier = po.supplier_name ? ` \u00b7 ${po.supplier_name}` : '';
+  const amount = po.total_amount
+    ? ` \u00b7 ${po.currency === 'EUR' ? '\u20ac' : po.currency === 'GBP' ? '\u00a3' : '$'}${po.total_amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+    : '';
   return {
     id: po.id,
     type: 'pms_purchase_orders',
-    title: po.po_number ? `PO ${po.po_number}` : 'PO',
-    subtitle: status,
+    title: po.po_number || 'PO',
+    subtitle: `${status}${supplier}${amount}`,
     entityRef: po.po_number || 'PO',
     status,
-    statusVariant: po.status === 'received' ? 'signed' : po.status === 'cancelled' ? 'cancelled' : po.status === 'ordered' ? 'in_progress' : 'open',
+    statusVariant: poStatusVariant(po.status),
     severity: null,
-    age: po.ordered_at ? formatAge(po.ordered_at) : '\u2014',
+    age: po.ordered_at ? formatAge(po.ordered_at) : (po.created_at ? formatAge(po.created_at) : '\u2014'),
   };
 }
 

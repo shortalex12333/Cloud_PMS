@@ -880,7 +880,7 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
         supabase = get_tenant_client(tenant_key)
 
         r = supabase.table("pms_purchase_orders").select("*") \
-            .eq("id", po_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            .eq("id", po_id).eq("yacht_id", yacht_id).is_("deleted_at", "null").maybe_single().execute()
 
         if r is None or not r.data:
             raise HTTPException(status_code=404, detail="Purchase order not found")
@@ -896,21 +896,43 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
                 "id": item.get("id"),
                 "part_id": item.get("part_id"),
                 "name": item.get("name") or item.get("part_name") or item.get("description"),
+                "description": item.get("description"),
                 "quantity_ordered": item.get("quantity_ordered"),
                 "quantity": item.get("quantity_ordered"),
                 "quantity_received": item.get("quantity_received", 0),
                 "unit_price": item.get("unit_price"),
-                "currency": item.get("currency"),
+                "currency": item.get("currency") or data.get("currency", "USD"),
             }
             for item in raw_items
         ]
+
+        # Compute total from items if not on the order record
+        computed_total = sum(
+            (float(it.get("unit_price") or 0) * float(it.get("quantity_ordered") or 0))
+            for it in raw_items
+        ) or None
+
+        # Resolve supplier name
+        supplier_name = None
+        supplier_id = data.get("supplier_id")
+        if supplier_id:
+            try:
+                sup_r = supabase.table("pms_suppliers").select("name").eq("id", supplier_id).maybe_single().execute()
+                if sup_r and sup_r.data:
+                    supplier_name = sup_r.data.get("name")
+            except Exception:
+                pass
+
+        # Extract notes from metadata
+        meta = data.get("metadata") or {}
+        notes_text = meta.get("notes") if isinstance(meta, dict) else None
 
         attachments = _get_attachments(supabase, "purchase_order", po_id, yacht_id)
 
         # Nav to parts from line items (limit 5)
         nav = []
         for it in raw_items[:5]:
-            n = _nav("part", it.get("part_id"), it.get("name") or "Part")
+            n = _nav("part", it.get("part_id"), it.get("description") or it.get("name") or "Part")
             if n:
                 nav.append(n)
 
@@ -918,14 +940,22 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
             "id": data.get("id"),
             "po_number": data.get("po_number"),
             "status": data.get("status"),
-            "supplier_name": data.get("supplier_name") or data.get("vendor_name"),
-            "order_date": data.get("order_date") or data.get("created_at"),
+            "supplier_name": supplier_name,
+            "supplier_id": supplier_id,
+            "order_date": data.get("ordered_at") or data.get("created_at"),
+            "ordered_at": data.get("ordered_at"),
+            "received_at": data.get("received_at"),
             "expected_delivery": data.get("expected_delivery") or data.get("expected_delivery_date"),
-            "total_amount": data.get("total_amount") or data.get("total"),
+            "total_amount": data.get("total_amount") or computed_total,
             "currency": data.get("currency", "USD"),
-            "notes": data.get("notes"),
+            "notes": notes_text,
+            "description": notes_text,
+            "ordered_by": data.get("ordered_by"),
+            "approved_by": data.get("approved_by") or (meta.get("approved_by") if isinstance(meta, dict) else None),
             "items": items,
+            "line_items": items,
             "created_at": data.get("created_at"),
+            "updated_at": data.get("updated_at"),
             "yacht_id": data.get("yacht_id"),
             "attachments": attachments,
             "related_entities": nav,
