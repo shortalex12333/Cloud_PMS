@@ -76,6 +76,24 @@ function StatusPill({ row }: { row: EntityListResult }) {
   );
 }
 
+// Business-rank sort for status. Ordering reflects the receiving lifecycle
+// (draft → in_review → accepted) so an asc sort puts rows in flow order.
+// rejected is the sad-path terminal — sinks to the bottom of asc (rank 99)
+// and rises to the top of desc (where the user is most likely scanning for
+// recently flagged issues). Pattern shared with SHOPPING05's STATUS_RANK.
+const STATUS_RANK: Record<string, number> = {
+  draft: 0,
+  in_review: 1,
+  accepted: 2,
+  rejected: 99,
+};
+function statusRank(row: EntityListResult): number | null {
+  const k = (row.metadata?.status as string | undefined) || row.status?.toLowerCase();
+  if (!k) return null;
+  const v = STATUS_RANK[k];
+  return typeof v === 'number' ? v : 50;
+}
+
 // ── Column spec ────────────────────────────────────────────────────────────
 
 export const RECEIVING_COLUMNS: EntityTableColumn<EntityListResult>[] = [
@@ -106,6 +124,7 @@ export const RECEIVING_COLUMNS: EntityTableColumn<EntityListResult>[] = [
     key: 'status',
     label: 'Status',
     accessor: (r) => r.status || '',
+    sortAccessor: statusRank, // business-flow order, not alphabetic
     render: (r) => <StatusPill row={r} />,
     minWidth: 110,
   },
