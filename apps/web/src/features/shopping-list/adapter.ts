@@ -23,16 +23,42 @@ function fmt(str?: string): string {
   return str.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function shoppingListToListResult(item: ShoppingListItem): EntityListResult {
-  const statusDisplay = fmt(item.status) || 'Pending';
-  const urgency = item.urgency;
+/**
+ * Adapter input is a superset of ShoppingListItem — the backend
+ * (vessel_surface_routes._format_record shopping_list branch) emits two extra
+ * keys on every row:
+ *   - ref   — never empty (part_number || SL-<id6>); guarantees every row
+ *             takes the rich EntityRecordRow template via entityRef
+ *             (FilteredEntityList.tsx:260-289 switches on entityRef truthiness).
+ *   - part_name — real DB value; without this the adapter's
+ *             `item.part_name || 'Shopping List Item'` fallback collapsed
+ *             to the literal, hiding the real item name.
+ */
+type AdapterInput = ShoppingListItem & {
+  ref?: string;
+  part_name?: string;
+  requested_by_name?: string;
+};
+
+export function shoppingListToListResult(item: AdapterInput): EntityListResult {
   const qty = item.quantity_requested;
   const unit = item.unit || '';
   const qtyDisplay = qty != null ? `Qty ${qty}${unit ? ` ${unit}` : ''}` : '';
-  const candidateTag = item.is_candidate_part ? 'Candidate' : '';
 
-  const subtitleBits = [statusDisplay, qtyDisplay, urgency ? fmt(urgency) : '', candidateTag]
-    .filter(Boolean);
+  // Subtitle is line 2 under the title. Pill already shows status and the
+  // age column already shows the date — don't duplicate. Show: qty, urgency
+  // (only when non-default), candidate flag.
+  const urgencyLabel = item.urgency && item.urgency !== 'normal' ? fmt(item.urgency) : '';
+  const subtitleBits = [
+    qtyDisplay,
+    urgencyLabel,
+    item.is_candidate_part ? 'Candidate' : '',
+  ].filter(Boolean);
+
+  // entityRef must be truthy for the rich renderer to kick in. Backend
+  // always emits `ref` with SL-<id6> fallback; keep part_number as
+  // secondary fallback for any caller on the old shape.
+  const entityRef = item.ref || item.part_number || '';
 
   return {
     id: item.id,
@@ -42,7 +68,7 @@ export function shoppingListToListResult(item: ShoppingListItem): EntityListResu
     snippet: item.source_notes,
     metadata: {
       status: item.status,
-      urgency,
+      urgency: item.urgency,
       source_type: item.source_type,
       part_number: item.part_number,
       quantity_requested: qty,
@@ -53,9 +79,9 @@ export function shoppingListToListResult(item: ShoppingListItem): EntityListResu
     },
 
     // Extended fields for EntityRecordRow
-    entityRef: item.part_number || '',
+    entityRef,
     assignedTo: item.requested_by_name || undefined,
-    status: statusDisplay,
+    status: fmt(item.status) || 'Pending',
     statusVariant: slStatusVariant(item.status),
     severity: null,
     age: formatAge(item.created_at),
