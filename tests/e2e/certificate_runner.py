@@ -342,19 +342,16 @@ def fill_popup_field(page: Page, field_name: str, value: str) -> None:
 def open_cert_more_actions(page: Page) -> None:
     """Click the 'More actions' chevron / dropdown toggle on the cert lens.
 
-    SplitButton renders dropdown items as plain <button> elements inside a
-    div with class containing 'dropdown'. No role='menuitem', no data-testid.
-    Waits for the dropdown class container to become visible.
+    SplitButton uses Radix DropdownMenu (migrated in PR #643). Items render as
+    role='menuitem' inside a Radix Portal with role='menu'. The toggle button
+    still has aria-label='More actions'.
     """
     toggle = page.locator("[aria-label='More actions'], [aria-label='more actions']").first
     toggle.wait_for(state="visible", timeout=STEP_TIMEOUT_MS)
     toggle.click(timeout=STEP_TIMEOUT_MS)
-    # SplitButton renders {open && <div className={styles.dropdown + styles.open}>...}
-    # CSS modules produce hashed names like "SplitButton_dropdown__xxx SplitButton_open__xxx".
-    # [class*='dropdown'] matches the hashed class name since "dropdown" is still present.
-    page.locator("[class*='dropdown']").filter(
-        has=page.get_by_role("button")
-    ).first.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
+    # Radix DropdownMenu.Content renders with role='menu' in a Portal at <body> level.
+    # Wait for the menu to be visible.
+    page.locator("[role='menu']").first.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
 
 
 def fill_pin_input(page: Page, pin: str = "1234") -> None:
@@ -1207,9 +1204,8 @@ def scenario_6_suspend_certificate(ctx: BrowserContext, state: dict) -> dict:
 
     def click_suspend():
         open_cert_more_actions(page)
-        # SplitButton items are plain <button> elements. Use exact label text to avoid
-        # matching "Suspended" status pills in the background list.
-        suspend_btn = page.get_by_role("button", name="Suspend Certificate", exact=True).first
+        # Radix DropdownMenu.Item renders as role='menuitem', not role='button'.
+        suspend_btn = page.get_by_role("menuitem", name="Suspend Certificate", exact=True).first
         suspend_btn.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
         suspend_btn.click(timeout=STEP_TIMEOUT_MS)
     step(res, "6.3", "Click 'Suspend Certificate' button in dropdown", click_suspend)
@@ -1327,14 +1323,17 @@ def scenario_6_suspend_certificate(ctx: BrowserContext, state: dict) -> dict:
 
     def suspend_item_disabled_after_suspend():
         # Regression guard for Bug D / PR #589: re-suspend must be disabled or absent.
-        # SplitButton items are plain <button> elements (no role='menuitem').
+        # Radix DropdownMenu.Item renders as role='menuitem'.
         open_cert_more_actions(page)
-        # Look for "Suspend Certificate" button in the dropdown
-        suspend_btn = page.get_by_role("button", name="Suspend Certificate", exact=True).first
-        if suspend_btn.count() > 0:
-            # If present, it must be disabled
-            is_disabled = suspend_btn.is_disabled() or suspend_btn.get_attribute("aria-disabled") == "true"
-            assert is_disabled, "Suspend Certificate button must be disabled for already-suspended cert (Bug D)"
+        suspend_item = page.get_by_role("menuitem", name="Suspend Certificate", exact=True).first
+        if suspend_item.count() > 0:
+            # If present, it must be disabled (aria-disabled or data-disabled from Radix)
+            is_disabled = (
+                suspend_item.is_disabled()
+                or suspend_item.get_attribute("aria-disabled") == "true"
+                or suspend_item.get_attribute("data-disabled") is not None
+            )
+            assert is_disabled, "Suspend Certificate item must be disabled for already-suspended cert (Bug D)"
         # If absent entirely, that's also acceptable (item hidden when already suspended)
     step(res, "6.8", "Suspend item disabled/absent for already-suspended cert (Bug D regression guard)",
          suspend_item_disabled_after_suspend)
@@ -1667,7 +1666,8 @@ def scenario_9_archive_certificate(ctx: BrowserContext, state: dict) -> dict:
 
     def click_archive():
         open_cert_more_actions(page)
-        archive_item = page.get_by_role("button", name="Archive Certificate", exact=True).first
+        # Radix DropdownMenu.Item renders as role='menuitem'.
+        archive_item = page.get_by_role("menuitem", name="Archive Certificate", exact=True).first
         archive_item.wait_for(state="visible", timeout=POPUP_TIMEOUT_MS)
         archive_item.click(timeout=STEP_TIMEOUT_MS)
     step(res, "9.2", "Click Archive from dropdown", click_archive)
@@ -2249,10 +2249,14 @@ def scenario_e2_resuspend_disabled(ctx: BrowserContext, state: dict) -> dict:
     step(res, "E2.2", "Open More Actions dropdown", lambda: open_cert_more_actions(page))
 
     def suspend_item_disabled_or_absent():
-        # SplitButton items are plain <button> elements — not role='menuitem'.
-        suspend_btn = page.get_by_role("button", name="Suspend Certificate", exact=True).first
-        if suspend_btn.count() > 0:
-            is_disabled = suspend_btn.is_disabled() or suspend_btn.get_attribute("aria-disabled") == "true"
+        # Radix DropdownMenu.Item renders as role='menuitem'.
+        suspend_item = page.get_by_role("menuitem", name="Suspend Certificate", exact=True).first
+        if suspend_item.count() > 0:
+            is_disabled = (
+                suspend_item.is_disabled()
+                or suspend_item.get_attribute("aria-disabled") == "true"
+                or suspend_item.get_attribute("data-disabled") is not None
+            )
             assert is_disabled, "Bug D regression: Suspend Certificate enabled on suspended cert (PR #589)"
         # Absent = also acceptable
     step(res, "E2.3", "Suspend item disabled or absent for already-suspended cert (Bug D guard)",
