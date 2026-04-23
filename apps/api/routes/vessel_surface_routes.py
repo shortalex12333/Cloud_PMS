@@ -738,8 +738,8 @@ async def get_domain_records(
         if cert_domain and domain == "certificates" and cert_domain in ("vessel", "crew"):
             query = query.eq("domain", cert_domain)
 
-        # Soft-delete filter for documents
-        if domain == "documents":
+        # Soft-delete filter — hide deleted records
+        if domain in ("documents", "purchase_orders"):
             query = query.is_("deleted_at", "null")
 
         # Sort — map frontend field names to actual DB columns
@@ -947,13 +947,32 @@ def _format_record(domain: str, record: dict) -> dict:
             "meta": f"{record.get('supplier_name', '')} · {record.get('status', '').upper()}",
         })
     elif domain == "receiving":
+        vendor = record.get("vendor_name") or ""
+        po_num = record.get("po_number") or ""
+        received_date = record.get("received_date")
+        status_val = record.get("status") or "draft"
+
+        if vendor:
+            rcv_title = vendor
+        elif received_date:
+            try:
+                d = datetime.fromisoformat(str(received_date))
+                rcv_title = f"Received {d.day} {d.strftime('%b %Y')}"
+            except Exception:
+                rcv_title = "Draft Receiving"
+        else:
+            rcv_title = "Draft Receiving"
+
+        rcv_ref = f"PO {po_num}" if po_num else f"RCV-{str(record.get('id', ''))[:6]}"
+
         base.update({
-            "ref": f"RCV-{str(record.get('id', ''))[:6]}",
-            "title": f"Receiving {str(record.get('id', ''))[:8]}",
-            "status": record.get("status", "pending"),
-            "received_by": record.get("received_by", ""),
-            "received_date": record.get("received_date"),
-            "meta": f"{record.get('received_by', '')} · {record.get('status', '').upper()}",
+            "ref": rcv_ref,
+            "title": rcv_title,
+            "status": status_val,
+            "vendor_name": vendor,
+            "po_number": po_num,
+            "received_date": received_date,
+            "meta": f"{vendor or 'No vendor'} · {status_val.upper()}",
         })
     elif domain == "documents":
         filename = record.get("filename") or "Untitled"

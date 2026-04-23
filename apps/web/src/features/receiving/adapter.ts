@@ -2,7 +2,7 @@ import type { EntityListResult } from '@/features/entity-list/types';
 import type { ReceivingItem } from './types';
 
 function formatAge(dateStr?: string): string {
-  if (!dateStr) return '\u2014';
+  if (!dateStr) return '—';
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diffDays = Math.floor((now - then) / 86_400_000);
@@ -15,35 +15,42 @@ function formatAge(dateStr?: string): string {
 function receivingStatusVariant(status?: string): string {
   const s = status?.toLowerCase();
   if (s === 'rejected') return 'critical';
-  if (s === 'pending') return 'pending';
-  if (s === 'accepted' || s === 'received') return 'signed';
+  if (s === 'in_review') return 'pending';
+  if (s === 'accepted') return 'signed';
   return 'open';
 }
 
 export function receivingToListResult(item: ReceivingItem): EntityListResult {
-  const statusDisplay = item.status?.replace(/_/g, ' ') || 'Pending';
+  const raw = item as unknown as Record<string, unknown>;
+  const statusDisplay = item.status?.replace(/_/g, ' ') || 'Draft';
+
+  // API sends vendor_name and a pre-formatted ref — never expose raw UUIDs
+  const vendorName = (raw.vendor_name as string | undefined) || item.supplier_name || '';
+  const poNum = (raw.po_number as string | undefined) || '';
+  const entityRef = (raw.ref as string | undefined) || (raw.receiving_number as string | undefined) || '';
+
   const dateDisplay = item.received_date
-    ? new Date(item.received_date).toLocaleDateString()
-    : item.expected_date
-      ? `Expected: ${new Date(item.expected_date).toLocaleDateString()}`
-      : '';
+    ? new Date(item.received_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    : '';
+
+  const subtitleParts: string[] = [statusDisplay];
+  if (dateDisplay) subtitleParts.push(dateDisplay);
+  if (poNum) subtitleParts.push(`PO ${poNum}`);
 
   return {
     id: item.id,
     type: 'pms_receiving',
-    title: item.supplier_name || `Receiving ${item.receiving_number || 'Receiving'}`,
-    subtitle: `${statusDisplay}${dateDisplay ? ` \u00b7 ${dateDisplay}` : ''}${item.items_count ? ` \u00b7 ${item.items_count} items` : ''}`,
-    snippet: item.description || item.notes,
+    title: vendorName || (raw.title as string | undefined) || 'Draft Receiving',
+    subtitle: subtitleParts.join(' · '),
+    snippet: item.notes,
     metadata: {
       status: item.status,
-      supplier_name: item.supplier_name,
+      vendor_name: vendorName,
       received_date: item.received_date,
-      items_count: item.items_count,
+      po_number: poNum,
       created_at: item.created_at,
     },
-
-    // Extended fields for EntityRecordRow
-    entityRef: item.receiving_number || '',
+    entityRef,
     assignedTo: undefined,
     status: statusDisplay,
     statusVariant: receivingStatusVariant(item.status),

@@ -214,9 +214,23 @@ export const RECEIVING_FILTERS: FilterFieldConfig[] = [
   },
   {
     key: 'received_date',
-    label: 'Received',
+    label: 'Received Date',
     type: 'date-range',
     category: 'dates',
+  },
+  {
+    key: 'vendor_name',
+    label: 'Vendor',
+    type: 'text',
+    placeholder: 'Filter by vendor...',
+    category: 'properties',
+  },
+  {
+    key: 'po_number',
+    label: 'PO Number',
+    type: 'text',
+    placeholder: 'Filter by PO number...',
+    category: 'properties',
   },
 ];
 
