@@ -142,12 +142,24 @@ export function useFilteredEntityList<T extends { id: string }>({
       params.set('offset', String(pageParam));
       if (sortBy) params.set('sort', sortBy);
 
+      // Per-filter-key URL-param pairs for date-range filters. Multiple date
+      // ranges can be active on the same lens (e.g. PO has ordered_at and
+      // received_at) — they must not collide on the generic date_from/date_to.
+      // Any key not listed here falls back to the generic pair.
+      const DATE_RANGE_PARAM_PAIR: Record<string, [string, string]> = {
+        required_by_date: ['date_from', 'date_to'],
+        created_at: ['created_from', 'created_to'],
+        ordered_at: ['ordered_from', 'ordered_to'],
+        received_at: ['received_from', 'received_to'],
+      };
+
       // Map filters to API params
       for (const [key, value] of Object.entries(filters)) {
         if (value == null) continue;
         if (isDateRange(value)) {
-          if (value.from) params.set('date_from', value.from);
-          if (value.to) params.set('date_to', value.to);
+          const [fromParam, toParam] = DATE_RANGE_PARAM_PAIR[key] ?? ['date_from', 'date_to'];
+          if (value.from) params.set(fromParam, value.from);
+          if (value.to) params.set(toParam, value.to);
           continue;
         }
         if (key === 'status' && typeof value === 'string') {

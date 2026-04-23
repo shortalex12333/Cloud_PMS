@@ -7,6 +7,7 @@ import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDet
 import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
 import { PurchaseOrderContent } from '@/components/lens-v2/entity';
 import lensStyles from '@/components/lens-v2/lens.module.css';
+import { PURCHASE_ORDER_FILTERS } from '@/features/entity-list/types/filter-config';
 import type { EntityListResult } from '@/features/entity-list/types';
 
 interface PurchaseOrder {
@@ -37,15 +38,20 @@ function poStatusVariant(status?: string): EntityListResult['statusVariant'] {
 
 function poAdapter(po: PurchaseOrder): EntityListResult {
   const status = po.status?.replace(/_/g, ' ') || 'Draft';
-  const supplier = po.supplier_name ? ` \u00b7 ${po.supplier_name}` : '';
+  const currencySymbol = po.currency === 'EUR' ? '\u20ac' : po.currency === 'GBP' ? '\u00a3' : '$';
   const amount = po.total_amount
-    ? ` \u00b7 ${po.currency === 'EUR' ? '\u20ac' : po.currency === 'GBP' ? '\u00a3' : '$'}${po.total_amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+    ? `${currencySymbol}${po.total_amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
     : '';
+  // Title carries the supplier or description so the row is not "PO-123 \u2014 PO-123".
+  // entityRef stays as po_number so the mono teal id cell still renders the PO number.
+  const supplier = po.supplier_name?.trim();
+  const title = supplier || po.description?.trim() || 'Purchase order';
+  const subtitleParts = [amount].filter(Boolean);
   return {
     id: po.id,
     type: 'pms_purchase_orders',
-    title: po.po_number || 'PO',
-    subtitle: `${status}${supplier}${amount}`,
+    title,
+    subtitle: subtitleParts.join(' \u00b7 '),
     entityRef: po.po_number || 'PO',
     status,
     statusVariant: poStatusVariant(po.status),
@@ -96,7 +102,7 @@ function PurchasingPageContent() {
         table="pms_purchase_orders"
         columns="id, po_number, status, supplier_id, ordered_at, received_at, currency, created_at, updated_at"
         adapter={poAdapter}
-        filterConfig={[]}
+        filterConfig={PURCHASE_ORDER_FILTERS}
         selectedId={selectedId}
         onSelect={handleSelect}
         emptyMessage="No purchase orders recorded"

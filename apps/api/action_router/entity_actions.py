@@ -69,6 +69,14 @@ _SHOPPING_LIST_HIDDEN_ACTIONS = {
     "submit_list",
 }
 
+# Purchase-order actions removed per Issue #14 (2026-04-23):
+#   create_purchase_request — wasteful from a card-level dropdown (only useful at list level)
+#   track_delivery — dead action, no backend handler, refresh-page no-op
+_PURCHASE_ORDER_HIDDEN_ACTIONS = {
+    "create_purchase_request",
+    "track_delivery",
+}
+
 
 def get_available_actions(
     entity_type: str,
@@ -100,6 +108,8 @@ def get_available_actions(
 
         # Hide legacy/shadowed actions for specific entity types
         if entity_type == "shopping_list" and action_id in _SHOPPING_LIST_HIDDEN_ACTIONS:
+            continue
+        if entity_type == "purchase_order" and action_id in _PURCHASE_ORDER_HIDDEN_ACTIONS:
             continue
 
         # Role gate: omit entirely if not permitted

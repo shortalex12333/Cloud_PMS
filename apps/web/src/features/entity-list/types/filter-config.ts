@@ -320,7 +320,11 @@ export const INVENTORY_FILTERS: FilterFieldConfig[] = [
   },
 ];
 
+// RECEIVING — every filterable column on pms_receiving (no UUIDs).
+// Aligns with shared FilterPanel spec (DOCUMENTS04, CERTIFICATE04, SHOPPING05).
+// Backend wiring lives in apps/api/routes/vessel_surface_routes.py:get_domain_records.
 export const RECEIVING_FILTERS: FilterFieldConfig[] = [
+  // status-priority
   {
     key: 'status',
     label: 'Status',
@@ -333,17 +337,26 @@ export const RECEIVING_FILTERS: FilterFieldConfig[] = [
     ],
     category: 'status-priority',
   },
+  // dates
   {
     key: 'received_date',
     label: 'Received Date',
     type: 'date-range',
     category: 'dates',
   },
+  // properties
   {
     key: 'vendor_name',
     label: 'Vendor',
     type: 'text',
-    placeholder: 'Filter by vendor...',
+    placeholder: 'Filter by vendor name...',
+    category: 'properties',
+  },
+  {
+    key: 'vendor_reference',
+    label: 'Vendor Ref',
+    type: 'text',
+    placeholder: 'e.g. invoice number...',
     category: 'properties',
   },
   {
@@ -351,6 +364,17 @@ export const RECEIVING_FILTERS: FilterFieldConfig[] = [
     label: 'PO Number',
     type: 'text',
     placeholder: 'Filter by PO number...',
+    category: 'properties',
+  },
+  {
+    key: 'currency',
+    label: 'Currency',
+    type: 'select',
+    options: [
+      { value: 'USD', label: 'USD' },
+      { value: 'EUR', label: 'EUR' },
+      { value: 'GBP', label: 'GBP' },
+    ],
     category: 'properties',
   },
 ];
@@ -437,6 +461,74 @@ export const HANDOVER_FILTERS: FilterFieldConfig[] = [
   },
 ];
 
+/**
+ * PURCHASE_ORDER_FILTERS — 2026-04-23 MVP spec (Issue #14).
+ *
+ * Frontend-filterable columns on pms_purchase_orders + pms_suppliers join.
+ * UUID columns (id, yacht_id, supplier_id, etc.) are NEVER surfaced to users.
+ *
+ * Filter-type rules (enforced by the framework):
+ *   - `text`       → server-side ILIKE '%input%' (substring match)
+ *   - `select`     → server-side `eq` on enum value
+ *   - `date-range` → server-side `gte` + `lte` on a date/timestamp column
+ *
+ * Aligns with CERTIFICATE_FILTER_SPEC_2026_04_23.md category conventions.
+ */
+export const PURCHASE_ORDER_FILTERS: FilterFieldConfig[] = [
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'select',
+    options: [
+      { value: 'draft', label: 'Draft' },
+      { value: 'submitted', label: 'Submitted' },
+      { value: 'approved', label: 'Approved' },
+      { value: 'ordered', label: 'Ordered' },
+      { value: 'partially_received', label: 'Partially Received' },
+      { value: 'received', label: 'Received' },
+      { value: 'cancelled', label: 'Cancelled' },
+    ],
+    category: 'status-priority',
+  },
+  {
+    key: 'currency',
+    label: 'Currency',
+    type: 'select',
+    options: [
+      { value: 'USD', label: 'USD ($)' },
+      { value: 'EUR', label: 'EUR (€)' },
+      { value: 'GBP', label: 'GBP (£)' },
+    ],
+    category: 'properties',
+  },
+  {
+    key: 'po_number',
+    label: 'PO Number',
+    type: 'text',
+    placeholder: 'Filter by PO number...',
+    category: 'properties',
+  },
+  {
+    key: 'supplier_name',
+    label: 'Supplier',
+    type: 'text',
+    placeholder: 'Filter by supplier...',
+    category: 'properties',
+  },
+  {
+    key: 'ordered_at',
+    label: 'Ordered',
+    type: 'date-range',
+    category: 'dates',
+  },
+  {
+    key: 'received_at',
+    label: 'Received',
+    type: 'date-range',
+    category: 'dates',
+  },
+];
+
 // =============================================================================
 // DOMAIN → FILTER CONFIG MAPPING
 // =============================================================================
@@ -450,4 +542,5 @@ export const FILTER_CONFIGS: Record<string, FilterFieldConfig[]> = {
   receiving: RECEIVING_FILTERS,
   'shopping-list': SHOPPING_LIST_FILTERS,
   handover: HANDOVER_FILTERS,
+  purchasing: PURCHASE_ORDER_FILTERS,
 };
