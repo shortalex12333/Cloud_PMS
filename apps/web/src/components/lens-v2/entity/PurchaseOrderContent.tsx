@@ -105,14 +105,13 @@ export function PurchaseOrderContent() {
   const delivery = ((entity?.delivery ?? payload.delivery) as Record<string, unknown> | undefined);
 
   // ── Action gates ──
-  const submitAction = getAction('submit_po');
-  const approveAction = getAction('approve_po');
-  const receiveAction = getAction('receive_po');
+  const submitAction = getAction('submit_purchase_order');
+  const approveAction = getAction('approve_purchase_order');
+  const receiveAction = getAction('mark_po_received');
   const cancelAction = getAction('cancel_po');
   const addNoteAction = getAction('add_po_note');
   const editAction = getAction('edit_purchase_order');
   const addAttachmentAction = getAction('add_po_attachment');
-  const trackDeliveryAction = getAction('track_po_delivery');
 
   // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
@@ -169,19 +168,19 @@ export function PurchaseOrderContent() {
 
   let primaryLabel = 'Submit';
   let primaryAction = submitAction;
-  let primaryActionKey = 'submit_po';
+  let primaryActionKey = 'submit_purchase_order';
   if (isDraft && submitAction) {
     primaryLabel = 'Submit';
     primaryAction = submitAction;
-    primaryActionKey = 'submit_po';
+    primaryActionKey = 'submit_purchase_order';
   } else if (isSubmitted && approveAction) {
     primaryLabel = 'Approve';
     primaryAction = approveAction;
-    primaryActionKey = 'approve_po';
+    primaryActionKey = 'approve_purchase_order';
   } else if (isApproved && receiveAction) {
     primaryLabel = 'Receive Goods';
     primaryAction = receiveAction;
-    primaryActionKey = 'receive_po';
+    primaryActionKey = 'mark_po_received';
   } else {
     primaryAction = null;
   }

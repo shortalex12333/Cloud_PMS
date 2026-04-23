@@ -24,6 +24,7 @@ import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActio
 import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
+import { loadDocumentWithBackend } from '@/lib/documentLoader';
 import { getEntityRoute } from '@/lib/entityRoutes';
 
 import {
@@ -83,7 +84,35 @@ function getDocTypeLabel(mimeType: string): string {
 
 export function DocumentContent() {
   const router = useRouter();
-  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, entityId, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+
+  // ── PDF / file loading ──
+  const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
+  const [fileLoading, setFileLoading] = React.useState(false);
+  const [fileError, setFileError] = React.useState<string | null>(null);
+  const blobUrlRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!entityId) return;
+    setFileLoading(true);
+    setFileError(null);
+    setBlobUrl(null);
+    loadDocumentWithBackend(entityId).then((result) => {
+      if (result.success && result.url) {
+        blobUrlRef.current = result.url;
+        setBlobUrl(result.url);
+      } else {
+        setFileError(result.error ?? 'Failed to load document');
+      }
+      setFileLoading(false);
+    });
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [entityId]);
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -189,14 +218,14 @@ export function DocumentContent() {
 
   // ── Split button config ──
   const handlePrimary = React.useCallback(async () => {
-    if (file_url) {
-      // Download is a browser action, not a server action
+    const downloadUrl = blobUrl ?? file_url;
+    if (downloadUrl) {
       const a = document.createElement('a');
-      a.href = file_url;
+      a.href = downloadUrl;
       a.download = file_name ?? 'document';
       a.click();
     }
-  }, [file_url, file_name]);
+  }, [blobUrl, file_url, file_name]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
   const DANGER_ACTIONS = new Set(['archive_document', 'delete_document']);
@@ -310,7 +339,7 @@ export function DocumentContent() {
         details={details}
         description={description}
         actionSlot={
-          file_url ? (
+          (blobUrl ?? file_url) ? (
             <SplitButton
               label="Download"
               icon={
@@ -333,67 +362,57 @@ export function DocumentContent() {
         }
       />
 
-      {/* Document Preview */}
+      {/* Document Preview / Viewer */}
       <ScrollReveal>
         <div className={styles.section}>
           <div className={styles.previewArea}>
-            <div className={styles.previewBadge}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-              {statusLabel} Document
-            </div>
-
-            {/* Minimal preview representation */}
-            <div style={{
-              width: '100%', maxWidth: 560,
-              background: 'var(--surface-base)',
-              border: '1px solid var(--border-sub)',
-              borderRadius: 4,
-              padding: '40px 36px',
-              display: 'flex', flexDirection: 'column', gap: 14,
-              userSelect: 'text',
-              textAlign: 'center',
-            }}>
+            {fileLoading ? (
               <div style={{
-                fontSize: 16, fontWeight: 700,
-                color: 'var(--txt)', letterSpacing: '-0.01em',
-                paddingBottom: 12,
-                borderBottom: '2px solid var(--border-sub)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                height: 120, gap: 10, color: 'var(--txt3)', fontSize: 13,
               }}>
-                {title}
-              </div>
-              {(category ?? document_type) && (
                 <div style={{
-                  fontSize: 11, fontWeight: 500,
-                  color: 'var(--txt3)', textTransform: 'uppercase',
-                  letterSpacing: '0.06em', marginTop: -8,
-                }}>
-                  {category ?? document_type}
-                </div>
-              )}
-              <div className={styles.mono} style={{
-                fontSize: 11, color: 'var(--txt3)', textAlign: 'center',
-              }}>
-                {document_code}{revision !== undefined && ` · Rev. ${revision}`}{effective_date && ` · Effective ${effective_date}`}
+                  width: 20, height: 20,
+                  border: '2px solid var(--border-sub)',
+                  borderTopColor: 'var(--mark)',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                Loading document…
               </div>
-              {file_name && (
-                <div className={styles.mono} style={{
-                  fontSize: 11, color: 'var(--txt3)',
-                }}>
-                  {file_name}
-                </div>
-              )}
-            </div>
+            ) : blobUrl && mime_type.startsWith('image/') ? (
+              <img
+                src={blobUrl}
+                alt={file_name ?? title}
+                style={{ maxWidth: '100%', borderRadius: 4, border: '1px solid var(--border-sub)' }}
+              />
+            ) : blobUrl ? (
+              <iframe
+                src={blobUrl}
+                title={file_name ?? title}
+                style={{
+                  width: '100%',
+                  height: 680,
+                  border: '1px solid var(--border-sub)',
+                  borderRadius: 4,
+                  background: 'var(--surface-sub)',
+                }}
+              />
+            ) : fileError ? (
+              <div style={{
+                width: '100%', maxWidth: 560,
+                padding: '24px 20px',
+                background: 'var(--surface-base)',
+                border: '1px solid var(--border-sub)',
+                borderRadius: 4,
+                color: 'var(--red)',
+                fontSize: 12,
+                textAlign: 'center',
+              }}>
+                {fileError}
+              </div>
+            ) : null}
           </div>
-          {page_count && (
-            <div className={styles.previewActions}>
-              <span className={styles.mono} style={{ fontSize: 11, color: 'var(--txt3)' }}>
-                {page_count} pages
-              </span>
-            </div>
-          )}
         </div>
       </ScrollReveal>
 

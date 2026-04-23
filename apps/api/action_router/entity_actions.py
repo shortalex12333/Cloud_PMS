@@ -307,6 +307,12 @@ def _apply_state_gate(
         if status in _RECEIVING_TERMINAL_STATUSES and action_id in _RECEIVING_TERMINAL_DISABLED:
             return True, "Receiving record is finalised"
 
+    elif entity_type == "purchase_order":
+        # add_item_to_purchase is only valid while the PO is still a draft
+        _PO_DRAFT_ONLY = {"add_item_to_purchase"}
+        if status not in ("draft", "") and action_id in _PO_DRAFT_ONLY:
+            return True, f"Cannot add items to a PO with status '{status}'"
+
     elif entity_type == "certificate":
         _CERT_TERMINAL = {"superseded", "revoked"}
         _CERT_TERMINAL_DISABLED = {

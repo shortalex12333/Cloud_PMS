@@ -169,7 +169,12 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("shopping_list", "add_to_handover"):{"entity_id": "id", "title": "item_name"},
     ("warranty", "add_to_handover"):     {"entity_id": "id", "title": "vendor_name"},
     ("hours_of_rest", "add_to_handover"):{"entity_id": "id", "title": "crew_member_name"},
-    ("purchase_order", "add_to_handover"):{"entity_id": "id", "title": "po_number"},
+    ("purchase_order", "add_to_handover"): {
+        "entity_id":  "id",
+        "title":      "po_number",
+        "status":     "status",
+        "department": "department",
+    },
 
     # add_to_shopping_list from parts: pre-populates part reference
     ("part", "add_to_shopping_list"):    {"part_id": "id", "part_name": "name", "part_number": "part_number"},
