@@ -61,20 +61,37 @@ _RECEIVING_TERMINAL_DISABLED = {
 # Hiding them here is the least-disruptive fix — reversible, no cross-domain
 # fallout, and no registry/handler deletions required.
 _SHOPPING_LIST_HIDDEN_ACTIONS = {
+    # Legacy "list-as-parent" actions — kept in registry for programmatic
+    # callers, hidden from the per-item dropdown.
     "approve_list",
     "add_list_item",
     "archive_list",
     "delete_list",
     "convert_to_po",
     "submit_list",
+    # Issue 13 audit (2026-04-23): duplicates "Add to Shopping List" label
+    # with the floating "+ Add Item" button on the list page. Creating a new
+    # item from the dropdown of an existing item is also a non-sequitur.
+    "create_shopping_list_item",
+    # Would 400 at runtime: prefill only injects part_id when the source
+    # entity is `part` (entity_prefill.py). On a shopping_list entity, the
+    # required field part_id is not populated → MISSING_REQUIRED_FIELD.
+    # Correct surfacing of this action lives on the Part lens (cross-domain).
+    "add_to_shopping_list",
+    # Duplicates the AuditTrailSection already rendered on the lens. The
+    # entity_routes.py shopping_list branch surfaces pms_shopping_list_state_history
+    # as audit_history[], so a separate "View Item History" button is wasteful.
+    "view_shopping_list_history",
 }
 
 # Purchase-order actions removed per Issue #14 (2026-04-23):
 #   create_purchase_request — wasteful from a card-level dropdown (only useful at list level)
 #   track_delivery — dead action, no backend handler, refresh-page no-op
+#   order_part — redundant with add_item_to_purchase; real home is the Part lens
 _PURCHASE_ORDER_HIDDEN_ACTIONS = {
     "create_purchase_request",
     "track_delivery",
+    "order_part",
 }
 
 
@@ -347,8 +364,13 @@ def _apply_state_gate(
             return True, f"Cannot add items to a PO with status '{status}'"
 
     elif entity_type == "shopping_list":
-        # mark_shopping_list_ordered requires the item to be approved first.
-        # approve/reject/promote_candidate_to_part become no-ops on terminal states.
+        # Shopping list state machine:
+        #   candidate → under_review → approved → ordered
+        #             → partially_fulfilled → fulfilled → installed
+        # Off-ramp: → rejected (terminal).
+        # Gate rules: approve/reject only before approval; mark_ordered only
+        # from approved; terminal states block all mutations.
+        _SL_POST_APPROVAL = {"approved", "ordered", "partially_fulfilled", "fulfilled", "installed"}
         _SL_TERMINAL_STATUSES = {"rejected", "fulfilled", "installed"}
         _SL_TERMINAL_DISABLED = {
             "approve_shopping_list_item", "reject_shopping_list_item",
@@ -356,8 +378,13 @@ def _apply_state_gate(
         }
         if status in _SL_TERMINAL_STATUSES and action_id in _SL_TERMINAL_DISABLED:
             return True, f"Item is {status.replace('_', ' ')} — no further transitions"
-        if action_id == "mark_shopping_list_ordered" and status != "approved":
-            return True, "Item must be approved before it can be marked as ordered"
+        if action_id in ("approve_shopping_list_item", "reject_shopping_list_item") and status in _SL_POST_APPROVAL:
+            return True, f"Already {status.replace('_', ' ')}"
+        if action_id == "mark_shopping_list_ordered":
+            if status in {"ordered", "partially_fulfilled", "fulfilled", "installed"}:
+                return True, f"Already {status.replace('_', ' ')}"
+            if status != "approved":
+                return True, "Item must be approved before it can be marked as ordered"
 
     elif entity_type == "certificate":
         _CERT_TERMINAL = {"superseded", "revoked"}
