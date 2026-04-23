@@ -149,9 +149,7 @@ export function CertificateContent() {
   function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean; confirmation_message?: string | null }) {
     const fields = mapActionFields(action as any);
     const sigLevel = getSignatureLevel(action as any);
-    // Cert domain: use name-attestation (SigL2) instead of PIN (SigL3) — PIN input is ceremony-only (no server-side validation)
-    const certSigLevel: 0|1|2|3|4|5 = sigLevel === 3 ? 2 : sigLevel as 0|1|2|3|4|5;
-    setActionPopupConfig({ actionId: action.action_id, title: action.label, subtitle: action.confirmation_message || undefined, fields, signatureLevel: certSigLevel });
+    setActionPopupConfig({ actionId: action.action_id, title: action.label, subtitle: action.confirmation_message || undefined, fields, signatureLevel: sigLevel });
   }
 
   const isRenewable = renewAction !== null && !['revoked'].includes(status);

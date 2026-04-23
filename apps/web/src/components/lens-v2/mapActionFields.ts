@@ -117,8 +117,10 @@ export function actionHasFields(action: ActionDef): boolean {
   return hasRequired || hasOptional || hasSchema;
 }
 
-/** Get signature level from action definition */
+/** Get signature level from action definition.
+ * MVP: PIN ceremony (L3) is not used — typed-name attestation (L2) is the default
+ * for any `requires_signature` action unless the backend explicitly specifies a level. */
 export function getSignatureLevel(action: ActionDef): 0 | 1 | 2 | 3 | 4 | 5 {
-  const level = action.signature_level ?? (action.requires_signature ? 3 : 0);
+  const level = action.signature_level ?? (action.requires_signature ? 2 : 0);
   return Math.min(5, Math.max(0, level)) as 0 | 1 | 2 | 3 | 4 | 5;
 }
