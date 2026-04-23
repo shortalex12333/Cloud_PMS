@@ -94,6 +94,10 @@ _ACTION_ENTITY_MAP = {
     "mark_po_received":            ("purchase_order", "purchase_order_id"),
     "cancel_purchase_order":       ("purchase_order", "purchase_order_id"),
     "delete_purchase_order":       ("purchase_order", "purchase_order_id"),
+    "add_po_note":                 ("purchase_order", "purchase_order_id"),
+    "update_purchase_status":      ("purchase_order", "purchase_order_id"),
+    "add_item_to_purchase":        ("purchase_order", "purchase_order_id"),
+    "approve_purchase":            ("purchase_order", "purchase_order_id"),
     # Frontend aliases
     "submit_po":                   ("purchase_order", "purchase_order_id"),
     "approve_po":                  ("purchase_order", "purchase_order_id"),

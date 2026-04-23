@@ -213,6 +213,198 @@ async def delete_purchase_order(
 
 
 # ============================================================================
+# add_po_note — append a note to metadata.notes (Issue #14, 2026-04-23)
+# ============================================================================
+async def add_po_note(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    if user_context.get("role", "") not in _HOD_ROLES:
+        raise HTTPException(status_code=403, detail={
+            "status": "error", "error_code": "FORBIDDEN",
+            "message": f"Role '{user_context.get('role', '')}' is not permitted to add PO notes",
+            "required_roles": _HOD_ROLES,
+        })
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
+    if not po_id:
+        raise HTTPException(status_code=400, detail="purchase_order_id is required")
+    note_text = (payload.get("note_text") or payload.get("note") or "").strip()
+    if not note_text:
+        raise HTTPException(status_code=400, detail="note_text is required")
+
+    current = db_client.table("pms_purchase_orders").select("metadata").eq(
+        "id", po_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not current or not current.data:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+
+    meta = current.data.get("metadata") or {}
+    if not isinstance(meta, dict):
+        meta = {}
+    existing = meta.get("notes", "")
+    stamp = datetime.now(timezone.utc).isoformat()
+    prefix = f"{existing}\n\n" if existing else ""
+    meta["notes"] = f"{prefix}[{stamp}] {note_text}"
+
+    result_data = db_client.table("pms_purchase_orders").update({
+        "metadata": meta, "updated_at": stamp,
+    }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
+    if not result_data.data:
+        return {"status": "error", "error_code": "UPDATE_FAILED",
+                "message": "Failed to add PO note"}
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id, user_id=user_id, event_type="annotation",
+            entity_type="purchase_order", entity_id=po_id, action="add_po_note",
+            user_role=user_context.get("role"), change_summary="Note added to purchase order",
+        )
+        db_client.table("ledger_events").insert(ledger_event).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[Ledger] Failed to record add_po_note: {ledger_err}")
+    return {"status": "success", "message": "Note added"}
+
+
+# ============================================================================
+# update_purchase_status — explicit status transition (Issue #14, 2026-04-23)
+# ============================================================================
+_ALLOWED_PO_STATUSES = {
+    "draft", "submitted", "approved", "ordered",
+    "partially_received", "received", "cancelled",
+}
+
+
+async def update_purchase_status(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    if user_context.get("role", "") not in _HOD_ROLES:
+        raise HTTPException(status_code=403, detail={
+            "status": "error", "error_code": "FORBIDDEN",
+            "message": f"Role '{user_context.get('role', '')}' is not permitted to update PO status",
+            "required_roles": _HOD_ROLES,
+        })
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
+    if not po_id:
+        raise HTTPException(status_code=400, detail="purchase_order_id is required")
+    new_status = (payload.get("status") or payload.get("new_status") or "").strip().lower()
+    if new_status not in _ALLOWED_PO_STATUSES:
+        raise HTTPException(status_code=400, detail={
+            "status": "error", "error_code": "INVALID_STATUS",
+            "message": f"status must be one of: {sorted(_ALLOWED_PO_STATUSES)}",
+        })
+    now = datetime.now(timezone.utc).isoformat()
+    result_data = db_client.table("pms_purchase_orders").update({
+        "status": new_status, "updated_at": now,
+    }).eq("id", po_id).eq("yacht_id", yacht_id).execute()
+    if not result_data.data:
+        return {"status": "error", "error_code": "UPDATE_FAILED",
+                "message": "Failed to update purchase order status"}
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+            entity_type="purchase_order", entity_id=po_id, action="update_purchase_status",
+            user_role=user_context.get("role"),
+            change_summary=f"Purchase order status set to {new_status}",
+        )
+        db_client.table("ledger_events").insert(ledger_event).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[Ledger] Failed to record update_purchase_status: {ledger_err}")
+    return {"status": "success", "message": f"Status updated to {new_status}"}
+
+
+# ============================================================================
+# add_item_to_purchase — insert a line item (Issue #14, draft-only)
+# ============================================================================
+async def add_item_to_purchase(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    if user_context.get("role", "") not in _HOD_ROLES:
+        raise HTTPException(status_code=403, detail={
+            "status": "error", "error_code": "FORBIDDEN",
+            "message": f"Role '{user_context.get('role', '')}' is not permitted to add PO items",
+            "required_roles": _HOD_ROLES,
+        })
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
+    if not po_id:
+        raise HTTPException(status_code=400, detail="purchase_order_id is required")
+
+    # DB-side draft gate — matches the UI gate at entity_actions._apply_state_gate.
+    current = db_client.table("pms_purchase_orders").select("status").eq(
+        "id", po_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not current or not current.data:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    po_status = (current.data.get("status") or "").lower()
+    if po_status not in ("", "draft"):
+        return {"status": "error", "error_code": "INVALID_STATE",
+                "message": f"Cannot add items to a PO with status '{po_status}'"}
+
+    description = (payload.get("description") or payload.get("name")
+                   or payload.get("part_name") or "").strip()
+    if not description:
+        raise HTTPException(status_code=400, detail="description is required")
+    try:
+        quantity = float(payload.get("quantity_ordered") or payload.get("quantity") or 1)
+    except (TypeError, ValueError):
+        quantity = 1.0
+    try:
+        unit_price = (float(payload.get("unit_price")) if payload.get("unit_price")
+                      is not None else None)
+    except (TypeError, ValueError):
+        unit_price = None
+
+    insert_row = {
+        "purchase_order_id": po_id,
+        "description": description,
+        "quantity_ordered": quantity,
+    }
+    if unit_price is not None:
+        insert_row["unit_price"] = unit_price
+    if payload.get("part_id"):
+        insert_row["part_id"] = payload.get("part_id")
+    if payload.get("currency"):
+        insert_row["currency"] = payload.get("currency")
+
+    insert_res = db_client.table("pms_purchase_order_items").insert(insert_row).execute()
+    if not insert_res.data:
+        return {"status": "error", "error_code": "INSERT_FAILED",
+                "message": "Failed to add item to purchase order"}
+    item_id = insert_res.data[0].get("id") if isinstance(insert_res.data, list) else None
+
+    # Bump the PO's updated_at so the lens reload picks it up.
+    now = datetime.now(timezone.utc).isoformat()
+    db_client.table("pms_purchase_orders").update(
+        {"updated_at": now}
+    ).eq("id", po_id).eq("yacht_id", yacht_id).execute()
+
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id, user_id=user_id, event_type="annotation",
+            entity_type="purchase_order", entity_id=po_id, action="add_item_to_purchase",
+            user_role=user_context.get("role"),
+            change_summary=f"Item added: {description} × {quantity}",
+        )
+        db_client.table("ledger_events").insert(ledger_event).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[Ledger] Failed to record add_item_to_purchase: {ledger_err}")
+    return {"status": "success", "purchase_order_id": po_id, "item_id": item_id}
+
+
+# ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
 HANDLERS: dict = {
@@ -221,10 +413,14 @@ HANDLERS: dict = {
     "mark_po_received": mark_po_received,
     "cancel_purchase_order": cancel_purchase_order,
     "delete_purchase_order": delete_purchase_order,
+    "add_po_note": add_po_note,
+    "update_purchase_status": update_purchase_status,
+    "add_item_to_purchase": add_item_to_purchase,
     # Frontend-facing aliases (match action IDs used by PurchaseOrderContent.tsx)
     "submit_po": submit_purchase_order,
     "approve_po": approve_purchase_order,
     "receive_po": mark_po_received,
     "cancel_po": cancel_purchase_order,
     "delete_po": delete_purchase_order,
+    "approve_purchase": approve_purchase_order,
 }

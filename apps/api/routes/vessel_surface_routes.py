@@ -674,6 +674,13 @@ async def get_domain_records(
     is_candidate_part: Optional[str] = Query(None, description="Candidate flag filter 'true'/'false' (shopping_list)"),
     date_from: Optional[str] = Query(None, description="Required-by date from (YYYY-MM-DD, shopping_list)"),
     date_to: Optional[str] = Query(None, description="Required-by date to (YYYY-MM-DD, shopping_list)"),
+    # Shopping list ilike text filters + created_at range (2026-04-23)
+    part_name: Optional[str] = Query(None, description="Item/part name ilike (shopping_list)"),
+    part_number: Optional[str] = Query(None, description="Part number ilike (shopping_list)"),
+    manufacturer: Optional[str] = Query(None, description="Manufacturer ilike (shopping_list)"),
+    preferred_supplier: Optional[str] = Query(None, description="Preferred supplier ilike (shopping_list)"),
+    created_from: Optional[str] = Query(None, description="Created_at date from (YYYY-MM-DD, shopping_list)"),
+    created_to: Optional[str] = Query(None, description="Created_at date to (YYYY-MM-DD, shopping_list)"),
     sort: Optional[str] = Query(None, description="Sort field"),
     limit: int = Query(50, ge=1, le=2000),
     offset: int = Query(0, ge=0),
@@ -755,6 +762,19 @@ async def get_domain_records(
                 query = query.gte("required_by_date", date_from)
             if date_to:
                 query = query.lte("required_by_date", date_to)
+            if created_from:
+                query = query.gte("created_at", created_from)
+            if created_to:
+                # inclusive end-of-day so created<=YYYY-MM-DD catches same-day rows
+                query = query.lte("created_at", f"{created_to}T23:59:59.999Z")
+            if part_name:
+                query = query.ilike("part_name", f"%{part_name}%")
+            if part_number:
+                query = query.ilike("part_number", f"%{part_number}%")
+            if manufacturer:
+                query = query.ilike("manufacturer", f"%{manufacturer}%")
+            if preferred_supplier:
+                query = query.ilike("preferred_supplier", f"%{preferred_supplier}%")
 
         # Soft-delete filter — hide deleted records
         if domain in ("documents", "purchase_orders"):
@@ -1105,9 +1125,16 @@ def _format_record(domain: str, record: dict) -> dict:
             meta_bits.append(f"Qty {qty_display}")
         if source_type_val:
             meta_bits.append(source_type_val.replace("_", " ").title())
+        # ref never empty — FilteredEntityList.tsx:260-289 switches row template
+        # on entityRef truthiness. If empty → legacy SpotlightResultRow.
+        # part_number is NULL on most user-created rows, so emit SL-<id6> fallback.
+        # part_name is emitted explicitly so the frontend adapter can fall back
+        # correctly (it reads `item.part_name`, which the generic `title` key
+        # doesn't satisfy).
         base.update({
             "ref": part_num or f"SL-{str(record.get('id', ''))[:6]}",
             "title": record.get("part_name") or "Shopping List Item",
+            "part_name": record.get("part_name"),
             "status": status_val,
             "urgency": urgency,
             # priority mirrors urgency so list rows can reuse the generic priority chip
