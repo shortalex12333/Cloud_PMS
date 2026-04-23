@@ -3635,6 +3635,43 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         variant=ActionVariant.MUTATE,
     ),
 
+    # ── Frontend-facing aliases (match action IDs used by PurchaseOrderContent.tsx) ──
+    "submit_po": ActionDefinition(
+        action_id="submit_po",
+        label="Submit Purchase Order",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "purchase_order_id"],
+        domain="purchase_orders",
+        variant=ActionVariant.MUTATE,
+    ),
+
+    "approve_po": ActionDefinition(
+        action_id="approve_po",
+        label="Approve Purchase Order",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "purchase_order_id"],
+        domain="purchase_orders",
+        variant=ActionVariant.MUTATE,
+    ),
+
+    "receive_po": ActionDefinition(
+        action_id="receive_po",
+        label="Mark PO Received",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "purchase_order_id"],
+        domain="purchase_orders",
+        variant=ActionVariant.MUTATE,
+    ),
+
     "cancel_po": ActionDefinition(
         action_id="cancel_po",
         label="Cancel Purchase Order",

@@ -1019,14 +1019,17 @@ def _format_record(domain: str, record: dict) -> dict:
             "meta": f"{cert_type} · Expires: {record.get('expiry_date', 'N/A')}",
         })
     elif domain == "purchase_orders":
+        po_num = record.get("po_number") or f"PO-{str(record.get('id', ''))[:6]}"
         base.update({
-            "ref": record.get("po_number", f"PO-{str(record.get('id', ''))[:6]}"),
-            "title": f"PO {record.get('po_number', '')} — {record.get('supplier_name', '')}",
+            "ref": po_num,
+            "title": po_num,
             "status": record.get("status", "draft"),
-            "supplier_name": record.get("supplier_name", ""),
-            "total_amount": record.get("total_amount"),
-            "currency": record.get("currency", "EUR"),
-            "meta": f"{record.get('supplier_name', '')} · {record.get('status', '').upper()}",
+            "supplier_id": record.get("supplier_id"),
+            "supplier_name": "",
+            "currency": record.get("currency", "USD"),
+            "ordered_at": record.get("ordered_at"),
+            "created_at": record.get("created_at"),
+            "meta": record.get("status", "draft").upper(),
         })
     elif domain == "receiving":
         vendor = record.get("vendor_name") or ""

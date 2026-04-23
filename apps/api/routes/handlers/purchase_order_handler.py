@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 # Used by approve_purchase_order, mark_po_received, cancel_purchase_order only.
 # submit_purchase_order is intentionally open to all authenticated users.
-_HOD_ROLES = ["chief_engineer", "captain", "manager"]
+# purser = financial officer on board; chief_officer / chief_steward = department heads
+_HOD_ROLES = ["purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"]
 
 
 # ============================================================================
@@ -182,4 +183,8 @@ HANDLERS: dict = {
     "approve_purchase_order": approve_purchase_order,
     "mark_po_received": mark_po_received,
     "cancel_purchase_order": cancel_purchase_order,
+    # Frontend-facing aliases (match action IDs used by PurchaseOrderContent.tsx)
+    "submit_po": submit_purchase_order,
+    "approve_po": approve_purchase_order,
+    "receive_po": mark_po_received,
 }
