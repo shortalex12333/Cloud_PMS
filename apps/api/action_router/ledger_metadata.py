@@ -71,6 +71,8 @@ ACTION_METADATA: dict = {
     "create_vessel_certificate":         {"event_type": "create",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "create_crew_certificate":           {"event_type": "create",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "link_document_to_certificate":      {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
+    "link_equipment_to_certificate":     {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
+    "unlink_equipment_from_certificate": {"event_type": "update",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "renew_certificate":                 {"event_type": "create",        "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "revoke_certificate":                {"event_type": "status_change", "entity_type": "certificate",   "entity_id_field": "certificate_id"},
     "supersede_certificate":             {"event_type": "status_change", "entity_type": "certificate",   "entity_id_field": "certificate_id"},

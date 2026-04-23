@@ -126,7 +126,11 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PANEL — 720px, asymmetric borders, shadow
+   PANEL — 720px default, asymmetric borders, shadow.
+   Lens variants that host a full-width document viewer (certificate,
+   document) opt into --lens-max-width-wide (~1120px) via .panelWide.
+   Width is token-driven so the whole app can grow uniformly when we
+   decide to. See tokens.css `--lens-max-width-wide`.
    ═══════════════════════════════════════════════════════════════ */
 .panel {
   width: 720px;
@@ -142,6 +146,11 @@
   background: var(--surface);
   display: flex;
   flex-direction: column;
+}
+
+.panelWide {
+  width: var(--lens-max-width-wide);
+  max-width: 100%;
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -58,6 +58,14 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
+/**
+ * Entity types that opt into the wider lens panel (var(--lens-max-width-wide)).
+ * Lenses with a full-width document viewer as the primary surface need the
+ * extra horizontal room per 2026-04-23 UX spec. Add here when a new lens
+ * gains a LensFileViewer.
+ */
+const WIDE_LENS_TYPES: Set<string> = new Set(['certificate', 'document']);
+
 function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack: () => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '24px', minHeight: '256px' }}>
@@ -229,7 +237,7 @@ export function EntityLensPage({
         background: 'var(--surface-base)',
       }}
     >
-      <div className={lensStyles.panel}>
+      <div className={`${lensStyles.panel} ${WIDE_LENS_TYPES.has(entityType) ? lensStyles.panelWide : ''}`.trim()}>
         {/* Glass Header */}
         <div className={lensStyles.lensHdr}>
           <button

@@ -94,6 +94,8 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("certificate", "supersede_certificate"):       {"certificate_id": "id"},
     ("certificate", "add_certificate_note"):        {"certificate_id": "id"},
     ("certificate", "renew_certificate"):           {"certificate_id": "id"},
+    ("certificate", "link_equipment_to_certificate"):   {"certificate_id": "id"},
+    ("certificate", "unlink_equipment_from_certificate"):{"certificate_id": "id"},
 
     # ── Receiving ─────────────────────────────────────────────────────────────
     ("receiving", "add_receiving_item"):                  {"receiving_id": "id"},
