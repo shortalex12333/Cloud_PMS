@@ -191,6 +191,55 @@ awk '/^    "[a-z_]+": ActionDefinition\(/{a=$0} /domain="shopping_list"/{…prin
 | #671 | Adapter row-render contract fix (B-01 + B-02) + metadata cleanup | ✓ |
 | #675 | **Tabulated list view** — replaces card-style with shared `EntityTableList` + `SHOPPING_LIST_COLUMNS` (9 columns, business-rank sort on status/urgency, pill render slot) | ✓ |
 
+## 8a. Action button audit — Issue 13 / Issue 6 format
+
+Against [`list_of_faults.md`](../../../Desktop/list_of_faults.md) `### Issues 13`
+and using the `BUTTON | KEEP/REMOVE | ROLE | NOTES` table shape from
+`### Issue 6 Work order button drop down`.
+
+Verified live against Render (`pipeline-core.int.celeste7.ai`) as
+`hod.test@alex-short.com` (HoD role) — confirmed backend already emits
+the expected `prefill` + `required_fields` for every KEEP row; no 400s.
+
+| Button (action_id) | Verdict | Role gate | Notes |
+|---|---|---|---|
+| `create_shopping_list_item` | **HIDDEN** from lens dropdown | crew/HoD/captain/manager | Surfacing in the per-item dropdown duplicates the floating "+ Add Item" button and confuses users. Action remains usable via the list-level button; registry entry intact. |
+| `approve_shopping_list_item` | **KEEP** | HoD / captain / manager | State-gated: disabled on approved/ordered/partially_fulfilled/fulfilled/installed/rejected. Prefill injects `item_id` from entity id. Required: `quantity_approved`. |
+| `reject_shopping_list_item` | **KEEP** | HoD / captain / manager | Same state gate as approve. Required: `rejection_reason`. |
+| `promote_candidate_to_part` | **KEEP** | chief_engineer / manager | Only engineers can add a candidate row to the parts catalog (creates a `pms_parts` row + flips `candidate_promoted_to_part_id`). |
+| `view_shopping_list_history` | **HIDDEN** — wasteful | — | Duplicates the `AuditTrailSection` already on the lens (audit_history surfaced from `pms_shopping_list_state_history`). Same pattern Issue 6 called out for `View Work Order History`. |
+| `mark_shopping_list_ordered` | **KEEP** | chief_engineer / captain / manager | State-gated: only enabled when status=`approved`; disabled otherwise with "Already <status>" or "Item must be approved before it can be marked as ordered". |
+| `delete_shopping_item` | **KEEP** | HoD / captain / manager | Deletion allowed in any state (used to clean up rejected / stale candidates). Soft-delete column `deleted_at` exists on the table. |
+| `add_to_shopping_list` | **HIDDEN** — broken on shopping_list entity | crew/HoD/captain/manager | Cross-domain action that populates `part_id` prefill only when the source entity is `part` (`entity_prefill.py:182`). On a shopping_list entity the required field `part_id` is NOT prefilled, so a click produced `MISSING_REQUIRED_FIELD`. Home lives on the Part lens. |
+| `add_to_handover` | **KEEP** | all crew | Core cross-domain feature. Prefill injects `entity_id` + `title`. Required: `summary` (user-typed). |
+| `approve_list` / `add_list_item` / `archive_list` / `delete_list` / `convert_to_po` / `submit_list` | **HIDDEN** — legacy | HoD+ | 6 legacy "list-as-parent" actions from an abandoned design where a `pms_shopping_lists` header row would own items. Parent table never existed in production (probed: HTTP 404). Registry + handlers intact for any programmatic caller; hidden from UI to prevent label duplication with the canonical 5 per-item actions. |
+
+**Result: no 400s, no duplicate labels, no buttons that silently do nothing.**
+Live verification against `hod.test` on Render confirmed every visible
+action returns prefill + required_fields correctly; hidden actions are
+absent from the `available_actions[]` response.
+
+## 8b. Storage / bucket surface
+
+The shopping lens does **not** read or write to any Supabase Storage
+bucket. No photo/file upload action exists today. If one is introduced
+(e.g. attach photo of part needed), the pattern already in use by
+`receiving/accept_receiving` + `work_order/add_work_order_photo` should
+be followed (bucket: `documents`, path keyed by yacht_id/user_id/entity_id,
+RLS on bucket path).
+
+## 8c. Interlinking (part / work_order links)
+
+`entity_routes.py:533-534` builds `related_entities[]` with
+`_nav('part', part_id, 'Linked Part')` and
+`_nav('work_order', source_work_order_id, 'Source Work Order')`. Before
+the Issue 13 follow-up pass, `ShoppingListContent.tsx` rendered these
+rows with no `onClick`, so **links did not navigate**. Fixed by wiring
+`onClick` via the cross-domain slug→route mapper `getEntityRoute`
+(`@/lib/entityRoutes`): click `Linked Part` → `/inventory/<id>`, click
+`Source Work Order` → `/work-orders/<id>`. Lens-to-lens navigation now
+matches the pattern used by `EquipmentContent` and `DocumentContent`.
+
 ## 8. Current state of the shopping lens (end of 2026-04-23)
 
 - **List view**: sortable column table via shared `EntityTableList`. 9 columns: Part # / Item / Status / Urgency / Qty Req / Source / Requester / Required By / Created. Sort state persists per-domain in sessionStorage.
