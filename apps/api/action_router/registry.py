@@ -2784,6 +2784,13 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         variant=ActionVariant.MUTATE,
     ),
 
+    # FIX 2026-04-23 (DOCUMENTS04): required_fields declared a stale
+    # `equipment_id` copy-pasted from add_equipment_note. Every real "Add
+    # Document Note" click 400'd at the action validator (identical pattern
+    # to the add_po_note bug fixed earlier this session). The generic
+    # add_note handler in internal_dispatcher.py already accepts
+    # document_id — only the declaration was wrong. Paired with an
+    # entity_prefill.py entry so the frontend auto-populates document_id.
     "add_document_note": ActionDefinition(
         action_id="add_document_note",
         label="Add Document Note",
@@ -2791,7 +2798,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id", "equipment_id", "note_text"],
+        required_fields=["yacht_id", "document_id", "note_text"],
         domain="documents",
         variant=ActionVariant.MUTATE,
     ),

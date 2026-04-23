@@ -337,15 +337,38 @@ export function DocumentContent() {
   const DANGER_ACTIONS = new Set(['archive_document', 'delete_document']);
 
   // ── Hidden-in-dropdown list ──
-  // Per doc_cert_ux_change.md: the old "Link document to certificate" search
-  // modal is removed for MVP — supporting documents / attachments cover the
-  // need. Related equipment has its own dedicated section + picker, so we
-  // also hide the backend link action from the generic action dropdown
-  // (users open the picker via the section's "+ Link equipment" button).
+  // Per doc_cert_ux_change.md + Issue 6 button audit pattern (2026-04-23):
+  //
+  //   link_document_to_certificate  — removed for MVP (spec line 159).
+  //   link_equipment_to_document    — surfaced via Related Equipment picker,
+  //                                   not the generic dropdown.
+  //   unlink_equipment_from_document — surfaced via Related Equipment row ×.
+  //   upload_document               — creates a NEW top-level doc. That
+  //                                   flow belongs on the /documents page's
+  //                                   AppShell primary action + the Supporting
+  //                                   Documents section's "+ Upload" (with
+  //                                   "DOES NOT OVERWRITE" warning). Rendering
+  //                                   it in a per-doc lens dropdown is
+  //                                   misleading ("Update Document" is what
+  //                                   the user wants on this lens).
+  //   view_document / open_document — the lens card IS the view. These are
+  //                                   leftover P3 scaffolding; they fire
+  //                                   ledger events but render nothing the
+  //                                   user doesn't already see. Same rule
+  //                                   Issue 6 applies to work-order's
+  //                                   "View Work Order Detail / History".
+  //   view_related_documents        — Show Related is a separate feature.
+  //   view_document_section         — unclear P3 scaffolding; never called
+  //                                   from a meaningful UI flow.
   const HIDDEN_FROM_DROPDOWN = new Set([
     'link_document_to_certificate',
     'link_equipment_to_document',
     'unlink_equipment_from_document',
+    'upload_document',
+    'view_document',
+    'view_related_documents',
+    'view_document_section',
+    'open_document',
   ]);
 
   const dropdownItems: DropdownItem[] = availableActions
