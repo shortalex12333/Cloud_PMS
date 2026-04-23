@@ -592,6 +592,128 @@ async def _doc_list_document_comments(params: Dict[str, Any]) -> Dict[str, Any]:
     return await fn(payload, context)
 
 
+# ============================================================================
+# DOCUMENT ↔ EQUIPMENT ARRAY LINK (Document Lens v3 — doc_cert_ux_change.md)
+# ----------------------------------------------------------------------------
+# These handlers mutate `doc_metadata.equipment_ids` (uuid[]) directly so the
+# Related Equipment section on the document lens can add or remove links
+# without a dedicated junction table. Existing `link_document_to_equipment`
+# remains untouched — it lives on the equipment side of the relationship and
+# uses different storage semantics.
+# ============================================================================
+
+
+def _append_unique_uuid(lst: list, uid: str) -> list:
+    """Return a new list with `uid` appended iff not already present. Preserves order."""
+    current = list(lst or [])
+    if uid not in current:
+        current.append(uid)
+    return current
+
+
+def _remove_uuid(lst: list, uid: str) -> list:
+    """Return a new list with every occurrence of `uid` removed."""
+    return [x for x in (lst or []) if x != uid]
+
+
+async def _doc_link_equipment_to_document(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add `equipment_id` to `doc_metadata.equipment_ids` on the target document.
+
+    Parameters
+    ----------
+    yacht_id : str
+        Vessel scope — RLS-belt-and-braces so a cross-vessel UUID can't be
+        mutated even if the caller somehow supplies one.
+    document_id : str
+        Target document UUID.
+    equipment_id : str
+        Equipment UUID to append to the array.
+
+    Idempotent: if `equipment_id` is already linked, no-ops and returns the
+    current row. Validates the equipment exists (not soft-deleted) on the
+    same yacht before inserting, so the array can't accrue dangling UUIDs.
+    """
+    supabase = get_supabase_client()
+    yacht_id = params.get("yacht_id")
+    document_id = params.get("document_id")
+    equipment_id = params.get("equipment_id")
+    if not (yacht_id and document_id and equipment_id):
+        raise ValueError("yacht_id, document_id, and equipment_id are all required")
+
+    # Fetch current doc row (yacht-scoped, non-deleted)
+    doc_r = supabase.table("doc_metadata").select("id, equipment_ids").eq(
+        "id", document_id
+    ).eq("yacht_id", yacht_id).is_("deleted_at", "null").maybe_single().execute()
+    if doc_r is None or not doc_r.data:
+        raise ValueError("Document not found or access denied")
+
+    # Confirm the equipment exists on the same yacht + is not soft-deleted
+    eq_r = supabase.table("pms_equipment").select("id").eq(
+        "id", equipment_id
+    ).eq("yacht_id", yacht_id).is_("deleted_at", "null").maybe_single().execute()
+    if eq_r is None or not eq_r.data:
+        raise ValueError("Equipment not found or access denied")
+
+    current = doc_r.data.get("equipment_ids") or []
+    if equipment_id in current:
+        # Idempotent: nothing to do
+        return {"status": "success", "document_id": document_id, "equipment_id": equipment_id, "already_linked": True}
+
+    new_ids = _append_unique_uuid(current, equipment_id)
+    upd = supabase.table("doc_metadata").update({"equipment_ids": new_ids}).eq(
+        "id", document_id
+    ).eq("yacht_id", yacht_id).execute()
+    if getattr(upd, "data", None) is None:
+        raise ValueError("Update failed")
+
+    return {
+        "status": "success",
+        "document_id": document_id,
+        "equipment_id": equipment_id,
+        "equipment_ids": new_ids,
+    }
+
+
+async def _doc_unlink_equipment_from_document(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Remove `equipment_id` from `doc_metadata.equipment_ids`.
+
+    Idempotent: unlinking an equipment that isn't currently linked is a no-op.
+    Does not touch the equipment row itself.
+    """
+    supabase = get_supabase_client()
+    yacht_id = params.get("yacht_id")
+    document_id = params.get("document_id")
+    equipment_id = params.get("equipment_id")
+    if not (yacht_id and document_id and equipment_id):
+        raise ValueError("yacht_id, document_id, and equipment_id are all required")
+
+    doc_r = supabase.table("doc_metadata").select("id, equipment_ids").eq(
+        "id", document_id
+    ).eq("yacht_id", yacht_id).is_("deleted_at", "null").maybe_single().execute()
+    if doc_r is None or not doc_r.data:
+        raise ValueError("Document not found or access denied")
+
+    current = doc_r.data.get("equipment_ids") or []
+    if equipment_id not in current:
+        return {"status": "success", "document_id": document_id, "equipment_id": equipment_id, "already_unlinked": True}
+
+    new_ids = _remove_uuid(current, equipment_id)
+    upd = supabase.table("doc_metadata").update({"equipment_ids": new_ids}).eq(
+        "id", document_id
+    ).eq("yacht_id", yacht_id).execute()
+    if getattr(upd, "data", None) is None:
+        raise ValueError("Update failed")
+
+    return {
+        "status": "success",
+        "document_id": document_id,
+        "equipment_id": equipment_id,
+        "equipment_ids": new_ids,
+    }
+
+
 async def edit_handover_section(params: Dict[str, Any]) -> Dict[str, Any]:
     """
     Edit a section in a handover export's edited_content jsonb.
@@ -4068,6 +4190,13 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "update_document_comment": _doc_update_document_comment,
     "delete_document_comment": _doc_delete_document_comment,
     "list_document_comments": _doc_list_document_comments,
+
+    # =========================================================================
+    # Document ↔ Equipment array link (Document Lens v3 — doc_cert_ux_change.md)
+    # Uses doc_metadata.equipment_ids (uuid[]) directly; no junction table.
+    # =========================================================================
+    "link_equipment_to_document":     _doc_link_equipment_to_document,
+    "unlink_equipment_from_document": _doc_unlink_equipment_from_document,
 
     # =========================================================================
     # Equipment Lens v2 Handlers (from equipment_handlers.py)
