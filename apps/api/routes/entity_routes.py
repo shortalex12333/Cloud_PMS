@@ -366,6 +366,37 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
 
 @router.get("/v1/entity/document/{document_id}")
 async def get_document_entity(document_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
+    """
+    Document lens detail endpoint.
+
+    Hydrates a single ``doc_metadata`` row with everything the redesigned
+    Document lens needs in one round-trip (per
+    ``doc_cert_ux_change.md`` 2026-04-23):
+
+      * Signed URL to the stored file (so the lens viewer iframe can render)
+      * ``yacht_name`` resolved from ``yacht_registry`` (TENANT) — the UI
+        never receives a yacht UUID.
+      * ``uploaded_by_name`` + ``uploaded_by_role`` resolved from
+        ``auth_users_profiles`` + ``auth_users_roles``.
+      * ``deleted_by_name`` + ``deleted_by_role`` (soft-deleted rows are
+        filtered out of this endpoint, but we keep the resolved values on
+        the audit-trail entries via `pms_audit_log`).
+      * ``related_equipment[]`` hydrated from ``doc_metadata.equipment_ids``
+        against ``pms_equipment`` — each item is a full row the lens uses
+        directly (no per-row look-up from the frontend).
+      * ``audit_trail[]`` built from ``pms_audit_log`` rows filtered by
+        ``entity_type='document'`` + ``entity_id=document_id``, with actor
+        UUIDs resolved to ``actor_name`` + ``actor_role``.
+
+    UUIDs still appear in the response for internal cross-routing
+    (``equipment_ids``, ``yacht_id``) but the frontend never renders them —
+    resolved labels accompany every UUID the UI needs to show.
+
+    Fallbacks: any resolver failure (profile missing, RLS block, registry
+    gone) degrades silently to ``None`` — the lens shows "—" rather than
+    erroring. Hard failures (doc not found, RLS-denied doc) still raise
+    404/403 as before.
+    """
     try:
         yacht_id = resolve_yacht_id(auth, yacht_id)
         tenant_key = auth['tenant_key_alias']
@@ -382,15 +413,84 @@ async def get_document_entity(document_id: str, auth: dict = Depends(get_authent
 
         data = r.data
 
-        # Sign the document URL (fixes raw-path bug for private buckets)
+        # ── Signed URL to the rendered file ──
         bucket = data.get("storage_bucket") or "documents"
         signed_url = _sign_url(supabase, bucket, data.get("storage_path"))
 
+        # ── Resolve users: uploaded_by + deleted_by (soft-delete still logged in audit) ──
+        user_ids_needed: list[str] = []
+        if data.get("uploaded_by"):
+            user_ids_needed.append(data["uploaded_by"])
+        if data.get("deleted_by"):
+            user_ids_needed.append(data["deleted_by"])
+
+        # ── Related equipment hydration (from equipment_ids ARRAY column) ──
+        equipment_ids = data.get("equipment_ids") or []
+
+        # ── Audit trail: every CUD event for this document entity ──
+        audit_rows: list[dict] = []
+        try:
+            audit_r = (
+                supabase.table("pms_audit_log")
+                .select("id, action, user_id, actor_id, created_at, metadata")
+                .eq("entity_type", "document")
+                .eq("entity_id", document_id)
+                .eq("yacht_id", yacht_id)
+                .order("created_at", desc=True)
+                .limit(200)
+                .execute()
+            )
+            audit_rows = audit_r.data or []
+        except Exception as exc:  # noqa: BLE001 — audit fetch is non-fatal
+            logger.warning("get_document_entity(%s): audit fetch failed: %s", document_id, exc)
+
+        # Collect every user UUID appearing in audit rows so we resolve once
+        for row in audit_rows:
+            for key in ("user_id", "actor_id"):
+                uid = row.get(key)
+                if uid:
+                    user_ids_needed.append(uid)
+
+        # ── Fire resolvers (single round-trip each) ──
+        resolved_users = resolve_users(supabase, yacht_id, user_ids_needed)
+        yacht_name = resolve_yacht_name(supabase, yacht_id)
+        related_equipment = resolve_equipment_batch(supabase, yacht_id, equipment_ids)
+
+        def _user_name(uid: Optional[str]) -> Optional[str]:
+            if not uid:
+                return None
+            return (resolved_users.get(uid) or {}).get("name")
+
+        def _user_role(uid: Optional[str]) -> Optional[str]:
+            if not uid:
+                return None
+            return (resolved_users.get(uid) or {}).get("role")
+
+        uploaded_by_uid = data.get("uploaded_by")
+        deleted_by_uid = data.get("deleted_by")
+
+        # ── Build audit_trail payload (frontend expects id/action/actor/actor_role/timestamp/deleted) ──
+        audit_trail = [
+            {
+                "id": row.get("id"),
+                "action": (row.get("action") or "").replace("_", " "),
+                # Prefer user_id (the authenticated mutator); fall back to actor_id if populated
+                "actor": _user_name(row.get("user_id") or row.get("actor_id")),
+                "actor_role": _user_role(row.get("user_id") or row.get("actor_id")),
+                "timestamp": row.get("created_at"),
+                # When we later add soft-delete for audit rows, the metadata.deleted flag drives linethrough
+                "deleted": bool((row.get("metadata") or {}).get("deleted")) if isinstance(row.get("metadata"), dict) else False,
+            }
+            for row in audit_rows
+        ]
+
+        # ── Nav: existing pattern kept (legacy equipment_id one-to-one pointer) ──
         nav = [n for n in [
             _nav("equipment", data.get("equipment_id"), "Equipment"),
         ] if n]
 
         _entity_response = {
+            # ── Core identity (UUIDs retained for internal routing only) ──
             "id": data.get("id"),
             "filename": data.get("filename"),
             "title": data.get("title") or data.get("filename"),
@@ -398,14 +498,36 @@ async def get_document_entity(document_id: str, auth: dict = Depends(get_authent
             "mime_type": data.get("content_type"),
             "url": signed_url,
             "classification": data.get("classification"),
-            "equipment_id": data.get("equipment_id"),
-            "equipment_name": data.get("equipment_name"),
+
+            # ── Metadata fields surfaced in the lens header ──
+            "doc_type": data.get("doc_type"),
+            "document_type": data.get("document_type"),
+            "system_type": data.get("system_type"),
+            "oem": data.get("oem"),
+            "model": data.get("model"),
+            "size_bytes": data.get("size_bytes"),
             "tags": data.get("tags") or [],
             "created_at": data.get("created_at"),
-            "created_by": data.get("created_by"),
+            "updated_at": data.get("updated_at"),
+
+            # ── Resolved labels (the UI renders these; UUIDs are NEVER shown) ──
             "yacht_id": data.get("yacht_id"),
-            "attachments": [],
+            "yacht_name": yacht_name,
+            "uploaded_by": uploaded_by_uid,
+            "uploaded_by_name": _user_name(uploaded_by_uid),
+            "uploaded_by_role": _user_role(uploaded_by_uid),
+            "deleted_by": deleted_by_uid,
+            "deleted_by_name": _user_name(deleted_by_uid),
+            "deleted_by_role": _user_role(deleted_by_uid),
+
+            # ── Related entities (legacy + new) ──
+            "equipment_ids": equipment_ids,
+            "related_equipment": related_equipment,
             "related_entities": nav,
+
+            # ── Audit + sections (attachments/notes supplied by action flows, not this endpoint) ──
+            "attachments": [],
+            "audit_trail": audit_trail,
         }
         _entity_response["available_actions"] = get_available_actions(
             "document", _entity_response, auth.get("role", "crew")

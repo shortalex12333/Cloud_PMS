@@ -27,7 +27,36 @@ import { useShellContext } from '@/components/shell/ShellContext';
 import { supabase } from '@/lib/supabaseClient';
 import DocumentTree from '@/components/documents/DocumentTree';
 import DocumentsSearchResults from '@/components/documents/DocumentsSearchResults';
+import DocumentsTableList from '@/components/documents/DocumentsTableList';
 import type { Doc } from '@/components/documents/docTreeBuilder';
+
+/**
+ * Three view modes for /documents:
+ *   - tree   (default): folder hierarchy mirroring the storage bucket
+ *   - list   (new, doc_cert_ux_change.md 2026-04-23): tabulated + sortable columns
+ *   - search (implicit): active whenever the subbar query is non-empty
+ *
+ * The search mode pre-empts whichever explicit mode is chosen; cleared query
+ * returns to the previous explicit mode.
+ */
+type DocsViewMode = 'tree' | 'list';
+const VIEW_MODE_KEY = 'celeste:documents:viewMode';
+
+function loadViewMode(): DocsViewMode {
+  if (typeof window === 'undefined') return 'tree';
+  try {
+    const raw = window.sessionStorage.getItem(VIEW_MODE_KEY);
+    if (raw === 'tree' || raw === 'list') return raw;
+  } catch { /* ignore */ }
+  return 'tree';
+}
+
+function persistViewMode(mode: DocsViewMode): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(VIEW_MODE_KEY, mode);
+  } catch { /* ignore quota */ }
+}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 const TREE_PAGE_SIZE = 1000;
@@ -83,6 +112,13 @@ function DocumentsPageContent() {
 
   const yachtId = user?.yachtId ?? null;
   const vesselName = user?.yachtName ?? 'Vessel';
+
+  // View-mode state, persisted to sessionStorage
+  const [viewMode, setViewMode] = React.useState<DocsViewMode>(() => loadViewMode());
+  const handleViewModeChange = React.useCallback((mode: DocsViewMode) => {
+    setViewMode(mode);
+    persistViewMode(mode);
+  }, []);
 
   const handleSelect = React.useCallback(
     (id: string, yachtIdArg?: string) => {
@@ -143,6 +179,50 @@ function DocumentsPageContent() {
 
   return (
     <div className="h-full bg-surface-base" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* View-mode toggle — hidden when search is active since the results view
+          has its own layout that doesn't apply to the tree/list dichotomy. */}
+      {!searchActive && (
+        <div
+          role="tablist"
+          aria-label="Documents view mode"
+          style={{
+            display: 'flex',
+            gap: 'var(--space-1)',
+            padding: 'var(--space-3) var(--space-4)',
+            borderBottom: '1px solid var(--border-sub)',
+            background: 'var(--surface-base)',
+            flexShrink: 0,
+          }}
+        >
+          {(['tree', 'list'] as const).map((mode) => {
+            const active = viewMode === mode;
+            return (
+              <button
+                key={mode}
+                role="tab"
+                aria-selected={active}
+                onClick={() => handleViewModeChange(mode)}
+                style={{
+                  padding: 'var(--space-1) var(--space-3)',
+                  fontSize: 'var(--font-size-action)',
+                  fontWeight: 'var(--font-weight-action)',
+                  color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: active ? 'var(--surface-hover)' : 'transparent',
+                  border: '1px solid',
+                  borderColor: active ? 'var(--border-sub)' : 'transparent',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                  transition: 'background var(--duration-fast) var(--ease-out)',
+                }}
+              >
+                {mode}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {searchActive ? (
         <DocumentsSearchResults
           query={shell.debouncedQuery}
@@ -179,6 +259,13 @@ function DocumentsPageContent() {
         >
           Failed to load documents.
         </div>
+      ) : viewMode === 'list' ? (
+        <DocumentsTableList
+          docs={docsQuery.data ?? []}
+          onSelect={(id) => handleSelect(id)}
+          selectedDocId={selectedId}
+          isLoading={docsQuery.isLoading}
+        />
       ) : (
         <DocumentTree
           docs={docsQuery.data ?? []}

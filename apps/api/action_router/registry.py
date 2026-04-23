@@ -815,6 +815,49 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
+    # ─── Document Lens v3 — Related Equipment (doc_cert_ux_change.md 2026-04-23)
+    # These two actions mutate doc_metadata.equipment_ids (uuid[]) directly. Paired
+    # with the RelatedEquipmentSection on the document lens; user picks from
+    # EquipmentPickerModal (alphabetical pms_equipment). Distinct from the older
+    # "link_document_to_equipment" above which lives on the equipment-side flow.
+    "link_equipment_to_document": ActionDefinition(
+        action_id="link_equipment_to_document",
+        label="Link Equipment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        # Same HOD+ ceiling as other mutation actions on the document lens
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "document_id", "equipment_id"],
+        domain="documents",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["link", "equipment", "related", "document", "pms"],
+        field_metadata=[
+            FieldMetadata("yacht_id",    FieldClassification.CONTEXT),
+            FieldMetadata("document_id", FieldClassification.CONTEXT, auto_populate_from="document"),
+            FieldMetadata("equipment_id", FieldClassification.REQUIRED, auto_populate_from="equipment",
+                          lookup_required=True, description="Equipment to link to this document"),
+        ],
+    ),
+
+    "unlink_equipment_from_document": ActionDefinition(
+        action_id="unlink_equipment_from_document",
+        label="Unlink Equipment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "document_id", "equipment_id"],
+        domain="documents",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["unlink", "remove", "equipment", "related", "document"],
+        field_metadata=[
+            FieldMetadata("yacht_id",    FieldClassification.CONTEXT),
+            FieldMetadata("document_id", FieldClassification.CONTEXT, auto_populate_from="document"),
+            FieldMetadata("equipment_id", FieldClassification.REQUIRED, description="Equipment to unlink"),
+        ],
+    ),
+
     # ========================================================================
     # EQUIPMENT LENS V2 - ADDITIONAL ACTIONS (Spec Completion)
     # ========================================================================

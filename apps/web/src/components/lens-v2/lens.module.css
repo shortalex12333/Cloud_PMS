@@ -146,6 +146,18 @@
   background: var(--surface);
   display: flex;
   flex-direction: column;
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+/* ─── Wide variant for lenses that embed a rendered document
+   (certificate lens, document lens). Activated when any descendant
+   sets data-lens-wide="true" — the document/certificate lens inner
+   components opt in by rendering their root with that attribute.
+   Token --lens-max-width-wide owns the actual width value so designers
+   can change it in one place. Browsers without :has() fall back to
+   the normal 720px width silently (acceptable degradation). */
+.panel:has([data-lens-wide="true"]) {
+  width: var(--lens-max-width-wide);
 }
 
 .panelWide {

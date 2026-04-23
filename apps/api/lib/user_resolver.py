@@ -1,139 +1,197 @@
 """
-User / yacht / equipment resolvers — UUID → human-readable metadata.
+User / Yacht / Equipment display-name resolver.
 
-The cert + document lenses (and other lens entity routes) need to render
-actor names, roles, yacht names, and linked equipment without exposing
-raw UUIDs to the frontend. These helpers centralise the batch-lookup
-logic so each entity route does ONE round-trip per table.
+Per doc_cert_ux_change.md (2026-04-23), UUIDs must NEVER be rendered in the UI
+for users. This module resolves internal UUIDs to human-readable labels that
+the frontend can display without leaking identifiers.
 
-All lookups hit the TENANT supabase client (the same client the caller
-passes in). Role data lives in `auth_users_roles` (106 rows as of
-2026-04-23), NOT `auth_role_assignments` (only 2 rows; legacy).
-Yacht names live in TENANT `yacht_registry.name` — MASTER DB is NOT
-required despite older doc comments suggesting otherwise.
+All three resolvers share the same characteristics:
 
-See: docs/ongoing_work/certificates/CERTIFICATE_LENS_REDESIGN_2026_04_23.md
+    * **Single round-trip per call.** A batch IN-filter replaces N single-row
+      look-ups, so a list view with M documents costs O(1) queries per
+      resolver kind rather than O(M).
+
+    * **Yacht-scoped.** Every query is constrained by yacht_id so the tenant
+      can never read sibling-vessel data even if asked. This is belt-and-
+      braces on top of RLS policies.
+
+    * **Null-safe.** If an id is unknown the entry is simply absent from the
+      returned map. Callers use `.get(uuid)` and fall back gracefully; we do
+      NOT raise on missing ids because audit rows can legitimately reference
+      users who were later deleted.
+
+    * **Tenant-only.** `yacht_registry.name` lives in the TENANT DB, so no
+      MASTER round-trip is needed (verified via live probe 2026-04-23).
+
+Callers supply a supabase-py client already scoped to the right tenant.
 """
+
 from __future__ import annotations
 
-from typing import Iterable, Optional
 import logging
+from typing import Iterable, Optional
 
 logger = logging.getLogger(__name__)
 
+# ──────────────────────────────────────────────────────────────────────────
+# Users (name + role)
+# ──────────────────────────────────────────────────────────────────────────
 
-def resolve_users(supabase, yacht_id: str, user_ids: Iterable[str]) -> dict[str, dict]:
-    """Batch-resolve user_ids to `{name, role}`.
 
-    Strategy:
-      - single `IN` query on `auth_users_profiles (id, name, email)` for name
-      - single `IN` query on `auth_users_roles (user_id, role, is_active, assigned_at)`
-        scoped to the yacht, newest active role wins if multiple present
-
-    Returns `{user_id: {"name": str|None, "role": str|None}}`. Missing
-    user_ids still appear in the result dict with both values None so
-    callers can safely `.get(user_id, {}).get("name")`.
+def resolve_users(
+    supabase,
+    yacht_id: str,
+    user_ids: Iterable[str],
+) -> dict[str, dict[str, Optional[str]]]:
     """
-    clean_ids: list[str] = sorted({uid for uid in user_ids if uid})
-    if not clean_ids:
+    Resolve a batch of user UUIDs to ``{user_id: {name, role}}``.
+
+    Performs two queries, both filtered by the same yacht:
+
+        1. ``auth_users_profiles`` — id -> name
+        2. ``auth_users_roles``    — user_id -> role (active rows only)
+
+    The role query orders by ``assigned_at DESC`` and keeps the most recent
+    *active* row per user; this matches the convention used elsewhere in
+    the backend (e.g. list formatters) and tolerates users with multiple
+    historical role rows.
+
+    Parameters
+    ----------
+    supabase : supabase-py client
+        Tenant-scoped client.
+    yacht_id : str
+        Vessel scope — every returned row is constrained to this yacht.
+    user_ids : Iterable[str]
+        UUIDs to resolve. Deduplicated internally. Empty input returns {}.
+
+    Returns
+    -------
+    dict[str, dict]
+        ``{uuid: {"name": str | None, "role": str | None}}``. Users with a
+        profile but no active role have ``role = None``. Users with no
+        profile at all are omitted entirely.
+    """
+    ids = sorted({uid for uid in user_ids if uid})
+    if not ids:
         return {}
 
-    # Name lookup
-    names: dict[str, str] = {}
-    try:
-        r = supabase.table("auth_users_profiles").select("id, name, email").in_("id", clean_ids).execute()
-        for row in (getattr(r, "data", None) or []):
-            uid = row.get("id")
-            if uid:
-                names[uid] = row.get("name") or row.get("email") or None
-    except Exception as e:
-        logger.warning("resolve_users: name lookup failed: %s", e)
+    out: dict[str, dict[str, Optional[str]]] = {uid: {"name": None, "role": None} for uid in ids}
 
-    # Role lookup (scoped to this yacht, active only, newest)
-    roles: dict[str, str] = {}
+    # ── Names ──
     try:
-        r = (
+        prof = (
+            supabase.table("auth_users_profiles")
+            .select("id, name")
+            .in_("id", ids)
+            .eq("yacht_id", yacht_id)
+            .execute()
+        )
+        for row in (prof.data or []):
+            uid = row.get("id")
+            if uid in out:
+                out[uid]["name"] = row.get("name")
+    except Exception as exc:  # noqa: BLE001 — non-fatal resolver
+        logger.warning("resolve_users: profile lookup failed: %s", exc)
+
+    # ── Roles (active, most recent) ──
+    try:
+        roles = (
             supabase.table("auth_users_roles")
             .select("user_id, role, assigned_at, is_active")
-            .in_("user_id", clean_ids)
+            .in_("user_id", ids)
             .eq("yacht_id", yacht_id)
             .eq("is_active", True)
             .order("assigned_at", desc=True)
             .execute()
         )
-        for row in (getattr(r, "data", None) or []):
+        # First row per user (order already DESC by assigned_at)
+        seen: set[str] = set()
+        for row in (roles.data or []):
             uid = row.get("user_id")
-            # order desc → first row per user_id is newest; skip if already captured
-            if uid and uid not in roles:
-                roles[uid] = row.get("role")
-    except Exception as e:
-        logger.warning("resolve_users: role lookup failed: %s", e)
+            if uid in out and uid not in seen:
+                out[uid]["role"] = row.get("role")
+                seen.add(uid)
+    except Exception as exc:  # noqa: BLE001 — non-fatal resolver
+        logger.warning("resolve_users: role lookup failed: %s", exc)
 
-    return {
-        uid: {"name": names.get(uid), "role": roles.get(uid)}
-        for uid in clean_ids
-    }
+    # Drop entries with no name AND no role — callers treat absence as "unknown user"
+    return {uid: v for uid, v in out.items() if v["name"] or v["role"]}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Yacht name
+# ──────────────────────────────────────────────────────────────────────────
 
 
 def resolve_yacht_name(supabase, yacht_id: str) -> Optional[str]:
-    """Resolve a yacht_id to its display name from TENANT yacht_registry.
+    """
+    Fetch the human-readable yacht name from ``yacht_registry``.
 
-    Returns None on miss or error. Safe to call with an empty / None id."""
+    A single-row query with an indexed PK lookup — cheap and cached well
+    upstream if callers want. Returns ``None`` on any failure (bad id,
+    network blip, RLS block) — the frontend degrades to "—" in that case
+    rather than erroring.
+    """
     if not yacht_id:
         return None
     try:
         r = (
             supabase.table("yacht_registry")
-            .select("id, name")
+            .select("name")
             .eq("id", yacht_id)
-            .limit(1)
+            .maybe_single()
             .execute()
         )
-        rows = getattr(r, "data", None) or []
-        if rows:
-            return rows[0].get("name")
-    except Exception as e:
-        logger.warning("resolve_yacht_name: lookup failed for %s: %s", yacht_id, e)
-    return None
+        if r is None or not r.data:
+            return None
+        return r.data.get("name")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("resolve_yacht_name(%s): %s", yacht_id, exc)
+        return None
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Equipment rows (for Related Equipment section)
+# ──────────────────────────────────────────────────────────────────────────
 
 
 def resolve_equipment_batch(
-    supabase, yacht_id: str, equipment_ids: Iterable[str]
+    supabase,
+    yacht_id: str,
+    equipment_ids: Iterable[str],
 ) -> list[dict]:
-    """Hydrate an equipment-id array into frontend-friendly rows.
+    """
+    Fetch a batch of equipment rows in the order requested.
 
-    One round-trip; filters soft-deleted rows. Returns a list shaped for
-    RelatedEquipmentSection:
-      `{id, equipment_id, code, name, manufacturer, description}`.
-    Preserves the order of `equipment_ids` that survives the filter."""
-    clean_ids: list[str] = [eid for eid in equipment_ids if eid]
-    if not clean_ids:
+    Output shape per row matches the frontend ``RelatedEquipmentItem`` type:
+    ``{id, code, name, manufacturer, description}``. Soft-deleted rows
+    (``deleted_at IS NOT NULL``) are excluded — a deleted equipment still
+    sitting in a doc's ``equipment_ids`` array just disappears from the
+    rendered list, which is the desired behaviour (we don't want ghosts).
+
+    The caller-supplied order is preserved so the UI can rely on a stable
+    render ordering even across pagination; internally we fetch once and
+    reindex.
+    """
+    ids = [eid for eid in equipment_ids if eid]
+    if not ids:
         return []
+
     try:
         r = (
             supabase.table("pms_equipment")
-            .select("id, code, name, manufacturer, description, deleted_at")
-            .in_("id", clean_ids)
+            .select("id, code, name, manufacturer, description")
+            .in_("id", ids)
             .eq("yacht_id", yacht_id)
-            .is_("deleted_at", None)
+            .is_("deleted_at", "null")
             .execute()
         )
-        by_id = {row["id"]: row for row in (getattr(r, "data", None) or []) if row.get("id")}
-    except Exception as e:
-        logger.warning("resolve_equipment_batch: lookup failed: %s", e)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("resolve_equipment_batch: fetch failed: %s", exc)
         return []
 
-    out: list[dict] = []
-    for eid in clean_ids:
-        row = by_id.get(eid)
-        if not row:
-            continue
-        out.append({
-            "id": row["id"],
-            "equipment_id": row["id"],
-            "code": row.get("code") or "",
-            "name": row.get("name") or "Equipment",
-            "manufacturer": row.get("manufacturer") or "",
-            "description": row.get("description") or "",
-        })
-    return out
+    by_id = {row["id"]: row for row in (r.data or [])}
+
+    # Preserve caller-supplied order; drop missing ids silently
+    return [by_id[eid] for eid in ids if eid in by_id]

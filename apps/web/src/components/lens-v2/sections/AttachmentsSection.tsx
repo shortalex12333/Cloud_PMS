@@ -25,19 +25,17 @@ export interface AttachmentsSectionProps {
   /** Optional data-testid applied to the "+ Upload" section action button */
   addFileTestId?: string;
   /**
-   * Optional override for the section title. Defaults to "Attachments".
-   * Certificate and Document lenses pass "Supporting Documents" per the
-   * 2026-04-23 UX spec (doc_cert_ux_change.md:160).
+   * Section title override. Defaults to "Attachments". The document lens
+   * passes "Supporting Documents" per doc_cert_ux_change.md (2026-04-23)
+   * so the same reusable section carries clearer semantics on that lens.
    */
   title?: string;
-  /** Optional override for the section DOM id (kept unique when title changes). */
-  sectionId?: string;
 }
 
-export function AttachmentsSection({ attachments, onAddFile, canAddFile, addFileTestId, title = 'Attachments', sectionId }: AttachmentsSectionProps) {
+export function AttachmentsSection({ attachments, onAddFile, canAddFile, addFileTestId, title = 'Attachments' }: AttachmentsSectionProps) {
   return (
     <CollapsibleSection
-      id={sectionId ?? 'sec-attachments'}
+      id={`sec-${title.toLowerCase().replace(/\s+/g, '-')}`}
       title={title}
       count={attachments.length}
       action={canAddFile && onAddFile ? { label: '+ Upload', onClick: onAddFile, testid: addFileTestId } : undefined}
