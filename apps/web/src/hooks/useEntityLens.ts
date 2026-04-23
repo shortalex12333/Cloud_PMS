@@ -7,6 +7,25 @@ import { normalizeWarrantyEntity } from '@/lib/normalizeWarranty';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
+// entity_type → queryKey[0] used by each FilteredEntityList page. Keeping this
+// map here (rather than per-page) lets executeAction invalidate the parent
+// list for any action (delete/cancel/status/etc.) without each page having to
+// wire a refetch callback through the overlay.
+const LIST_QUERY_KEY_FOR_ENTITY: Partial<Record<EntityType, string>> = {
+  purchase_order: 'purchasing',
+  shopping_list: 'shopping-list',
+  certificate: 'certificates',
+  document: 'documents',
+  receiving: 'receiving',
+  warranty: 'warranties',
+  work_order: 'work-orders',
+  fault: 'faults',
+  equipment: 'equipment',
+  part: 'inventory',
+  handover_export: 'handover-export',
+  hours_of_rest: 'hours-of-rest',
+};
+
 export interface UseEntityLensResult {
   entity: Record<string, unknown> | null;
   availableActions: AvailableAction[];
@@ -112,6 +131,12 @@ export function useEntityLens(
       if (res.ok) {
         await fetchEntity();
         queryClient.invalidateQueries({ queryKey: [...ATTENTION_QUERY_KEY] });
+        // Invalidate the parent domain list so delete/cancel/status actions
+        // visually take effect without a manual reload.
+        const listKey = LIST_QUERY_KEY_FOR_ENTITY[entityType];
+        if (listKey) {
+          queryClient.invalidateQueries({ queryKey: [listKey] });
+        }
       }
       return result;
     },

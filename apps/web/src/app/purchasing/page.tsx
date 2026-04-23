@@ -22,6 +22,8 @@ interface PurchaseOrder {
   currency?: string;
   total_amount?: number;
   description?: string;
+  item_count?: number;
+  ordered_by_name?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -65,6 +67,9 @@ function poAdapter(po: PurchaseOrder): EntityListResult {
       supplier_name: po.supplier_name || '',
       currency: po.currency || '',
       total_amount: po.total_amount ?? null,
+      item_count: po.item_count ?? null,
+      ordered_by_name: po.ordered_by_name || '',
+      description: po.description || '',
       ordered_at: po.ordered_at || '',
       received_at: po.received_at || '',
       created_at: po.created_at || '',

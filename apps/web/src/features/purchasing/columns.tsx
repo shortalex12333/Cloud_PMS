@@ -126,6 +126,18 @@ export const PURCHASE_ORDER_COLUMNS: EntityTableColumn<EntityListResult>[] = [
     minWidth: 60,
   },
   {
+    key: 'items',
+    label: 'Items',
+    accessor: (r) => {
+      const n = metaNumber(r, 'item_count');
+      return n == null ? '' : String(n);
+    },
+    sortAccessor: (r) => metaNumber(r, 'item_count'),
+    mono: true,
+    minWidth: 60,
+    align: 'right',
+  },
+  {
     key: 'total',
     label: 'Total',
     accessor: (r) => formatAmount(r),
@@ -133,6 +145,13 @@ export const PURCHASE_ORDER_COLUMNS: EntityTableColumn<EntityListResult>[] = [
     mono: true,
     minWidth: 100,
     align: 'right',
+  },
+  {
+    key: 'requester',
+    label: 'Requested By',
+    accessor: (r) => meta(r, 'ordered_by_name'),
+    minWidth: 140,
+    wrap: true,
   },
   {
     key: 'ordered_at',

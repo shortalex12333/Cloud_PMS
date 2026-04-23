@@ -855,9 +855,10 @@ async def get_domain_records(
                     supplier_map = {s["id"]: s.get("name", "") for s in (suppliers.data or []) if s.get("id")}
                 except Exception as e:
                     logger.warning(f"[DomainRecords] purchase_orders supplier resolve failed: {e}")
-            # Batch-fetch item totals per PO
+            # Batch-fetch item totals + line counts per PO (Issue #20 metadata)
             po_ids = [r.get("id") for r in records if r.get("id")]
             total_map: Dict[str, float] = {}
+            item_count_map: Dict[str, int] = {}
             if po_ids:
                 try:
                     items = supabase.table("pms_purchase_order_items").select(
@@ -869,8 +870,27 @@ async def get_domain_records(
                         price = item.get("unit_price") or 0
                         if pid:
                             total_map[pid] = total_map.get(pid, 0.0) + float(qty) * float(price)
+                            item_count_map[pid] = item_count_map.get(pid, 0) + 1
                 except Exception as e:
                     logger.warning(f"[DomainRecords] purchase_orders total compute failed: {e}")
+
+            # Batch-resolve ordered_by (requester) names — pms_purchase_orders
+            # has ordered_by (closest thing to "requested_by"). No department col.
+            ordered_by_ids = list({
+                r.get("ordered_by") for r in records if r.get("ordered_by")
+            })
+            ordered_by_map: Dict[str, str] = {}
+            if ordered_by_ids:
+                try:
+                    profiles = supabase.table("auth_users_profiles").select("id, name").in_(
+                        "id", ordered_by_ids
+                    ).execute()
+                    ordered_by_map = {
+                        p["id"]: p.get("name") for p in (profiles.data or []) if p.get("id")
+                    }
+                except Exception as e:
+                    logger.warning(f"[DomainRecords] purchase_orders requester resolve failed: {e}")
+
             for raw, fmt in zip(records, formatted):
                 sid = raw.get("supplier_id")
                 if sid:
@@ -881,6 +901,11 @@ async def get_domain_records(
                 po_id = raw.get("id")
                 if po_id and po_id in total_map:
                     fmt["total_amount"] = round(total_map[po_id], 2)
+                if po_id and po_id in item_count_map:
+                    fmt["item_count"] = item_count_map[po_id]
+                ordered_by_id = raw.get("ordered_by")
+                if ordered_by_id and ordered_by_id in ordered_by_map:
+                    fmt["ordered_by_name"] = ordered_by_map[ordered_by_id]
                 # Surface metadata notes as description
                 meta = raw.get("metadata") or {}
                 if isinstance(meta, dict) and meta.get("notes"):

@@ -3457,10 +3457,19 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id"],
+        allowed_roles=["purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "purchase_order_id", "storage_path"],
         domain="purchase_orders",
         variant=ActionVariant.MUTATE,
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("purchase_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("storage_path", FieldClassification.REQUIRED),
+            FieldMetadata("filename", FieldClassification.OPTIONAL),
+            FieldMetadata("mime_type", FieldClassification.OPTIONAL),
+            FieldMetadata("file_size", FieldClassification.OPTIONAL),
+            FieldMetadata("description", FieldClassification.OPTIONAL),
+        ],
     ),
 
     "upload_photo": ActionDefinition(
