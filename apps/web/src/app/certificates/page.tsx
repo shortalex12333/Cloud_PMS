@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
+import { CERTIFICATE_FILTERS } from '@/features/entity-list/types/filter-config';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
 import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
 import { CertificateContent } from '@/components/lens-v2/entity';
@@ -61,7 +62,9 @@ function certAdapter(c: Certificate): EntityListResult {
     id: c.id,
     type: c.domain === 'crew' ? 'pms_crew_certificates' : 'pms_vessel_certificates',
     title,
-    subtitle: `${c.certificate_type || ''} · ${c.issuing_authority || ''}`.replace(/^ · |· $/g, ''),
+    // Subtitle = issuing authority + expiry (no repetition with title / no double-rendered status).
+    // certificate_type is exposed via filter + pill, not repeated inline.
+    subtitle: [c.issuing_authority || null, c.expiry_date ? `Expires ${c.expiry_date}` : null].filter(Boolean).join(' · '),
     entityRef: c.certificate_number || (c.domain === 'crew' ? 'Crew' : 'Vessel'),
     status,
     statusVariant: c.status === 'expired' ? 'critical' : c.status === 'revoked' ? 'critical' : c.status === 'suspended' ? 'warning' : c.status === 'expiring_soon' ? 'warning' : c.status === 'superseded' ? 'cancelled' : c.status === 'valid' ? 'completed' : 'open',
@@ -300,31 +303,7 @@ function CertificatesPageContent() {
           table="v_certificates_enriched"
           columns="id,certificate_name,certificate_number,certificate_type,issuing_authority,issue_date,expiry_date,status,domain,person_name,created_at"
           adapter={certAdapter}
-          filterConfig={[
-            {
-              key: 'cert_domain',
-              label: 'Type',
-              type: 'select' as const,
-              options: [
-                { label: 'All', value: '' },
-                { label: 'Vessel', value: 'vessel' },
-                { label: 'Crew', value: 'crew' },
-              ],
-            },
-            {
-              key: 'status',
-              label: 'Status',
-              type: 'select' as const,
-              options: [
-                { label: 'All', value: '' },
-                { label: 'Valid', value: 'valid' },
-                { label: 'Expired', value: 'expired' },
-                { label: 'Revoked', value: 'revoked' },
-                { label: 'Superseded', value: 'superseded' },
-                { label: 'Suspended', value: 'suspended' },
-              ],
-            },
-          ]}
+          filterConfig={CERTIFICATE_FILTERS}
           selectedId={selectedId}
           onSelect={handleSelect}
           emptyMessage="No certificates recorded"

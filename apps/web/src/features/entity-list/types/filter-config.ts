@@ -115,24 +115,145 @@ export const WORK_ORDER_FILTERS: FilterFieldConfig[] = [
   },
 ];
 
+/**
+ * CERTIFICATE_FILTERS — 2026-04-23 rich filter spec.
+ *
+ * Source of truth for every frontend-filterable column on
+ * `v_certificates_enriched` (UNION of pms_vessel_certificates +
+ * pms_crew_certificates). All keys must exist on that view.
+ *
+ * Filter-type rules (enforced by the framework):
+ *   - `text`         → server-side ILIKE '%input%' (substring match)
+ *   - `select`       → server-side `eq` on enum value
+ *   - `date-range`   → server-side `gte` + `lte` on a date/timestamp column
+ *
+ * UUID columns (id, yacht_id, document_id, person_node_id, created_by,
+ * deleted_by, import_session_id) are NEVER surfaced to users per CEO
+ * directive — they are backend scoping only.
+ *
+ * See: docs/ongoing_work/certificates/CERTIFICATE_FILTER_SPEC_2026_04_23.md
+ */
 export const CERTIFICATE_FILTERS: FilterFieldConfig[] = [
+  // ── Status & Priority ──────────────────────────────────────────────────
   {
     key: 'status',
     label: 'Status',
     type: 'select',
     options: [
       { value: 'valid', label: 'Valid' },
-      { value: 'expiring_soon', label: 'Expiring Soon' },
       { value: 'expired', label: 'Expired' },
+      { value: 'suspended', label: 'Suspended' },
+      { value: 'revoked', label: 'Revoked' },
       { value: 'superseded', label: 'Superseded' },
     ],
     category: 'status-priority',
   },
   {
+    key: 'certificate_type',
+    label: 'Certificate Type',
+    type: 'select',
+    options: [
+      // Vessel cert types
+      { value: 'ISM', label: 'ISM' },
+      { value: 'ISPS', label: 'ISPS' },
+      { value: 'SOLAS', label: 'SOLAS' },
+      { value: 'MLC', label: 'MLC' },
+      { value: 'CLASS', label: 'Classification' },
+      { value: 'FLAG', label: 'Flag State' },
+      { value: 'LOAD_LINE', label: 'Load Line' },
+      { value: 'TONNAGE', label: 'Tonnage' },
+      { value: 'MARPOL', label: 'MARPOL' },
+      { value: 'IOPP', label: 'IOPP' },
+      { value: 'SEC', label: 'Security' },
+      { value: 'SRC', label: 'Safety Radio' },
+      { value: 'SCC', label: 'Safety Construction' },
+      // Crew cert types
+      { value: 'STCW', label: 'STCW' },
+      { value: 'ENG1', label: 'ENG1 Medical' },
+      { value: 'COC', label: 'Certificate of Competency' },
+      { value: 'GMDSS', label: 'GMDSS' },
+      { value: 'BST', label: 'Basic Safety Training' },
+      { value: 'PSC', label: 'Personal Survival Craft' },
+      { value: 'AFF', label: 'Advanced Fire Fighting' },
+      { value: 'MEDICAL_CARE', label: 'Medical Care' },
+    ],
+    category: 'status-priority',
+  },
+  {
+    key: 'domain',
+    label: 'Category',
+    type: 'select',
+    options: [
+      { value: 'vessel', label: 'Vessel Certificate' },
+      { value: 'crew', label: 'Crew Certificate' },
+    ],
+    category: 'status-priority',
+  },
+
+  // ── Dates & Deadlines ──────────────────────────────────────────────────
+  {
     key: 'expiry_date',
     label: 'Expiry Date',
     type: 'date-range',
     category: 'dates',
+  },
+  {
+    key: 'issue_date',
+    label: 'Issue Date',
+    type: 'date-range',
+    category: 'dates',
+  },
+  {
+    key: 'next_survey_due',
+    label: 'Next Survey Due',
+    type: 'date-range',
+    category: 'dates',
+  },
+  {
+    key: 'created_at',
+    label: 'Added to PMS',
+    type: 'date-range',
+    category: 'dates',
+  },
+
+  // ── Properties ─────────────────────────────────────────────────────────
+  {
+    key: 'certificate_name',
+    label: 'Name',
+    type: 'text',
+    placeholder: 'e.g. EPIRB, Load Line',
+    category: 'properties',
+  },
+  {
+    key: 'certificate_number',
+    label: 'Certificate No.',
+    type: 'text',
+    placeholder: 'e.g. EPT-2025',
+    category: 'properties',
+  },
+  {
+    key: 'issuing_authority',
+    label: 'Issuing Authority',
+    type: 'text',
+    placeholder: 'e.g. MCA, Lloyd’s, DNV',
+    category: 'properties',
+  },
+  {
+    key: 'person_name',
+    label: 'Crew Member',
+    type: 'text',
+    placeholder: 'Filter crew certs by person',
+    category: 'properties',
+  },
+  {
+    key: 'source',
+    label: 'Source',
+    type: 'select',
+    options: [
+      { value: 'manual', label: 'Manual entry' },
+      { value: 'imported', label: 'Bulk imported' },
+    ],
+    category: 'properties',
   },
 ];
 
