@@ -143,7 +143,14 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     },
 
     # ── Shopping List ─────────────────────────────────────────────────────────
-    # shopping_list prefill intentionally empty for Phase 2 — add as needed
+    # Mutation actions: prefill item_id from entity "id" so required-field
+    # validation in p0_actions_routes passes when called from EntityLensPage.
+    ("shopping_list", "approve_shopping_list_item"): {"item_id": "id"},
+    ("shopping_list", "reject_shopping_list_item"):  {"item_id": "id"},
+    ("shopping_list", "promote_candidate_to_part"):  {"item_id": "id"},
+    ("shopping_list", "view_shopping_list_history"): {"item_id": "id"},
+    ("shopping_list", "delete_shopping_item"):       {"item_id": "id"},
+    ("shopping_list", "mark_shopping_list_ordered"): {"item_id": "id"},
     # ── Hours of Rest ─────────────────────────────────────────────────────────
     # hours_of_rest prefill intentionally empty for Phase 2 — add as needed
 

@@ -1,268 +1,160 @@
 'use client';
 
 /**
- * ShoppingListContent — lens-v2 entity view.
+ * ShoppingListContent — lens-v2 entity view for a single shopping list item.
  * Prototype: public/prototypes/lens-shopping-list.html
  *
- * Data flow:
- * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
- * - Actions from availableActions[] → backend /v1/actions/execute
- * - ActionPopup auto-builds form fields from action.required_fields
+ * Entity data comes from /v1/entity/shopping_list/{id} via useEntityLensContext().
+ * Actions come from available_actions[] prefilled by entity_prefill.py.
  *
- * Sections: Identity → Lifecycle → Line Items → Links → Notes → History → Audit Trail → Attachments
- *
- * TODO notes for next engineer:
- * - Add Item handler not wired
- * - File upload modal not wired
+ * Sections: Identity → Lifecycle → Item Details → Links → Audit Trail
  */
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
 import styles from '../lens.module.css';
 import { IdentityStrip, type PillDef, type DetailLine } from '../IdentityStrip';
 import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActionFields';
 import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
-import { getEntityRoute } from '@/lib/entityRoutes';
 
-// Sections
 import {
-  NotesSection,
   AuditTrailSection,
-  PartsSection,
   DocRowsSection,
   KVSection,
-  AttachmentsSection,
-  HistorySection,
-  type NoteItem,
   type AuditEvent,
-  type PartItem,
   type DocRowItem,
   type KVItem,
-  type AttachmentItem,
-  type HistoryPeriod,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 
-// --- Colour mapping helpers ---
-
-function statusToPillVariant(status: string): PillDef['variant'] {
-  switch (status) {
-    case 'cancelled':
-      return 'red';
-    case 'submitted':
-      return 'amber';
-    case 'approved':
-    case 'ordered':
-    case 'received':
-      return 'green';
-    default:
-      return 'neutral';
+function statusPillVariant(status: string): PillDef['variant'] {
+  switch (status?.toLowerCase()) {
+    case 'approved': return 'green';
+    case 'ordered': return 'green';
+    case 'fulfilled': return 'green';
+    case 'rejected': return 'red';
+    case 'under_review': return 'amber';
+    case 'candidate': return 'neutral';
+    default: return 'neutral';
   }
 }
 
-function priorityToPillVariant(priority: string): PillDef['variant'] {
-  switch (priority) {
-    case 'critical':
-      return 'red';
-    case 'high':
-      return 'amber';
-    default:
-      return 'neutral';
+function urgencyPillVariant(urgency: string): PillDef['variant'] {
+  switch (urgency?.toLowerCase()) {
+    case 'critical': return 'red';
+    case 'high': return 'amber';
+    default: return 'neutral';
   }
 }
 
-function formatLabel(str: string): string {
+function fmt(str?: string): string {
+  if (!str) return '';
   return str.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// --- Component ---
+function formatDate(d?: string): string {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export function ShoppingListContent() {
-  const router = useRouter();
-  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction } = useEntityLensContext();
 
-  // -- Extract entity fields --
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
-  const list_number = (entity?.list_number ?? payload.list_number) as string | undefined;
-  const title = ((entity?.title ?? payload.title) as string | undefined) ?? 'Shopping List';
-  const description = (entity?.description ?? payload.description) as string | undefined;
-  const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
-  const priority = ((entity?.priority ?? payload.priority) as string | undefined) ?? 'normal';
-  const created_by = (entity?.created_by ?? payload.created_by ?? entity?.requester_name ?? payload.requester_name) as string | undefined;
-  const created_date = (entity?.created_date ?? payload.created_date ?? entity?.created_at ?? payload.created_at) as string | undefined;
-  const port = (entity?.port ?? payload.port ?? entity?.delivery_location ?? payload.delivery_location) as string | undefined;
-  const department = (entity?.department ?? payload.department) as string | undefined;
-  const total_items = (entity?.total_items ?? payload.total_items) as number | undefined;
-  const total_cost = (entity?.total_cost ?? payload.total_cost ?? entity?.estimated_total ?? payload.estimated_total) as number | undefined;
-  const currency = ((entity?.currency ?? payload.currency) as string | undefined) ?? 'USD';
-  const approver_name = (entity?.approver_name ?? payload.approver_name) as string | undefined;
-  const approved_at = (entity?.approved_at ?? payload.approved_at) as string | undefined;
+  const get = <T = unknown>(key: string): T | undefined =>
+    (entity?.[key] ?? payload[key]) as T | undefined;
 
-  // Section data
-  const items = ((entity?.items ?? payload.items) as Array<Record<string, unknown>> | undefined) ?? [];
-  const notes = ((entity?.notes ?? payload.notes) as Array<Record<string, unknown>> | undefined) ?? [];
-  const history = ((entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
-  const linked_entities = ((entity?.linked_entities ?? payload.linked_entities ?? entity?.documents ?? payload.documents) as Array<Record<string, unknown>> | undefined) ?? [];
+  const id = get<string>('id');
+  const title = get<string>('title') ?? get<string>('part_name') ?? 'Shopping List Item';
+  const status = get<string>('status') ?? 'candidate';
+  const urgency = get<string>('urgency') ?? get<string>('priority');
+  const requesterName = get<string>('requester_name') ?? get<string>('created_by');
+  const approverName = get<string>('approver_name');
+  const approvedAt = get<string>('approved_at');
+  const approvalNotes = get<string>('approval_notes');
+  const rejectionReason = get<string>('rejection_reason');
+  const createdAt = get<string>('created_at');
+  const updatedAt = get<string>('updated_at');
+  const sourceType = get<string>('source_type');
+  const sourceNotes = get<string>('source_notes') ?? get<string>('description');
+  const requiredByDate = get<string>('required_by_date');
+  const isCandidatePart = get<boolean>('is_candidate_part');
+  const preferredSupplier = get<string>('preferred_supplier');
 
-  // -- Action gates --
-  const submitAction = getAction('submit_list');
-  const approveAction = getAction('approve_list');
-  const convertAction = getAction('convert_to_po');
-  const addItemAction = getAction('add_list_item');
-  const archiveAction = getAction('archive_list');
+  // Items array — the entity endpoint wraps the row in items:[...] for the lens
+  const items = (get<Array<Record<string, unknown>>>('items') ?? []);
+  const item = items[0] ?? {};
+  const partNumber = (item.part_number ?? get<string>('part_number')) as string | undefined;
+  const manufacturer = (item.manufacturer ?? get<string>('manufacturer')) as string | undefined;
+  const unit = (item.unit ?? get<string>('unit')) as string | undefined;
+  const qtyRequested = (item.quantity_requested ?? get<number>('quantity_requested')) as number | undefined;
+  const qtyApproved = (item.quantity_approved ?? get<number>('quantity_approved')) as number | undefined;
+  const estimatedPrice = (item.estimated_unit_price ?? get<number>('estimated_unit_price')) as number | undefined;
 
-  const isArchivable = !['cancelled', 'archived'].includes(status);
+  const relatedEntities = (get<Array<Record<string, unknown>>>('related_entities') ?? []);
 
-  // BACKEND_AUTO moved to mapActionFields.ts
-  const [actionPopupConfig, setActionPopupConfig] = React.useState<{
-    actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+  // ── Action popup state ───────────────────────────────────────────────────────
+  const [popupConfig, setPopupConfig] = React.useState<{
+    actionId: string;
+    title: string;
+    fields: ActionPopupField[];
+    signatureLevel: 0 | 1 | 2 | 3 | 4 | 5;
   } | null>(null);
 
-  function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
-    const fields = mapActionFields(action as any);
-    const sigLevel = getSignatureLevel(action as any);
-    setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
+  function openPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
+    setPopupConfig({
+      actionId: action.action_id,
+      title: action.label,
+      fields: mapActionFields(action as Parameters<typeof mapActionFields>[0]),
+      signatureLevel: getSignatureLevel(action as Parameters<typeof getSignatureLevel>[0]),
+    });
   }
 
-  // -- Derived display --
-  const statusLabel = formatLabel(status);
-  const priorityLabel = formatLabel(priority);
-  const itemCount = total_items ?? items.length;
-
+  // ── Pills & detail lines ─────────────────────────────────────────────────────
   const pills: PillDef[] = [
-    { label: statusLabel, variant: statusToPillVariant(status) },
+    { label: fmt(status), variant: statusPillVariant(status) },
   ];
-  if (itemCount > 0) {
-    pills.push({ label: `${itemCount} Item${itemCount === 1 ? '' : 's'}`, variant: 'neutral' });
+  if (urgency && urgency !== 'normal') {
+    pills.push({ label: fmt(urgency), variant: urgencyPillVariant(urgency) });
   }
-  if (priority !== 'normal' && priority !== 'medium') {
-    pills.push({ label: priorityLabel, variant: priorityToPillVariant(priority) });
+  if (isCandidatePart) {
+    pills.push({ label: 'Candidate', variant: 'neutral' });
   }
 
   const details: DetailLine[] = [];
-  if (created_by) {
-    details.push({ label: 'Requester', value: created_by });
-  }
-  if (approver_name) {
-    details.push({ label: 'Approver', value: approver_name });
-  }
-  if (created_date) {
-    details.push({ label: 'Created', value: created_date, mono: true });
-  }
-  if (approved_at) {
-    details.push({ label: 'Approved', value: approved_at, mono: true });
-  }
-  if (priority !== 'normal' && priority !== 'medium') {
-    details.push({ label: 'Priority', value: priorityLabel });
-  }
-  if (department) {
-    details.push({ label: 'Department', value: department });
-  }
-  if (port) {
-    details.push({ label: 'Delivery', value: port });
-  }
-  if (total_cost !== undefined) {
-    details.push({ label: 'Est. Total', value: `$${total_cost.toLocaleString()}`, mono: true });
-  }
+  if (requesterName) details.push({ label: 'Requested by', value: requesterName });
+  if (createdAt) details.push({ label: 'Created', value: formatDate(createdAt), mono: true });
+  if (requiredByDate) details.push({ label: 'Required by', value: formatDate(requiredByDate), mono: true });
+  if (approverName) details.push({ label: 'Approved by', value: approverName });
+  if (approvedAt) details.push({ label: 'Approved', value: formatDate(approvedAt), mono: true });
 
-  // Context line
-  const contextParts: string[] = [];
-  if (department) contextParts.push(department);
-  if (port) contextParts.push(port);
-  const contextNode = (
-    <>
-      {contextParts.join(' · ')}
-      {created_by && (
-        <>
-          {contextParts.length > 0 && ' · '}
-          Requested by <span className={styles.crewLink}>{created_by}</span>
-        </>
-      )}
-    </>
-  );
+  // ── KV section rows ──────────────────────────────────────────────────────────
+  const kvItems: KVItem[] = [];
+  if (partNumber) kvItems.push({ label: 'Part Number', value: partNumber, mono: true });
+  if (manufacturer) kvItems.push({ label: 'Manufacturer', value: manufacturer });
+  if (unit) kvItems.push({ label: 'Unit', value: unit });
+  if (qtyRequested != null) kvItems.push({ label: 'Qty Requested', value: String(qtyRequested) });
+  if (qtyApproved != null) kvItems.push({ label: 'Qty Approved', value: String(qtyApproved) });
+  if (estimatedPrice != null) kvItems.push({ label: 'Est. Unit Price', value: `$${estimatedPrice.toLocaleString()}`, mono: true });
+  if (preferredSupplier) kvItems.push({ label: 'Preferred Supplier', value: preferredSupplier });
+  if (sourceType) kvItems.push({ label: 'Source', value: fmt(sourceType) });
+  if (sourceNotes) kvItems.push({ label: 'Notes / Reason', value: sourceNotes });
+  if (approvalNotes) kvItems.push({ label: 'Approval Notes', value: approvalNotes });
+  if (rejectionReason) kvItems.push({ label: 'Rejection Reason', value: rejectionReason });
 
-  // -- Split button config --
-  const canConvert = convertAction !== null && ['approved'].includes(status);
-  const canSubmit = submitAction !== null && ['draft'].includes(status);
-
-  const primaryLabel = canConvert ? 'Convert to PO' : canSubmit ? 'Submit List' : 'Submit List';
-  const primaryDisabled = canConvert
-    ? (convertAction?.disabled ?? false)
-    : canSubmit
-      ? (submitAction?.disabled ?? false)
-      : true;
-  const primaryDisabledReason = canConvert
-    ? convertAction?.disabled_reason
-    : canSubmit
-      ? submitAction?.disabled_reason
-      : undefined;
-
-  const handlePrimary = React.useCallback(async () => {
-    if (canConvert) {
-      await executeAction('convert_to_po', {});
-    } else if (canSubmit) {
-      await executeAction('submit_list', {});
-    }
-  }, [canConvert, canSubmit, executeAction]);
-
-  const SPECIAL_HANDLERS: Record<string, () => void> = {};
-  const DANGER_ACTIONS = new Set(['archive_list', 'delete_list']);
-  const primaryActionId = canConvert ? 'convert_to_po' : 'submit_list';
-
-  const dropdownItems: DropdownItem[] = availableActions
-    .filter((a) => a.action_id !== primaryActionId)
-    .map((a) => ({
-      label: a.label,
-      onClick: SPECIAL_HANDLERS[a.action_id]
-        ? SPECIAL_HANDLERS[a.action_id]
-        : () => {
-            const hasFields = actionHasFields(a as any);
-            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
-          },
-      disabled: a.disabled,
-      disabledReason: a.disabled_reason ?? undefined,
-      danger: DANGER_ACTIONS.has(a.action_id),
-    }));
-
-  // -- Map section data --
-  const partItems: PartItem[] = items.map((item, i) => ({
-    id: (item.id as string) ?? `item-${i}`,
-    name: (item.part_name ?? item.name ?? item.description) as string ?? 'Item',
-    partNumber: (item.part_number ?? item.sku) as string | undefined,
-    quantity: (item.quantity_requested ?? item.quantity) !== undefined
-      ? `x ${item.quantity_requested ?? item.quantity}`
-      : undefined,
-    stock: (item.unit_price ?? item.price) !== undefined
-      ? `$${Number(item.unit_price ?? item.price).toLocaleString()}`
-      : undefined,
-    onNavigate: item.part_id
-      ? () => router.push(getEntityRoute('parts' as Parameters<typeof getEntityRoute>[0], item.part_id as string))
-      : undefined,
+  // ── Related entity links ─────────────────────────────────────────────────────
+  const docItems: DocRowItem[] = relatedEntities.map((e, i) => ({
+    id: (e.entity_id as string) ?? `link-${i}`,
+    name: (e.label as string) ?? 'Linked Entity',
+    code: (e.entity_type as string) ?? undefined,
+    meta: undefined,
+    date: undefined,
   }));
 
-  const docItems: DocRowItem[] = linked_entities.map((d, i) => ({
-    id: (d.id as string) ?? `link-${i}`,
-    name: (d.name ?? d.title ?? d.entity_title) as string ?? 'Linked Entity',
-    code: (d.code ?? d.entity_code ?? d.reference) as string | undefined,
-    meta: (d.meta ?? d.entity_type ?? d.description) as string | undefined,
-    date: (d.date ?? d.created_at) as string | undefined,
-    onClick: d.entity_id
-      ? () => router.push(getEntityRoute(
-          (d.entity_type as Parameters<typeof getEntityRoute>[0]) ?? 'work-orders',
-          d.entity_id as string
-        ))
-      : undefined,
-  }));
-
-  const noteItems: NoteItem[] = notes.map((n, i) => ({
-    id: (n.id as string) ?? `note-${i}`,
-    author: (n.author ?? n.created_by ?? n.user_name) as string ?? 'Unknown',
-    timestamp: (n.created_at ?? n.timestamp) as string ?? '',
-    body: (n.body ?? n.note_text ?? n.text) as string ?? '',
-  }));
-
+  // ── Audit events ─────────────────────────────────────────────────────────────
+  const history = (get<Array<Record<string, unknown>>>('audit_history') ?? []);
   const auditEvents: AuditEvent[] = history.map((h, i) => ({
     id: (h.id as string) ?? `audit-${i}`,
     action: (h.action ?? h.description ?? h.event) as string ?? '',
@@ -270,112 +162,108 @@ export function ShoppingListContent() {
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
   }));
 
-  const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
-  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
+  // ── SplitButton — primary action + dropdown ──────────────────────────────────
+  const approveAction = getAction('approve_shopping_list_item');
+  const rejectAction = getAction('reject_shopping_list_item');
+  const promoteAction = getAction('promote_candidate_to_part');
+  const orderAction = getAction('mark_shopping_list_ordered');
 
-  const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
-    id: (a.id as string) ?? `att-${i}`,
-    name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
-    caption: (a.caption ?? a.description) as string | undefined,
-    size: (a.size ?? a.file_size) as string | undefined,
-    kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
-  }));
+  // Primary: approve if available, else first non-approve action
+  const primaryAction = approveAction ?? orderAction;
+  const primaryLabel = primaryAction?.label ?? 'No Actions';
+  const primaryDisabled = !primaryAction || (primaryAction.disabled ?? false);
 
-  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
-    id: (p.id as string) ?? `period-${i}`,
-    year: (p.year ?? p.period_year) as string ?? '',
-    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
-    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
-    summary: (p.summary ?? p.period_summary) as string ?? '',
-  }));
+  const handlePrimary = React.useCallback(async () => {
+    if (!primaryAction) return;
+    const hasFields = actionHasFields(primaryAction as Parameters<typeof actionHasFields>[0]);
+    if (hasFields || primaryAction.requires_signature) {
+      openPopup(primaryAction as Parameters<typeof openPopup>[0]);
+    } else {
+      await executeAction(primaryAction.action_id);
+    }
+  }, [primaryAction, executeAction]);
 
+  const DANGER_ACTIONS = new Set(['delete_shopping_item']);
+  const dropdownItems: DropdownItem[] = availableActions
+    .filter((a) => a.action_id !== primaryAction?.action_id)
+    .map((a) => ({
+      label: a.label,
+      disabled: a.disabled,
+      disabledReason: a.disabled_reason ?? undefined,
+      danger: DANGER_ACTIONS.has(a.action_id),
+      onClick: () => {
+        const hasFields = actionHasFields(a as Parameters<typeof actionHasFields>[0]);
+        if (hasFields || a.requires_signature) {
+          openPopup(a as Parameters<typeof openPopup>[0]);
+        } else {
+          executeAction(a.action_id);
+        }
+      },
+    }));
 
-  const handleAddPart = React.useCallback(
-    () => {},
-    []
-  );
+  // ── Lifecycle steps ──────────────────────────────────────────────────────────
+  const LIFECYCLE = ['candidate', 'under_review', 'approved', 'ordered', 'fulfilled'] as const;
+  const currentIdx = LIFECYCLE.indexOf(status as typeof LIFECYCLE[number]);
 
   return (
     <>
-      {/* Identity Strip */}
       <IdentityStrip
-        overline={list_number}
+        overline={partNumber ? `#${partNumber}` : undefined}
         title={title}
-        context={contextNode}
+        context={requesterName ? <>Requested by <span className={styles.crewLink}>{requesterName}</span></> : undefined}
         pills={pills}
         details={details}
-        description={description}
+        description={sourceNotes}
         actionSlot={
-          (submitAction || convertAction) ? (
+          availableActions.length > 0 ? (
             <SplitButton
               label={primaryLabel}
               onClick={handlePrimary}
               disabled={primaryDisabled}
-              disabledReason={primaryDisabledReason ?? undefined}
               items={dropdownItems}
             />
           ) : undefined
         }
       />
 
-      {/* Lifecycle Progress */}
+      {/* Lifecycle progress */}
       <ScrollReveal>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, padding: '16px 0', marginBottom: 8 }}>
-          {(['draft', 'submitted', 'approved', 'ordered', 'received', 'archived'] as const).map((step, i, arr) => {
-            const stepIndex = arr.indexOf(step);
-            const currentIndex = arr.indexOf(status as typeof step);
-            const isCompleted = currentIndex >= 0 && stepIndex < currentIndex;
-            const isActive = stepIndex === currentIndex;
-            const isFuture = currentIndex < 0 ? stepIndex > 0 : stepIndex > currentIndex;
+          {LIFECYCLE.map((step, i) => {
+            const isCompleted = currentIdx >= 0 && i < currentIdx;
+            const isActive = i === currentIdx;
 
             return (
               <React.Fragment key={step}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      width: isActive ? 12 : 10,
-                      height: isActive ? 12 : 10,
-                      borderRadius: '50%',
-                      background: isCompleted || isActive ? 'var(--green, #4caf50)' : 'none',
-                      border: `2px solid ${isCompleted || isActive ? 'var(--green, #4caf50)' : 'var(--txt-ghost, #666)'}`,
-                      boxShadow: isActive ? '0 0 0 4px var(--green-bg, rgba(76,175,80,0.15))' : 'none',
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
+                  <div style={{
+                    width: isActive ? 12 : 10, height: isActive ? 12 : 10, borderRadius: '50%',
+                    background: isCompleted || isActive ? 'var(--green, #4caf50)' : 'none',
+                    border: `2px solid ${isCompleted || isActive ? 'var(--green, #4caf50)' : 'var(--txt-ghost, #666)'}`,
+                    boxShadow: isActive ? '0 0 0 4px var(--green-bg, rgba(76,175,80,0.15))' : 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
                     {isCompleted && (
                       <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
                         <polyline points="2.5 6 5 8.5 9.5 3.5" />
                       </svg>
                     )}
                   </div>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: isActive ? 600 : 500,
-                      letterSpacing: '0.03em',
-                      color: isActive ? 'var(--green, #4caf50)' : isCompleted ? 'var(--txt3, #999)' : 'var(--txt-ghost, #666)',
-                      marginTop: 8,
-                      textTransform: 'uppercase',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {formatLabel(step)}
+                  <span style={{
+                    fontSize: 10, fontWeight: isActive ? 600 : 500,
+                    letterSpacing: '0.03em',
+                    color: isActive ? 'var(--green, #4caf50)' : isCompleted ? 'var(--txt3, #999)' : 'var(--txt-ghost, #666)',
+                    marginTop: 8, textTransform: 'uppercase', whiteSpace: 'nowrap',
+                  }}>
+                    {fmt(step)}
                   </span>
                 </div>
-                {i < arr.length - 1 && (
-                  <div
-                    style={{
-                      flex: 1,
-                      height: 2,
-                      background: isCompleted ? 'var(--green, #4caf50)' : 'var(--border-sub, #444)',
-                      alignSelf: 'flex-start',
-                      marginTop: isActive ? 6 : 5,
-                      minWidth: 8,
-                    }}
-                  />
+                {i < LIFECYCLE.length - 1 && (
+                  <div style={{
+                    flex: 1, height: 2,
+                    background: isCompleted ? 'var(--green, #4caf50)' : 'var(--border-sub, #444)',
+                    alignSelf: 'flex-start', marginTop: isActive ? 6 : 5, minWidth: 8,
+                  }} />
                 )}
               </React.Fragment>
             );
@@ -383,53 +271,37 @@ export function ShoppingListContent() {
         </div>
       </ScrollReveal>
 
-      {/* Line Items */}
-      <ScrollReveal>
-        <PartsSection
-          parts={partItems}
-          onAddPart={handleAddPart}
-          canAddPart
-        />
-      </ScrollReveal>
+      {/* Item detail KV rows */}
+      {kvItems.length > 0 && (
+        <ScrollReveal>
+          <KVSection title="Item Details" items={kvItems} />
+        </ScrollReveal>
+      )}
 
-      {/* Cross-Entity Links */}
+      {/* Linked entities (part, work order) */}
       {docItems.length > 0 && (
         <ScrollReveal>
           <DocRowsSection title="Linked Entities" docs={docItems} />
         </ScrollReveal>
       )}
 
-      {/* Notes */}
-      <ScrollReveal>
-        <NotesSection
-          notes={noteItems}
-          onAddNote={undefined}
-          canAddNote={false}
-        />
-      </ScrollReveal>
-
-      {/* History */}
-      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
-
-      {/* Audit Trail */}
+      {/* Audit trail */}
       <ScrollReveal>
         <AuditTrailSection events={auditEvents} defaultCollapsed />
       </ScrollReveal>
 
-      {/* Attachments */}
-      <ScrollReveal>
-        <AttachmentsSection
-          attachments={attachmentItems}
-          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
-          canAddFile
+      {popupConfig && (
+        <ActionPopup
+          mode="mutate"
+          title={popupConfig.title}
+          fields={popupConfig.fields}
+          signatureLevel={popupConfig.signatureLevel}
+          onSubmit={async (values) => {
+            await executeAction(popupConfig.actionId, values);
+            setPopupConfig(null);
+          }}
+          onClose={() => setPopupConfig(null)}
         />
-      </ScrollReveal>
-
-      {actionPopupConfig && (
-        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
-          signatureLevel={actionPopupConfig.signatureLevel}
-          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
-          onClose={() => setActionPopupConfig(null)} />
       )}
     </>
   );
