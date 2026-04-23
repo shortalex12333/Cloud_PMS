@@ -771,6 +771,8 @@ def get_certificate_handlers(supabase_client) -> Dict[str, callable]:
         "revoke_certificate": _revoke,
         "archive_certificate": _archive_certificate_adapter(handlers),
         "assign_certificate": _assign_certificate_adapter(handlers),
+        "link_equipment_to_certificate": _link_equipment_to_certificate_adapter(handlers),
+        "unlink_equipment_from_certificate": _unlink_equipment_from_certificate_adapter(handlers),
     }
 
 
@@ -1109,6 +1111,123 @@ def _create_crew_certificate_adapter(handlers: CertificateHandlers):
             "certificate_id": new_id,
             "person_name": params["person_name"],
         }
+
+    return _fn
+
+
+def _link_equipment_to_certificate_adapter(handlers: CertificateHandlers):
+    """Append equipment_id to `properties.equipment_ids` on the cert row.
+
+    Storage decision: JSON array on the cert row (no join table). See
+    docs/ongoing_work/certificates/CERTIFICATE_LENS_REDESIGN_2026_04_23.md for
+    the trade-off analysis.
+    Idempotent: re-linking an already-linked equipment_id is a no-op.
+    """
+    async def _fn(**params):
+        db = handlers.db
+        yacht_id = params["yacht_id"]
+        user_id = params["user_id"]
+        cert_id = params["certificate_id"]
+        equipment_id = params["equipment_id"]
+
+        domain, table_key, cert_row = _resolve_cert_domain(db, yacht_id, cert_id)
+        _cert_mutation_gate(domain, params.get("role", ""), "link_equipment_to_certificate")
+        table = get_table(table_key)
+
+        # Verify equipment exists + is in this yacht
+        eq = db.table("pms_equipment").select("id").eq("id", equipment_id).eq("yacht_id", yacht_id).is_("deleted_at", None).limit(1).execute()
+        if not (getattr(eq, "data", None) or []):
+            raise ValueError("equipment_id not found or already deleted")
+
+        properties = cert_row.get("properties") or {}
+        if isinstance(properties, str):
+            import json as _j
+            try:
+                properties = _j.loads(properties) if properties else {}
+            except Exception:
+                properties = {}
+        equipment_ids = properties.get("equipment_ids") or []
+        if not isinstance(equipment_ids, list):
+            equipment_ids = []
+        if equipment_id in equipment_ids:
+            return {"status": "success", "certificate_id": cert_id, "equipment_id": equipment_id, "noop": True}
+
+        equipment_ids.append(equipment_id)
+        properties["equipment_ids"] = equipment_ids
+
+        res = db.table(table).update({"properties": properties}).eq("yacht_id", yacht_id).eq("id", cert_id).execute()
+        if (res.data or [{}])[0].get("id") != cert_id:
+            raise ValueError("certificate update failed or not permitted by RLS")
+
+        try:
+            db.table("pms_audit_log").insert({
+                "yacht_id": yacht_id,
+                "entity_type": "certificate",
+                "entity_id": cert_id,
+                "action": "link_equipment_to_certificate",
+                "user_id": user_id,
+                "old_values": {"equipment_ids": [e for e in equipment_ids if e != equipment_id]},
+                "new_values": {"equipment_ids": equipment_ids},
+                "signature": {},
+                "metadata": {"source": "certificate_lens", "domain": domain, "equipment_id": equipment_id},
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception as _ae:
+            logger.warning("audit insert failed for link_equipment: %s", _ae)
+
+        return {"status": "success", "certificate_id": cert_id, "equipment_id": equipment_id}
+
+    return _fn
+
+
+def _unlink_equipment_from_certificate_adapter(handlers: CertificateHandlers):
+    """Remove equipment_id from `properties.equipment_ids`. Idempotent."""
+    async def _fn(**params):
+        db = handlers.db
+        yacht_id = params["yacht_id"]
+        user_id = params["user_id"]
+        cert_id = params["certificate_id"]
+        equipment_id = params["equipment_id"]
+
+        domain, table_key, cert_row = _resolve_cert_domain(db, yacht_id, cert_id)
+        _cert_mutation_gate(domain, params.get("role", ""), "unlink_equipment_from_certificate")
+        table = get_table(table_key)
+
+        properties = cert_row.get("properties") or {}
+        if isinstance(properties, str):
+            import json as _j
+            try:
+                properties = _j.loads(properties) if properties else {}
+            except Exception:
+                properties = {}
+        equipment_ids = properties.get("equipment_ids") or []
+        if not isinstance(equipment_ids, list) or equipment_id not in equipment_ids:
+            return {"status": "success", "certificate_id": cert_id, "equipment_id": equipment_id, "noop": True}
+
+        new_list = [e for e in equipment_ids if e != equipment_id]
+        properties["equipment_ids"] = new_list
+
+        res = db.table(table).update({"properties": properties}).eq("yacht_id", yacht_id).eq("id", cert_id).execute()
+        if (res.data or [{}])[0].get("id") != cert_id:
+            raise ValueError("certificate update failed or not permitted by RLS")
+
+        try:
+            db.table("pms_audit_log").insert({
+                "yacht_id": yacht_id,
+                "entity_type": "certificate",
+                "entity_id": cert_id,
+                "action": "unlink_equipment_from_certificate",
+                "user_id": user_id,
+                "old_values": {"equipment_ids": equipment_ids},
+                "new_values": {"equipment_ids": new_list},
+                "signature": {},
+                "metadata": {"source": "certificate_lens", "domain": domain, "equipment_id": equipment_id},
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception as _ae:
+            logger.warning("audit insert failed for unlink_equipment: %s", _ae)
+
+        return {"status": "success", "certificate_id": cert_id, "equipment_id": equipment_id}
 
     return _fn
 

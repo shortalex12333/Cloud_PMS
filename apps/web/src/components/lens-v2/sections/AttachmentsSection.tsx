@@ -24,13 +24,21 @@ export interface AttachmentsSectionProps {
   canAddFile?: boolean;
   /** Optional data-testid applied to the "+ Upload" section action button */
   addFileTestId?: string;
+  /**
+   * Optional override for the section title. Defaults to "Attachments".
+   * Certificate and Document lenses pass "Supporting Documents" per the
+   * 2026-04-23 UX spec (doc_cert_ux_change.md:160).
+   */
+  title?: string;
+  /** Optional override for the section DOM id (kept unique when title changes). */
+  sectionId?: string;
 }
 
-export function AttachmentsSection({ attachments, onAddFile, canAddFile, addFileTestId }: AttachmentsSectionProps) {
+export function AttachmentsSection({ attachments, onAddFile, canAddFile, addFileTestId, title = 'Attachments', sectionId }: AttachmentsSectionProps) {
   return (
     <CollapsibleSection
-      id="sec-attachments"
-      title="Attachments"
+      id={sectionId ?? 'sec-attachments'}
+      title={title}
       count={attachments.length}
       action={canAddFile && onAddFile ? { label: '+ Upload', onClick: onAddFile, testid: addFileTestId } : undefined}
       icon={

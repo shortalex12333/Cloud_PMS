@@ -1699,6 +1699,55 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         search_keywords=["supersede", "replace", "renew", "certificate", "cert", "expire", "sign"],
     ),
 
+    # ─── Equipment linkage (MVP — stored in properties.equipment_ids JSON array) ───
+    # Per doc_cert_ux_change.md (2026-04-23) a new "Related Equipment" section on
+    # the cert lens lets users link certificates to pms_equipment rows. The linkage
+    # is held on `pms_{vessel|crew}_certificates.properties.equipment_ids : uuid[]`
+    # — no join table, no migration. Reverse lookup (equipment → certs) is not
+    # required for MVP; if needed later, create pms_certificate_equipment.
+    "link_equipment_to_certificate": ActionDefinition(
+        action_id="link_equipment_to_certificate",
+        label="Link Equipment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "certificate_id", "equipment_id"],
+        schema_file=None,
+        domain="certificates",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["link", "equipment", "associate", "certificate", "cert"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("certificate_id", FieldClassification.CONTEXT),
+            FieldMetadata(
+                "equipment_id",
+                FieldClassification.REQUIRED,
+                description="Equipment to link",
+                lookup_required=True,
+            ),
+        ],
+    ),
+
+    "unlink_equipment_from_certificate": ActionDefinition(
+        action_id="unlink_equipment_from_certificate",
+        label="Unlink Equipment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "purser", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "certificate_id", "equipment_id"],
+        schema_file=None,
+        domain="certificates",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["unlink", "remove", "equipment", "certificate", "cert"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("certificate_id", FieldClassification.CONTEXT),
+            FieldMetadata("equipment_id", FieldClassification.CONTEXT),
+        ],
+    ),
+
     # ========================================================================
     # DOCUMENT ACTIONS (Document Lens v2)
     # ========================================================================

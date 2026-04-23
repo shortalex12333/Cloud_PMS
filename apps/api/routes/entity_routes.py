@@ -20,6 +20,7 @@ from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
 from integrations.supabase import get_tenant_client, get_supabase_client
 from action_router.entity_actions import get_available_actions
+from lib.user_resolver import resolve_users, resolve_yacht_name, resolve_equipment_batch
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -171,7 +172,11 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
         except Exception:
             cert_notes = []
 
-        # Audit trail
+        # Audit trail. `user_id` will be hydrated to `actor_name` + `actor_role` below
+        # via resolve_users. `deleted` flag marks CUD rows that reflect a soft-delete
+        # so the frontend can render them with a line-through per UX spec
+        # (doc_cert_ux_change.md:161 — "retain deleted version as 'deleted' but still
+        # store through soft delete for users. use linethrough").
         cert_audit = []
         try:
             audit_r = supabase.table("pms_audit_log").select(
@@ -187,14 +192,15 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
 
         # Cert chain — follow the `renews` pointer one level back to find prior superseded certs.
         # properties.renews = UUID of the cert this cert was renewed from.
+        cert_table = f"pms_{'vessel' if domain == 'vessel' else 'crew'}_certificates"
         prior_periods = []
         renews_id = properties.get("renews")
         depth = 0
         while renews_id and depth < 10:
             try:
                 prior_rows = (
-                    supabase.table(f"pms_{'vessel' if domain == 'vessel' else 'crew'}_certificates")
-                    .select("id, certificate_name, person_name, status, issue_date, expiry_date, certificate_number, properties")
+                    supabase.table(cert_table)
+                    .select("id, certificate_name, person_name, status, issue_date, expiry_date, certificate_number, properties, created_by, deleted_by")
                     .eq("id", renews_id).eq("yacht_id", yacht_id).limit(1).execute()
                 )
                 prior_data = (getattr(prior_rows, "data", None) or [])
@@ -215,11 +221,102 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
                     "status": p.get("status"),
                     "summary": f"{p.get('issue_date', '?')} → {p.get('expiry_date', '?')}",
                     "certificate_number": p.get("certificate_number"),
+                    "actor_id": p.get("created_by"),
                 })
                 renews_id = p_props.get("renews")
                 depth += 1
             except Exception:
                 break
+
+        # Forward chain — is there a cert that supersedes this one?
+        # (Frontend renders a "This is an old version, click to view superseding
+        # certificate" banner when this is populated.)
+        superseded_by = None
+        try:
+            fwd = (
+                supabase.table(cert_table)
+                .select("id, certificate_name, person_name, certificate_number, status")
+                # properties->>'renews' is text-cast JSON key. PostgREST uses `->>`.
+                .filter("properties->>renews", "eq", certificate_id)
+                .eq("yacht_id", yacht_id)
+                .is_("deleted_at", None)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            fwd_data = getattr(fwd, "data", None) or []
+            if fwd_data:
+                f = fwd_data[0]
+                superseded_by = {
+                    "id": f.get("id"),
+                    "label": f.get("certificate_name") or f.get("person_name") or "Certificate",
+                    "certificate_number": f.get("certificate_number"),
+                    "status": f.get("status"),
+                }
+        except Exception as _se:
+            logger.warning("Failed to resolve superseded_by for cert %s: %s", certificate_id, _se)
+
+        # Related equipment — resolved from properties.equipment_ids (JSON array).
+        # Using the JSON array instead of a join table keeps MVP migrations empty.
+        equipment_ids_raw = properties.get("equipment_ids") or []
+        if not isinstance(equipment_ids_raw, list):
+            equipment_ids_raw = []
+        related_equipment = resolve_equipment_batch(supabase, yacht_id, equipment_ids_raw)
+
+        # Yacht name — TENANT yacht_registry, no MASTER DB call needed.
+        yacht_name = resolve_yacht_name(supabase, yacht_id)
+
+        # Batch resolve every user_id that needs a human name across the sections.
+        _DELETE_ACTIONS = {
+            "archive_certificate",
+            "delete_certificate",
+            "revoke_certificate",
+            "suspend_certificate",
+        }
+        user_ids_to_resolve: set = set()
+        for e in cert_audit:
+            if e.get("user_id"):
+                user_ids_to_resolve.add(e["user_id"])
+        for n in cert_notes:
+            if n.get("created_by"):
+                user_ids_to_resolve.add(n["created_by"])
+        for p in prior_periods:
+            if p.get("actor_id"):
+                user_ids_to_resolve.add(p["actor_id"])
+        if data.get("created_by"):
+            user_ids_to_resolve.add(data["created_by"])
+        if data.get("deleted_by"):
+            user_ids_to_resolve.add(data["deleted_by"])
+
+        user_map = resolve_users(supabase, yacht_id, user_ids_to_resolve)
+
+        # Inject actor_name / actor_role / deleted onto each audit row.
+        for e in cert_audit:
+            uid = e.get("user_id")
+            u = user_map.get(uid) or {}
+            e["actor_name"] = u.get("name")
+            e["actor_role"] = u.get("role")
+            e["deleted"] = (e.get("action") or "") in _DELETE_ACTIONS
+
+        # Inject author_name / author_role onto each note.
+        for n in cert_notes:
+            uid = n.get("created_by")
+            u = user_map.get(uid) or {}
+            n["author_name"] = u.get("name")
+            n["author_role"] = u.get("role")
+
+        # Inject actor_name / actor_role onto each prior period.
+        for p in prior_periods:
+            uid = p.get("actor_id")
+            u = user_map.get(uid) or {}
+            p["actor_name"] = u.get("name")
+            p["actor_role"] = u.get("role")
+
+        # Creator / deleter enrichment for the identity strip.
+        created_by_id = data.get("created_by")
+        deleted_by_id = data.get("deleted_by")
+        created_by_meta = user_map.get(created_by_id) if created_by_id else None
+        deleted_by_meta = user_map.get(deleted_by_id) if deleted_by_id else None
 
         _entity_response = {
             "id": data.get("id"),
@@ -233,16 +330,24 @@ async def get_certificate_entity(certificate_id: str, auth: dict = Depends(get_a
             "next_survey_due": data.get("next_survey_due"),
             "status": data.get("status", "valid"),
             "holder_name": data.get("person_name"),
-            "vessel_name": None if domain == "crew" else data.get("certificate_name"),
+            "vessel_name": yacht_name,
+            "yacht_name": yacht_name,
             "document_id": doc_id,
             "domain": domain,
             "yacht_id": data.get("yacht_id"),
             "created_at": data.get("created_at"),
+            "created_by_name": (created_by_meta or {}).get("name"),
+            "created_by_role": (created_by_meta or {}).get("role"),
+            "deleted_at": data.get("deleted_at"),
+            "deleted_by_name": (deleted_by_meta or {}).get("name"),
+            "deleted_by_role": (deleted_by_meta or {}).get("role"),
             "properties": properties,
             "attachments": attachments,
             "notes": cert_notes,
             "audit_trail": cert_audit,
             "prior_periods": prior_periods,
+            "superseded_by": superseded_by,
+            "related_equipment": related_equipment,
             "related_entities": nav,
         }
         _entity_response["available_actions"] = get_available_actions(

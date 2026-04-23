@@ -412,6 +412,30 @@ async def _cert_link_document(params: Dict[str, Any]) -> Dict[str, Any]:
     return await fn(**params)
 
 
+async def _cert_link_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("link_equipment_to_certificate")
+    if not fn:
+        raise ValueError("link_equipment_to_certificate handler not registered")
+    if not params.get("equipment_id"):
+        raise ValueError("equipment_id is required")
+    if not params.get("certificate_id"):
+        raise ValueError("certificate_id is required")
+    return await fn(**params)
+
+
+async def _cert_unlink_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("unlink_equipment_from_certificate")
+    if not fn:
+        raise ValueError("unlink_equipment_from_certificate handler not registered")
+    if not params.get("equipment_id"):
+        raise ValueError("equipment_id is required")
+    if not params.get("certificate_id"):
+        raise ValueError("certificate_id is required")
+    return await fn(**params)
+
+
 async def _cert_supersede_certificate(params: Dict[str, Any]) -> Dict[str, Any]:
     handlers = _get_certificate_handlers(get_supabase_client())
     fn = handlers.get("supersede_certificate")
@@ -4024,6 +4048,8 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "create_crew_certificate": _cert_create_crew_certificate,
     "update_certificate": _cert_update_certificate,
     "link_document_to_certificate": _cert_link_document,
+    "link_equipment_to_certificate": _cert_link_equipment,
+    "unlink_equipment_from_certificate": _cert_unlink_equipment,
     "supersede_certificate": _cert_supersede_certificate,
 
     # =========================================================================
