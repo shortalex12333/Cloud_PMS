@@ -28,9 +28,10 @@
  *   - Mutations (link equipment, unlink equipment, note, upload) go through
  *     executeAction() → /v1/actions/execute.
  *
- * Width: the lens panel expands to `--lens-max-width-wide` (1120px) when any
- * descendant sets `data-lens-wide="true"` — see lens.module.css. We set it
- * at the root div of this component so the expansion applies automatically.
+ * Width: the lens panel expands to `--lens-max-width-wide` (~1120px) for
+ * entity types listed in `WIDE_LENS_TYPES` on `EntityLensPage.tsx`. The
+ * 'document' type is already in that set alongside 'certificate'; no
+ * per-render signal is needed from this component.
  */
 
 import * as React from 'react';
@@ -411,7 +412,7 @@ export function DocumentContent() {
   }, [blobUrl, file_url]);
 
   return (
-    <div data-testid="document-content" data-lens-wide="true">
+    <div data-testid="document-content">
       {/* ── Optional: "This is an old version" banner when the user is viewing a
            superseded document. Resolved from the backend superseded_by field. */}
       {superseded_by && (
