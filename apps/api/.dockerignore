@@ -20,8 +20,14 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# NOTE: `lib/` and `lib64/` removed 2026-04-23 — they came from the standard
+# Python .gitignore template and were meant to exclude venv directories. We
+# build the venv at `/opt/venv` inside the Dockerfile, so those patterns
+# never match anything REAL, but they DO silently exclude our source module
+# `apps/api/lib/` (user_resolver + future helpers). Leaving them in made the
+# entity lens routes 404 in production because `from lib.user_resolver import`
+# raised ModuleNotFoundError and the try/except in pipeline_service.py:485-491
+# swallowed it.
 parts/
 sdist/
 var/
