@@ -1733,7 +1733,7 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
         data = response.data
 
         items_response = supabase.table('pms_receiving_items') \
-            .select('id, description, quantity_expected, quantity_received, unit_price, currency, part_id') \
+            .select('id, description, quantity_expected, quantity_received, quantity_accepted, quantity_rejected, disposition, unit_price, currency, part_id') \
             .eq('receiving_id', receiving_id) \
             .eq('yacht_id', yacht_id) \
             .execute()
