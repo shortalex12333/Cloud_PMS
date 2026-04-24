@@ -32,6 +32,7 @@ from handlers.equipment_handlers import get_equipment_handlers as _get_equipment
 from handlers.shopping_list_handlers import get_shopping_list_handlers as _get_shopping_list_handlers_raw
 from handlers.document_handlers import get_document_handlers as _get_document_handlers_raw
 from handlers.document_comment_handlers import get_document_comment_handlers as _get_document_comment_handlers_raw
+from handlers.attachment_comment_handlers import get_attachment_comment_handlers as _get_attachment_comment_handlers_raw
 from handlers.part_handlers import get_part_handlers as _get_part_handlers_raw
 from handlers.receiving_handlers import (
     ReceivingHandlers,
@@ -63,6 +64,7 @@ _receiving_handlers = None
 _shopping_list_handlers = None
 _document_handlers = None
 _document_comment_handlers = None
+_attachment_comment_handlers = None
 
 
 def _get_p3_handlers():
@@ -156,6 +158,14 @@ def _get_document_comment_handlers():
     if _document_comment_handlers is None:
         _document_comment_handlers = _get_document_comment_handlers_raw(get_supabase_client())
     return _document_comment_handlers
+
+
+def _get_attachment_comment_handlers():
+    """Get lazy-initialized Attachment Comment handlers (cohort-shared 2026-04-24)."""
+    global _attachment_comment_handlers
+    if _attachment_comment_handlers is None:
+        _attachment_comment_handlers = _get_attachment_comment_handlers_raw(get_supabase_client())
+    return _attachment_comment_handlers
 
 
 def _get_hours_of_rest_handlers():
@@ -681,6 +691,50 @@ async def _doc_list_document_comments(params: Dict[str, Any]) -> Dict[str, Any]:
         "yacht_id": params.get("yacht_id"),
         "user_id": params.get("user_id"),
     }
+    payload = {k: v for k, v in params.items() if k not in ("yacht_id", "user_id", "user_context")}
+    return await fn(payload, context)
+
+
+# ============================================================================
+# ATTACHMENT COMMENT WRAPPERS (cohort-shared threaded comments — 2026-04-24)
+# ============================================================================
+
+async def _att_add_attachment_comment(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_attachment_comment_handlers()
+    fn = handlers.get("add_attachment_comment")
+    if not fn:
+        raise ValueError("add_attachment_comment handler not registered")
+    context = {"yacht_id": params.get("yacht_id"), "user_id": params.get("user_id")}
+    payload = {k: v for k, v in params.items() if k not in ("yacht_id", "user_id", "user_context")}
+    return await fn(payload, context)
+
+
+async def _att_update_attachment_comment(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_attachment_comment_handlers()
+    fn = handlers.get("update_attachment_comment")
+    if not fn:
+        raise ValueError("update_attachment_comment handler not registered")
+    context = {"yacht_id": params.get("yacht_id"), "user_id": params.get("user_id")}
+    payload = {k: v for k, v in params.items() if k not in ("yacht_id", "user_id", "user_context")}
+    return await fn(payload, context)
+
+
+async def _att_delete_attachment_comment(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_attachment_comment_handlers()
+    fn = handlers.get("delete_attachment_comment")
+    if not fn:
+        raise ValueError("delete_attachment_comment handler not registered")
+    context = {"yacht_id": params.get("yacht_id"), "user_id": params.get("user_id")}
+    payload = {k: v for k, v in params.items() if k not in ("yacht_id", "user_id", "user_context")}
+    return await fn(payload, context)
+
+
+async def _att_list_attachment_comments(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_attachment_comment_handlers()
+    fn = handlers.get("list_attachment_comments")
+    if not fn:
+        raise ValueError("list_attachment_comments handler not registered")
+    context = {"yacht_id": params.get("yacht_id"), "user_id": params.get("user_id")}
     payload = {k: v for k, v in params.items() if k not in ("yacht_id", "user_id", "user_context")}
     return await fn(payload, context)
 
@@ -4312,6 +4366,11 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     # Document Comment Handlers (Document Lens v2 - Comments MVP)
     # =========================================================================
     "add_document_comment": _doc_add_document_comment,
+    # Attachment comments (cohort-shared threaded comments, 2026-04-24)
+    "add_attachment_comment":    _att_add_attachment_comment,
+    "update_attachment_comment": _att_update_attachment_comment,
+    "delete_attachment_comment": _att_delete_attachment_comment,
+    "list_attachment_comments":  _att_list_attachment_comments,
     "update_document_comment": _doc_update_document_comment,
     "delete_document_comment": _doc_delete_document_comment,
     "list_document_comments": _doc_list_document_comments,

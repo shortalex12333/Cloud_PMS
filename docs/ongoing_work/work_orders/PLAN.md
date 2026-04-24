@@ -275,6 +275,67 @@ MVP call: enhance the JSON path (where the live data and handlers are). Table mi
 
 ---
 
+## PR-ATT-COMMENTS — threaded attachment comments (shipped 2026-04-24)
+
+### Why
+CEO pivot 2026-04-24: move from single-caption (`pms_attachments.description`) to threaded comments. Image/photo reviewers commonly need multi-message discussion on damage progression, repair validation, and hand-off sign-off — single `description` was MVP shorthand that doesn't reflect the real flow. Cohort-shared because the table is polymorphic — every lens that uploads to `pms_attachments` gets the same thread primitive.
+
+### DB (applied directly via psql, file-less per `feedback_migration_convention.md`)
+Table `public.pms_attachment_comments` mirrors `doc_metadata_comments` 1:1 with `attachment_id` in place of `document_id`:
+```sql
+CREATE TABLE pms_attachment_comments (
+  id uuid PK,
+  yacht_id uuid NOT NULL REFERENCES yacht_registry(id) ON DELETE CASCADE,
+  attachment_id uuid NOT NULL REFERENCES pms_attachments(id) ON DELETE CASCADE,
+  comment text NOT NULL CHECK (length(trim(comment)) > 0),
+  created_by uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid, updated_at timestamptz,
+  deleted_by uuid, deleted_at timestamptz,
+  author_department varchar(100) CHECK (... in list),
+  parent_comment_id uuid REFERENCES pms_attachment_comments(id) ON DELETE CASCADE,
+  metadata jsonb DEFAULT '{}'::jsonb
+);
+-- 5 indexes (active, attachment, yacht, parent, created_at).
+-- 4 RLS policies (select/insert/update + service-role bypass) — same shape as doc comments.
+-- Trigger trg_populate_att_comment_department_before_insert reuses
+-- trg_populate_doc_comment_department() — same NEW.created_by/yacht_id → department map.
+```
+Backfill: every existing `pms_attachments.description` that is non-null and non-blank becomes row-1 of the thread, authored by `uploaded_by` at `uploaded_at`, tagged `metadata.source='backfill_20260424'`. 6 rows migrated in prod.
+
+### Backend
+- **`apps/api/handlers/attachment_comment_handlers.py` (new)** — `AttachmentCommentHandlers` with 4 methods (add/update/edit/delete + list_with_thread_tree). Direct mirror of `document_comment_handlers.py` with column renames. Explicit ownership + HOD-override for edit/delete (`admin`/`captain`/`chief_engineer`/`manager`). Soft-delete only — full audit trail.
+- **`apps/api/action_router/dispatchers/internal_dispatcher.py`** — lazy-init getter, 4 wrappers (`_att_add`/`_att_update`/`_att_delete`/`_att_list_attachment_comments`), HANDLER_MAP entries.
+- **`apps/api/action_router/registry.py`** — 4 `ActionDefinition` entries (domain=None because this is cross-lens / polymorphic), full `field_metadata`, HOD-broad `allowed_roles` (every role including `crew` can comment; the DB RLS is the last line of defense).
+- **`apps/api/tests/test_attachment_comment_handlers.py` (new)** — 18 pytest-asyncio specs covering happy paths, validation errors (empty text, deleted attachment, missing parent), RBAC (owner vs non-owner + HOD override), thread-tree assembly (orphan handling), include_threads=false flat-list return.
+
+### Verification
+- `pytest test_attachment_comment_handlers.py + test_entity_prefill.py + test_close_work_order_bridge.py + test_checklist_item_sop_handlers.py` → 69/69 green
+- `python3 ast.parse` on touched .py files → clean
+- `psql` verify post-migration: 1 table, 6 indexes, 4 policies, 6 backfilled comments ✓
+
+### Frontend status
+**`LensImageViewer` UNCHANGED in this PR.** Current viewer reads `LensImage.description` as the single-caption overlay — which still renders correctly because the backfill preserved all descriptions. Threaded-comment UI adoption is a per-lens decision:
+- **WORKORDER05 (PR-WO-4b)** — will extend the viewer to accept `comments: LensImageComment[]` as an optional prop and render the thread below the image when present.
+- **EQUIPMENT05 (PR-EQ-4)** — same extension; pulls from `list_attachment_comments` via the action router.
+- **FAULT05 / future lenses** — consume identically.
+This per-lens migration path means: no breaking change to the `LensImageViewer` API today; threaded UI ships when each consumer is ready to wire it.
+
+### Actions surfaced
+| action_id | Purpose | Roles |
+|---|---|---|
+| `add_attachment_comment` | Append a comment (optionally a reply via `parent_comment_id`) | crew+ |
+| `update_attachment_comment` | Edit text (owner or HOD) | crew+ |
+| `delete_attachment_comment` | Soft-delete (owner or HOD) | crew+ |
+| `list_attachment_comments` | Fetch flat or threaded tree | crew+ |
+
+### Deferred
+- Viewer-side threaded-UI (per-lens adoption PRs).
+- Bulk-import shape for vessels arriving with legacy captions beyond a single field (out of scope — single `description` backfill covers everything we see today).
+- Drop `pms_attachments.description` column once all lenses have migrated — wait 2-3 lens PRs before removing for safety.
+
+---
+
 ## PR-WO-5 — remaining scope
 
-Calendar tab (List / Calendar toggle). ~6-10h focused work. Begins after PR-WO-4 is merged to main.
+Calendar tab (List / Calendar toggle). ~6-10h focused work. Begins after the cohort adopts threaded comments into the viewer.
