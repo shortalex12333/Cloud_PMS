@@ -111,6 +111,14 @@ const SUPPRESS_LEDGER_HISTORY: ReadonlySet<string> = new Set<string>([
   // receipt was wasteful and conflated with the real History above
   // (CEO directive 2026-04-24, list_of_faults.md Issue 7).
   'fault',
+  // DocumentContent.tsx:509 renders RenewalHistorySection (prior
+  // iterations — the legitimate 'history' semantic) + line 551
+  // renders AuditTrailSection from the enriched /v1/entity/document/{id}
+  // (pms_audit_log with actor_name+actor_role+deleted flag). Appending
+  // the generic LedgerHistory produced a stray section of read-only
+  // view_document receipts — zero value, duplicates both surfaces.
+  // CEO directive 2026-04-24.
+  'document',
 ]);
 
 function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
