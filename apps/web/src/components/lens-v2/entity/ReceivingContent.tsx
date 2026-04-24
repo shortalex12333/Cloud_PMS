@@ -28,6 +28,7 @@ import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { ReceivingPackingList, type PackingItem } from '../sections/ReceivingPackingList';
 import { ReceivingOfficialDocuments, type OfficialDoc, type DocKind } from '../sections/ReceivingOfficialDocuments';
+import { ReceivingLinkedPO, type POItem, type ReceivingLineSummary } from '../sections/ReceivingLinkedPO';
 
 // Sections
 import {
@@ -93,6 +94,28 @@ export function ReceivingContent() {
 
   // Section data
   const items = ((entity?.items ?? payload.items) as Array<Record<string, unknown>> | undefined) ?? [];
+
+  // Linked PO reconciliation source data — only used by ReceivingLinkedPO
+  // section. linked_po_items shape is (id, part_id, description,
+  // quantity_ordered, quantity_received, unit_price) per get_receiving_entity.
+  const linkedPoItemsRaw = (entity?.linked_po_items ?? payload.linked_po_items) as Array<Record<string, unknown>> | undefined ?? [];
+  const linkedPoItems: POItem[] = linkedPoItemsRaw.map((p) => ({
+    id: (p.id as string) ?? `po-${Math.random()}`,
+    part_id: (p.part_id as string | null | undefined) ?? null,
+    description: (p.description as string | null | undefined) ?? null,
+    quantity_ordered: Number(p.quantity_ordered ?? 0),
+    quantity_received: p.quantity_received === null || p.quantity_received === undefined
+      ? null
+      : Number(p.quantity_received),
+    unit_price: p.unit_price === null || p.unit_price === undefined
+      ? null
+      : Number(p.unit_price),
+  }));
+  const receivingLineSummaries: ReceivingLineSummary[] = items.map((it) => ({
+    part_id: (it.part_id as string | null | undefined) ?? null,
+    description: (it.description as string | null | undefined) ?? null,
+    quantity_received: Number(it.quantity_received ?? 0),
+  }));
   // pms_receiving.notes is a single text column. Wrap into a single note row so
   // the NotesSection can render it without crashing on `.map`. If a future
   // backend hands us an array (e.g. joined pms_notes rows), we use it directly.
@@ -364,6 +387,17 @@ export function ReceivingContent() {
           <DocRowsSection title="Related Work" docs={docItems} />
         </ScrollReveal>
       )}
+
+      {/* Linked PO — side-by-side reconciliation. Hidden when no PO is linked. */}
+      <ScrollReveal>
+        <ReceivingLinkedPO
+          poId={po_id ?? null}
+          poNumber={po_number ?? null}
+          poItems={linkedPoItems}
+          receivingItems={receivingLineSummaries}
+          currency={currency}
+        />
+      </ScrollReveal>
 
       {/* Notes */}
       <ScrollReveal>

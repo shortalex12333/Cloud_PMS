@@ -875,6 +875,7 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             "attachments": [],
             "related_entities": nav,
             "audit_history": audit_history,
+            "linked_po_items": linked_po_items,
         }
         _entity_response["available_actions"] = get_available_actions(
             "shopping_list", _entity_response, auth.get("role", "crew")
@@ -1782,6 +1783,10 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
                 nav.append(n)
         po_num = data.get("po_number")
         po_id = None
+        # Linked PO items — pulled when the receiving has a known PO. Lets the
+        # lens render a side-by-side reconciliation: ordered vs received per
+        # part. Match key on the frontend = part_id; description is fallback.
+        linked_po_items = []
         if po_num:
             try:
                 po_r = supabase.table("pms_purchase_orders").select("id").eq(
@@ -1792,6 +1797,13 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
                     n = _nav("purchase_order", po_id, f"PO {po_num}")
                     if n:
                         nav.append(n)
+                    try:
+                        po_items_r = supabase.table("pms_purchase_order_items").select(
+                            "id, part_id, description, quantity_ordered, quantity_received, unit_price"
+                        ).eq("purchase_order_id", po_id).eq("yacht_id", yacht_id).execute()
+                        linked_po_items = po_items_r.data or []
+                    except Exception as e:
+                        logger.warning(f"linked_po_items fetch failed for po {po_id}: {e}")
             except Exception:
                 pass
 
