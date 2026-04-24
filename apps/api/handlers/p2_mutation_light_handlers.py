@@ -1083,6 +1083,225 @@ class P2MutationLightHandlers:
             }
 
     # =========================================================================
+    # PR-WO-4: add_checklist_item (append a user-generated checkpoint to a WO)
+    # =========================================================================
+
+    async def add_checklist_item_execute(
+        self,
+        work_order_id: str,
+        yacht_id: str,
+        user_id: str,
+        title: str,
+        description: Optional[str] = None,
+        instructions: Optional[str] = None,
+        is_required: bool = True,
+        requires_photo: bool = False,
+        requires_signature: bool = False,
+        category: str = "general",
+        sequence: Optional[int] = None,
+    ) -> Dict:
+        """
+        Append a user-generated checkpoint to a work order's metadata.checklist[].
+
+        Used by user A (task author) to lay out the checkpoints user B (executor)
+        will work through. Matches the CEO's MVP contract in
+        /Users/celeste7/Desktop/lens_card_upgrades.md:390-403:
+        free-form label + description + optional photo/signature requirement,
+        check-off by the executor.
+
+        `category` drives the Safety tab filter — values:
+            "general" (default, main checklist)
+            "safety"  (LOTO / hazard-specific checkpoints — surface in Safety tab)
+            "loto"    (legacy alias; frontend treats same as safety)
+            "sop"     (SOP-anchored checkpoint)
+        """
+        import uuid
+
+        if not title or not title.strip():
+            return {
+                "status": "error",
+                "error_code": "INVALID_TITLE",
+                "message": "Checklist item title cannot be empty",
+            }
+
+        try:
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, metadata"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            if not wo_result.data:
+                return {
+                    "status": "error",
+                    "error_code": "WORK_ORDER_NOT_FOUND",
+                    "message": f"Work order not found: {work_order_id}",
+                }
+
+            wo = wo_result.data[0]
+            metadata = wo.get("metadata") or {}
+            checklist = list(metadata.get("checklist") or [])
+
+            # Auto-sequence if caller didn't supply one — keeps order stable.
+            if sequence is None:
+                sequence = (
+                    max((it.get("sequence", 0) for it in checklist), default=0) + 1
+                )
+
+            now = datetime.now(timezone.utc).isoformat()
+            item_id = str(uuid.uuid4())
+            item = {
+                "id": item_id,
+                "title": title.strip(),
+                "description": description,
+                "instructions": instructions,
+                "category": category,
+                "sequence": sequence,
+                "is_required": bool(is_required),
+                "requires_photo": bool(requires_photo),
+                "requires_signature": bool(requires_signature),
+                "is_completed": False,
+                "completed_by": None,
+                "completed_at": None,
+                "completion_notes": None,
+                "photo_url": None,
+                "created_at": now,
+                "created_by": user_id,
+            }
+            checklist.append(item)
+            metadata["checklist"] = checklist
+
+            self.db.table("pms_work_orders").update({
+                "metadata": metadata,
+                "updated_at": now,
+            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+
+            await self._create_audit_log(
+                yacht_id=yacht_id,
+                action="add_checklist_item",
+                entity_type="work_order",
+                entity_id=work_order_id,
+                user_id=user_id,
+                new_values={
+                    "checklist_item_id": item_id,
+                    "title": item["title"],
+                    "category": category,
+                    "is_required": item["is_required"],
+                },
+            )
+
+            return {
+                "status": "success",
+                "action": "add_checklist_item",
+                "result": {
+                    "work_order_id": work_order_id,
+                    "checklist_item_id": item_id,
+                    "title": item["title"],
+                    "category": category,
+                    "sequence": sequence,
+                    "total_items": len(checklist),
+                },
+                "message": "Checklist item added",
+            }
+
+        except Exception as e:
+            logger.error(
+                f"add_checklist_item_execute failed: {e}", exc_info=True
+            )
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": str(e),
+            }
+
+    # =========================================================================
+    # PR-WO-4: upsert_sop (store SOP text OR link a document for the WO)
+    # =========================================================================
+
+    async def upsert_sop_execute(
+        self,
+        work_order_id: str,
+        yacht_id: str,
+        user_id: str,
+        sop_text: Optional[str] = None,
+        sop_document_id: Optional[str] = None,
+    ) -> Dict:
+        """
+        Store a Standard Operating Procedure on a work order.
+
+        Two mutually-complementary inputs per UX sheet:
+          * `sop_text`        — inline description typed by the crew.
+          * `sop_document_id` — FK to doc_metadata for an uploaded PDF.
+
+        Stored on `pms_work_orders.metadata.sop` = {text, document_id, updated_at,
+        updated_by}. Either or both fields may be populated; passing None leaves
+        the existing value untouched (partial update).
+        """
+        if sop_text is None and sop_document_id is None:
+            return {
+                "status": "error",
+                "error_code": "NOTHING_TO_UPDATE",
+                "message": "Supply sop_text or sop_document_id (or both)",
+            }
+
+        try:
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, metadata"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            if not wo_result.data:
+                return {
+                    "status": "error",
+                    "error_code": "WORK_ORDER_NOT_FOUND",
+                    "message": f"Work order not found: {work_order_id}",
+                }
+
+            metadata = wo_result.data[0].get("metadata") or {}
+            sop = dict(metadata.get("sop") or {})
+            if sop_text is not None:
+                sop["text"] = sop_text
+            if sop_document_id is not None:
+                sop["document_id"] = sop_document_id
+
+            now = datetime.now(timezone.utc).isoformat()
+            sop["updated_at"] = now
+            sop["updated_by"] = user_id
+            metadata["sop"] = sop
+
+            self.db.table("pms_work_orders").update({
+                "metadata": metadata,
+                "updated_at": now,
+            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+
+            await self._create_audit_log(
+                yacht_id=yacht_id,
+                action="upsert_sop",
+                entity_type="work_order",
+                entity_id=work_order_id,
+                user_id=user_id,
+                new_values={
+                    "has_text": sop_text is not None,
+                    "has_document": sop_document_id is not None,
+                },
+            )
+
+            return {
+                "status": "success",
+                "action": "upsert_sop",
+                "result": {
+                    "work_order_id": work_order_id,
+                    "sop": sop,
+                },
+                "message": "SOP updated",
+            }
+
+        except Exception as e:
+            logger.error(f"upsert_sop_execute failed: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": str(e),
+            }
+
+    # =========================================================================
     # P2 #35: tag_for_survey
     # =========================================================================
 

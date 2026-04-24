@@ -125,8 +125,17 @@ export function WorkOrderContent() {
   const auditTrail = ((entity?.audit_trail ?? payload.audit_trail ?? entity?.audit_history ?? payload.audit_history) as Array<Record<string, unknown>> | undefined) ?? [];
   // History = prior periods of the same entity (year-grouped)
   const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
-  const checklist = ((entity?.checklist ?? payload.checklist ?? entity?.checklist_items ?? payload.checklist_items) as Array<Record<string, unknown>> | undefined) ?? [];
+  // Checklist lives on `payload.metadata.checklist[]` today (see p2_mutation_light_handlers.add_checklist_item_execute).
+  // We accept both top-level `checklist` (if an adapter flattens it) and the metadata path, plus a few legacy aliases.
+  const metadataBlob = ((payload.metadata ?? entity?.metadata) as Record<string, unknown> | undefined) ?? {};
+  const checklist = (
+    (entity?.checklist ?? payload.checklist ?? entity?.checklist_items ?? payload.checklist_items ?? metadataBlob.checklist) as Array<Record<string, unknown>> | undefined
+  ) ?? [];
   const documents = ((entity?.documents ?? payload.documents ?? entity?.official_documents ?? payload.official_documents) as Array<Record<string, unknown>> | undefined) ?? [];
+  // SOP (PR-WO-4) — inline text + optional linked PDF document.
+  const sopBlob = (metadataBlob.sop as Record<string, unknown> | undefined) ?? {};
+  const sopText = (sopBlob.text ?? entity?.sop_text ?? payload.sop_text) as string | undefined;
+  const sopDocumentId = (sopBlob.document_id ?? entity?.sop_document_id ?? payload.sop_document_id) as string | undefined;
 
   // ── Action gates ──
   // Canonical long-form action_ids matching registry + entity_prefill.
@@ -383,6 +392,48 @@ export function WorkOrderContent() {
     [executeAction]
   );
 
+  // ── PR-WO-4 Safety tab callbacks ──
+  // MVP: use native browser prompt() for title/text capture. Replace with a
+  // tokenised modal in PR-WO-4b once the pattern from AddNoteModal is
+  // extracted into a generic AddEntityModal.
+  const handleAddSafetyCheckpoint = React.useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const title = window.prompt('New safety checkpoint (e.g. "Lock out breaker 17B")');
+    if (!title || !title.trim()) return;
+    const description = window.prompt('Optional guidance / instructions') ?? undefined;
+    await executeAction('add_checklist_item', {
+      title: title.trim(),
+      description: description || undefined,
+      category: 'safety',
+      is_required: true,
+    });
+  }, [executeAction]);
+
+  const handleAddGeneralCheckpoint = React.useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const title = window.prompt('New checklist item');
+    if (!title || !title.trim()) return;
+    const description = window.prompt('Optional guidance') ?? undefined;
+    await executeAction('add_checklist_item', {
+      title: title.trim(),
+      description: description || undefined,
+      category: 'general',
+      is_required: true,
+    });
+  }, [executeAction]);
+
+  const handleEditSOP = React.useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const current = sopText ?? '';
+    const next = window.prompt(
+      'Standard Operating Procedure (free text). Leave blank to keep existing.',
+      current,
+    );
+    // prompt() returns null on cancel; empty string means user cleared — honour it.
+    if (next === null) return;
+    await executeAction('upsert_sop', { sop_text: next });
+  }, [executeAction, sopText]);
+
   const handleAddNote = React.useCallback(
     () => setAddNoteOpen(true),
     []
@@ -413,6 +464,12 @@ export function WorkOrderContent() {
   // Safety is a placeholder in PR-WO-3 — LOTO/SOP + Checklist overhaul land
   // in PR-WO-4, where the `pms_work_order_checklist` / `pms_checklist` /
   // `pms_checklist_items` table audit unlocks the real content.
+  // Safety tab badge: count of safety/loto checklist items (UX sheet line 382).
+  const safetyItems = checklist.filter((c) => {
+    const cat = ((c.category as string | undefined) ?? 'general').toLowerCase();
+    return cat === 'safety' || cat === 'loto';
+  });
+
   const tabs: LensTab[] = [
     { key: 'checklist', label: 'Checklist', count: checklistItems.length },
     { key: 'documents', label: 'Documents', count: docItems.length },
@@ -423,13 +480,18 @@ export function WorkOrderContent() {
     { key: 'notes',     label: 'Notes',     count: noteItems.length },
     { key: 'audit',     label: 'Audit Trail', count: auditEvents.length },
     { key: 'history',   label: 'History',   count: historyPeriods.length },
-    { key: 'safety',    label: 'Safety',    disabled: true, disabledReason: 'LOTO + SOP attachments land with PR-WO-4 checklist overhaul' },
+    { key: 'safety',    label: 'Safety',    count: safetyItems.length + (sopText ? 1 : 0) },
   ];
 
   const renderTabBody = (activeKey: string): React.ReactNode => {
     switch (activeKey) {
       case 'checklist':
-        return <ChecklistSection items={checklistItems} onToggle={handleChecklistToggle} />;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <ChecklistSection items={checklistItems} onToggle={handleChecklistToggle} />
+            <AddCheckpointButton onClick={handleAddGeneralCheckpoint} label="+ Add Checklist Item" />
+          </div>
+        );
       case 'documents':
         return docItems.length > 0 ? (
           <DocRowsSection title="Official Documents" docs={docItems} />
@@ -476,8 +538,25 @@ export function WorkOrderContent() {
       case 'history':
         return <HistorySection periods={historyPeriods} />;
       case 'safety':
+        return (
+          <SafetyTabBody
+            sopText={sopText}
+            sopDocumentId={sopDocumentId}
+            safetyItems={safetyItems}
+            onToggle={handleChecklistToggle}
+            onAddCheckpoint={handleAddSafetyCheckpoint}
+            onEditSOP={handleEditSOP}
+            onOpenSOPDoc={
+              sopDocumentId
+                ? () => router.push(
+                    getEntityRoute('documents' as Parameters<typeof getEntityRoute>[0], sopDocumentId),
+                  )
+                : undefined
+            }
+          />
+        );
       default:
-        return <EmptyTab message="Safety (LOTO + SOP) ships with PR-WO-4." />;
+        return <EmptyTab message="Coming soon." />;
     }
   };
 
@@ -641,5 +720,295 @@ function EquipmentTabBody({
         Open equipment lens →
       </div>
     </button>
+  );
+}
+
+// ── PR-WO-4 Safety tab helpers ─────────────────────────────────────────────
+
+function AddCheckpointButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        appearance: 'none',
+        WebkitAppearance: 'none',
+        alignSelf: 'flex-start',
+        background: 'var(--neutral-bg)',
+        border: '1px dashed var(--border-sub)',
+        borderRadius: 6,
+        padding: '8px 12px',
+        cursor: 'pointer',
+        color: 'var(--txt2)',
+        fontSize: 12,
+        fontWeight: 500,
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+interface SafetyRow {
+  id: string;
+  title?: string;
+  description?: string;
+  instructions?: string;
+  is_completed?: boolean;
+  completed_by?: string;
+  completed_at?: string;
+  category?: string;
+}
+
+function SafetyTabBody({
+  sopText,
+  sopDocumentId,
+  safetyItems,
+  onToggle,
+  onAddCheckpoint,
+  onEditSOP,
+  onOpenSOPDoc,
+}: {
+  sopText?: string;
+  sopDocumentId?: string;
+  safetyItems: Array<Record<string, unknown>>;
+  onToggle: (itemId: string) => void;
+  onAddCheckpoint: () => void;
+  onEditSOP: () => void;
+  onOpenSOPDoc?: () => void;
+}) {
+  const rows: SafetyRow[] = safetyItems.map((i) => ({
+    id: (i.id as string) ?? '',
+    title: (i.title as string) ?? (i.description as string),
+    description: i.description as string | undefined,
+    instructions: i.instructions as string | undefined,
+    is_completed: Boolean(i.is_completed ?? i.completed),
+    completed_by: (i.completed_by_name ?? i.completed_by) as string | undefined,
+    completed_at: i.completed_at as string | undefined,
+    category: (i.category as string) ?? 'safety',
+  }));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* SOP block */}
+      <section
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border-faint)',
+          borderRadius: 8,
+          padding: '14px 16px',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: 'var(--txt2)',
+            }}
+          >
+            Standard Operating Procedure
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {sopDocumentId && onOpenSOPDoc && (
+              <button
+                type="button"
+                onClick={onOpenSOPDoc}
+                style={{
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  background: 'var(--teal-bg)',
+                  color: 'var(--mark)',
+                  border: '1px solid var(--mark-hover)',
+                  borderRadius: 4,
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontWeight: 600,
+                }}
+              >
+                Open SOP PDF
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onEditSOP}
+              style={{
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                background: 'transparent',
+                border: '1px solid var(--border-sub)',
+                borderRadius: 4,
+                padding: '4px 10px',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 500,
+                color: 'var(--txt2)',
+              }}
+            >
+              {sopText ? 'Edit' : 'Add SOP'}
+            </button>
+          </div>
+        </div>
+        {sopText ? (
+          <div
+            style={{
+              fontSize: 13,
+              lineHeight: 1.55,
+              color: 'var(--txt)',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {sopText}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: 'var(--txt3)', fontStyle: 'italic' }}>
+            No SOP recorded. Click &quot;Add SOP&quot; to type one, or attach a PDF via the
+            Documents tab then link it here.
+          </div>
+        )}
+      </section>
+
+      {/* Safety checklist block */}
+      <section>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: 'var(--txt2)',
+            marginBottom: 8,
+          }}
+        >
+          Safety Checklist &amp; Lock-Out-Tag-Out
+        </div>
+        {rows.length === 0 ? (
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--txt3)',
+              fontStyle: 'italic',
+              marginBottom: 8,
+            }}
+          >
+            No safety checkpoints yet. Add LOTO / isolation / test-for-dead steps
+            below so the executor cannot complete the work order until each is
+            ticked.
+          </div>
+        ) : (
+          <div
+            style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+            data-testid="safety-checklist-list"
+          >
+            {rows.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={!r.is_completed ? () => onToggle(r.id) : undefined}
+                disabled={r.is_completed}
+                style={{
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  textAlign: 'left',
+                  background: r.is_completed
+                    ? 'var(--green-bg)'
+                    : 'var(--surface)',
+                  border: `1px solid ${
+                    r.is_completed ? 'var(--green-border)' : 'var(--border-faint)'
+                  }`,
+                  borderRadius: 6,
+                  padding: '10px 12px',
+                  cursor: r.is_completed ? 'default' : 'pointer',
+                  color: 'var(--txt)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 18,
+                    height: 18,
+                    borderRadius: 3,
+                    border: `1.5px solid ${
+                      r.is_completed ? 'var(--green)' : 'var(--border-sub)'
+                    }`,
+                    background: r.is_completed ? 'var(--green)' : 'transparent',
+                    color: 'white',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    flexShrink: 0,
+                    marginTop: 1,
+                  }}
+                >
+                  {r.is_completed ? '✓' : ''}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: r.is_completed ? 'var(--txt2)' : 'var(--txt)',
+                      textDecoration: r.is_completed ? 'line-through' : undefined,
+                    }}
+                  >
+                    {r.title ?? 'Safety step'}
+                  </div>
+                  {r.description && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--txt3)',
+                        marginTop: 2,
+                      }}
+                    >
+                      {r.description}
+                    </div>
+                  )}
+                  {r.is_completed && r.completed_by && (
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: 'var(--txt3)',
+                        marginTop: 4,
+                      }}
+                    >
+                      Completed by {r.completed_by}
+                      {r.completed_at && ` · ${String(r.completed_at).slice(0, 10)}`}
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+        <div style={{ marginTop: 8 }}>
+          <AddCheckpointButton
+            onClick={onAddCheckpoint}
+            label="+ Add Safety Checkpoint"
+          />
+        </div>
+      </section>
+    </div>
   );
 }

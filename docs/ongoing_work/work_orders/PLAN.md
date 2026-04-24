@@ -15,7 +15,7 @@ Working alongside WORKORDER05 / HANDOVER08 / EQUIPMENT05 / FAULT05 / SHOPPINGLIS
 | PR-WO-1 | Dedupe prefill + wire KEEP action buttons | MERGED #686 | 400s on work-order dropdown dead |
 | PR-WO-2 | Tabulated list view on shared `EntityTableList` | MERGED #687 | 12 cols live; backend batch resolvers in place |
 | PR-WO-3 | Lens card redesign — horizontal tabs + metadata de-UUID | OPEN | 10-tab LensTabBar; extended header metadata; "Change Status" rename |
-| PR-WO-4 | Checklist overhaul (DB audit + bucket wiring) | PENDING | `pms_work_order_checklist` + `pms_checklist` + `pms_checklist_items` audit first |
+| PR-WO-4 | Checklist overhaul — Safety tab activation + add-item + SOP | OPEN | 2 new backend actions + Safety tab live; table-migration deferred |
 | PR-WO-5 | Calendar tab (List / Calendar toggle) | PENDING | Seahub-style; clickable cards; colour by type/criticality |
 | PR-WO-6 | Fault→WO bridge + WO-complete→fault auto-resolve | MERGED #689 → CORRECTED in PR-WO-6b | DB trigger owns status cascade; handler now writes reverse-link + ledger only |
 | PR-WO-7 | Schema additions — `system_id`, running hours columns | OPEN | Strictly optional; no keyword inference; migration + TS + registry |
@@ -230,6 +230,51 @@ My PR-WO-6 (a) added a duplicate `resolved_by_work_order_id` column via migratio
 
 ---
 
-## PR-WO-4 + PR-WO-5 — remaining scope
+## PR-WO-4 — checklist + Safety tab (shipped 2026-04-24)
 
-Both deferred. PR-WO-4 (checklist) begins next (confirmed via CEO priority). PR-WO-5 (calendar) follows.
+### DB reality check (via direct psql)
+Two parallel checklist systems exist:
+- **`pms_work_orders.metadata.checklist[]`** — JSON array on each WO row. Live code path: read by `p3_read_only_handlers.view_checklist_execute`; written by `p2_mutation_light_handlers.mark_checklist_item_complete_execute`.
+- **`pms_checklists` (parent, plural) + `pms_checklist_items`** — real tables with `checklist_type` enum (maintenance / safety / inspection / departure / arrival / watch / custom), is_template flag, richer value_type/unit/min/max fields. 29 items exist from seed; no active code reads or writes these tables.
+
+MVP call: enhance the JSON path (where the live data and handlers are). Table migration is deferred — a separate follow-up PR can port the JSON blob to the relational tables once UX is settled. Documented at `docs/ongoing_work/work_orders/PLAN.md` so the next engineer knows.
+
+### Changes
+- **`apps/api/handlers/p2_mutation_light_handlers.py`** — two new handlers:
+  - `add_checklist_item_execute` — user A appends `{id, title, description, instructions, category, sequence, is_required, requires_photo, requires_signature, is_completed, created_by, created_at}` to `metadata.checklist[]`. Auto-increments sequence. Rejects empty title. Preserves sibling metadata keys (no clobber).
+  - `upsert_sop_execute` — writes `metadata.sop = {text, document_id, updated_at, updated_by}`. Partial update (either field may be None leaves the other intact). Rejects fully-empty input.
+- **`apps/api/action_router/dispatchers/internal_dispatcher.py`** — two new wrappers `_p2_add_checklist_item` + `_p2_upsert_sop`; wired into `HANDLER_MAP` with keys `add_checklist_item` / `upsert_sop`.
+- **`apps/api/action_router/registry.py`** — two new `ActionDefinition` entries with full `field_metadata` (including `category` enum `general/safety/loto/sop` so the frontend form UI surfaces the right controls).
+- **`apps/api/action_router/entity_prefill.py`** — added the two `(work_order, ...)` prefill entries.
+- **`apps/api/tests/test_checklist_item_sop_handlers.py` (new)** — 9 pytest-asyncio specs:
+  - Append with all fields surfaces correctly / auto-sequences / empty-title rejected / sibling metadata preserved / WO-not-found
+  - SOP: text only / document only / partial update / empty input rejected
+- **`apps/web/src/components/lens-v2/entity/WorkOrderContent.tsx`** —
+  - Reads `metadata.checklist[]` + `metadata.sop{}` off the entity payload.
+  - Three new callbacks: `handleAddSafetyCheckpoint`, `handleAddGeneralCheckpoint`, `handleEditSOP` (MVP uses native `window.prompt()` — a tokenised modal lands in PR-WO-4b).
+  - Checklist tab: existing section + `+ Add Checklist Item` button.
+  - **Safety tab activated** (was `disabled: true`). New `SafetyTabBody` component renders:
+    - SOP block — text display + `Edit/Add SOP` button + `Open SOP PDF` button (when a document_id is linked).
+    - Safety checklist — filtered `category IN {safety, loto}` items with token-coloured completion state (`var(--green-bg)` when done, `var(--surface)` otherwise), click to toggle, `+ Add Safety Checkpoint` button.
+  - Tab count badge surfaces `safetyItems.length + (sopText ? 1 : 0)`.
+
+### Verification
+- `pytest test_checklist_item_sop_handlers.py + test_close_work_order_bridge.py + test_entity_prefill.py` → 51/51 green
+- `vitest run src/features/work-orders src/components/lens-v2` → 29/29 green (regression)
+- `npx tsc --noEmit` on apps/web → clean
+- `python3 ast.parse` on all 4 touched Python files → clean
+
+### Deferred to PR-WO-4b
+- Tokenised `AddChecklistItemModal` + `EditSOPModal` (replace native `window.prompt()` — same pattern as `AddNoteModal`).
+- Require-photo flow: if a checklist item has `requires_photo=true`, mark-complete should first open the photo-upload modal wired to the `pms-work-order-photos` bucket.
+- Require-signature flow: PIN+TOTP signature via existing ActionPopup SIGNED pattern.
+- Close-work-order guard: refuse close if any required + non-deleted checklist item is incomplete.
+
+### Deferred to PR-WO-4c
+- Port the JSON checklist to `pms_checklists` + `pms_checklist_items` tables (queryable, templatable, shared across WOs). Requires data migration of existing `metadata.checklist[]` rows.
+
+---
+
+## PR-WO-5 — remaining scope
+
+Calendar tab (List / Calendar toggle). ~6-10h focused work. Begins after PR-WO-4 is merged to main.

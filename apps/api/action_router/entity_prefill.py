@@ -101,6 +101,9 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("work_order", "add_checklist_note"):        {"work_order_id": "id"},
     ("work_order", "add_checklist_photo"):       {"work_order_id": "id"},
     ("work_order", "mark_checklist_item_complete"): {"work_order_id": "id"},
+    # PR-WO-4
+    ("work_order", "add_checklist_item"):        {"work_order_id": "id"},
+    ("work_order", "upsert_sop"):                {"work_order_id": "id"},
     ("work_order", "update_worklist_progress"):  {"work_order_id": "id"},
     ("work_order", "view_work_order_detail"):    {"work_order_id": "id"},
     ("work_order", "view_work_order_history"):   {"work_order_id": "id"},

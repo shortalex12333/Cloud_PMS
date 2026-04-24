@@ -189,6 +189,63 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         search_keywords=["view", "checklist", "tasks", "work", "order", "wo"],
     ),
 
+    # PR-WO-4: user A adds a checkpoint to the WO checklist.
+    "add_checklist_item": ActionDefinition(
+        action_id="add_checklist_item",
+        label="Add Checklist Item",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "work_order_id", "title"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "checklist", "item", "checkpoint", "step", "task", "work", "order", "wo"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("work_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("title", FieldClassification.REQUIRED, description="Checkpoint label (e.g. 'Lock out breaker 17B')"),
+            FieldMetadata("description", FieldClassification.OPTIONAL, description="Detailed guidance for this step"),
+            FieldMetadata("instructions", FieldClassification.OPTIONAL, description="How-to instructions"),
+            FieldMetadata("category", FieldClassification.OPTIONAL,
+                          options=["general", "safety", "loto", "sop"],
+                          description="Routes the item to a specific card tab (safety/loto → Safety tab)"),
+            FieldMetadata("is_required", FieldClassification.OPTIONAL,
+                          description="Must be ticked before WO can be marked complete"),
+            FieldMetadata("requires_photo", FieldClassification.OPTIONAL,
+                          description="Executor must attach a photo to complete this item"),
+            FieldMetadata("requires_signature", FieldClassification.OPTIONAL,
+                          description="Executor must sign to complete this item"),
+            FieldMetadata("sequence", FieldClassification.OPTIONAL,
+                          description="Display order (auto-assigned when omitted)"),
+        ],
+    ),
+
+    # PR-WO-4: upsert the WO's SOP (Standard Operating Procedure).
+    #   sop_text        — inline description typed by crew
+    #   sop_document_id — FK to doc_metadata for an uploaded PDF
+    # Either / both may be supplied.
+    "upsert_sop": ActionDefinition(
+        action_id="upsert_sop",
+        label="Update SOP",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "work_order_id"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["sop", "procedure", "safety", "upload", "work", "order", "wo"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("work_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("sop_text", FieldClassification.OPTIONAL, description="Inline SOP description"),
+            FieldMetadata("sop_document_id", FieldClassification.OPTIONAL,
+                          lookup_required=True,
+                          description="Linked SOP PDF (uploaded via Documents)"),
+        ],
+    ),
+
     "assign_work_order": ActionDefinition(
         action_id="assign_work_order",
         label="Assign Work Order",

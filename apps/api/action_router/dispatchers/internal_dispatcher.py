@@ -2641,6 +2641,36 @@ async def _approve_purchase(params: Dict[str, Any]) -> Dict[str, Any]:
 # ============================================================================
 
 
+async def _p2_add_checklist_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P2 add_checklist_item handler (PR-WO-4)."""
+    handlers = _get_p2_handlers()
+    return await handlers.add_checklist_item_execute(
+        work_order_id=params.get("work_order_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        user_id=params.get("user_id"),
+        title=params.get("title") or "",
+        description=params.get("description"),
+        instructions=params.get("instructions"),
+        is_required=bool(params.get("is_required", True)),
+        requires_photo=bool(params.get("requires_photo", False)),
+        requires_signature=bool(params.get("requires_signature", False)),
+        category=params.get("category") or "general",
+        sequence=params.get("sequence"),
+    )
+
+
+async def _p2_upsert_sop(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P2 upsert_sop handler (PR-WO-4)."""
+    handlers = _get_p2_handlers()
+    return await handlers.upsert_sop_execute(
+        work_order_id=params.get("work_order_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        user_id=params.get("user_id"),
+        sop_text=params.get("sop_text"),
+        sop_document_id=params.get("sop_document_id"),
+    )
+
+
 async def _p2_add_checklist_note(params: Dict[str, Any]) -> Dict[str, Any]:
     """Wrapper for P2 add_checklist_note handler."""
     handlers = _get_p2_handlers()
@@ -4242,8 +4272,10 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     # =========================================================================
     # P2 Mutation Light Handlers (from p2_mutation_light_handlers.py)
     # =========================================================================
+    "add_checklist_item": _p2_add_checklist_item,
     "add_checklist_note": _p2_add_checklist_note,
     "add_checklist_photo": _p2_add_checklist_photo,
+    "upsert_sop": _p2_upsert_sop,
     "add_document_to_handover": _p2_add_document_to_handover,
     "add_equipment_note": _p2_add_equipment_note,
     "add_item_to_purchase": _p2_add_item_to_purchase,
