@@ -104,8 +104,15 @@ const SUPPRESS_LEDGER_HISTORY: ReadonlySet<string> = new Set<string>([
   // FAULT05/WORKORDER05 removed the ledger for work_order (audit + history
   // tabs already cover it, CEO directive 2026-04-24). Add here when a new
   // lens gains its own in-tab audit surface.
+  // DocumentContent renders AuditTrailSection (line 551) from the
+  // enriched /v1/entity/document/{id} — actor_name + actor_role +
+  // deleted flag. RenewalHistorySection (line 509) owns 'prior
+  // iterations' semantic. Appending LedgerHistory below duplicated
+  // the audit surface and only surfaced read-only view_document
+  // receipts — CEO directive 2026-04-24.
   'certificate',
   'work_order',
+  'document',
 ]);
 
 function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
