@@ -24,6 +24,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveVessel } from '@/contexts/VesselContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { toast } from 'sonner';
+import { ConfirmExportModal } from './ConfirmExportModal';
+import {
+  AddDraftItemModal,
+  type AddDraftEntityKey,
+  type AddDraftPickerItem,
+  type AddDraftItemSubmitPayload,
+} from './AddDraftItemModal';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -600,6 +607,62 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
     fetchItems();
   }, [user?.id, activeVesselId, user?.yachtId, fetchItems]);
 
+  // ── Entity picker loader for Add Draft Item modal ──
+  // Hits the new /v1/handover/pickers/{entity_type} endpoint (yacht-scoped,
+  // alphabetical). Fetched lazily on key switch so we only pull a list when
+  // the user actually picks a domain.
+  const loadPickerEntities = useCallback(async (
+    key: Exclude<AddDraftEntityKey, 'location'>,
+  ): Promise<AddDraftPickerItem[]> => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('Not authenticated');
+    const res = await fetch(`${RENDER_API_URL}/v1/handover/pickers/${key}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to load ${key} list (${res.status})`);
+    }
+    const json = await res.json();
+    return (json.items || []) as AddDraftPickerItem[];
+  }, []);
+
+  // ── Submit handler for Add Draft Item modal ──
+  // Single POST to the canonical add_to_handover action. Location entries are
+  // sent as entity_type='note' with the label prepended into summary — the
+  // existing handler accepts this natively (entity_id null allowed for notes).
+  const handleAddDraftItem = useCallback(async (payload: AddDraftItemSubmitPayload) => {
+    if (!user?.id) throw new Error('Not authenticated');
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('Not authenticated');
+
+    const body = {
+      action: 'add_to_handover',
+      context: { yacht_id: activeVesselId || user.yachtId },
+      payload: {
+        entity_type: payload.entity_type,
+        entity_id: payload.entity_id,
+        summary: payload.summary,
+        category: 'standard',
+        ...(payload.notes ? { action_summary: payload.notes } : {}),
+        ...(payload.location_label ? { metadata: { location_label: payload.location_label } } : {}),
+      },
+    };
+    const res = await fetch(`${RENDER_API_URL}/v1/actions/execute`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || err.detail || `Add failed (${res.status})`);
+    }
+    toast.success('Draft item added');
+    fetchItems();
+  }, [user?.id, activeVesselId, user?.yachtId, fetchItems]);
+
   // ── Delete (soft) — routed through Render API ──
   const handleDelete = useCallback(async (id: string) => {
     if (!user?.id) return;
@@ -620,6 +683,16 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
   }, [user?.id, fetchItems]);
 
   // ── Export ──
+  // `handleExport` runs the actual POST. It is invoked either directly (if
+  // no confirm modal is shown) or from the ConfirmExportModal onConfirm.
+  // `requestExport` is the user-facing click handler that opens the confirm
+  // modal first — matching the subbar "Create Handover" flow wired in
+  // AppShell so both entry points get the same guardrail.
+  const [confirmExportOpen, setConfirmExportOpen] = useState(false);
+  const requestExport = useCallback(() => {
+    if (!user?.id || !(activeVesselId || user?.yachtId) || items.length === 0) return;
+    setConfirmExportOpen(true);
+  }, [user?.id, activeVesselId, user?.yachtId, items.length]);
   const handleExport = useCallback(async () => {
     if (!user?.id || !(activeVesselId || user?.yachtId) || items.length === 0) return;
     setExporting(true);
@@ -735,7 +808,7 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
         {/* Actions */}
         <div style={S.actionBar}>
           <button
-            onClick={handleExport}
+            onClick={requestExport}
             disabled={exporting || items.length === 0}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
@@ -759,7 +832,7 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
               cursor: 'pointer', fontFamily: 'var(--font-sans)',
             }}
           >
-            <Plus size={12} /> Add Note
+            <Plus size={12} /> Add Draft Item
           </button>
         </div>
 
@@ -855,20 +928,55 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
     </div>
   );
 
+  // Shared confirm modal — mirrors the subbar entry's guardrail so the
+  // in-page "Export Handover" button also gets the pre-flight summary.
+  const confirmModal = (
+    <ConfirmExportModal
+      open={confirmExportOpen}
+      itemCount={items.length}
+      isExporting={exporting}
+      onConfirm={async () => {
+        await handleExport();
+        setConfirmExportOpen(false);
+      }}
+      onClose={() => setConfirmExportOpen(false)}
+    />
+  );
+
+  // `add` mode uses the new AddDraftItemModal (key/value entity selection).
+  // `edit` and `delete` still render the legacy ItemPopup — preserved so
+  // existing flows keep working while only the "Add" flow is rebuilt.
+  const renderPopup = () => {
+    if (!popup) return null;
+    if (popup.type === 'add') {
+      return (
+        <AddDraftItemModal
+          open
+          onClose={() => setPopup(null)}
+          loadEntities={loadPickerEntities}
+          onSubmit={handleAddDraftItem}
+          userReady={userReady}
+        />
+      );
+    }
+    return (
+      <ItemPopup
+        mode={popup}
+        onClose={() => setPopup(null)}
+        onSave={handleSave}
+        onDelete={handleDelete}
+        onSwitchToDelete={(item) => setPopup({ type: 'delete', item })}
+        userReady={userReady}
+      />
+    );
+  };
+
   if (variant === 'page') {
     return (
       <>
         {content}
-        {popup && (
-          <ItemPopup
-            mode={popup}
-            onClose={() => setPopup(null)}
-            onSave={handleSave}
-            onDelete={handleDelete}
-            onSwitchToDelete={(item) => setPopup({ type: 'delete', item })}
-            userReady={userReady}
-          />
-        )}
+        {renderPopup()}
+        {confirmModal}
       </>
     );
   }
@@ -878,16 +986,8 @@ export function HandoverDraftPanel({ isOpen, onClose, variant = 'drawer' }: Hand
       {/* Backdrop */}
       <div style={{ ...S.backdrop, opacity: 1, pointerEvents: 'auto' }} onClick={onClose} />
       {content}
-      {/* Popup */}
-      {popup && (
-        <ItemPopup
-          mode={popup}
-          onClose={() => setPopup(null)}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          onSwitchToDelete={(item) => setPopup({ type: 'delete', item })}
-        />
-      )}
+      {renderPopup()}
+      {confirmModal}
     </>
   );
 }

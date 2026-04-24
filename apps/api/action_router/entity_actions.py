@@ -18,6 +18,7 @@ from action_router.entity_prefill import (
     resolve_prefill,
     get_field_schema,
 )
+from actions.add_to_handover_gating import user_can_add_entity_type_to_handover
 
 # ── Work Order status sets ─────────────────────────────────────────────────────
 _PRE_START_STATUSES = {"draft", "open", "planned"}
@@ -223,10 +224,22 @@ def _inject_cross_domain_actions(
         if not action_def:
             continue
 
-        # Role gate
+        # Role gate — registry allowed_roles first (union across all contexts),
+        # then the tighter per-entity matrix for add_to_handover specifically.
         allowed = action_def.allowed_roles or []
         if user_role not in allowed:
             continue
+
+        # HANDOVER08 task B6: narrow add_to_handover visibility to the CEO
+        # Issue 4/6/7/8/14 role matrix (2026-04-23). Other cross-domain
+        # actions still use the registry's allowed_roles union.
+        if action_id == "add_to_handover":
+            if not user_can_add_entity_type_to_handover(
+                user_role=user_role,
+                entity_type=entity_type,
+                department=entity_data.get("department"),
+            ):
+                continue
 
         # No state gate for cross-domain actions (they operate on their target domain)
         prefill = resolve_prefill(entity_type, action_id, entity_data)

@@ -81,6 +81,15 @@ async def filter_handover(
 # ============================================================================
 # add_to_handover  (was L1982-2064 — delegates to HandoverHandlers)
 # ============================================================================
+# [DEPRECATED — HANDOVER08 flag, 2026-04-24]
+# This route-level wrapper thinly delegates to HandoverHandlers but duplicates
+# payload-massaging (summary fallback chain, title+description concatenation,
+# min-length 10 instead of canonical 3) that drifts from the handler. Keep it
+# while tracing call sites; the removal follow-up PR will either (a) fold its
+# payload-massaging into the canonical handler if any caller relies on it, or
+# (b) delete this wrapper and route callers to the canonical directly.
+# Tracked as HANDOVER08 task B9.
+# ============================================================================
 async def add_to_handover(
     payload: dict,
     context: dict,

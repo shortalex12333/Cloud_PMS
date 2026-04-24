@@ -1006,9 +1006,25 @@ async def update_equipment_status(params: Dict[str, Any]) -> Dict[str, Any]:
 
 async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Add item to shift handover list.
+    [DEPRECATED — HANDOVER08 flag, 2026-04-24]
 
-    Required params:
+    Duplicate of handlers.handover_handlers.HandoverHandlers.add_to_handover_execute
+    (the canonical path registered at action_router.registry:948-973 → POST
+    /v1/handover/add-item). Does its own handover_items insert, its own
+    category normalisation, its own notifications write — all a copy of what
+    the canonical handler already does. Drift between this and the canonical
+    is a data-integrity hazard.
+
+    Removal plan (tracked as HANDOVER08 task B9, follow-up PR):
+      1. Trace every remaining call site to this module-level function.
+      2. Redirect all callers to HandoverHandlers.add_to_handover_execute.
+      3. Delete this function + its helpers.
+
+    Do NOT add new callers. Do NOT add new behaviour here. If a bug surfaces,
+    patch it in the canonical handler and leave this stub unchanged so the
+    dedupe remains visible to reviewers.
+
+    Original params contract (kept verbatim for traceability):
         - yacht_id: UUID
         - entity_type: str (equipment, fault, work_order, part, document, note, purchase_order)
         - entity_id: UUID (optional for notes)
@@ -1019,6 +1035,12 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
         - section: str (optional: Engineering, Deck, Interior, Command)
         - entity_url: str (optional: deep link back to entity)
     """
+    import logging as _hndvr_logging
+    _hndvr_logging.getLogger(__name__).warning(
+        "[DEPRECATED] action_router.dispatchers.internal_dispatcher.add_to_handover "
+        "called — this duplicates HandoverHandlers.add_to_handover_execute and is "
+        "scheduled for removal. Tracked as HANDOVER08 task B9."
+    )
     import uuid as uuid_lib
     supabase = get_supabase_client()
 

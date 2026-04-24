@@ -469,35 +469,210 @@ async def generate_export_html(
 async def list_exports(
     auth: dict = Depends(get_authenticated_user),
     yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0)
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     """
-    List handover exports for a yacht.
+    List handover exports visible to the current user on their yacht.
 
-    Returns export records with metadata (not the actual HTML content).
+    Scope (applied in-code, mirroring what a future RLS policy would do):
+      - always scoped to user's yacht_id
+      - HODs (chief_engineer, chief_officer, captain, manager) see all rows
+      - everyone else sees rows where they are outgoing/incoming user OR role
+        (same-role back-to-back peer visibility)
+
+    Enrichment:
+      - outgoing_user_name / incoming_user_name resolved from
+        auth_users_profiles via one batched lookup (no N+1)
+      - returned shape matches the /handover-export Exported tab UX spec
+        (see docs: lens_card_upgrades.md "Exported tab" section).
     """
     try:
         yacht_id = resolve_yacht_id(auth, yacht_id)
+        user_id = auth["user_id"]
+        user_role = auth.get("role", "crew")
+
+        HOD_ROLES = {"chief_engineer", "chief_officer", "captain", "manager"}
+        is_hod = user_role in HOD_ROLES
 
         from integrations.supabase import get_supabase_client
         db = get_supabase_client()
 
-        result = db.table("handover_exports").select(
-            "id, draft_id, export_type, exported_at, exported_by_user_id, "
-            "document_hash, export_status, file_name"
-        ).eq("yacht_id", yacht_id).order(
-            "exported_at", desc=True
-        ).range(offset, offset + limit - 1).execute()
+        select_cols = (
+            "id, draft_id, yacht_id, export_type, exported_at, exported_by_user_id, "
+            "document_hash, export_status, file_name, "
+            "period_start, period_end, department, "
+            "outgoing_user_id, outgoing_role, outgoing_signed_at, "
+            "incoming_user_id, incoming_role, incoming_signed_at, "
+            "hod_signature, hod_signed_at, "
+            "user_signed_at, review_status, signoff_complete, "
+            "original_storage_url, signed_storage_url"
+        )
+
+        query = db.table("handover_exports").select(select_cols, count="exact").eq(
+            "yacht_id", yacht_id
+        )
+
+        if not is_hod:
+            # Same-role back-to-back peer visibility: own rows OR same-role on either side.
+            filter_expr = (
+                f"outgoing_user_id.eq.{user_id},"
+                f"incoming_user_id.eq.{user_id},"
+                f"outgoing_role.eq.{user_role},"
+                f"incoming_role.eq.{user_role}"
+            )
+            query = query.or_(filter_expr)
+
+        result = query.order("exported_at", desc=True).range(
+            offset, offset + limit - 1
+        ).execute()
+
+        rows = result.data or []
+        total_count = getattr(result, "count", None)
+
+        # Collect user_ids for name resolution.
+        user_ids: set = set()
+        for r in rows:
+            if r.get("outgoing_user_id"):
+                user_ids.add(r["outgoing_user_id"])
+            if r.get("incoming_user_id"):
+                user_ids.add(r["incoming_user_id"])
+
+        name_map: dict = {}
+        if user_ids:
+            try:
+                profiles = db.table("auth_users_profiles").select(
+                    "id, name, email"
+                ).in_("id", list(user_ids)).execute()
+                for p in (profiles.data or []):
+                    name_map[p["id"]] = p.get("name") or p.get("email") or ""
+            except Exception as perr:
+                logger.warning("list_exports: failed to resolve user names: %s", perr)
+
+        exports = []
+        for r in rows:
+            exports.append({
+                "id": r.get("id"),
+                "draft_id": r.get("draft_id"),
+                "yacht_id": r.get("yacht_id"),
+                "exported_at": r.get("exported_at"),
+                "period_start": r.get("period_start"),
+                "period_end": r.get("period_end"),
+                "department": r.get("department"),
+                "export_type": r.get("export_type"),
+                "export_status": r.get("export_status"),
+                "file_name": r.get("file_name"),
+                "document_hash": r.get("document_hash"),
+                "outgoing_user_id": r.get("outgoing_user_id"),
+                "outgoing_user_name": name_map.get(r.get("outgoing_user_id") or "", None),
+                "outgoing_role": r.get("outgoing_role"),
+                "outgoing_signed_at": r.get("outgoing_signed_at"),
+                "incoming_user_id": r.get("incoming_user_id"),
+                "incoming_user_name": name_map.get(r.get("incoming_user_id") or "", None),
+                "incoming_role": r.get("incoming_role"),
+                "incoming_signed_at": r.get("incoming_signed_at"),
+                "hod_signed_at": r.get("hod_signed_at"),
+                "user_signed_at": r.get("user_signed_at"),
+                "review_status": r.get("review_status"),
+                "signoff_complete": r.get("signoff_complete"),
+                # Storage refs kept private; clients mint a URL via POST /export/{id}/signed-url.
+                "has_signed_document": bool(r.get("signed_storage_url")),
+                "has_original_document": bool(r.get("original_storage_url")),
+            })
 
         return {
             "status": "success",
-            "exports": result.data or [],
-            "count": len(result.data or [])
+            "exports": exports,
+            "count": len(exports),
+            "total_count": total_count if total_count is not None else len(exports),
+            "scope": "all" if is_hod else "own_and_same_role",
         }
 
     except Exception as e:
         logger.exception(f"Error listing exports: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/export/{export_id}/signed-url")
+async def mint_export_signed_url(
+    export_id: str,
+    auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
+):
+    """
+    Mint a short-TTL signed URL for a completed handover export.
+
+    Scope mirrors GET /v1/handover/exports:
+      - must be on the user's yacht
+      - user must be HOD+ OR outgoing/incoming user/role on the row.
+
+    Prefers signed_storage_url (final signed document), falls back to
+    original_storage_url when HOD countersignature is pending.
+
+    TTL is 300s (5 minutes).
+    """
+    try:
+        resolved_yacht_id = resolve_yacht_id(auth, yacht_id)
+        user_id = auth["user_id"]
+        user_role = auth.get("role", "crew")
+        HOD_ROLES = {"chief_engineer", "chief_officer", "captain", "manager"}
+        is_hod = user_role in HOD_ROLES
+
+        from integrations.supabase import get_supabase_client
+        db = get_supabase_client()
+
+        r = db.table("handover_exports").select(
+            "id, yacht_id, signed_storage_url, original_storage_url, "
+            "outgoing_user_id, outgoing_role, incoming_user_id, incoming_role"
+        ).eq("id", export_id).eq("yacht_id", resolved_yacht_id).limit(1).execute()
+
+        if not r.data:
+            raise HTTPException(status_code=404, detail="Export not found")
+
+        row = r.data[0]
+
+        if not is_hod:
+            allowed = (
+                row.get("outgoing_user_id") == user_id
+                or row.get("incoming_user_id") == user_id
+                or row.get("outgoing_role") == user_role
+                or row.get("incoming_role") == user_role
+            )
+            if not allowed:
+                raise HTTPException(status_code=403, detail="Not authorised for this export")
+
+        raw_url = row.get("signed_storage_url") or row.get("original_storage_url")
+        if not raw_url:
+            raise HTTPException(status_code=404, detail="Export document not available")
+
+        storage_path = raw_url.replace("handover-exports/", "", 1) if raw_url.startswith("handover-exports/") else raw_url
+
+        TTL_SECONDS = 300
+        try:
+            signed = db.storage.from_("handover-exports").create_signed_url(
+                storage_path, TTL_SECONDS
+            )
+        except Exception as sign_err:
+            logger.error("mint_export_signed_url: create_signed_url failed: %s", sign_err)
+            raise HTTPException(status_code=500, detail="Failed to sign URL")
+
+        # supabase-py returns {'signedURL': ...} or {'signedUrl': ...} across versions.
+        url = None
+        if isinstance(signed, dict):
+            url = signed.get("signedURL") or signed.get("signedUrl") or signed.get("signed_url")
+        if not url:
+            logger.error("mint_export_signed_url: malformed signer response: %s", signed)
+            raise HTTPException(status_code=500, detail="Failed to sign URL")
+
+        from datetime import timezone, timedelta
+        expires_at = (datetime.now(timezone.utc) + timedelta(seconds=TTL_SECONDS)).isoformat()
+
+        return {"url": url, "expires_at": expires_at, "ttl_seconds": TTL_SECONDS}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error minting signed url for export {export_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1460,6 +1635,134 @@ async def mark_handover_items_exported(
         return {"status": "ok", "updated": len(result.data or [])}
     except Exception as e:
         logger.error(f"mark_handover_items_exported failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# HANDOVER ENTITY PICKERS — /v1/handover/pickers/{entity_type}
+# ----------------------------------------------------------------------------
+# Minimal-shape list endpoints used by the "+ Add Draft Item" modal to populate
+# its value dropdown after the user picks a key (domain). Scoped by yacht_id
+# (RLS-enforced via resolve_yacht_id); alphabetical ordering applied here.
+#
+# Shape returned:
+#   {
+#     "entity_type": "work_order" | "equipment" | "part" | "fault",
+#     "items": [ { id, code, title, sub_a, sub_b } ]
+#   }
+#
+# - `code`  = overline identifier (wo_number / equipment code / part_number /
+#             fault_code). Mono-rendered in the picker.
+# - `title` = primary label (title or name).
+# - `sub_a` = manufacturer / severity — secondary caption line.
+# - `sub_b` = description (truncated to 50 chars to match CEO list format).
+# ============================================================================
+
+_PICKER_CONFIG = {
+    "work_order": {
+        "table": "pms_work_orders",
+        "select": "id, wo_number, title, description, status",
+        "code_col": "wo_number",
+        "title_col": "title",
+        "sub_a_col": "status",
+        "sub_b_col": "description",
+        "order_col": "wo_number",
+    },
+    "equipment": {
+        "table": "pms_equipment",
+        "select": "id, code, name, manufacturer, description",
+        "code_col": "code",
+        "title_col": "name",
+        "sub_a_col": "manufacturer",
+        "sub_b_col": "description",
+        "order_col": "code",
+    },
+    "part": {
+        "table": "pms_parts",
+        "select": "id, part_number, name, manufacturer, description",
+        "code_col": "part_number",
+        "title_col": "name",
+        "sub_a_col": "manufacturer",
+        "sub_b_col": "description",
+        "order_col": "part_number",
+    },
+    "fault": {
+        "table": "pms_faults",
+        "select": "id, fault_code, title, description, severity",
+        "code_col": "fault_code",
+        "title_col": "title",
+        "sub_a_col": "severity",
+        "sub_b_col": "description",
+        "order_col": "fault_code",
+    },
+}
+
+
+def _truncate(text, max_len: int = 50):
+    if not text:
+        return None
+    text = str(text)
+    if len(text) <= max_len:
+        return text
+    cut = text[:max_len]
+    last_space = cut.rfind(" ")
+    base = cut[:last_space] if last_space > max_len * 0.6 else cut
+    return base.rstrip() + "…"
+
+
+@router.get("/pickers/{entity_type}")
+async def list_picker_entities(
+    entity_type: str,
+    auth: dict = Depends(get_authenticated_user),
+    limit: int = Query(500, le=2000),
+):
+    """
+    Return minimal picker rows for the "+ Add Draft Item" modal value dropdown.
+
+    Scope: yacht_id (from auth), deleted_at IS NULL, alphabetical by code/number.
+    RLS enforcement: service client is used, so scoping is applied here via
+    yacht_id eq and soft-delete filter — matching the pattern used by
+    list_handover_items above.
+    """
+    cfg = _PICKER_CONFIG.get(entity_type)
+    if not cfg:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported entity_type: {entity_type}. "
+                   f"Must be one of: {', '.join(_PICKER_CONFIG.keys())}",
+        )
+
+    from integrations.supabase import get_supabase_client
+    db = get_supabase_client()
+    yacht_id = resolve_yacht_id(auth, None)
+
+    try:
+        query = db.table(cfg["table"]).select(cfg["select"]).eq("yacht_id", yacht_id)
+        # Filter soft-deleted rows when the column exists on the table.
+        # pms_* tables uniformly include deleted_at; swallowing the error is a
+        # safety net — the list still returns on schemas that haven't added it.
+        try:
+            query = query.is_("deleted_at", "null")
+        except Exception:
+            pass
+        result = query.order(cfg["order_col"], desc=False).limit(limit).execute()
+        rows = result.data or []
+
+        items = []
+        for r in rows:
+            items.append({
+                "id": r.get("id"),
+                "code": r.get(cfg["code_col"]),
+                "title": r.get(cfg["title_col"]),
+                "sub_a": r.get(cfg["sub_a_col"]),
+                "sub_b": _truncate(r.get(cfg["sub_b_col"]), 50),
+            })
+
+        return {"entity_type": entity_type, "items": items, "count": len(items)}
+    except Exception as e:
+        logger.error(
+            f"list_picker_entities({entity_type}) failed: {e}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
