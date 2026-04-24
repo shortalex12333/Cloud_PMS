@@ -304,16 +304,22 @@ async def close_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
         - work_order_id: UUID
         - user_id: UUID (from JWT)
 
-    Side effect (PR-WO-6, 2026-04-23):
-        If the work order was created from a fault (fault_id IS NOT NULL) and
-        the linked fault is not yet terminal (status NOT IN {resolved, closed}),
-        transition the fault to status='resolved', stamp resolved_at + the FK
-        resolved_by_work_order_id, and emit a `fault_auto_resolved` ledger
-        event so FAULT05's lens can refetch.
+    Fault auto-resolve (post-correction 2026-04-24 — see PR-WO-6b):
+        The DB trigger `trg_wo_status_cascade_to_fault` on `pms_work_orders`
+        UPDATE already handles the status cascade to the linked fault. For
+        `NEW.status='completed'` it writes `pms_faults.status='resolved'`,
+        `resolved_at = NOW()`, `resolved_by = NEW.completed_by` when the fault
+        is in a non-terminal state. We do NOT duplicate that write here —
+        cascade_wo_status_to_fault() is the source of truth for status.
 
-        The FK column write is gated by the 20260423 migration. If the column
-        does not exist yet (migration not applied in this environment) the
-        status + timestamp still flow and the FK write is skipped — no 500.
+        What the trigger does NOT do, and this handler covers:
+          1. Populate the reverse-link column `pms_faults.work_order_id` —
+             structurally alive (FK + index) but behaviourally dormant; we
+             set it here so the reverse-link is consistent going forward.
+          2. Emit a `fault_auto_resolved` ledger_events row for the lens
+             refetch + audit trail (FAULT05 reacts to this).
+
+        Both are best-effort — they never fail the WO close.
     """
     supabase = get_supabase_client()
     wo_id = params["work_order_id"]
@@ -328,7 +334,25 @@ async def close_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
     ).eq("id", wo_id).eq("yacht_id", yacht_id).limit(1).execute()
     fault_id = (wo_pre.data[0].get("fault_id") if wo_pre.data else None)
 
-    # Update work order status
+    # Read the fault's pre-update status for ledger metadata, BEFORE the WO
+    # UPDATE triggers the cascade.
+    previous_fault_status: Optional[str] = None
+    if fault_id:
+        try:
+            fr = supabase.table("pms_faults").select("id, status, work_order_id").eq(
+                "id", fault_id
+            ).eq("yacht_id", yacht_id).limit(1).execute()
+            if fr.data:
+                previous_fault_status = fr.data[0].get("status")
+        except Exception as fr_err:
+            logger.warning(
+                "close_work_order: pre-read fault status failed (fault=%s): %s",
+                fault_id, fr_err,
+            )
+
+    # Update work order status. This UPDATE fires trg_wo_status_cascade_to_fault
+    # which in turn flips pms_faults.status / resolved_at / resolved_by on the
+    # linked fault when it's in a non-terminal state.
     now_iso = datetime.utcnow().isoformat()
     result = supabase.table("pms_work_orders").update({
         "status": "completed",
@@ -339,71 +363,50 @@ async def close_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
     if not result.data:
         raise ValueError(f"Work order {wo_id} not found or access denied")
 
-    # ── Fault auto-resolve bridge ──
+    # ── Post-cascade bookkeeping ──
     fault_auto_resolved = False
-    if fault_id:
+    if fault_id and previous_fault_status and previous_fault_status not in (
+        "resolved", "closed"
+    ):
+        fault_auto_resolved = True
+
+        # 1) Fill the reverse-link column. The DB trigger doesn't touch this
+        #    column; we do, so pms_faults.work_order_id is always consistent
+        #    with the resolving WO going forward.
         try:
-            # Inspect current fault state — only transition if not terminal.
-            fr = supabase.table("pms_faults").select(
-                "id, status"
-            ).eq("id", fault_id).eq("yacht_id", yacht_id).limit(1).execute()
-            current_status = (fr.data[0].get("status") if fr.data else None)
-
-            if current_status and current_status not in ("resolved", "closed"):
-                update_payload: Dict[str, Any] = {
-                    "status": "resolved",
-                    "resolved_at": now_iso,
-                    "resolved_by": user_id,
-                }
-                # Try to include the FK — guarded because the 20260423
-                # migration may not be applied in every environment.
-                try:
-                    supabase.table("pms_faults").update({
-                        **update_payload,
-                        "resolved_by_work_order_id": wo_id,
-                    }).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
-                except Exception as col_err:
-                    logger.warning(
-                        "close_work_order: fault FK write failed (column "
-                        "likely absent; retrying without FK): %s", col_err
-                    )
-                    supabase.table("pms_faults").update(update_payload).eq(
-                        "id", fault_id
-                    ).eq("yacht_id", yacht_id).execute()
-
-                fault_auto_resolved = True
-
-                # Ledger emission — FAULT05's lens reacts to this to refetch.
-                try:
-                    from routes.handlers.ledger_utils import build_ledger_event
-                    ev = build_ledger_event(
-                        yacht_id=yacht_id,
-                        user_id=user_id,
-                        event_type="status_change",
-                        entity_type="fault",
-                        entity_id=fault_id,
-                        action="fault_auto_resolved",
-                        change_summary=f"Auto-resolved by WO {wo_id} completion",
-                        metadata={
-                            "resolved_by_work_order_id": wo_id,
-                            "previous_status": current_status,
-                            "new_status": "resolved",
-                        },
-                    )
-                    supabase.table("ledger_events").insert(ev).execute()
-                except Exception as ledger_err:
-                    logger.warning(
-                        "close_work_order: fault_auto_resolved ledger "
-                        "emission failed (fault=%s, wo=%s): %s",
-                        fault_id, wo_id, ledger_err
-                    )
-        except Exception as bridge_err:
-            # Bridge is best-effort; don't fail the WO close just because the
-            # fault side couldn't transition. Operator will see the ledger
-            # gap and can fix manually.
+            supabase.table("pms_faults").update({
+                "work_order_id": wo_id,
+            }).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
+        except Exception as link_err:
             logger.warning(
-                "close_work_order: fault bridge failed (fault=%s, wo=%s): %s",
-                fault_id, wo_id, bridge_err
+                "close_work_order: reverse-link write failed "
+                "(fault=%s, wo=%s): %s", fault_id, wo_id, link_err,
+            )
+
+        # 2) Ledger emission — the trigger doesn't emit ledger rows; we do,
+        #    so FAULT05's lens refetch + the audit trail stay complete.
+        try:
+            from routes.handlers.ledger_utils import build_ledger_event
+            ev = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="status_change",
+                entity_type="fault",
+                entity_id=fault_id,
+                action="fault_auto_resolved",
+                change_summary=f"Auto-resolved by WO {wo_id} completion",
+                metadata={
+                    "work_order_id": wo_id,
+                    "previous_status": previous_fault_status,
+                    "new_status": "resolved",
+                },
+            )
+            supabase.table("ledger_events").insert(ev).execute()
+        except Exception as ledger_err:
+            logger.warning(
+                "close_work_order: fault_auto_resolved ledger emission "
+                "failed (fault=%s, wo=%s): %s",
+                fault_id, wo_id, ledger_err,
             )
 
     return {

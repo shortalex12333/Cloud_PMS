@@ -17,7 +17,7 @@ Working alongside WORKORDER05 / HANDOVER08 / EQUIPMENT05 / FAULT05 / SHOPPINGLIS
 | PR-WO-3 | Lens card redesign — horizontal tabs + metadata de-UUID | OPEN | 10-tab LensTabBar; extended header metadata; "Change Status" rename |
 | PR-WO-4 | Checklist overhaul (DB audit + bucket wiring) | PENDING | `pms_work_order_checklist` + `pms_checklist` + `pms_checklist_items` audit first |
 | PR-WO-5 | Calendar tab (List / Calendar toggle) | PENDING | Seahub-style; clickable cards; colour by type/criticality |
-| PR-WO-6 | Fault→WO bridge + WO-complete→fault auto-resolve | OPEN | Migration + dispatcher bridge + ledger emission; graceful if FK column absent |
+| PR-WO-6 | Fault→WO bridge + WO-complete→fault auto-resolve | MERGED #689 → CORRECTED in PR-WO-6b | DB trigger owns status cascade; handler now writes reverse-link + ledger only |
 | PR-WO-7 | Schema additions — `system_id`, running hours columns | OPEN | Strictly optional; no keyword inference; migration + TS + registry |
 
 ---
@@ -198,6 +198,38 @@ UX sheet `/Users/celeste7/Desktop/lens_card_upgrades.md:354-356`. Two additions:
 
 ---
 
+## PR-WO-6b — correction after DB probe (shipped 2026-04-24)
+
+### What I got wrong in PR-WO-6
+Direct psql probe (once the correct connection string landed: `db.<slug>.supabase.co:5432` with user `postgres`, not the pooler format) revealed two facts my earlier code-only analysis missed:
+
+1. **`pms_faults.work_order_id` already exists as a real FK** with index `idx_faults_work_order_id` and constraint `faults_work_order_id_fkey FOREIGN KEY (work_order_id) REFERENCES pms_work_orders(id) ON DELETE SET NULL`. Populated in 124/3404 rows (seed/imported data; no current application writers — grep of `apps/api/` finds zero `.update({"work_order_id": ...})` against `pms_faults`).
+2. **A DB trigger `trg_wo_status_cascade_to_fault`** on `pms_work_orders` UPDATE already cascades status: `NEW.status='completed'` → `pms_faults.status='resolved'`, `resolved_at=NOW()`, `resolved_by=NEW.completed_by`. Idempotent guard on fault's current status. Full function body in `cascade_wo_status_to_fault()` is `SECURITY DEFINER` and ships today.
+
+My PR-WO-6 (a) added a duplicate `resolved_by_work_order_id` column via migration and (b) duplicated the status/resolved_at/resolved_by writes from Python.
+
+### Correction (this PR)
+- **Deleted** `supabase/migrations/20260423_pms_faults_resolved_by_work_order.sql` — never applied, never needed. The pre-existing `pms_faults.work_order_id` column covers the reverse-link semantics.
+- **Deleted** `supabase/migrations/20260423_pms_work_orders_system_running_hours.sql` — applied successfully to tenant DB via direct connection, verified all 5 columns present with correct types + defaults + CHECK constraints. File removed per `feedback_migration_convention.md`.
+- **Rewrote `close_work_order` in `apps/api/action_router/dispatchers/internal_dispatcher.py`**:
+  - Removed the status/resolved_at/resolved_by writes on `pms_faults`. The DB trigger owns those.
+  - Kept the pre-read of the fault's previous status for ledger metadata.
+  - Writes `pms_faults.work_order_id = wo_id` (reverse-link; trigger doesn't touch this column).
+  - Still emits the `fault_auto_resolved` ledger row (trigger doesn't emit ledger).
+  - Both post-cascade writes are best-effort try/except; WO close never fails because of them.
+- **Rewrote `apps/api/tests/test_close_work_order_bridge.py`** to match new semantics: 6 cases covering no-fault / open-fault / terminal-fault / reverse-link-failure-resilience / ledger-failure-resilience / WO-not-found.
+
+### Verification
+- `pytest tests/test_close_work_order_bridge.py + tests/test_entity_prefill.py` → 42/42 green
+- `python3 ast.parse internal_dispatcher.py` → clean
+- `psql \d pms_work_orders` post-migration → 5 new columns present, CHECK constraints active
+
+### Tenant DB state after this PR
+- `pms_work_orders` has `system_id`, `system_name`, `running_hours_required` (default false), `running_hours_current`, `running_hours_checkpoint`. All in prod.
+- `pms_faults` unchanged (no new column). Handler will start filling `pms_faults.work_order_id` for any new WO-driven resolution going forward.
+
+---
+
 ## PR-WO-4 + PR-WO-5 — remaining scope
 
-Both deferred pending DB probe (PR-WO-4 checklist table audit) and a longer design pass (PR-WO-5 calendar). Not blocking the MVP.
+Both deferred. PR-WO-4 (checklist) begins next (confirmed via CEO priority). PR-WO-5 (calendar) follows.
