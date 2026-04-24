@@ -1733,30 +1733,44 @@ def _flag_discrepancy_adapter(handlers: ReceivingHandlers):
         if not recv_check.data:
             return {"status": "error", "error_code": "NOT_FOUND", "message": f"Receiving {receiving_id} not found or access denied"}
 
-        # Insert discrepancy event
+        # Write to ledger_events — this is the source the lens AuditTrailSection
+        # reads (entity_routes.py:get_receiving_entity → audit_history). Writing
+        # here ensures discrepancies surface in the lens immediately.
+        #
+        # (Prior implementation wrote to pms_receiving_events with columns
+        # receiving_id / event_type / event_data / created_by that do NOT exist
+        # on that table — every call returned PostgREST 400. See
+        # docs/ongoing_work/receiving/RECEIVING_BUGFIX_LOG.md.)
+        from routes.handlers.ledger_utils import build_ledger_event
         event_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-
-        event_data = {
-            "id": event_id,
-            "receiving_id": receiving_id,
-            "yacht_id": yacht_id,
-            "event_type": "discrepancy",
-            "event_data": {
-                "discrepancy_type": discrepancy_type,
-                "description": description,
-                "affected_items": affected_items,
-            },
-            "created_by": user_id,
-            "created_at": now,
-        }
 
         try:
-            result = db.table("pms_receiving_events").insert(event_data).execute()
+            ledger_row = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id or "system",
+                event_type="update",                       # discrepancy is a write, not a status change
+                entity_type="receiving",
+                entity_id=receiving_id,
+                action="flag_discrepancy",
+                event_category="discrepancy",
+                change_summary=f"{discrepancy_type}: {description[:120]}",
+                metadata={
+                    "discrepancy_type": discrepancy_type,
+                    "description": description,
+                    "affected_items": affected_items,
+                },
+                new_state={
+                    "discrepancy_type": discrepancy_type,
+                    "affected_items_count": len(affected_items),
+                },
+            )
+            # Override the auto-generated id so we can return it to the caller
+            ledger_row["id"] = event_id
+            result = db.table("ledger_events").insert(ledger_row).execute()
             if not result.data:
                 return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to record discrepancy"}
         except Exception as e:
-            logger.error(f"flag_discrepancy insert failed: {e}")
+            logger.error(f"flag_discrepancy ledger insert failed: {e}")
             return {"status": "error", "error_code": "DB_ERROR", "message": str(map_postgrest_error(e))}
 
         # Audit log
