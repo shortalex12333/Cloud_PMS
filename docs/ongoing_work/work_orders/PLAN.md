@@ -18,7 +18,7 @@ Working alongside WORKORDER05 / HANDOVER08 / EQUIPMENT05 / FAULT05 / SHOPPINGLIS
 | PR-WO-4 | Checklist overhaul (DB audit + bucket wiring) | PENDING | `pms_work_order_checklist` + `pms_checklist` + `pms_checklist_items` audit first |
 | PR-WO-5 | Calendar tab (List / Calendar toggle) | PENDING | Seahub-style; clickable cards; colour by type/criticality |
 | PR-WO-6 | Fault→WO bridge + WO-complete→fault auto-resolve | OPEN | Migration + dispatcher bridge + ledger emission; graceful if FK column absent |
-| PR-WO-7 | Schema additions — `system_id`, running hours columns | PENDING | Strictly optional; no keyword inference |
+| PR-WO-7 | Schema additions — `system_id`, running hours columns | OPEN | Strictly optional; no keyword inference; migration + TS + registry |
 
 ---
 
@@ -169,4 +169,35 @@ Data-continuity USP. When a work order created from a fault (`pms_work_orders.fa
 
 ---
 
-## PR-WO-4, 5, 7 — detailed scope will be filled in as each opens.
+## PR-WO-7 — schema additions (shipped 2026-04-23)
+
+### Scope
+UX sheet `/Users/celeste7/Desktop/lens_card_upgrades.md:354-356`. Two additions:
+1. **System linkage** — denormalised `system_id` (FK → `pms_equipment.id`) + `system_name` (text). Frontend doesn't have to walk the self-referential `pms_equipment.parent_id` tree to label "Propulsion · HVAC · Electrical · Navigation".
+2. **Running hours** — `running_hours_required` (bool, default false), `running_hours_current` (numeric), `running_hours_checkpoint` (numeric). Rotating machinery (engines / gens / HVAC compressors / winches / nav motors) is scheduled against hours, not calendar. CEO spec line 356 explicitly forbids keyword inference ("if WO contains 'motor', 'crane', 'engine' then list hours") — every WO carries the columns and users opt in via the boolean.
+
+### Changes
+- **`supabase/migrations/20260423_pms_work_orders_system_running_hours.sql` (new, temporary)** — ADD COLUMN IF NOT EXISTS for all five columns, partial index on `system_id`, `CHECK (running_hours_* >= 0)` sanity constraints. Apply manually, verify, delete.
+- **`apps/api/action_router/registry.py`** — `create_work_order` field_metadata extended with six new OPTIONAL entries (system_id + system_name + frequency + running_hours_{required,current,checkpoint}). `update_work_order` is a pass-through handler and doesn't need field_metadata additions; the new columns flow through on UPDATE.
+- **`apps/web/src/features/work-orders/types.ts`** — `WorkOrder` interface extended with the five new optional fields.
+
+### Verification
+- `python3 ast.parse` on `registry.py` → clean
+- `npx tsc --noEmit` on apps/web → clean
+- `pytest apps/api/tests/test_entity_prefill.py + test_close_work_order_bridge.py` → 41/41 green (regression)
+
+### Deploy steps (CEO)
+1. Merge → Render deploys.
+2. Apply `supabase/migrations/20260423_pms_work_orders_system_running_hours.sql` via Supabase dashboard.
+3. Verify columns: `SELECT column_name, data_type, column_default FROM information_schema.columns WHERE table_name='pms_work_orders' AND column_name LIKE 'system_%' OR column_name LIKE 'running_hours_%';`
+4. Delete the migration file.
+
+### Deferred (UI polish)
+- Running-hours edit form on the WO card — lands with PR-WO-4 (checklist overhaul) or a PR-WO-8 follow-up.
+- System picker modal — equipment-lens concern; EQUIPMENT05 owns it.
+
+---
+
+## PR-WO-4 + PR-WO-5 — remaining scope
+
+Both deferred pending DB probe (PR-WO-4 checklist table audit) and a longer design pass (PR-WO-5 calendar). Not blocking the MVP.
