@@ -33,12 +33,16 @@
   box-shadow: 0 0 0 1px rgba(0,0,0,0.50), 0 32px 100px rgba(0,0,0,0.70);
   overflow: hidden;
   /* Constrain tall popups (e.g. upload_document with many optional fields) so
-     the footer/submit button is never clipped out of the viewport. */
+     the footer/submit button is never clipped out of the viewport. Also
+     floor the height so short popups (single-field acknowledge/close) do not
+     feel cramped — ref: CEO complaint in list_of_faults.md Issue 7 +
+     /Users/celeste7/Desktop/equipment_popup.png. */
+  min-height: 420px;
   max-height: calc(100vh - 80px);
   display: flex;
   flex-direction: column;
 }
-.popupRead   { max-width: 440px; }
+.popupRead   { max-width: 440px; min-height: 320px; }
 .popupMutate { max-width: 560px; }
 
 /* ── Popup header ── */
