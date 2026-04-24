@@ -81,15 +81,27 @@ export function PurchaseOrderContent() {
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
   const po_number = (entity?.po_number ?? payload.po_number) as string | undefined;
-  const title = po_number ? `PO ${po_number}` : ((entity?.title ?? payload.title) as string | undefined) ?? 'Purchase Order';
-  const supplier = ((entity?.supplier_name ?? entity?.supplier ?? entity?.vendor_name ?? payload.supplier_name ?? payload.supplier ?? payload.vendor_name) as string | undefined);
+  const supplier = ((entity?.supplier_name ?? (entity?.supplier as { name?: string } | undefined)?.name ?? entity?.vendor_name ?? payload.supplier_name ?? payload.supplier ?? payload.vendor_name) as string | undefined);
+  // Title shows the supplier name; entityRef (overline) carries the po_number.
+  const title = supplier ?? ((entity?.title ?? payload.title) as string | undefined) ?? 'Purchase Order';
   const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
   const total_amount = (entity?.total_amount ?? payload.total_amount) as number | undefined;
+  const item_count = (entity?.item_count ?? payload.item_count) as number | undefined;
   const currency = ((entity?.currency ?? payload.currency) as string | undefined) ?? 'USD';
   const ordered_date = (entity?.ordered_at ?? entity?.order_date ?? entity?.ordered_date ?? payload.ordered_at ?? payload.order_date) as string | undefined;
+  const received_date = (entity?.received_at ?? payload.received_at) as string | undefined;
+  const approved_at = (entity?.approved_at ?? payload.approved_at) as string | undefined;
   const expected_delivery = (entity?.expected_delivery ?? payload.expected_delivery) as string | undefined;
-  const approved_by = (entity?.approved_by ?? entity?.approved_by_name ?? payload.approved_by ?? payload.approved_by_name) as string | undefined;
-  const requested_by = (entity?.ordered_by ?? entity?.requested_by ?? entity?.requested_by_name ?? payload.ordered_by ?? payload.requested_by ?? payload.requested_by_name) as string | undefined;
+  type Actor = { id?: string | null; name?: string | null; role?: string | null } | null | undefined;
+  const orderedByActor  = (entity?.ordered_by_actor  as Actor) ?? null;
+  const approvedByActor = (entity?.approved_by_actor as Actor) ?? null;
+  const receivedByActor = (entity?.received_by_actor as Actor) ?? null;
+  const deletedByActor  = (entity?.deleted_by_actor  as Actor) ?? null;
+  const approved_by = approvedByActor?.name ?? ((entity?.approved_by_name ?? payload.approved_by_name) as string | undefined);
+  const requested_by = orderedByActor?.name ?? ((entity?.ordered_by_name ?? entity?.requested_by_name ?? payload.ordered_by_name ?? payload.requested_by_name) as string | undefined);
+  const received_by = receivedByActor?.name ?? ((entity?.received_by_name ?? payload.received_by_name) as string | undefined);
+  const deleted_at = (entity?.deleted_at ?? payload.deleted_at) as string | undefined;
+  const deletion_reason = (entity?.deletion_reason ?? payload.deletion_reason) as string | undefined;
   const department = (entity?.department ?? payload.department) as string | undefined;
   const description = (entity?.description ?? entity?.notes ?? payload.description ?? payload.notes) as string | undefined;
   const shipping_cost = (entity?.shipping_cost ?? payload.shipping_cost) as number | undefined;
@@ -131,35 +143,42 @@ export function PurchaseOrderContent() {
     { label: statusLabel, variant: statusToPillVariant(status) },
   ];
 
+  function fmtDate(iso?: string): string | undefined {
+    if (!iso) return undefined;
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function actorLine(actor: Actor, fallback?: string): string | undefined {
+    if (actor?.name) {
+      return actor.role ? `${actor.name} (${formatLabel(actor.role)})` : actor.name;
+    }
+    return fallback;
+  }
   const details: DetailLine[] = [];
-  if (ordered_date) {
-    const d = new Date(ordered_date);
-    details.push({ label: 'Order Date', value: isNaN(d.getTime()) ? ordered_date : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), mono: true });
+  if (ordered_date) details.push({ label: 'Ordered', value: fmtDate(ordered_date)!, mono: true });
+  if (received_date) details.push({ label: 'Received', value: fmtDate(received_date)!, mono: true });
+  else if (expected_delivery) details.push({ label: 'Expected Delivery', value: fmtDate(expected_delivery)!, mono: true });
+  if (total_amount !== undefined && total_amount !== null) {
+    const totalLabel = item_count !== undefined && item_count !== null
+      ? `${formatCurrency(total_amount, currency)}  \u00B7  ${item_count} item${item_count === 1 ? '' : 's'}`
+      : formatCurrency(total_amount, currency);
+    details.push({ label: 'Total', value: totalLabel, mono: true });
   }
-  if (expected_delivery) {
-    details.push({ label: 'Expected Delivery', value: expected_delivery, mono: true });
+  if (department) details.push({ label: 'Department', value: department });
+  const requestedLine = actorLine(orderedByActor, requested_by);
+  if (requestedLine) details.push({ label: 'Requested by', value: requestedLine });
+  const approvedLine = actorLine(approvedByActor, approved_by);
+  if (approvedLine) {
+    const approvedDate = fmtDate(approved_at);
+    details.push({ label: 'Approved by', value: approvedDate ? `${approvedLine}  \u00B7  ${approvedDate}` : approvedLine });
   }
-  if (total_amount !== undefined) {
-    details.push({ label: 'Total', value: formatCurrency(total_amount, currency), mono: true });
-  }
-  if (department) {
-    details.push({ label: 'Department', value: department });
+  const receivedLine = actorLine(receivedByActor, received_by);
+  if (receivedLine) {
+    const recDate = fmtDate(received_date);
+    details.push({ label: 'Received by', value: recDate ? `${receivedLine}  \u00B7  ${recDate}` : receivedLine });
   }
 
-  // Context line
-  const contextParts: string[] = [];
-  if (supplier) contextParts.push(supplier);
-  const contextNode = (
-    <>
-      {contextParts.join(' \u00B7 ')}
-      {requested_by && (
-        <>
-          {contextParts.length > 0 && ' \u00B7 '}
-          Requested by <span className={styles.crewLink}>{requested_by}</span>
-        </>
-      )}
-    </>
-  );
+  const contextNode = supplier ? <>{supplier}</> : null;
 
   // ── Split button config ──
   const isDraft = status === 'draft';
@@ -336,6 +355,14 @@ export function PurchaseOrderContent() {
 
   return (
     <>
+      {deleted_at && (
+        <div role="alert" style={{ padding: '10px 14px', marginBottom: '12px', borderLeft: '3px solid var(--red)', background: 'var(--red-bg)', color: 'var(--red)', borderRadius: 4, fontSize: 12, lineHeight: 1.45 }}>
+          <strong style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 10, display: 'block', marginBottom: 4 }}>Deleted</strong>
+          This purchase order was deleted on {fmtDate(deleted_at)}
+          {deletedByActor?.name && (<> by {deletedByActor.name}{deletedByActor.role ? ` (${formatLabel(deletedByActor.role)})` : ''}</>)}
+          .{deletion_reason ? ` Reason: ${deletion_reason}` : ''}
+        </div>
+      )}
       {/* Identity Strip */}
       <IdentityStrip
         overline={po_number}
