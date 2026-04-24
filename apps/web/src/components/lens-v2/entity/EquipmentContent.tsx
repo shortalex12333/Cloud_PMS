@@ -275,7 +275,20 @@ export function EquipmentContent() {
     await executeAction('create_work_order_for_equipment', { type: 'corrective', priority: 'routine' });
   }, [executeAction]);
 
-  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  // PR-EQ-5: File Warranty Claim is a navigation stub — CEO brief marks it
+  // PARAMOUNT and wants router.push rather than invoking the backend action
+  // (which would open the warranty modal with partial prefill). Routed to
+  // /warranties?equipment_id=<id> because no dedicated /warranties/new page
+  // exists yet (folder is `warranties` plural, and only list + [id] routes
+  // are present). A follow-up PR can either add a /warranties/new page that
+  // reads ?equipment_id= to prefill a create form, or replace this handler
+  // with a modal — the stub keeps the user-visible contract stable.
+  const SPECIAL_HANDLERS: Record<string, () => void> = {
+    file_warranty_claim: () => {
+      const qs = entityId ? `?equipment_id=${encodeURIComponent(entityId)}` : '';
+      router.push(`/warranties${qs}`);
+    },
+  };
   const DANGER_ACTIONS = new Set(['decommission_equipment', 'archive_equipment']);
   const primaryActionId = 'create_work_order_for_equipment';
 
