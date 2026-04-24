@@ -86,6 +86,22 @@ function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack:
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
+/**
+ * Lenses whose own Content component renders a domain-specific AuditTrailSection
+ * from `pms_audit_log` (not `ledger_events`) MUST be in this set — the generic
+ * read-only `LedgerHistory` below is suppressed for them. Otherwise users see
+ * two "History"-titled sections, one of which is a log of READ events only
+ * (view_<entity>) which holds no value — per CEO directive 2026-04-24.
+ *
+ * - 'certificate' — CertificateContent renders AuditTrailSection sourced from
+ *   entity_routes.py::get_certificate_entity, populated from pms_audit_log
+ *   with actor_name/actor_role enrichment. Adding it here rather than
+ *   negating the one case keeps the intent explicit and extensible.
+ */
+const SUPPRESS_LEDGER_HISTORY: ReadonlySet<string> = new Set<string>([
+  'certificate',
+]);
+
 function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
   const { data: ledgerHistory = [] } = useEntityLedger(entityType, entityId);
   if (ledgerHistory.length === 0) return null;
@@ -213,8 +229,12 @@ export function EntityLensPage({
     bodyContent = (
       <EntityLensProvider value={contextValue}>
         <Content />
-        {/* Certificate lens renders its own AuditTrailSection from pms_audit_log — skip generic ledger */}
-        {entityType !== 'certificate' && (
+        {/* Lenses in SUPPRESS_LEDGER_HISTORY render their own domain-specific
+            AuditTrailSection from pms_audit_log; showing the generic read-only
+            ledger alongside it produces a second "History" section full of
+            view_<entity> read events — wasteful, confusing, forbidden per CEO
+            directive 2026-04-24. */}
+        {!SUPPRESS_LEDGER_HISTORY.has(entityType) && (
           <LedgerHistory entityType={entityType} entityId={entityId} />
         )}
       </EntityLensProvider>
