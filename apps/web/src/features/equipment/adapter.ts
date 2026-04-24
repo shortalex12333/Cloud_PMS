@@ -13,10 +13,17 @@ export function equipmentToListResult(equipment: Equipment): EntityListResult {
     metadata: {
       status: equipment.status,
       category: equipment.category,
+      code: equipment.code ?? null,
+      system_type: equipment.system_type ?? null,
+      criticality: equipment.criticality ?? null,
+      running_hours: equipment.running_hours ?? null,
+      serial_number: equipment.serial_number ?? null,
       location: equipment.location,
       manufacturer: equipment.manufacturer,
       model: equipment.model,
+      deleted_at: equipment.deleted_at ?? null,
       created_at: equipment.created_at,
+      updated_at: equipment.updated_at ?? null,
     },
 
     // Extended fields for EntityRecordRow
