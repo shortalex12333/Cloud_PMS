@@ -118,15 +118,19 @@ export function WorkOrderContent() {
   const documents = ((entity?.documents ?? payload.documents ?? entity?.official_documents ?? payload.official_documents) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
+  // Canonical long-form action_ids matching registry + entity_prefill.
+  // Pre-2026-04-23 this block used short aliases (add_wo_*) that only
+  // half-existed; getAction() returned null for half of them, silently
+  // disabling buttons. See Issue 6 button audit.
   const startAction = getAction('start_work_order');
   const closeAction = getAction('close_work_order');
   const updateAction = getAction('update_work_order');
-  const addNoteAction = getAction('add_wo_note');
-  const addPartAction = getAction('add_wo_part');
-  const addHoursAction = getAction('add_wo_hours');
-  const assignAction = getAction('reassign_work_order');
+  const addNoteAction = getAction('add_work_order_note') ?? getAction('add_note_to_work_order') ?? getAction('add_wo_note');
+  const addPartAction = getAction('add_parts_to_work_order') ?? getAction('add_wo_part');
+  const addHoursAction = getAction('add_work_order_hours') ?? getAction('add_wo_hours');
+  const assignAction = getAction('assign_work_order') ?? getAction('reassign_work_order');
   const archiveAction = getAction('archive_work_order');
-  const addAttachmentAction = getAction('add_wo_photo');
+  const addAttachmentAction = getAction('add_work_order_photo') ?? getAction('add_wo_photo');
 
   const canStart = startAction !== null && ['draft', 'planned', 'open'].includes(status);
   const isCloseable = !['completed', 'closed', 'cancelled'].includes(status);
@@ -191,14 +195,64 @@ export function WorkOrderContent() {
   // Build dropdown from ALL available actions (except the primary action)
   // Actions with special handlers get wired; everything else calls executeAction directly
   const SPECIAL_HANDLERS: Record<string, () => void> = {
-    add_wo_note: () => setAddNoteOpen(true),
-    add_wo_part: () => setAddPartOpen(true),
+    add_work_order_note:    () => setAddNoteOpen(true),
+    add_note_to_work_order: () => setAddNoteOpen(true),
+    add_wo_note:            () => setAddNoteOpen(true),
+    add_parts_to_work_order: () => setAddPartOpen(true),
+    add_wo_part:             () => setAddPartOpen(true),
   };
   const DANGER_ACTIONS = new Set(['archive_work_order', 'cancel_work_order', 'delete_work_order']);
+
+  // ── Hidden-in-dropdown list ──
+  // Issue 6 button audit (list_of_faults.md:195-245). Mirrors the cohort
+  // pattern shipped in documents a2afd097 and certificates #681.
+  //
+  //   Duplicates / short-aliases (keep one canonical per semantic action):
+  //     add_wo_note / add_note_to_work_order  → canonical: add_work_order_note
+  //     add_wo_part                           → canonical: add_parts_to_work_order
+  //     add_part_to_work_order                → duplicate of add_parts_to_work_order
+  //     add_wo_hours / add_work_order_hours   → PR-WO-3 renames to "change hours preset"
+  //     add_wo_photo                          → canonical: add_work_order_photo
+  //     reassign_work_order                   → canonical: assign_work_order (HOD-gated)
+  //
+  //   Removed per Issue 6 KEEP/REMOVE table:
+  //     cancel_work_order          — duplicate of archive
+  //     delete_work_order          — duplicate of archive
+  //     create_work_order          — belongs on AppShell, not per-WO
+  //     view_work_order_detail     — the lens card IS the view
+  //     view_work_order_history    — history is already a section on the card
+  //     view_work_order_checklist  — redundant with view_checklist
+  //     view_my_work_orders        — wasteful list reshuffle
+  //     view_related_entities      — Show Related is a separate feature
+  //     view_smart_summary         — wasteful
+  //     record_voice_note          — wasteful, not MVP
+  //     upload_photo               — duplicate of add_work_order_photo
+  const HIDDEN_FROM_DROPDOWN = new Set<string>([
+    'add_wo_note',
+    'add_note_to_work_order',
+    'add_wo_part',
+    'add_part_to_work_order',
+    'add_wo_hours',
+    'add_work_order_hours',
+    'add_wo_photo',
+    'reassign_work_order',
+    'cancel_work_order',
+    'delete_work_order',
+    'create_work_order',
+    'view_work_order_detail',
+    'view_work_order_history',
+    'view_work_order_checklist',
+    'view_my_work_orders',
+    'view_related_entities',
+    'view_smart_summary',
+    'record_voice_note',
+    'upload_photo',
+  ]);
 
   const primaryActionId = canStart ? 'start_work_order' : 'close_work_order';
   const dropdownItems: DropdownItem[] = availableActions
     .filter((a) => a.action_id !== primaryActionId)
+    .filter((a) => !HIDDEN_FROM_DROPDOWN.has(a.action_id))
     .map((a) => ({
       label: a.label,
       onClick: SPECIAL_HANDLERS[a.action_id]
@@ -280,12 +334,15 @@ export function WorkOrderContent() {
 
   const handleNoteSubmit = React.useCallback(
     async (noteText: string) => {
-      const result = await executeAction('add_wo_note', { note_text: noteText });
+      // Use whichever canonical action_id the backend currently exposes
+      // (see addNoteAction resolution above). Survives registry rename.
+      const addNoteActionId = addNoteAction?.action_id ?? 'add_work_order_note';
+      const result = await executeAction(addNoteActionId, { note_text: noteText });
       const isSuccess = result.success === true ||
         (result as unknown as { status?: string }).status === 'success';
       return { success: isSuccess, error: result.error ?? result.message };
     },
-    [executeAction]
+    [executeAction, addNoteAction]
   );
 
   const handleAddPart = React.useCallback(

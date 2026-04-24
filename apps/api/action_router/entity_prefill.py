@@ -66,17 +66,44 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("fault", "update_fault"):          {"fault_id": "id"},
 
     # ── Work Order ────────────────────────────────────────────────────────────
-    ("work_order", "add_wo_note"):          {"work_order_id": "id"},
-    ("work_order", "add_wo_part"):          {"work_order_id": "id"},
-    ("work_order", "add_wo_hours"):         {"work_order_id": "id"},
-    ("work_order", "add_work_order_photo"): {"work_order_id": "id"},
-    ("work_order", "start_work_order"):     {"work_order_id": "id"},
-    ("work_order", "cancel_work_order"):    {"work_order_id": "id"},
-    ("work_order", "close_work_order"):     {"work_order_id": "id"},
-    ("work_order", "assign_work_order"):    {"work_order_id": "id"},
-    ("work_order", "reassign_work_order"):  {"work_order_id": "id"},
-    ("work_order", "archive_work_order"):   {"work_order_id": "id"},
-    ("work_order", "update_work_order"):    {"work_order_id": "id"},
+    # FIX 2026-04-23 Issue 6: the short aliases below (add_wo_*) never matched
+    # the long action_ids the registry exports (add_note_to_work_order etc.),
+    # so the (entity_type, action_id) lookup missed and work_order_id was
+    # never injected. Every dropdown click 400'd at the required-fields
+    # validator. Mirrors the cohort fix pattern from docs a2afd097 + cert #681.
+    # Canonical is the long form; short aliases are kept for backward-compat
+    # with workOrders.ts microactions callers until PR-WO-2 removes them.
+    ("work_order", "add_wo_note"):               {"work_order_id": "id"},
+    ("work_order", "add_wo_part"):               {"work_order_id": "id"},
+    ("work_order", "add_wo_hours"):              {"work_order_id": "id"},
+    ("work_order", "add_wo_photo"):              {"work_order_id": "id"},
+    # Long-form ids — these are what the dropdown actually dispatches:
+    ("work_order", "add_note_to_work_order"):    {"work_order_id": "id"},
+    ("work_order", "add_work_order_note"):       {"work_order_id": "id"},
+    ("work_order", "add_parts_to_work_order"):   {"work_order_id": "id"},
+    ("work_order", "add_part_to_work_order"):    {"work_order_id": "id"},
+    ("work_order", "add_work_order_hours"):      {"work_order_id": "id"},
+    ("work_order", "add_work_order_photo"):      {"work_order_id": "id"},
+    ("work_order", "start_work_order"):          {"work_order_id": "id"},
+    ("work_order", "cancel_work_order"):         {"work_order_id": "id"},
+    ("work_order", "close_work_order"):          {"work_order_id": "id"},
+    ("work_order", "assign_work_order"):         {"work_order_id": "id"},
+    ("work_order", "reassign_work_order"):       {"work_order_id": "id"},
+    # archive_work_order + delete_work_order declare entity_id (not
+    # work_order_id) in required_fields — cert-style pattern. Supply both:
+    # dispatcher trims unknown keys and the correct one flows through.
+    ("work_order", "archive_work_order"):        {"work_order_id": "id", "entity_id": "id"},
+    ("work_order", "delete_work_order"):         {"entity_id": "id"},
+    ("work_order", "update_work_order"):         {"work_order_id": "id"},
+    # Checklist sub-actions share the WO parent id:
+    ("work_order", "view_checklist"):            {"work_order_id": "id"},
+    ("work_order", "view_work_order_checklist"): {"work_order_id": "id"},
+    ("work_order", "add_checklist_note"):        {"work_order_id": "id"},
+    ("work_order", "add_checklist_photo"):       {"work_order_id": "id"},
+    ("work_order", "mark_checklist_item_complete"): {"work_order_id": "id"},
+    ("work_order", "update_worklist_progress"):  {"work_order_id": "id"},
+    ("work_order", "view_work_order_detail"):    {"work_order_id": "id"},
+    ("work_order", "view_work_order_history"):   {"work_order_id": "id"},
 
     # ── Part ──────────────────────────────────────────────────────────────────
     ("part", "log_part_usage"):        {"part_id": "id"},
