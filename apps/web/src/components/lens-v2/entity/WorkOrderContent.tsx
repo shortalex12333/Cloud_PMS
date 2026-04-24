@@ -22,6 +22,7 @@ import styles from '../lens.module.css';
 import { IdentityStrip, type PillDef, type DetailLine } from '../IdentityStrip';
 import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
+import { LensTabBar, type LensTab } from '../LensTabBar';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
@@ -94,15 +95,25 @@ export function WorkOrderContent() {
   const description = (entity?.description ?? payload.description) as string | undefined;
   const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
   const priority = ((entity?.priority ?? payload.priority) as string | undefined) ?? 'medium';
+  const severity = (entity?.severity ?? payload.severity) as string | undefined;
   const equipment_id = (entity?.equipment_id ?? payload.equipment_id) as string | undefined;
   const equipment_name = (entity?.equipment_name ?? payload.equipment_name) as string | undefined;
   const equipment_code = (entity?.equipment_code ?? payload.equipment_code) as string | undefined;
+  // assigned_to may arrive as a resolved name (from the work-orders batch
+  // enrichment in vessel_surface_routes.py) OR as a raw UUID if the entity
+  // endpoint hasn't been enriched yet. Prefer the resolved form.
   const assigned_to = (entity?.assigned_to_name ?? payload.assigned_to_name ?? entity?.assigned_to ?? payload.assigned_to) as string | undefined;
+  const assigned_to_role = (entity?.assigned_to_role ?? payload.assigned_to_role) as string | undefined;
   const location = (entity?.location ?? payload.location) as string | undefined;
   const due_date = (entity?.due_date ?? payload.due_date) as string | undefined;
-  const wo_type = (entity?.type ?? payload.type) as string | undefined;
-  const est_hours = (entity?.estimated_hours ?? payload.estimated_hours) as number | undefined;
+  const due_at = (entity?.due_at ?? payload.due_at) as string | undefined;
+  const created_at = (entity?.created_at ?? payload.created_at) as string | undefined;
+  const wo_type = (entity?.type ?? payload.type ?? entity?.work_order_type ?? payload.work_order_type) as string | undefined;
+  const frequency = (entity?.frequency ?? payload.frequency) as string | undefined;
+  const completed_at = (entity?.completed_at ?? payload.completed_at) as string | undefined;
+  const est_hours = (entity?.estimated_hours ?? payload.estimated_hours ?? entity?.estimated_duration_minutes) as number | undefined;
   const actual_hours = (entity?.actual_hours ?? payload.actual_hours) as number | undefined;
+  const faults = ((entity?.faults ?? payload.faults ?? entity?.linked_faults ?? payload.linked_faults) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // Section data
   const notes = ((entity?.notes ?? payload.notes) as Array<Record<string, unknown>> | undefined) ?? [];
@@ -139,37 +150,72 @@ export function WorkOrderContent() {
   const statusLabel = formatLabel(status);
   const priorityLabel = formatLabel(priority);
 
+  // Pills — UX sheet lines 374-380: status + priority + severity + wo_type
+  // all surfaced in the header. Severity is distinct from priority (UX line
+  // 340: "highly valuable, not visible").
   const pills: PillDef[] = [
     { label: statusLabel, variant: statusToPillVariant(status) },
   ];
-  if (priority !== 'medium') {
+  if (priority !== 'medium' && priority !== 'normal') {
     pills.push({ label: priorityLabel, variant: priorityToPillVariant(priority) });
   }
+  if (severity) {
+    const sev = severity.toLowerCase();
+    const sevVariant: PillDef['variant'] =
+      sev === 'critical' || sev === 'high' ? 'red' : sev === 'warning' || sev === 'medium' ? 'amber' : 'neutral';
+    pills.push({ label: formatLabel(severity), variant: sevVariant });
+  }
+  if (wo_type) {
+    pills.push({ label: formatLabel(wo_type), variant: 'neutral' });
+  }
 
+  // Detail lines — UX sheet lines 374-381: wo_number and title in header,
+  // then assigned_to, created_at, due_date+due_at, severity as key/value.
   const details: DetailLine[] = [];
   if (equipment_name) {
     details.push({ label: 'Equipment', value: `${equipment_code ?? ''} ${equipment_name}`.trim() });
   }
-  if (due_date) {
-    details.push({ label: 'Due', value: due_date, mono: true });
+  if (due_date || due_at) {
+    const dueValue = [due_date, due_at].filter(Boolean).join(' · ');
+    details.push({ label: 'Due', value: dueValue, mono: true });
+  }
+  if (created_at) {
+    // "YYYY-MM-DD" is legible and stable. If consumer wants humanised, that's
+    // a later UX polish — don't break the mono column for it.
+    details.push({ label: 'Created', value: String(created_at).slice(0, 10), mono: true });
+  }
+  if (frequency) {
+    details.push({ label: 'Frequency', value: formatLabel(frequency) });
+  }
+  if (completed_at) {
+    details.push({ label: 'Completed', value: String(completed_at).slice(0, 10), mono: true });
   }
   if (est_hours !== undefined || actual_hours !== undefined) {
     const parts: string[] = [];
-    if (est_hours !== undefined) parts.push(`Est: ${est_hours} hrs`);
-    if (actual_hours !== undefined) parts.push(`Actual: ${actual_hours} hrs`);
-    details.push({ label: 'Time', value: parts.join(' · ') });
+    if (est_hours !== undefined) parts.push(`Est: ${est_hours}`);
+    if (actual_hours !== undefined) parts.push(`Actual: ${actual_hours}`);
+    details.push({ label: 'Hours', value: parts.join(' · ') });
   }
 
-  // Context line
+  // Context line — UUIDs must never render. If assigned_to came through as a
+  // raw UUID (entity endpoint hasn't been enriched) suppress rather than
+  // displaying it.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const assignedDisplay =
+    assigned_to && !UUID_RE.test(assigned_to)
+      ? assigned_to_role
+        ? `${assigned_to} (${formatLabel(assigned_to_role)})`
+        : assigned_to
+      : undefined;
   const contextParts: string[] = [];
   if (location) contextParts.push(location);
   const contextNode = (
     <>
       {contextParts.join(' · ')}
-      {assigned_to && (
+      {assignedDisplay && (
         <>
           {contextParts.length > 0 && ' · '}
-          Assigned to <span className={styles.crewLink}>{assigned_to}</span>
+          Assigned to <span className={styles.crewLink}>{assignedDisplay}</span>
         </>
       )}
     </>
@@ -249,12 +295,22 @@ export function WorkOrderContent() {
     'upload_photo',
   ]);
 
+  // Dropdown-display label overrides.
+  // Issue 6 line 238: rename "Update Worklist Progress" → "Change Status".
+  // Renaming at the display layer keeps the backend action_id stable
+  // (update_worklist_progress), so in-flight callers / tests don't break.
+  const LABEL_OVERRIDES: Record<string, string> = {
+    update_worklist_progress: 'Change Status',
+    assign_work_order: 'Assign',
+    archive_work_order: 'Archive',
+  };
+
   const primaryActionId = canStart ? 'start_work_order' : 'close_work_order';
   const dropdownItems: DropdownItem[] = availableActions
     .filter((a) => a.action_id !== primaryActionId)
     .filter((a) => !HIDDEN_FROM_DROPDOWN.has(a.action_id))
     .map((a) => ({
-      label: a.label,
+      label: LABEL_OVERRIDES[a.action_id] ?? a.label,
       onClick: SPECIAL_HANDLERS[a.action_id]
         ? SPECIAL_HANDLERS[a.action_id]
         : () => executeAction(a.action_id),
@@ -350,9 +406,84 @@ export function WorkOrderContent() {
     []
   );
 
+  // ── Tab contract (UX sheet line 382) ──
+  //   Checklist · Documents · Faults · Equipment · Parts · Uploads · Notes ·
+  //   Audit Trail · History · Safety
+  //
+  // Safety is a placeholder in PR-WO-3 — LOTO/SOP + Checklist overhaul land
+  // in PR-WO-4, where the `pms_work_order_checklist` / `pms_checklist` /
+  // `pms_checklist_items` table audit unlocks the real content.
+  const tabs: LensTab[] = [
+    { key: 'checklist', label: 'Checklist', count: checklistItems.length },
+    { key: 'documents', label: 'Documents', count: docItems.length },
+    { key: 'faults',    label: 'Faults',    count: faults.length },
+    { key: 'equipment', label: 'Equipment', count: equipment_name ? 1 : 0 },
+    { key: 'parts',     label: 'Parts',     count: partItems.length },
+    { key: 'uploads',   label: 'Uploads',   count: attachmentItems.length },
+    { key: 'notes',     label: 'Notes',     count: noteItems.length },
+    { key: 'audit',     label: 'Audit Trail', count: auditEvents.length },
+    { key: 'history',   label: 'History',   count: historyPeriods.length },
+    { key: 'safety',    label: 'Safety',    disabled: true, disabledReason: 'LOTO + SOP attachments land with PR-WO-4 checklist overhaul' },
+  ];
+
+  const renderTabBody = (activeKey: string): React.ReactNode => {
+    switch (activeKey) {
+      case 'checklist':
+        return <ChecklistSection items={checklistItems} onToggle={handleChecklistToggle} />;
+      case 'documents':
+        return docItems.length > 0 ? (
+          <DocRowsSection title="Official Documents" docs={docItems} />
+        ) : (
+          <EmptyTab message="No supporting documents linked to this work order." />
+        );
+      case 'faults':
+        return faults.length > 0 ? (
+          <FaultsTabBody faults={faults} onOpen={(faultId) => router.push(getEntityRoute('faults' as Parameters<typeof getEntityRoute>[0], faultId))} />
+        ) : (
+          <EmptyTab message="No linked faults. Use 'Report Fault' from the Equipment lens to link one." />
+        );
+      case 'equipment':
+        return equipment_id && equipment_name ? (
+          <EquipmentTabBody
+            equipmentId={equipment_id}
+            equipmentName={equipment_name}
+            equipmentCode={equipment_code}
+            onOpen={() => router.push(getEntityRoute('equipment' as Parameters<typeof getEntityRoute>[0], equipment_id))}
+          />
+        ) : (
+          <EmptyTab message="No equipment linked." />
+        );
+      case 'parts':
+        return (
+          <PartsSection
+            parts={partItems}
+            onAddPart={handleAddPart}
+            canAddPart
+          />
+        );
+      case 'uploads':
+        return (
+          <AttachmentsSection
+            attachments={attachmentItems}
+            onAddFile={() => {/* wired in PR-WO-4 with the photo+comment flow */}}
+            canAddFile
+          />
+        );
+      case 'notes':
+        return <NotesSection notes={noteItems} onAddNote={handleAddNote} canAddNote />;
+      case 'audit':
+        return <AuditTrailSection events={auditEvents} />;
+      case 'history':
+        return <HistorySection periods={historyPeriods} />;
+      case 'safety':
+      default:
+        return <EmptyTab message="Safety (LOTO + SOP) ships with PR-WO-4." />;
+    }
+  };
+
   return (
     <>
-      {/* Identity Strip */}
+      {/* Identity Strip — UX lines 373-381: wo_number overline, title, type/status/priority/severity pills, assigned_to + due + created + frequency + completed details */}
       <IdentityStrip
         overline={wo_number}
         title={title}
@@ -373,55 +504,12 @@ export function WorkOrderContent() {
         }
       />
 
-      {/* Official Documents */}
-      {docItems.length > 0 && (
-        <ScrollReveal>
-          <DocRowsSection title="Official Documents" docs={docItems} />
-        </ScrollReveal>
-      )}
-
-      {/* Checklist */}
-      {checklistItems.length > 0 && (
-        <ScrollReveal>
-          <ChecklistSection items={checklistItems} onToggle={handleChecklistToggle} />
-        </ScrollReveal>
-      )}
-
-      {/* Notes */}
+      {/* Tab bar replaces the legacy stacked ScrollReveal sections. */}
       <ScrollReveal>
-        <NotesSection
-          notes={noteItems}
-          onAddNote={handleAddNote}
-          canAddNote
-        />
-      </ScrollReveal>
-
-      {/* History — prior periods of the same work order */}
-      <ScrollReveal>
-        <HistorySection periods={historyPeriods} defaultCollapsed />
-      </ScrollReveal>
-
-      {/* Audit Trail — user actions on this entity */}
-      <ScrollReveal>
-        <AuditTrailSection events={auditEvents} defaultCollapsed />
-      </ScrollReveal>
-
-      {/* Attachments */}
-      <ScrollReveal>
-        <AttachmentsSection
-          attachments={attachmentItems}
-          onAddFile={() => {/* TODO: wire to file upload modal */}}
-          canAddFile
-        />
-      </ScrollReveal>
-
-      {/* Parts */}
-      <ScrollReveal>
-        <PartsSection
-          parts={partItems}
-          onAddPart={handleAddPart}
-          canAddPart
-          defaultCollapsed
+        <LensTabBar
+          tabs={tabs}
+          defaultActiveKey="checklist"
+          renderBody={renderTabBody}
         />
       </ScrollReveal>
 
@@ -433,5 +521,125 @@ export function WorkOrderContent() {
         isLoading={isLoading}
       />
     </>
+  );
+}
+
+// ── Tab body helpers ───────────────────────────────────────────────────────
+
+function EmptyTab({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        padding: '24px 16px',
+        textAlign: 'center',
+        color: 'var(--txt3)',
+        fontSize: 13,
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
+interface FaultRow {
+  id: string;
+  fault_code?: string;
+  title?: string;
+  status?: string;
+  severity?: string;
+}
+
+function FaultsTabBody({
+  faults,
+  onOpen,
+}: {
+  faults: Array<Record<string, unknown>>;
+  onOpen: (faultId: string) => void;
+}) {
+  const rows: FaultRow[] = faults.map((f, i) => ({
+    id: (f.id as string) ?? `fault-${i}`,
+    fault_code: (f.fault_code ?? f.code) as string | undefined,
+    title: (f.title ?? f.description) as string | undefined,
+    status: f.status as string | undefined,
+    severity: f.severity as string | undefined,
+  }));
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {rows.map((r) => (
+        <button
+          key={r.id}
+          type="button"
+          onClick={() => onOpen(r.id)}
+          style={{
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            textAlign: 'left',
+            background: 'var(--surface)',
+            border: '1px solid var(--border-faint)',
+            borderRadius: 6,
+            padding: '10px 12px',
+            cursor: 'pointer',
+            color: 'var(--txt)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            {r.fault_code && (
+              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--txt2)' }}>
+                {r.fault_code}
+              </span>
+            )}
+            <span style={{ fontWeight: 600 }}>{r.title ?? 'Fault'}</span>
+          </div>
+          {(r.status || r.severity) && (
+            <div style={{ marginTop: 4, fontSize: 11, color: 'var(--txt3)' }}>
+              {[r.severity, r.status].filter(Boolean).join(' · ')}
+            </div>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EquipmentTabBody({
+  equipmentId: _equipmentId,
+  equipmentName,
+  equipmentCode,
+  onOpen,
+}: {
+  equipmentId: string;
+  equipmentName: string;
+  equipmentCode?: string;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      style={{
+        appearance: 'none',
+        WebkitAppearance: 'none',
+        textAlign: 'left',
+        background: 'var(--surface)',
+        border: '1px solid var(--border-faint)',
+        borderRadius: 6,
+        padding: '12px 14px',
+        cursor: 'pointer',
+        color: 'var(--txt)',
+        width: '100%',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+        {equipmentCode && (
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--txt2)' }}>
+            {equipmentCode}
+          </span>
+        )}
+        <span style={{ fontWeight: 600 }}>{equipmentName}</span>
+      </div>
+      <div style={{ marginTop: 4, fontSize: 11, color: 'var(--txt3)' }}>
+        Open equipment lens →
+      </div>
+    </button>
   );
 }
