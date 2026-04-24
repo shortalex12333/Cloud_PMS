@@ -1,18 +1,25 @@
 # apps/api/tests/test_close_work_order_bridge.py
 """
-Unit tests for the close_work_order → fault auto-resolve bridge (PR-WO-6).
+Unit tests for close_work_order → fault bookkeeping (PR-WO-6 + PR-WO-6b).
 
-Verifies:
-    * WO with no fault_id → no fault mutation, no ledger emission.
-    * WO with fault_id + fault already resolved → no re-write (idempotent).
-    * WO with fault_id + fault open → fault.status='resolved' + ledger row +
-      resolved_by_work_order_id FK written.
-    * FK write fails (column missing) → retries without FK, bridge still
-      transitions fault status and emits ledger.
-    * Bridge exceptions never fail the WO close.
+Correction (2026-04-24): the DB trigger `trg_wo_status_cascade_to_fault`
+owns the pms_faults.status / resolved_at / resolved_by cascade. This handler
+no longer duplicates those writes. What it DOES own:
+    1. Setting pms_faults.work_order_id = wo_id (reverse-link; the trigger
+       doesn't touch that column).
+    2. Emitting a `fault_auto_resolved` ledger_events row (the trigger
+       doesn't emit ledger).
 
-All supabase-py interactions are mocked via a fake client that records calls.
-No DB, no network.
+Tests cover:
+    * WO with no fault_id → no fault writes, no ledger emission.
+    * WO with fault_id + fault in terminal state (resolved/closed) → no
+      reverse-link, no ledger (idempotent).
+    * WO with fault_id + non-terminal fault → reverse-link write + single
+      ledger insert. Does NOT write pms_faults.status or resolved_at.
+    * Reverse-link write fails → ledger still emitted (best-effort).
+    * Ledger insert fails → bridge still succeeds (best-effort); WO close
+      returns fault_auto_resolved=True.
+    * WO update returns empty → ValueError, bridge never runs.
 """
 
 import sys
@@ -30,9 +37,6 @@ WO = "wo-uuid-1"
 FAULT = "fault-uuid-1"
 
 
-# ── Fake supabase client ───────────────────────────────────────────────────
-
-
 class _Query:
     """Fluent query stub that records operations and returns canned data."""
 
@@ -43,7 +47,6 @@ class _Query:
         self._op = None
         self._payload = None
 
-    # chainable filter methods (all no-ops recording filter state)
     def select(self, _cols):
         self._op = "select"
         return self
@@ -72,10 +75,10 @@ class _Query:
             "payload": self._payload,
             "filters": tuple(self._filters),
         })
-        if self._op == "update" and self.parent.update_raises_on.get(self.table_name):
-            err = self.parent.update_raises_on[self.table_name]
-            # Raise only the first time — mimic "column does not exist"
-            self.parent.update_raises_on[self.table_name] = None
+        raise_key = (self.table_name, self._op)
+        if self.parent.raise_on.get(raise_key):
+            err = self.parent.raise_on[raise_key]
+            self.parent.raise_on[raise_key] = None
             raise err
 
         canned_key = (self.table_name, self._op)
@@ -87,13 +90,10 @@ class FakeClient:
     def __init__(self):
         self.calls = []
         self.canned = {}
-        self.update_raises_on = {}
+        self.raise_on = {}
 
     def table(self, name):
         return _Query(self, name)
-
-
-# ── Test harness ───────────────────────────────────────────────────────────
 
 
 def _import_close_handler():
@@ -102,20 +102,20 @@ def _import_close_handler():
 
 
 def _base_canned(wo_fault_id=None, fault_status="open"):
-    """Canned responses for: pre-read WO, read fault, update WO."""
     return {
         ("pms_work_orders", "select"): {
             "data": [{"id": WO, "fault_id": wo_fault_id}], "count": 1,
         },
         ("pms_faults", "select"): {
-            "data": [{"id": FAULT, "status": fault_status}], "count": 1,
+            "data": [{"id": FAULT, "status": fault_status, "work_order_id": None}],
+            "count": 1,
         },
         ("pms_work_orders", "update"): {
-            "data": [{"id": WO, "status": "completed", "completed_at": "2026-04-23T21:00:00"}],
+            "data": [{"id": WO, "status": "completed", "completed_at": "2026-04-24T12:00:00"}],
             "count": 1,
         },
         ("pms_faults", "update"): {
-            "data": [{"id": FAULT, "status": "resolved"}], "count": 1,
+            "data": [{"id": FAULT, "work_order_id": WO}], "count": 1,
         },
         ("ledger_events", "insert"): {"data": [{"id": "ledger-1"}], "count": 1},
     }
@@ -138,20 +138,20 @@ async def _invoke(client):
 
 
 @pytest.mark.asyncio
-async def test_wo_with_no_fault_id_does_not_touch_faults_or_ledger():
+async def test_wo_with_no_fault_id_skips_all_fault_bookkeeping():
     client = FakeClient()
     client.canned = _base_canned(wo_fault_id=None)
     out = await _invoke(client)
 
     assert out["fault_auto_resolved"] is False
     assert out["linked_fault_id"] is None
-    tables_hit = [c["table"] for c in client.calls]
-    assert "pms_faults" not in tables_hit
-    assert "ledger_events" not in tables_hit
+    tables = [c["table"] for c in client.calls]
+    assert "pms_faults" not in tables
+    assert "ledger_events" not in tables
 
 
 @pytest.mark.asyncio
-async def test_wo_with_open_fault_transitions_and_emits_ledger():
+async def test_wo_with_open_fault_writes_reverse_link_and_ledger():
     client = FakeClient()
     client.canned = _base_canned(wo_fault_id=FAULT, fault_status="open")
     out = await _invoke(client)
@@ -159,16 +159,17 @@ async def test_wo_with_open_fault_transitions_and_emits_ledger():
     assert out["fault_auto_resolved"] is True
     assert out["linked_fault_id"] == FAULT
 
+    # Correct semantics: this handler writes ONLY the reverse-link;
+    # trg_wo_status_cascade_to_fault owns status/resolved_at/resolved_by.
     fault_updates = [
         c for c in client.calls
         if c["table"] == "pms_faults" and c["op"] == "update"
     ]
-    assert len(fault_updates) == 1, "fault should be updated exactly once"
+    assert len(fault_updates) == 1
     payload = fault_updates[0]["payload"]
-    assert payload["status"] == "resolved"
-    assert payload["resolved_by"] == USER
-    assert payload["resolved_by_work_order_id"] == WO, (
-        "FK write must be present when the column exists"
+    assert payload == {"work_order_id": WO}, (
+        "handler must write ONLY work_order_id; the DB trigger owns status "
+        "and resolved_* writes"
     )
 
     ledger_inserts = [
@@ -180,10 +181,12 @@ async def test_wo_with_open_fault_transitions_and_emits_ledger():
     assert ev["action"] == "fault_auto_resolved"
     assert ev["entity_type"] == "fault"
     assert ev["entity_id"] == FAULT
+    assert ev["metadata"]["work_order_id"] == WO
+    assert ev["metadata"]["previous_status"] == "open"
 
 
 @pytest.mark.asyncio
-async def test_fault_already_resolved_is_not_re_written():
+async def test_fault_already_terminal_does_not_re_write_or_ledger():
     for terminal in ("resolved", "closed"):
         client = FakeClient()
         client.canned = _base_canned(wo_fault_id=FAULT, fault_status=terminal)
@@ -194,40 +197,44 @@ async def test_fault_already_resolved_is_not_re_written():
             c for c in client.calls
             if c["table"] == "pms_faults" and c["op"] == "update"
         ]
-        assert fault_updates == [], f"idempotent on terminal status={terminal}"
+        assert fault_updates == []
         ledger_inserts = [
             c for c in client.calls
             if c["table"] == "ledger_events" and c["op"] == "insert"
         ]
-        assert ledger_inserts == [], "no ledger row when fault untouched"
+        assert ledger_inserts == []
 
 
 @pytest.mark.asyncio
-async def test_fk_column_absent_falls_back_without_fk():
+async def test_reverse_link_write_failure_does_not_prevent_ledger():
     client = FakeClient()
-    client.canned = _base_canned(wo_fault_id=FAULT, fault_status="open")
-    # First update on pms_faults raises (simulating missing column); second call succeeds.
-    client.update_raises_on["pms_faults"] = Exception(
-        'column "resolved_by_work_order_id" of relation "pms_faults" does not exist'
+    client.canned = _base_canned(wo_fault_id=FAULT, fault_status="investigating")
+    client.raise_on[("pms_faults", "update")] = Exception(
+        "simulated RLS or transient DB error on reverse-link write"
     )
 
     out = await _invoke(client)
-
     assert out["fault_auto_resolved"] is True
-
-    fault_updates = [
-        c for c in client.calls
-        if c["table"] == "pms_faults" and c["op"] == "update"
-    ]
-    assert len(fault_updates) == 2, "first call with FK raises; retry without FK"
-    assert "resolved_by_work_order_id" in fault_updates[0]["payload"]
-    assert "resolved_by_work_order_id" not in fault_updates[1]["payload"]
-    # Ledger event still emitted
-    assert any(c["table"] == "ledger_events" for c in client.calls)
+    assert any(
+        c["table"] == "ledger_events" and c["op"] == "insert"
+        for c in client.calls
+    ), "ledger emission must survive reverse-link failure"
 
 
 @pytest.mark.asyncio
-async def test_wo_not_found_raises_before_bridge_runs():
+async def test_ledger_failure_does_not_fail_the_wo_close():
+    client = FakeClient()
+    client.canned = _base_canned(wo_fault_id=FAULT, fault_status="work_ordered")
+    client.raise_on[("ledger_events", "insert")] = Exception("ledger RLS denied")
+
+    # Must not raise; response envelope still populated.
+    out = await _invoke(client)
+    assert out["fault_auto_resolved"] is True
+    assert out["linked_fault_id"] == FAULT
+
+
+@pytest.mark.asyncio
+async def test_wo_not_found_raises_before_bookkeeping_runs():
     client = FakeClient()
     client.canned = _base_canned(wo_fault_id=FAULT)
     client.canned[("pms_work_orders", "update")] = {"data": [], "count": 0}
@@ -235,9 +242,14 @@ async def test_wo_not_found_raises_before_bridge_runs():
     with pytest.raises(ValueError, match="not found"):
         await _invoke(client)
 
-    # Bridge must not have fired
+    # No writes on the fault side, no ledger row.
     fault_updates = [
         c for c in client.calls
         if c["table"] == "pms_faults" and c["op"] == "update"
     ]
     assert fault_updates == []
+    ledger_inserts = [
+        c for c in client.calls
+        if c["table"] == "ledger_events" and c["op"] == "insert"
+    ]
+    assert ledger_inserts == []
