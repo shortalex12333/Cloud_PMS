@@ -1181,7 +1181,9 @@ async def get_handover_export_entity(export_id: str, auth: dict = Depends(get_au
 
 # ── Purchase Order ─────────────────────────────────────────────────────────────
 # Joins pms_purchase_order_items by purchase_order_id.
-# Column name variants handled with fallbacks.
+# Enriches supplier block, resolves user UUIDs to name+role, dedups related
+# parts so the lens card can render the header chain + tabs without extra
+# frontend round-trips (see docs/ongoing_work/purchase\ order/LENS_UX_PLAN_2026-04-24.md).
 
 @router.get("/v1/entity/purchase_order/{po_id}")
 async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authenticated_user), yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)")):
@@ -1198,6 +1200,7 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
 
         data = r.data
 
+        # ── Line items ────────────────────────────────────────────────────────
         items_r = supabase.table("pms_purchase_order_items").select("*") \
             .eq("purchase_order_id", po_id).execute()
         raw_items = items_r.data or []
@@ -1223,20 +1226,80 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
             for it in raw_items
         ) or None
 
-        # Resolve supplier name
-        supplier_name = None
+        # ── Supplier block (readonly join) ────────────────────────────────────
         supplier_id = data.get("supplier_id")
+        supplier_name: Optional[str] = None
+        supplier_block: Optional[Dict[str, Any]] = None
         if supplier_id:
             try:
-                sup_r = supabase.table("pms_suppliers").select("name").eq("id", supplier_id).maybe_single().execute()
+                sup_r = supabase.table("pms_suppliers").select(
+                    "id, name, contact_name, email, phone, preferred, address"
+                ).eq("id", supplier_id).maybe_single().execute()
                 if sup_r and sup_r.data:
                     supplier_name = sup_r.data.get("name")
-            except Exception:
-                pass
+                    supplier_block = {
+                        "id":           sup_r.data.get("id"),
+                        "name":         sup_r.data.get("name"),
+                        "contact_name": sup_r.data.get("contact_name"),
+                        "email":        sup_r.data.get("email"),
+                        "phone":        sup_r.data.get("phone"),
+                        "preferred":    sup_r.data.get("preferred") or False,
+                        "address":      sup_r.data.get("address") or None,
+                    }
+            except Exception as e:
+                logger.warning(f"Supplier resolve failed for po={po_id}: {e}")
 
-        # Extract notes from metadata
+        # ── Resolve actor UUIDs → name + role ────────────────────────────────
+        # Single batch call for ordered_by / approved_by / received_by / deleted_by.
+        # Mirrors the resolver pattern introduced for cert + document in PR #663.
+        actor_ids = [
+            uid for uid in (
+                data.get("ordered_by"),
+                data.get("approved_by"),
+                data.get("received_by"),
+                data.get("deleted_by"),
+            ) if uid
+        ]
+        actor_map = resolve_users(supabase, yacht_id, actor_ids) if actor_ids else {}
+
+        def _actor(uid: Optional[str]) -> Dict[str, Optional[str]]:
+            entry = actor_map.get(uid) if uid else None
+            if not entry:
+                return {"id": uid, "name": None, "role": None}
+            return {"id": uid, "name": entry.get("name"), "role": entry.get("role")}
+
+        ordered_by_actor  = _actor(data.get("ordered_by"))
+        approved_by_actor = _actor(data.get("approved_by"))
+        received_by_actor = _actor(data.get("received_by"))
+        deleted_by_actor  = _actor(data.get("deleted_by"))
+
+        # ── Related parts (dedup'd from line items) ───────────────────────────
+        part_ids = sorted({it.get("part_id") for it in raw_items if it.get("part_id")})
+        related_parts: List[Dict[str, Any]] = []
+        if part_ids:
+            try:
+                parts_r = supabase.table("pms_parts").select(
+                    "id, part_number, name, manufacturer, description"
+                ).in_("id", part_ids).eq("yacht_id", yacht_id).execute()
+                related_parts = [
+                    {
+                        "id":           p.get("id"),
+                        "part_number":  p.get("part_number"),
+                        "name":         p.get("name"),
+                        "manufacturer": p.get("manufacturer"),
+                        "description": (p.get("description") or "")[:120],
+                    }
+                    for p in (parts_r.data or [])
+                ]
+            except Exception as e:
+                logger.warning(f"Related parts resolve failed for po={po_id}: {e}")
+
+        # ── Metadata-derived fields ───────────────────────────────────────────
         meta = data.get("metadata") or {}
-        notes_text = meta.get("notes") if isinstance(meta, dict) else None
+        if not isinstance(meta, dict):
+            meta = {}
+        notes_text = meta.get("notes")
+        deletion_reason = meta.get("deletion_reason")  # not a column today; stored in metadata if handlers choose to
 
         attachments = _get_attachments(supabase, "purchase_order", po_id, yacht_id)
 
@@ -1251,22 +1314,45 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
             "id": data.get("id"),
             "po_number": data.get("po_number"),
             "status": data.get("status"),
+            # Supplier — legacy flat fields + new structured block
             "supplier_name": supplier_name,
             "supplier_id": supplier_id,
+            "supplier": supplier_block,
+            # Dates
             "order_date": data.get("ordered_at") or data.get("created_at"),
             "ordered_at": data.get("ordered_at"),
             "received_at": data.get("received_at"),
+            "approved_at": data.get("approved_at"),
             "expected_delivery": data.get("expected_delivery") or data.get("expected_delivery_date"),
+            # Money
             "total_amount": data.get("total_amount") or computed_total,
+            "item_count": len(raw_items),
             "currency": data.get("currency", "USD"),
+            # Notes streams — keep legacy `notes`/`description`, add the full trio
             "notes": notes_text,
             "description": notes_text,
+            "approval_notes": data.get("approval_notes"),
+            "receiving_notes": data.get("receiving_notes"),
+            # Actors — legacy UUIDs kept for any caller that still reads them,
+            # new *_actor blocks carry resolved name + role (UUIDs hidden).
             "ordered_by": data.get("ordered_by"),
             "approved_by": data.get("approved_by") or (meta.get("approved_by") if isinstance(meta, dict) else None),
+            "received_by": data.get("received_by"),
+            "ordered_by_actor":  ordered_by_actor,
+            "approved_by_actor": approved_by_actor,
+            "received_by_actor": received_by_actor,
+            # Items
             "items": items,
             "line_items": items,
+            "related_parts": related_parts,
+            # Timestamps
             "created_at": data.get("created_at"),
             "updated_at": data.get("updated_at"),
+            # Soft-delete surface (all nulls when not deleted)
+            "deleted_at": data.get("deleted_at"),
+            "deleted_by_actor": deleted_by_actor if data.get("deleted_at") else None,
+            "deletion_reason": deletion_reason,
+            # Context
             "yacht_id": data.get("yacht_id"),
             "attachments": attachments,
             "related_entities": nav,
