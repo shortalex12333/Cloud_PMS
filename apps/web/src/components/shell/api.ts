@@ -228,6 +228,81 @@ export function fetchHandoverQueue(vesselId: string): Promise<HandoverQueueRespo
 }
 
 /* ─────────────────────────────────────────────
+   HANDOVER — EXPORTED LIST
+   /v1/handover/exports returns the current user's
+   visible handover exports (own + same-role peer)
+   for the Exported tab on /handover-export.
+   ───────────────────────────────────────────── */
+
+export interface HandoverExportListItem {
+  id: string;
+  draft_id: string | null;
+  yacht_id: string;
+  exported_at: string;
+  period_start: string | null;
+  period_end: string | null;
+  department: string | null;
+  export_type: string | null;
+  export_status: string | null;
+  file_name: string | null;
+  document_hash: string | null;
+  outgoing_user_id: string | null;
+  outgoing_user_name: string | null;
+  outgoing_role: string | null;
+  outgoing_signed_at: string | null;
+  incoming_user_id: string | null;
+  incoming_user_name: string | null;
+  incoming_role: string | null;
+  incoming_signed_at: string | null;
+  hod_signed_at: string | null;
+  user_signed_at: string | null;
+  review_status: string | null;
+  signoff_complete: boolean | null;
+  has_signed_document: boolean;
+  has_original_document: boolean;
+}
+
+export interface HandoverExportListResponse {
+  status: string;
+  exports: HandoverExportListItem[];
+  count: number;
+  total_count: number;
+  scope: 'all' | 'own_and_same_role';
+}
+
+/** Fetch handover exports list for the Exported tab */
+export function fetchHandoverExports(): Promise<HandoverExportListResponse> {
+  return apiFetch(`/v1/handover/exports?limit=50`);
+}
+
+export interface HandoverExportSignedUrl {
+  url: string;
+  expires_at: string;
+  ttl_seconds: number;
+}
+
+/** Mint a short-TTL signed URL for a handover export document */
+export async function mintHandoverExportSignedUrl(exportId: string): Promise<HandoverExportSignedUrl> {
+  const token = await getToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await fetch(`${API_BASE}/v1/handover/export/${encodeURIComponent(exportId)}/signed-url`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.detail || `Failed to mint signed URL (${res.status})`);
+  }
+
+  return res.json();
+}
+
+/* ─────────────────────────────────────────────
    DOMAIN ID MAPPING
    Frontend routes use hyphens, API uses underscores.
    ───────────────────────────────────────────── */

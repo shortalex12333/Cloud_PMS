@@ -363,9 +363,19 @@ export function HandoverQueueView() {
     );
   }
 
-  const totalItems = data
-    ? (data.open_faults.length + data.overdue_work_orders.length + data.low_stock_parts.length + data.pending_orders.length)
-    : 0;
+  // Subheader copy — we deliberately avoid a single "N items detected" number.
+  // The backend caps each section at 20 rows (p0_actions_routes.py:2357/2370/
+  // 2391/2402), so a real yacht with 3,000+ open items still shows "80"; the
+  // number is honest at the per-section level (each group-heading below shows
+  // its own count) but misleading as a top-line total. Instead we render an
+  // action-oriented prompt plus the one count the user controls — how many
+  // items they've already added to their own draft.
+  const queuedCount = alreadyQueued.size;
+  const subheaderCopy = loading
+    ? 'Loading…'
+    : queuedCount === 0
+      ? 'Pick items to add to your draft'
+      : `Pick items to add to your draft · ${queuedCount} already in draft`;
 
   return (
     <div style={{ padding: '16px 16px 32px' }}>
@@ -377,7 +387,7 @@ export function HandoverQueueView() {
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt)' }}>Handover Queue</div>
           <div style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-            {loading ? 'Loading…' : `${totalItems} items detected · ${alreadyQueued.size} added to draft`}
+            {subheaderCopy}
           </div>
         </div>
         <button

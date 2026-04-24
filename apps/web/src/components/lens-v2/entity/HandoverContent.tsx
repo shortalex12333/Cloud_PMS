@@ -359,6 +359,31 @@ export function HandoverContent() {
     ? { disabled: false, disabled_reason: null }
     : null;
 
+  // ── First-open acknowledgement prompt (Issue 10, part 2) ─────────────────
+  // When an incoming crew member opens a completed handover they must still
+  // sign to close the compliance chain. The sign block sits far down the
+  // page; users routinely miss it. Fire a one-shot toast the first time the
+  // lens is opened for a given export id + user, with a jump-to action.
+  const PROMPT_STORAGE_PREFIX = 'handover-ack-prompted:';
+  React.useEffect(() => {
+    if (!canAcknowledge || !entityId || !user?.id) return;
+    if (typeof window === 'undefined') return;
+    const key = `${PROMPT_STORAGE_PREFIX}${user.id}:${entityId}`;
+    if (window.sessionStorage.getItem(key)) return;
+    window.sessionStorage.setItem(key, '1');
+    toast.info('This handover needs your acknowledgement', {
+      description: 'Review and sign at the bottom of the page to close the handover.',
+      duration: 8_000,
+      action: {
+        label: 'Go to sign-off',
+        onClick: () => {
+          const el = document.querySelector('[data-handover-sign-block]') as HTMLElement | null;
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
+      },
+    });
+  }, [canAcknowledge, entityId, user?.id]);
+
   // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
     actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
@@ -877,6 +902,7 @@ export function HandoverContent() {
             </div>
 
             {/* ── Signature Block (dynamic: outgoing / HOD / incoming) ── */}
+            <div data-handover-sign-block>
             <SignatureBlock
               outgoing={{
                 name: (user_sig?.signer_name as string | undefined) ?? from_crew,
@@ -899,6 +925,7 @@ export function HandoverContent() {
                   : undefined,
               }}
             />
+            </div>
 
             {/* ── Footer ── */}
             <div style={{

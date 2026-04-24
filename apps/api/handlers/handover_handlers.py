@@ -696,9 +696,12 @@ class HandoverHandlers:
     # Alias methods for backward compatibility
     # =========================================================================
 
-    # Alias for tests that use summary_text instead of summary
+    # Alias for tests that use summary_text instead of summary.
+    # [DEPRECATED — HANDOVER08 flag, 2026-04-24]
+    # Test-only compatibility shim. Once the test suite is cut over to the
+    # canonical summary param (task B9 follow-up), this method is deleted.
     async def add_to_handover_execute_legacy(self, *args, summary_text: str = None, **kwargs):
-        """Legacy wrapper - converts summary_text to summary."""
+        """Legacy wrapper - converts summary_text to summary. DEPRECATED — see class comment."""
         if summary_text and 'summary' not in kwargs:
             kwargs['summary'] = summary_text
         return await self.add_to_handover_execute(*args, **kwargs)

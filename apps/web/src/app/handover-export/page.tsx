@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Handover — Queue + Draft tabs
+ * Handover — Queue + Draft + Exported tabs
  *
  * Tab 1 — Queue: auto-detected items ready to add to next handover.
  *   Calls GET /v1/handover/queue via HandoverQueueView.
@@ -11,14 +11,19 @@
  *   Reuses HandoverDraftPanel with variant='page' for in-page rendering.
  *   Includes Export button that navigates to /handover-export/[id] on success.
  *
+ * Tab 3 — Exported: this user's prior handovers plus same-role back-to-back
+ *   peers. Calls GET /v1/handover/exports via ExportedHandoversView.
+ *   Row click opens /handover-export/{id}.
+ *
  * The /handover-export/[id] lens for completed exports is untouched.
  */
 
 import * as React from 'react';
 import { HandoverQueueView } from '@/components/handover/HandoverQueueView';
 import { HandoverDraftPanel } from '@/components/handover/HandoverDraftPanel';
+import { ExportedHandoversView } from '@/components/handover/ExportedHandoversView';
 
-type Tab = 'queue' | 'draft';
+type Tab = 'queue' | 'draft' | 'exported';
 
 export default function HandoverExportPage() {
   const [activeTab, setActiveTab] = React.useState<Tab>('queue');
@@ -41,7 +46,7 @@ export default function HandoverExportPage() {
         flexShrink: 0,
         background: 'var(--surface)',
       }}>
-        {(['queue', 'draft'] as Tab[]).map(tab => (
+        {(['queue', 'draft', 'exported'] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -61,7 +66,7 @@ export default function HandoverExportPage() {
               letterSpacing: '0.01em',
             }}
           >
-            {tab === 'queue' ? 'Queue' : 'Draft Items'}
+            {tab === 'queue' ? 'Queue' : tab === 'draft' ? 'Draft Items' : 'Exported'}
           </button>
         ))}
       </div>
@@ -90,6 +95,16 @@ export default function HandoverExportPage() {
             onClose={() => setActiveTab('queue')}
             variant="page"
           />
+        </div>
+
+        {/* Exported tab */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          overflow: 'hidden',
+          visibility: activeTab === 'exported' ? 'visible' : 'hidden',
+          pointerEvents: activeTab === 'exported' ? 'auto' : 'none',
+        }}>
+          <ExportedHandoversView />
         </div>
       </div>
     </div>

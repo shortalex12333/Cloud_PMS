@@ -180,10 +180,61 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     # CROSS-DOMAIN CANONICAL ACTIONS — prefill from source entity context
     # ══════════════════════════════════════════════════════════════════════════
 
-    # add_to_handover: pre-populates entity reference from ANY source entity
-    ("work_order", "add_to_handover"):   {"entity_id": "id", "title": "title"},
-    ("fault", "add_to_handover"):        {"entity_id": "id", "title": "title"},
-    ("equipment", "add_to_handover"):    {"entity_id": "id", "title": "name"},
+    # add_to_handover: pre-populates entity reference from ANY source entity.
+    #
+    # HANDOVER08 task B6 (2026-04-23): extended the equipment/fault/work_order
+    # rows with read-only context fields so ActionPopup can surface the
+    # identifying attributes of the source entity (manufacturer, model, WO#,
+    # severity, etc.) in the "Add to Handover" modal. See
+    # /Users/celeste7/Desktop/list_of_faults.md and the EQUIPMENT05 request
+    # relayed through claude-peers channel.
+    #
+    # All extras are BACKEND_AUTO-style passthroughs — ActionPopup MAY render
+    # them as a read-only context block. Fields missing from entity_data are
+    # dropped silently by resolve_prefill(), so any lens that does not expose
+    # a given key is a no-op (no 400, no crash).
+    #
+    # TODO (ActionPopup consumer): wire a read-only "Source entity" block that
+    # renders these prefill keys above the editable summary/notes inputs.
+    # EQUIPMENT05 owns the frontend side; do NOT edit ActionPopup here.
+    ("work_order", "add_to_handover"): {
+        "entity_id":      "id",
+        "title":          "title",
+        "wo_number":      "wo_number",
+        "priority":       "priority",
+        "status":         "status",
+        "equipment_id":   "equipment_id",
+        "equipment_name": "equipment_name",
+    },
+    ("fault", "add_to_handover"): {
+        "entity_id":      "id",
+        "title":          "title",
+        "fault_code":     "title",            # pms_faults surfaces fault_code via title fallback — entity_routes.py:1280
+        "severity":       "severity",
+        "status":         "status",
+        "equipment_id":   "equipment_id",
+        "equipment_name": "equipment_name",
+    },
+    ("equipment", "add_to_handover"): {
+        "entity_id":      "id",
+        "title":          "name",
+        # CEO context fields (EQUIPMENT05 request):
+        # code is not surfaced on the lens response today — intentionally
+        # omitted; resolve_prefill drops missing keys. Add here when the
+        # equipment route starts emitting it.
+        "name":           "name",
+        "manufacturer":   "manufacturer",
+        "model":          "model",
+        "serial_number":  "serial_number",
+        "criticality":    "criticality",
+        "status":         "status",
+        "location":       "location",
+        "system_type":    "equipment_type",   # entity_routes.py:1473 maps system_type → equipment_type
+        # running_hours not on the equipment lens response yet (see
+        # pms_equipment.running_hours column usage in equipment_handlers.py:1374).
+        # Left out so we don't ship a key that resolves to None; add when the
+        # equipment route starts surfacing it.
+    },
     ("part", "add_to_handover"):         {"entity_id": "id", "title": "name"},
     ("certificate", "add_to_handover"):  {"entity_id": "id", "title": "name"},
     ("document", "add_to_handover"):     {"entity_id": "id", "title": "name"},

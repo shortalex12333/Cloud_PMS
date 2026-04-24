@@ -41,6 +41,8 @@ import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
 import { FileWarrantyClaimModal } from '@/components/lens-v2/actions/FileWarrantyClaimModal';
 import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
 import { LedgerPanel } from '@/components/ledger';
+import { useHandoverExport } from '@/components/handover/useHandoverExport';
+import { ConfirmExportModal } from '@/components/handover/ConfirmExportModal';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAuthHeaders, getYachtId } from '@/lib/authHelpers';
 import { useAuth } from '@/hooks/useAuth';
@@ -144,10 +146,15 @@ export function AppShell({ children }: AppShellProps) {
   // - warranties: crew cannot file claims (HOD+ only)
   // - documents: crew cannot upload (HOD+ only) — backend returns 403, but
   //   the button must also be disabled/hidden so crew don't see a broken action.
+  // - handover-export: disabled while the user's draft is empty, so the
+  //   "Create Handover" button in the subbar doesn't kick off an export
+  //   that the backend would reject with 0 items.
   const { user } = useAuth();
+  const handoverExport = useHandoverExport({ enabled: activeDomain === 'handover-export' });
   const primaryActionDisabled =
     (activeDomain === 'warranties' && !isHOD(user)) ||
-    (activeDomain === 'documents' && !isHOD(user));
+    (activeDomain === 'documents' && !isHOD(user)) ||
+    (activeDomain === 'handover-export' && (handoverExport.isExporting || handoverExport.itemCount === 0));
 
   // Global search overlay state
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -160,6 +167,7 @@ export function AppShell({ children }: AppShellProps) {
   const [reportFaultOpen, setReportFaultOpen] = React.useState(false);
   const [fileWarrantyOpen, setFileWarrantyOpen] = React.useState(false);
   const [documentUploadOpen, setDocumentUploadOpen] = React.useState(false);
+  const [confirmExportOpen, setConfirmExportOpen] = React.useState(false);
 
   // React Query client — used to invalidate the documents list after an upload
   // so the newly-uploaded document appears immediately. Mirrors the pattern
@@ -192,11 +200,17 @@ export function AppShell({ children }: AppShellProps) {
       case 'documents':
         setDocumentUploadOpen(true);
         break;
+      case 'handover-export':
+        // Open the pre-export confirm first. On user confirm we invoke
+        // handoverExport.exportHandover(); the hook already drives POST
+        // /v1/handover/export + mark-exported + route-to-export-view.
+        setConfirmExportOpen(true);
+        break;
       default:
         // Domains without a create modal — navigate to domain (already there, but no-op is fine)
         break;
     }
-  }, [activeDomain]);
+  }, [activeDomain, handoverExport]);
 
   // ------------------------------------------------------------------
   // Document upload handler passed to AttachmentUploadModal in custom mode.
@@ -297,6 +311,16 @@ export function AppShell({ children }: AppShellProps) {
         description="Add a document to the vessel library. Accepted: PDF, images, office docs; max 15 MB."
         onUpload={handleDocumentUpload}
         showMetadataFields
+      />
+      <ConfirmExportModal
+        open={confirmExportOpen}
+        itemCount={handoverExport.itemCount}
+        isExporting={handoverExport.isExporting}
+        onConfirm={async () => {
+          await handoverExport.exportHandover();
+          setConfirmExportOpen(false);
+        }}
+        onClose={() => setConfirmExportOpen(false)}
       />
     </ShellProvider>
   );
