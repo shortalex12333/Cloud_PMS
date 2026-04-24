@@ -111,7 +111,10 @@ export function FaultContent() {
   const notes = ((entity?.notes ?? payload.notes ?? entity?.comments ?? payload.comments ?? entity?.journal ?? payload.journal) as Array<Record<string, unknown>> | undefined) ?? [];
   const related_entities = ((entity?.related_entities ?? payload.related_entities) as Array<Record<string, unknown>> | undefined) ?? [];
   const documents = ((entity?.documents ?? payload.documents ?? entity?.reference_documents ?? payload.reference_documents) as Array<Record<string, unknown>> | undefined) ?? [];
-  const history = ((entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
+  // NOTE: `history` field (read-action log) deliberately NOT extracted — it rendered
+  // as a duplicate audit-trail section below the real "History". Per CEO rule
+  // 2026-04-24: History = prior iterations only (2022/23/24/25 periods etc.),
+  // NOT a read-only action receipt. Real audit chain continues via `auditTrail`.
   const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
   const root_cause_items = ((entity?.root_cause_analysis ?? payload.root_cause_analysis) as Array<Record<string, unknown>> | undefined) ?? [];
   const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
@@ -287,13 +290,9 @@ export function FaultContent() {
     onClick: d.document_id ? () => router.push(getEntityRoute('documents' as Parameters<typeof getEntityRoute>[0], d.document_id as string)) : undefined,
   }));
 
-  // History → AuditEvents
-  const auditEvents: AuditEvent[] = history.map((h, i) => ({
-    id: (h.id as string) ?? `audit-${i}`,
-    action: (h.action ?? h.description ?? h.event) as string ?? '',
-    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
-    timestamp: (h.created_at ?? h.timestamp) as string ?? '',
-  }));
+  // (Removed: read-action log mapping — `history` field was rendered as a duplicate
+  // audit trail below the real "History" section. Real audit chain continues to
+  // render from the canonical `audit_trail` field via `auditEvents2` below.)
 
   // Prior Periods → HistoryPeriods
   const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
@@ -454,15 +453,13 @@ export function FaultContent() {
         />
       </ScrollReveal>
 
-      {/* History */}
+      {/* History (prior iterations only — 2022/23/24/25 periods etc.) */}
       <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
 
-      {/* Audit Trail */}
-      <ScrollReveal>
-        <AuditTrailSection events={auditEvents} defaultCollapsed />
-      </ScrollReveal>
-
-      {/* Audit Trail (audit_trail field) */}
+      {/* Audit Trail — canonical mutation ledger from audit_trail field.
+          A second read-action-log section used to render here from the `history`
+          field; deleted 2026-04-24 per CEO: "read-only action receipts" under a
+          History label are wasteful and conflate with the real History above. */}
       <ScrollReveal><AuditTrailSection events={auditEvents2} defaultCollapsed /></ScrollReveal>
 
       {actionPopupConfig && (
