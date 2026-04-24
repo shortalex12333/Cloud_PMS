@@ -64,7 +64,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
  * extra horizontal room per 2026-04-23 UX spec. Add here when a new lens
  * gains a LensFileViewer.
  */
-const WIDE_LENS_TYPES: Set<string> = new Set(['certificate', 'document', 'receiving']);
+const WIDE_LENS_TYPES: Set<string> = new Set(['certificate', 'document', 'receiving', 'shopping_list']);
 
 function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack: () => void }) {
   return (
@@ -213,8 +213,15 @@ export function EntityLensPage({
     bodyContent = (
       <EntityLensProvider value={contextValue}>
         <Content />
-        {/* Certificate lens renders its own AuditTrailSection from pms_audit_log — skip generic ledger */}
-        {entityType !== 'certificate' && (
+        {/* Lenses opted out of the generic read-only ledger because they render
+            their own equivalent inside the tab system:
+              - certificate → its own AuditTrailSection from pms_audit_log
+              - work_order  → Audit Trail + History tabs already cover it; the
+                              appended ledger surfaces read-only receipts that
+                              duplicate those tabs + break the tab layout
+                              (CEO directive 2026-04-24). Removed per spec.
+           Add here when a new lens gains its own in-tab audit surface. */}
+        {entityType !== 'certificate' && entityType !== 'work_order' && (
           <LedgerHistory entityType={entityType} entityId={entityId} />
         )}
       </EntityLensProvider>
