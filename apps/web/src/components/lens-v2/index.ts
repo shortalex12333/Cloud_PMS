@@ -13,6 +13,7 @@ export { LensGlassHeader, type LensGlassHeaderProps } from './LensGlassHeader';
 export { IdentityStrip, type IdentityStripProps, type DetailLine, type PillDef } from './IdentityStrip';
 export { SplitButton, type SplitButtonProps, type DropdownItem } from './SplitButton';
 export { CollapsibleSection, type CollapsibleSectionProps } from './CollapsibleSection';
+export { LensTabBar, type LensTab, type LensTabBarProps } from './LensTabBar';
 export { LensPill, type LensPillProps, type PillVariant } from './LensPill';
 export { ScrollReveal, type ScrollRevealProps } from './ScrollReveal';
 

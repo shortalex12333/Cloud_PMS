@@ -13,8 +13,8 @@ Working alongside WORKORDER05 / HANDOVER08 / EQUIPMENT05 / FAULT05 / SHOPPINGLIS
 | PR | Subject | Status | Notes |
 |----|---------|--------|-------|
 | PR-WO-1 | Dedupe prefill + wire KEEP action buttons | MERGED #686 | 400s on work-order dropdown dead |
-| PR-WO-2 | Tabulated list view on shared `EntityTableList` | OPEN | 12 cols per UX sheet; backend batch resolvers for equipment_name + assigned_to_name |
-| PR-WO-3 | Lens card redesign — horizontal tabs + metadata de-UUID | PENDING | Safety / Checklist / Docs / Faults / Equipment / Parts / Uploads / Notes / Audit / History |
+| PR-WO-2 | Tabulated list view on shared `EntityTableList` | MERGED #687 | 12 cols live; backend batch resolvers in place |
+| PR-WO-3 | Lens card redesign — horizontal tabs + metadata de-UUID | OPEN | 10-tab LensTabBar; extended header metadata; "Change Status" rename |
 | PR-WO-4 | Checklist overhaul (DB audit + bucket wiring) | PENDING | `pms_work_order_checklist` + `pms_checklist` + `pms_checklist_items` audit first |
 | PR-WO-5 | Calendar tab (List / Calendar toggle) | PENDING | Seahub-style; clickable cards; colour by type/criticality |
 | PR-WO-6 | Fault→WO bridge + WO-complete→fault auto-resolve | PENDING | Coord with FAULT05 (`wq0prarm`); needs `pms_faults.resolved_by_work_order_id` migration |
@@ -101,4 +101,35 @@ UX sheet `/Users/celeste7/Desktop/lens_card_upgrades.md:492 + 506-522` — move 
 
 ---
 
-## PR-WO-3..7 — detailed scope will be filled in as each opens.
+## PR-WO-3 — card redesign (shipped 2026-04-23)
+
+### Scope
+UX sheet `/Users/celeste7/Desktop/lens_card_upgrades.md:300-405` — the legacy work-order card "reads like a receipt". CEO asks for a deeper, tabbed card with safety / sop / LOTO visibility, reverse-linked equipment + faults, and all the hidden header metadata (severity, type, due_date + due_at, frequency, completed_at).
+
+### Changes
+- **`apps/web/src/components/lens-v2/LensTabBar.tsx` (new)** — shared horizontal tab-bar component. Sticky, keyboard-navigable (←/→ skip disabled tabs), aria-compliant (`role=tablist`/`tab`/`tabpanel`, `aria-selected`, `aria-controls`, `aria-disabled`), tokenised only. Count badges suppress when count = 0. Controlled + uncontrolled modes. Cohort-shared — available for FAULT05, EQUIPMENT05, HANDOVER08 to adopt.
+- **`apps/web/src/components/lens-v2/index.ts`** — export barrel updated.
+- **`apps/web/src/components/lens-v2/entity/WorkOrderContent.tsx`** —
+  - Extended header metadata: `wo_number` overline, title, status/priority/severity/type pills (UX lines 374-380). Details now include Equipment, Due (`due_date` + `due_at`), Created, Frequency, Completed, Hours. Severity is now distinct from priority.
+  - Added `LABEL_OVERRIDES` so `update_worklist_progress` renders as "Change Status" in the dropdown (UX line 238) without breaking the backend action_id.
+  - Added UUID-guard on `assigned_to` display — if the entity endpoint hasn't been enriched and the value is still a raw UUID, the Assigned link suppresses entirely rather than leaking the id. Role (`assigned_to_role`) appended when present, e.g. "Alex Kapranos (Chief Engineer)".
+  - Replaced the legacy stacked `ScrollReveal` sections with a 10-tab `LensTabBar`: Checklist · Documents · Faults · Equipment · Parts · Uploads · Notes · Audit Trail · History · Safety.
+  - Each tab either renders its existing section component or an `EmptyTab` with a clear next-step message. `FaultsTabBody` + `EquipmentTabBody` helpers render minimal linked-entity cards that navigate to the corresponding lens on click.
+  - `Safety` tab is `disabled: true` with `disabledReason="LOTO + SOP attachments land with PR-WO-4 checklist overhaul"` — no dead tab, no silent failure.
+- **`apps/web/src/components/lens-v2/__tests__/LensTabBar.test.tsx` (new)** — 7 specs: tab rendering + aria wiring, count-badge suppression, disabled aria + click-ignore, onChange + body switch, ←/→ keyboard wrap skipping disabled, controlled-mode passivity, first-enabled-default fallback.
+
+### Verification
+- `vitest run src/components/lens-v2/__tests__/LensTabBar.test.tsx` → 7/7 green
+- `vitest run src/features/work-orders/__tests__/columns.test.tsx` → 11/11 green (regression)
+- `npx tsc --noEmit` on apps/web → clean
+
+### Deferred (PR-WO-4..7)
+- Safety tab content (LOTO + SOP attachments) → PR-WO-4.
+- Checklist custom K/V, photo+comment upload, bucket wiring, soft-delete 30d → PR-WO-4.
+- Calendar tab (List / Calendar toggle) → PR-WO-5.
+- Fault→WO bridge + WO-complete→fault auto-resolve → PR-WO-6 (needs `pms_faults.resolved_by_work_order_id` migration; FAULT05 confirmed column absent + enum is `open/investigating/acknowledged/work_ordered/resolved/closed`).
+- `system_id` + running-hours columns → PR-WO-7.
+
+---
+
+## PR-WO-4..7 — detailed scope will be filled in as each opens.
