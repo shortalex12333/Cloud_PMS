@@ -27,6 +27,7 @@ import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { ReceivingPackingList, type PackingItem } from '../sections/ReceivingPackingList';
+import { ReceivingOfficialDocuments, type OfficialDoc, type DocKind } from '../sections/ReceivingOfficialDocuments';
 
 // Sections
 import {
@@ -253,6 +254,29 @@ export function ReceivingContent() {
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
 
+  // Official documents — hero-rendered at the TOP of the lens (canonical
+  // section order: Official Documents → Checklist → Notes → History …).
+  // Classifies each attachment so the thumb strip sorts invoice-first, then
+  // packing-slip, then photos, then other.
+  function classifyDoc(name: string, mime: string | undefined): DocKind {
+    const fn = (name || '').toLowerCase();
+    if (/invoice|inv[-_]?\d/.test(fn)) return 'invoice';
+    if (/packing|packlist|slip|delivery[-_]?note/.test(fn)) return 'packing_slip';
+    if ((mime || '').startsWith('image/')) return 'photo';
+    return 'other';
+  }
+  const officialDocs: OfficialDoc[] = attachments.map((a, i) => ({
+    id: (a.id as string) ?? `doc-${i}`,
+    filename: (a.filename ?? a.file_name ?? a.name) as string ?? `file-${i}`,
+    url: (a.url as string | null | undefined) ?? null,
+    mimeType: (a.mime_type ?? a.content_type) as string | undefined,
+    kind: classifyDoc(
+      (a.filename ?? a.file_name ?? a.name ?? '') as string,
+      (a.mime_type ?? a.content_type) as string | undefined,
+    ),
+    caption: (a.caption ?? a.description) as string | undefined,
+  }));
+
   const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
     id: (a.id as string) ?? `att-${i}`,
     name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
@@ -312,6 +336,15 @@ export function ReceivingContent() {
           ) : undefined
         }
       />
+
+      {/* Official Documents — canonical first section; renders the supplier
+          invoice / packing slip / arrival photos inline via LensFileViewer. */}
+      <ScrollReveal>
+        <ReceivingOfficialDocuments
+          docs={officialDocs}
+          onOpenInNewTab={(d) => { if (d.url) window.open(d.url, '_blank', 'noopener'); }}
+        />
+      </ScrollReveal>
 
       {/* Packing List — reconciliation grid (the hero section per philosophy) */}
       <ScrollReveal>
