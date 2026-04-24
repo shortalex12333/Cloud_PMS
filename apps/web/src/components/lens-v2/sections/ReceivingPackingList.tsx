@@ -36,9 +36,11 @@ import { getEntityRoute } from '@/lib/entityRoutes';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
+export type Disposition = 'pending' | 'accepted' | 'short' | 'damaged' | 'wrong_item' | 'over';
+
 export interface PackingItem {
   id: string;
-  /** Part catalog link. When set, row is click-through to the part lens. */
+  /** Part catalog link. When set, the part code/name is click-through to the part lens. */
   partId?: string | null;
   partCode?: string | null;      // e.g. HVC-0109-813
   partName?: string | null;      // e.g. "AC Filter 20x20"
@@ -47,6 +49,12 @@ export interface PackingItem {
   manufacturer?: string | null;
   quantityExpected?: number | null;
   quantityReceived: number;      // NOT NULL in DB
+  /** Crew's accept count per line (DB column added 2026-04-24). */
+  quantityAccepted?: number | null;
+  /** Crew's reject count per line (DB column added 2026-04-24). */
+  quantityRejected?: number | null;
+  /** Per-line state (DB column added 2026-04-24, defaults to 'pending'). */
+  disposition?: Disposition | null;
   unitPrice?: number | null;
   currency?: string | null;
 }
@@ -60,6 +68,13 @@ export interface ReceivingPackingListProps {
   headerCurrency?: string | null;
   /** Section-header action (HOD-only). When omitted, no action button. */
   onAddItem?: () => void;
+  /**
+   * Called when the crew clicks a row's disposition control. Parent routes
+   * this to the `adjust_receiving_item` action with the given fields.
+   * When omitted, the control renders as read-only (historical view or
+   * insufficient role).
+   */
+  onAdjustItem?: (itemId: string, patch: { quantity_accepted?: number; quantity_rejected?: number; disposition: Disposition }) => Promise<void> | void;
 }
 
 // ── Formatters ─────────────────────────────────────────────────────────────
@@ -81,33 +96,25 @@ function computeDelta(item: PackingItem): number | null {
   return Number(item.quantityReceived) - Number(item.quantityExpected);
 }
 
-type Disposition = 'matched' | 'short' | 'over' | 'pending';
-
-function deriveDisposition(item: PackingItem): Disposition {
-  const d = computeDelta(item);
-  if (d === null) return 'pending';
-  if (d === 0) return 'matched';
-  if (d < 0) return 'short';
-  return 'over';
+// Resolve the disposition to render. Prefer the backend column (crew
+// already made a decision). Fall back to a Δ-derived suggestion so the
+// glyph is never empty but shows a neutral 'pending' until the crew clicks.
+function resolveDisposition(item: PackingItem): Disposition {
+  if (item.disposition && item.disposition !== 'pending') return item.disposition;
+  return 'pending';
 }
 
-// ── Status glyph (mirrors StatusPill pattern) ──────────────────────────────
+const DISPOSITION_PALETTE: Record<Disposition, { bg: string; color: string; border: string; label: string }> = {
+  pending:    { bg: 'var(--neutral-bg)', color: 'var(--txt3)',   border: 'var(--border-sub)',    label: '○ Pending' },
+  accepted:   { bg: 'var(--green-bg)',   color: 'var(--green)',  border: 'var(--green-border)',  label: '✓ Accepted' },
+  short:      { bg: 'var(--red-bg)',     color: 'var(--red)',    border: 'var(--red-border)',    label: '⚠ Short' },
+  damaged:    { bg: 'var(--red-bg)',     color: 'var(--red)',    border: 'var(--red-border)',    label: '⚠ Damaged' },
+  wrong_item: { bg: 'var(--red-bg)',     color: 'var(--red)',    border: 'var(--red-border)',    label: '⚠ Wrong Item' },
+  over:       { bg: 'var(--amber-bg)',   color: 'var(--amber)',  border: 'var(--amber-border)',  label: '⚠ Over' },
+};
 
 function StatusGlyph({ disposition }: { disposition: Disposition }) {
-  const label = {
-    matched: '✓ Matched',
-    short: '⚠ Short',
-    over: '⚠ Over',
-    pending: '○ Pending',
-  }[disposition];
-
-  const palette = {
-    matched: { bg: 'var(--green-bg)', color: 'var(--green)', border: 'var(--green-border)' },
-    short:   { bg: 'var(--red-bg)',   color: 'var(--red)',   border: 'var(--red-border)' },
-    over:    { bg: 'var(--amber-bg)', color: 'var(--amber)', border: 'var(--amber-border)' },
-    pending: { bg: 'var(--neutral-bg)', color: 'var(--txt3)', border: 'var(--border-sub)' },
-  }[disposition];
-
+  const p = DISPOSITION_PALETTE[disposition];
   return (
     <span
       style={{
@@ -121,13 +128,90 @@ function StatusGlyph({ disposition }: { disposition: Disposition }) {
         letterSpacing: '0.04em',
         textTransform: 'uppercase',
         whiteSpace: 'nowrap',
-        background: palette.bg,
-        color: palette.color,
-        border: `1px solid ${palette.border}`,
+        background: p.bg,
+        color: p.color,
+        border: `1px solid ${p.border}`,
       }}
     >
-      {label}
+      {p.label}
     </span>
+  );
+}
+
+// Interactive 3-state control used when onAdjustItem is provided.
+// Cycles: pending → accepted → short → pending (user can override via dropdown
+// in a later PR; MVP keeps one tap away from the common case).
+function DispositionControl({
+  item,
+  disabled,
+  onChange,
+}: {
+  item: PackingItem;
+  disabled: boolean;
+  onChange: (patch: { quantity_accepted: number; quantity_rejected: number; disposition: Disposition }) => void;
+}) {
+  const current = resolveDisposition(item);
+  const received = Number(item.quantityReceived ?? 0);
+  const expected = item.quantityExpected === null || item.quantityExpected === undefined
+    ? null
+    : Number(item.quantityExpected);
+
+  // Cycle through the three MVP states. Damaged/wrong_item/over live in the
+  // v2 dropdown.
+  const next: Disposition = current === 'pending'
+    ? 'accepted'
+    : current === 'accepted'
+      ? (expected !== null && received < expected ? 'short' : 'accepted')
+      : 'pending';
+
+  const onClick = () => {
+    if (disabled || next === current) {
+      // No-op cycle (e.g. received == expected so 'short' doesn't apply)
+      return;
+    }
+    if (next === 'accepted') {
+      onChange({ quantity_accepted: received, quantity_rejected: 0, disposition: 'accepted' });
+    } else if (next === 'short') {
+      const shortBy = expected !== null ? Math.max(expected - received, 0) : 0;
+      onChange({
+        quantity_accepted: received,
+        quantity_rejected: shortBy,
+        disposition: 'short',
+      });
+    } else {
+      onChange({ quantity_accepted: 0, quantity_rejected: 0, disposition: 'pending' });
+    }
+  };
+
+  const p = DISPOSITION_PALETTE[current];
+  const isClickable = !disabled;
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      disabled={!isClickable}
+      aria-label={`Cycle disposition for line (currently ${current})`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        height: 24,
+        padding: '0 8px',
+        borderRadius: 4,
+        fontSize: 10.5,
+        fontWeight: 600,
+        letterSpacing: '0.04em',
+        textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
+        background: p.bg,
+        color: p.color,
+        border: `1px solid ${p.border}`,
+        cursor: isClickable ? 'pointer' : 'default',
+        fontFamily: 'var(--font-sans)',
+      }}
+    >
+      {p.label}
+    </button>
   );
 }
 
@@ -150,6 +234,7 @@ export function ReceivingPackingList({
   storedTotal,
   headerCurrency,
   onAddItem,
+  onAdjustItem,
 }: ReceivingPackingListProps) {
   const router = useRouter();
 
@@ -164,7 +249,7 @@ export function ReceivingPackingList({
   }, [items]);
 
   // Progress = share of lines that are NOT pending
-  const resolvedCount = items.filter((i) => deriveDisposition(i) !== 'pending').length;
+  const resolvedCount = items.filter((i) => resolveDisposition(i) !== 'pending').length;
   const progress = items.length > 0 ? (resolvedCount / items.length) * 100 : 0;
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -220,12 +305,12 @@ export function ReceivingPackingList({
 
           {/* Body rows */}
           {items.map((item, idx) => {
-            const disposition = deriveDisposition(item);
+            const disposition = resolveDisposition(item);
             const delta = computeDelta(item);
             const deltaColour =
-              disposition === 'matched' ? 'var(--txt3)'
-              : disposition === 'short'  ? 'var(--red)'
-              : disposition === 'over'   ? 'var(--amber)'
+              disposition === 'accepted' ? 'var(--txt3)'
+              : disposition === 'short' || disposition === 'damaged' || disposition === 'wrong_item' ? 'var(--red)'
+              : disposition === 'over' ? 'var(--amber)'
               : 'var(--txt-ghost)';
 
             const clickable = !!item.partId;
@@ -346,7 +431,7 @@ export function ReceivingPackingList({
                     fontFamily: 'var(--font-mono)',
                     fontSize: 12,
                     color: deltaColour,
-                    fontWeight: disposition === 'matched' ? 400 : 500,
+                    fontWeight: disposition === 'accepted' ? 400 : 500,
                   }}
                 >
                   {delta === null ? '—' : (delta > 0 ? `+${fmtQty(delta)}` : fmtQty(delta))}
@@ -365,9 +450,17 @@ export function ReceivingPackingList({
                   {fmtMoney(item.unitPrice, item.currency ?? headerCurrency)}
                 </span>
 
-                {/* Status */}
-                <span role="cell">
-                  <StatusGlyph disposition={disposition} />
+                {/* Status / Disposition */}
+                <span role="cell" onClick={(e) => e.stopPropagation()}>
+                  {onAdjustItem ? (
+                    <DispositionControl
+                      item={item}
+                      disabled={false}
+                      onChange={(patch) => { void onAdjustItem(item.id, patch); }}
+                    />
+                  ) : (
+                    <StatusGlyph disposition={disposition} />
+                  )}
                 </span>
               </div>
             );

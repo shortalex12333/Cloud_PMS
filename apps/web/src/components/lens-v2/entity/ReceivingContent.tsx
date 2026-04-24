@@ -219,11 +219,32 @@ export function ReceivingContent() {
       ? null
       : Number(item.quantity_expected),
     quantityReceived: Number(item.quantity_received ?? 0),
+    quantityAccepted: item.quantity_accepted === null || item.quantity_accepted === undefined
+      ? null
+      : Number(item.quantity_accepted),
+    quantityRejected: item.quantity_rejected === null || item.quantity_rejected === undefined
+      ? null
+      : Number(item.quantity_rejected),
+    disposition: (item.disposition as PackingItem['disposition'] | null | undefined) ?? 'pending',
     unitPrice: item.unit_price === null || item.unit_price === undefined
       ? null
       : Number(item.unit_price),
     currency: (item.currency) as string | null | undefined,
   }));
+
+  // Handler: crew taps a row's disposition control → POST adjust_receiving_item
+  // with the patch. executeAction routes through EntityLensContext → action
+  // dispatcher. Successful response triggers a refetch via the provider.
+  const handleAdjustItem = React.useCallback(
+    async (itemId: string, patch: { quantity_accepted?: number; quantity_rejected?: number; disposition: string }) => {
+      await executeAction('adjust_receiving_item', {
+        receiving_id: entity?.id as string,
+        receiving_item_id: itemId,
+        ...patch,
+      });
+    },
+    [executeAction, entity?.id]
+  );
 
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
@@ -300,6 +321,7 @@ export function ReceivingContent() {
           storedTaxTotal={(entity?.tax_total ?? payload.tax_total) as number | null | undefined}
           storedTotal={total}
           headerCurrency={currency}
+          onAdjustItem={handleAdjustItem}
         />
       </ScrollReveal>
 

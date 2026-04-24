@@ -897,8 +897,14 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
     Adjust existing receiving line item.
 
     Required fields: yacht_id, user_id, receiving_id, receiving_item_id
-    Optional fields: quantity_received, unit_price, description
+    Optional fields: quantity_received, quantity_accepted, quantity_rejected,
+                     disposition, unit_price, description
     Allowed roles: HOD+
+
+    Checklist controls (pms_receiving_items columns added 2026-04-24):
+      - disposition ∈ {pending, accepted, short, damaged, wrong_item, over}
+      - quantity_accepted + quantity_rejected must not exceed quantity_received
+        (DB check constraint: pms_receiving_items_qty_balance_check).
     """
     async def _fn(**params):
         # Extract and validate required params
@@ -944,6 +950,9 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
 
         # Optional update fields
         quantity_received = params.get("quantity_received")
+        quantity_accepted = params.get("quantity_accepted")
+        quantity_rejected = params.get("quantity_rejected")
+        disposition = params.get("disposition")
         unit_price = params.get("unit_price")
         description = params.get("description")
         request_context = params.get("request_context")
@@ -972,6 +981,31 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
                     "message": "Quantity received cannot be negative"
                 }
             update_payload["quantity_received"] = quantity_received
+        if quantity_accepted is not None:
+            if quantity_accepted < 0:
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_QUANTITY",
+                    "message": "Quantity accepted cannot be negative"
+                }
+            update_payload["quantity_accepted"] = quantity_accepted
+        if quantity_rejected is not None:
+            if quantity_rejected < 0:
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_QUANTITY",
+                    "message": "Quantity rejected cannot be negative"
+                }
+            update_payload["quantity_rejected"] = quantity_rejected
+        if disposition is not None:
+            valid = ("pending", "accepted", "short", "damaged", "wrong_item", "over")
+            if disposition not in valid:
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_VALUE",
+                    "message": f"disposition must be one of: {', '.join(valid)}"
+                }
+            update_payload["disposition"] = disposition
         if unit_price is not None:
             update_payload["unit_price"] = unit_price
         if description is not None:
