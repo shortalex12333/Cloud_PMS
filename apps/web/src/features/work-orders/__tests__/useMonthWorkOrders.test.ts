@@ -50,7 +50,6 @@ describe('recordDueDateKey', () => {
   it('returns null when due_date is absent / null / empty string', () => {
     expect(recordDueDateKey(rec(null))).toBeNull();
     expect(recordDueDateKey(rec(undefined))).toBeNull();
-    // @ts-expect-error — intentional empty-string test
     expect(recordDueDateKey(rec(''))).toBeNull();
   });
 
