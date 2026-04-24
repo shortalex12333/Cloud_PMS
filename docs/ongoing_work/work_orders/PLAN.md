@@ -12,8 +12,8 @@ Working alongside WORKORDER05 / HANDOVER08 / EQUIPMENT05 / FAULT05 / SHOPPINGLIS
 
 | PR | Subject | Status | Notes |
 |----|---------|--------|-------|
-| PR-WO-1 | Dedupe prefill + wire KEEP action buttons | OPEN | Kills 400s on dropdown actions |
-| PR-WO-2 | Tabulated list view on shared `EntityTableList` | PENDING | Adopts DOCUMENTS04's cohort component (PR #673) |
+| PR-WO-1 | Dedupe prefill + wire KEEP action buttons | MERGED #686 | 400s on work-order dropdown dead |
+| PR-WO-2 | Tabulated list view on shared `EntityTableList` | OPEN | 12 cols per UX sheet; backend batch resolvers for equipment_name + assigned_to_name |
 | PR-WO-3 | Lens card redesign — horizontal tabs + metadata de-UUID | PENDING | Safety / Checklist / Docs / Faults / Equipment / Parts / Uploads / Notes / Audit / History |
 | PR-WO-4 | Checklist overhaul (DB audit + bucket wiring) | PENDING | `pms_work_order_checklist` + `pms_checklist` + `pms_checklist_items` audit first |
 | PR-WO-5 | Calendar tab (List / Calendar toggle) | PENDING | Seahub-style; clickable cards; colour by type/criticality |
@@ -69,4 +69,36 @@ upload_photo                                                 — duplicate of ad
 
 ---
 
-## PR-WO-2..7 — detailed scope will be filled in as each opens.
+## PR-WO-2 — list-view tabulation (shipped 2026-04-23)
+
+### Goal
+UX sheet `/Users/celeste7/Desktop/lens_card_upgrades.md:492 + 506-522` — move `/work-orders` from `SpotlightResultRow` cards to columnar tabulated view using the cohort-shared `EntityTableList` (introduced by DOCUMENTS04 in PR #673, receiving opt-in via `tableColumns?` prop in PR #674).
+
+### Column order (fixed by UX sheet)
+`W/O Code · Title · Priority · Equipment · Assigned · Severity · Type · Status · Created · Frequency · Due · Completed`
+
+### Changes
+- **`apps/api/routes/vessel_surface_routes.py`** —
+  - `DOMAIN_SELECT.work_orders` extended: added `type, work_order_type, frequency, completed_at`.
+  - `_format_record(domain="work_orders")` now emits `severity, wo_type, frequency, due_date, completed_at` (previously only the bare card-row fields).
+  - Added a work-orders batch-enrichment block mirroring the PO/shopping-list pattern: `resolve_equipment_batch` + `resolve_users` run as two IN queries per list fetch, returning `linked_equipment_name`, `linked_equipment_code`, `assigned_to_name`, `assigned_to_role`. No client-side N+1.
+- **`apps/web/src/features/entity-list/hooks/useFilteredEntityList.ts`** — `apiRecordToAdapterInput` now forwards the enriched fields + stops the silent double-read of `assigned_to_name: record.assigned_to` (which displayed UUIDs whenever the backend didn't resolve the name). Field-contract matches what the backend emits after the enrichment block.
+- **`apps/web/src/features/work-orders/types.ts`** — `WorkOrder` gained `type, work_order_type, severity, frequency, completed_at`.
+- **`apps/web/src/features/work-orders/adapter.ts`** — adapter metadata now surfaces `severity, wo_type, frequency, assigned_to_name, wo_number, due_date, completed_at` for column accessors.
+- **`apps/web/src/features/work-orders/columns.tsx` (new)** — `WORK_ORDER_COLUMNS` spec, tokenised pill palettes, deliberate-rank sorts (Emergency < Critical < Important < Routine; in_progress before completed; terminal states last). Mirrors `SHOPPING_LIST_COLUMNS` structure.
+- **`apps/web/src/app/work-orders/page.tsx`** — SELECT list extended; `tableColumns={WORK_ORDER_COLUMNS}` passed to `FilteredEntityList`. One line of UX migration; everything else (filters, pagination, vessel attribution, Subbar sort/chip) keeps working.
+- **`apps/web/src/features/work-orders/__tests__/columns.test.tsx` (new)** — 11 unit tests covering column order, accessor fallbacks, sort-rank correctness (including null-to-end + unknown-enum-to-null).
+
+### Verification
+- `vitest run src/features/work-orders/__tests__/columns.test.tsx` → 11/11 green
+- `pytest apps/api/tests/test_entity_prefill.py` → 36/36 green (regression)
+- `npx tsc --noEmit` on apps/web → clean
+- Python AST parse on `vessel_surface_routes.py` → clean
+
+### Deferred
+- Column-visibility toggles / multi-column sort / virtualisation — cohort-frozen per DOCUMENTS04 (extensions require co-signed PR).
+- The deliberate-rank maps (`PRIORITY_RANK`, `SEVERITY_RANK`, `STATUS_RANK`) live in `columns.tsx` for MVP. If two lenses end up needing the same rank map, extract to `features/work-orders/status-ranks.ts`.
+
+---
+
+## PR-WO-3..7 — detailed scope will be filled in as each opens.

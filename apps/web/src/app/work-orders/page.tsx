@@ -8,6 +8,7 @@ import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
 import { WorkOrderContent } from '@/components/lens-v2/entity';
 import lensStyles from '@/components/lens-v2/lens.module.css';
 import { workOrderToListResult } from '@/features/work-orders/adapter';
+import { WORK_ORDER_COLUMNS } from '@/features/work-orders/columns';
 import { WORK_ORDER_FILTERS } from '@/features/entity-list/types/filter-config';
 import type { WorkOrder } from '@/features/work-orders/types';
 
@@ -43,13 +44,14 @@ function WorkOrdersPageContent() {
         domain="work-orders"
         queryKey={['work-orders']}
         table="v_work_orders_enriched"
-        columns="id, title, description, status, priority, wo_number, equipment_id, equipment_name, assigned_to, assigned_to_name, due_date, created_at, updated_at"
+        columns="id, title, description, status, priority, severity, type, work_order_type, frequency, wo_number, equipment_id, equipment_name, assigned_to, assigned_to_name, due_date, completed_at, created_at, updated_at"
         adapter={workOrderToListResult}
         filterConfig={WORK_ORDER_FILTERS}
         selectedId={selectedId}
         onSelect={handleSelect}
         emptyMessage="No work orders found"
         sortBy="created_at"
+        tableColumns={WORK_ORDER_COLUMNS}
       />
 
       <EntityDetailOverlay isOpen={!!selectedId} onClose={handleCloseDetail}>
