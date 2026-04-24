@@ -58,6 +58,14 @@ export interface ActionPopupProps {
   onClose: () => void;
   /** Preview summary rows (shown above signature) */
   previewRows?: { key: string; value: string }[];
+  /**
+   * Server-populated context for the action (e.g. equipment.code,
+   * equipment.name, criticality, running_hours…). Keys NOT mapped to a
+   * user-editable field in `fields[]` render as a read-only "Source" block
+   * at the top of the popup. Keys that ARE editable fields are skipped here
+   * (the field editor renders them). Back-end-only keys are never rendered.
+   */
+  prefill?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +85,147 @@ const BACKDROP_CLASS: Record<string, string> = {
 function backdropClass(mode: 'read' | 'mutate', level: number): string {
   if (mode === 'read') return BACKDROP_CLASS.read;
   return BACKDROP_CLASS[`l${level}`] ?? BACKDROP_CLASS.l1;
+}
+
+// ---------------------------------------------------------------------------
+// Source-context block (renders prefill keys NOT in fields[])
+// ---------------------------------------------------------------------------
+
+/** Keys that are backend-only plumbing and must NEVER surface to the user. */
+const SOURCE_NEVER_RENDER = new Set<string>([
+  'entity_id',
+  'entity_type',
+  'yacht_id',
+  'fleet_id',
+  'user_id',
+  'tenant_id',
+  'id',
+  'url',
+  'entity_url',
+  'metadata',
+]);
+
+/** Keys whose values are machine identifiers and should render in monospace. */
+const SOURCE_MONO_KEYS = new Set<string>([
+  'code',
+  'part_number',
+  'wonumber',
+  'fault_code',
+  'po_number',
+  'serial_number',
+]);
+
+/** `serial_number` -> "Serial number"; "running_hours" -> "Running hours". */
+function humanizeKey(key: string): string {
+  const spaced = key.replace(/_/g, ' ').trim();
+  if (!spaced) return key;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+interface SourceRow {
+  key: string;
+  label: string;
+  value: string;
+  mono: boolean;
+}
+
+function buildSourceRows(
+  prefill: Record<string, unknown> | undefined,
+  fieldNames: Set<string>,
+): SourceRow[] {
+  if (!prefill) return [];
+  const rows: SourceRow[] = [];
+  // Insertion order — Object.keys preserves it for string keys.
+  for (const key of Object.keys(prefill)) {
+    if (SOURCE_NEVER_RENDER.has(key)) continue;
+    if (fieldNames.has(key)) continue;
+    const raw = prefill[key];
+    if (raw === null || raw === undefined) continue;
+
+    let value: string;
+    let mono = SOURCE_MONO_KEYS.has(key);
+
+    if (typeof raw === 'string') {
+      value = raw;
+    } else if (typeof raw === 'number') {
+      value = String(raw);
+      mono = true;
+    } else if (typeof raw === 'boolean') {
+      value = raw ? 'Yes' : 'No';
+    } else {
+      // array / object — last-resort stringify, truncated.
+      const json = JSON.stringify(raw);
+      value = json && json.length > 60 ? json.slice(0, 60) + '…' : json ?? '';
+    }
+
+    rows.push({ key, label: humanizeKey(key), value, mono });
+  }
+  return rows;
+}
+
+function SourceBlock({ rows }: { rows: SourceRow[] }) {
+  return (
+    <div
+      data-testid="action-popup-source"
+      style={{
+        margin: '0 24px',
+        padding: '12px 0 12px 0',
+        borderBottom: '1px solid var(--border-faint)',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--txt3)',
+          marginBottom: 8,
+          fontFamily: 'var(--font-sans)',
+        }}
+      >
+        Source
+      </div>
+      {rows.map((row) => (
+        <div
+          key={row.key}
+          data-testid={`action-popup-source-row-${row.key}`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            minHeight: 44,
+            fontSize: 12,
+          }}
+        >
+          <span
+            style={{
+              color: 'var(--txt3)',
+              minWidth: 112,
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              fontFamily: 'var(--font-sans)',
+            }}
+          >
+            {row.label}
+          </span>
+          <span
+            data-testid={`action-popup-source-val-${row.key}`}
+            style={{
+              color: 'var(--txt2)',
+              fontFamily: row.mono ? 'var(--font-mono)' : 'var(--font-sans)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {row.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -550,6 +699,7 @@ export function ActionPopup({
   onSubmit,
   onClose,
   previewRows,
+  prefill,
 }: ActionPopupProps) {
   // L0 = tap only — execute inline, no modal needed
   // L0 = fire-and-forget (no form, no signature). Only auto-submit if there
@@ -566,6 +716,13 @@ export function ActionPopup({
   });
   const [pin, setPin] = React.useState('');
   const [sigName, setSigName] = React.useState('');
+
+  // Source-context rows: prefill keys NOT mapped to a user-editable field.
+  // Invisible when no usable rows remain.
+  const sourceRows = React.useMemo(() => {
+    const fieldNames = new Set(fields.map((f) => f.name));
+    return buildSourceRows(prefill, fieldNames);
+  }, [prefill, fields]);
 
   const setValue = (name: string, value: string) =>
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -669,6 +826,9 @@ export function ActionPopup({
 
         {/* Divider (mutate only) */}
         {mode === 'mutate' && <div className={s.popupDivider} />}
+
+        {/* Source-context block — prefill keys that are not editable fields. */}
+        {sourceRows.length > 0 && <SourceBlock rows={sourceRows} />}
 
         {/* Body — fields */}
         <div className={mode === 'read' ? s.popupBodyRead : s.popupBody}>
