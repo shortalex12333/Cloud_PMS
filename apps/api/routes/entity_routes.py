@@ -773,11 +773,21 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
         except Exception as e:
             logger.warning(f"[entity.shopping_list] state_history fetch failed for {item_id}: {e}")
 
-        # Single batched profile lookup: requester + approver + every actor in history.
+        # Single batched profile lookup — every actor in one query (no N+1).
+        # Extended 2026-04-24 for the tabbed lens: requester + approver +
+        # rejecter + promoter + updated_by + every audit-history changed_by.
         requester_id = data.get("requested_by") or data.get("created_by")
         approver_id = data.get("approved_by")
+        rejected_id = data.get("rejected_by")
+        promoted_id = data.get("promoted_by")
+        updated_id = data.get("updated_by")
         history_actor_ids = {h.get("changed_by") for h in raw_history if h.get("changed_by")}
-        lookup_ids = list({uid for uid in ({requester_id, approver_id} | history_actor_ids) if uid})
+        lookup_ids = list({
+            uid for uid in (
+                {requester_id, approver_id, rejected_id, promoted_id, updated_id}
+                | history_actor_ids
+            ) if uid
+        })
         profile_map: dict[str, str] = {}
         if lookup_ids:
             try:
@@ -787,6 +797,9 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
                 logger.warning(f"[entity.shopping_list] profile lookup failed: {e}")
         requester_name = profile_map.get(requester_id) if requester_id else None
         approver_name = profile_map.get(approver_id) if approver_id else None
+        rejected_by_name = profile_map.get(rejected_id) if rejected_id else None
+        promoted_by_name = profile_map.get(promoted_id) if promoted_id else None
+        updated_by_name = profile_map.get(updated_id) if updated_id else None
 
         # Project history rows into the shape ShoppingListContent.tsx expects.
         # AuditTrailSection reads `action`, `actor`, `timestamp` per event
@@ -817,14 +830,20 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             for h in raw_history
         ]
 
+        # Full-surface `item` — drives the tabbed lens (ShoppingListContent.tsx).
+        # Request / Approval / Procurement / Fulfilment each reads from here.
         item = {
             "id": data.get("id"),
             "part_name": data.get("part_name"),
             "part_number": data.get("part_number"),
             "manufacturer": data.get("manufacturer"),
             "unit": data.get("unit"),
+            # Quantity breakdown
             "quantity_requested": data.get("quantity_requested"),
             "quantity_approved": data.get("quantity_approved"),
+            "quantity_ordered": data.get("quantity_ordered"),
+            "quantity_received": data.get("quantity_received"),
+            "quantity_installed": data.get("quantity_installed"),
             "estimated_unit_price": data.get("estimated_unit_price"),
             "preferred_supplier": data.get("preferred_supplier"),
             "urgency": data.get("urgency"),
@@ -833,15 +852,40 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             "source_notes": data.get("source_notes"),
             "required_by_date": data.get("required_by_date"),
             "is_candidate_part": data.get("is_candidate_part", False),
-            "rejection_reason": data.get("rejection_reason"),
-            "rejection_notes": data.get("rejection_notes"),
+            # Approval / rejection
             "approval_notes": data.get("approval_notes"),
             "approved_at": data.get("approved_at"),
+            "rejection_reason": data.get("rejection_reason"),
+            "rejection_notes": data.get("rejection_notes"),
+            "rejected_at": data.get("rejected_at"),
+            "rejected_by_name": rejected_by_name,
+            # Procurement / fulfilment / installation
+            "order_id": data.get("order_id"),
+            "order_line_number": data.get("order_line_number"),
+            "fulfilled_at": data.get("fulfilled_at"),
+            "installed_at": data.get("installed_at"),
+            "installed_to_equipment_id": data.get("installed_to_equipment_id"),
+            # Candidate-to-part promotion
+            "candidate_promoted_to_part_id": data.get("candidate_promoted_to_part_id"),
+            "promoted_at": data.get("promoted_at"),
+            "promoted_by_name": promoted_by_name,
+            # Audit metadata
+            "updated_at": data.get("updated_at"),
+            "updated_by_name": updated_by_name,
+            # FK origins
             "source_work_order_id": data.get("source_work_order_id"),
+            "source_receiving_id": data.get("source_receiving_id"),
         }
+        # Every FK UUID that points to another entity surfaces as a clickable
+        # related-entity row. Frontend resolves the visit route via
+        # getEntityRoute (apps/web/src/lib/entityRoutes.ts).
         nav = [n for n in [
             _nav("part", data.get("part_id"), "Linked Part"),
             _nav("work_order", data.get("source_work_order_id"), "Source Work Order"),
+            _nav("receiving", data.get("source_receiving_id"), "Source Receiving"),
+            _nav("purchase_order", data.get("order_id"), "Linked Purchase Order"),
+            _nav("equipment", data.get("installed_to_equipment_id"), "Installed to Equipment"),
+            _nav("part", data.get("candidate_promoted_to_part_id"), "Promoted Part"),
         ] if n]
 
         _entity_response = {
@@ -850,32 +894,48 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             "status": data.get("status", "candidate"),
             "urgency": data.get("urgency"),
             "priority": data.get("urgency"),
+            # Resolved names (all UUIDs stripped from output per CEO directive)
             "requester_id": requester_id,
             "requester_name": requester_name,
             "created_by": requester_name,
             "approver_name": approver_name,
+            "rejected_by_name": rejected_by_name,
+            "promoted_by_name": promoted_by_name,
+            "updated_by_name": updated_by_name,
+            # Approval / rejection fields (top-level for components that read
+            # from entity directly, not entity.items[0])
             "approved_at": data.get("approved_at"),
             "approval_notes": data.get("approval_notes"),
+            "rejected_at": data.get("rejected_at"),
             "rejection_reason": data.get("rejection_reason"),
+            "rejection_notes": data.get("rejection_notes"),
+            # Procurement / fulfilment timestamps
+            "fulfilled_at": data.get("fulfilled_at"),
+            "installed_at": data.get("installed_at"),
+            "promoted_at": data.get("promoted_at"),
             "created_at": data.get("created_at"),
             "updated_at": data.get("updated_at"),
+            # Core request metadata
             "source_type": data.get("source_type"),
             "source_notes": data.get("source_notes"),
             "description": data.get("source_notes"),
             "quantity_requested": data.get("quantity_requested"),
             "quantity_approved": data.get("quantity_approved"),
+            "quantity_ordered": data.get("quantity_ordered"),
+            "quantity_received": data.get("quantity_received"),
+            "quantity_installed": data.get("quantity_installed"),
             "estimated_unit_price": data.get("estimated_unit_price"),
             "preferred_supplier": data.get("preferred_supplier"),
             "unit": data.get("unit"),
             "required_by_date": data.get("required_by_date"),
             "is_candidate_part": data.get("is_candidate_part", False),
+            # Context
             "items": [item],
             "notes": [],
             "yacht_id": data.get("yacht_id"),
             "attachments": [],
             "related_entities": nav,
             "audit_history": audit_history,
-            "linked_po_items": linked_po_items,
         }
         _entity_response["available_actions"] = get_available_actions(
             "shopping_list", _entity_response, auth.get("role", "crew")
