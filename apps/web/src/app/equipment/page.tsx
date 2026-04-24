@@ -9,6 +9,7 @@ import { EquipmentContent } from '@/components/lens-v2/entity';
 import lensStyles from '@/components/lens-v2/lens.module.css';
 import { equipmentToListResult } from '@/features/equipment/adapter';
 import { EQUIPMENT_FILTERS } from '@/features/entity-list/types/filter-config';
+import { EQUIPMENT_COLUMNS } from '@/features/equipment/columns';
 import type { Equipment } from '@/features/equipment/types';
 
 function LensContent() {
@@ -43,13 +44,14 @@ function EquipmentPageContent() {
         domain="equipment"
         queryKey={['equipment']}
         table="v_equipment_enriched"
-        columns="id, name, description, location, manufacturer, model, serial_number, status, criticality, attention_flag, attention_reason, created_at, updated_at"
+        columns="id, name, description, code, system_type, location, manufacturer, model, serial_number, status, criticality, running_hours, attention_flag, attention_reason, deleted_at, created_at, updated_at"
         adapter={equipmentToListResult}
         filterConfig={EQUIPMENT_FILTERS}
         selectedId={selectedId}
         onSelect={handleSelect}
         emptyMessage="No equipment found"
         sortBy="name"
+        tableColumns={EQUIPMENT_COLUMNS}
       />
 
       <EntityDetailOverlay isOpen={!!selectedId} onClose={handleCloseDetail}>

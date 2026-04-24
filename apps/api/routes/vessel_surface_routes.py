@@ -60,7 +60,7 @@ DOMAIN_TABLE_MAP = {
 DOMAIN_SELECT = {
     "work_orders": "id, title, wo_number, status, priority, assigned_to, equipment_id, due_date, severity, type, work_order_type, frequency, completed_at, created_at, updated_at",
     "faults": "id, title, fault_code, status, severity, equipment_id, created_at, updated_at",
-    "equipment": "id, name, code, system_type, location, status, manufacturer, model, serial_number, criticality, created_at, updated_at",
+    "equipment": "id, name, code, system_type, location, status, manufacturer, model, serial_number, criticality, running_hours, deleted_at, created_at, updated_at",
     "parts": "id, name, part_number, quantity_on_hand, minimum_quantity, location, unit_cost, manufacturer, category, is_critical, created_at, updated_at",
     # domain + person_name added so crew cert rows surface the owner name
     # in the register and list views (v_certificates_enriched exposes both).
@@ -1083,12 +1083,20 @@ def _format_record(domain: str, record: dict) -> dict:
         })
     elif domain == "equipment":
         base.update({
-            "ref": f"E-{str(record.get('id', ''))[:6]}",
+            "ref": record.get("code") or f"E-{str(record.get('id', ''))[:6]}",
             "title": record.get("name", ""),
+            "code": record.get("code"),
             "status": record.get("status", "active"),
-            "system": record.get("system", ""),
+            "system": record.get("system_type") or record.get("system", ""),
+            "system_type": record.get("system_type"),
+            "manufacturer": record.get("manufacturer"),
+            "model": record.get("model"),
+            "serial_number": record.get("serial_number"),
+            "criticality": record.get("criticality"),
+            "running_hours": record.get("running_hours"),
             "location": record.get("location", ""),
-            "meta": f"{record.get('system', '')} · {record.get('location', '')}",
+            "deleted_at": record.get("deleted_at"),
+            "meta": f"{record.get('system_type') or record.get('system', '')} · {record.get('location', '')}",
         })
     elif domain == "parts":
         stock = record.get("quantity_on_hand", 0) or 0
