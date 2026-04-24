@@ -86,6 +86,28 @@ function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack:
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
+/**
+ * Lenses whose own Content component renders a domain-specific AuditTrailSection
+ * from `pms_audit_log` (not `ledger_events`) MUST be in this set — the generic
+ * read-only `LedgerHistory` below is suppressed for them. Otherwise users see
+ * two "History"-titled sections, one of which is a log of READ events only
+ * (view_<entity>) which holds no value — per CEO directive 2026-04-24.
+ *
+ * - 'certificate' — CertificateContent renders AuditTrailSection sourced from
+ *   entity_routes.py::get_certificate_entity, populated from pms_audit_log
+ *   with actor_name/actor_role enrichment. Adding it here rather than
+ *   negating the one case keeps the intent explicit and extensible.
+ */
+const SUPPRESS_LEDGER_HISTORY: ReadonlySet<string> = new Set<string>([
+  // CertificateContent renders its own AuditTrailSection from pms_audit_log
+  // with actor_name/actor_role enrichment. Merged alongside this directive,
+  // FAULT05/WORKORDER05 removed the ledger for work_order (audit + history
+  // tabs already cover it, CEO directive 2026-04-24). Add here when a new
+  // lens gains its own in-tab audit surface.
+  'certificate',
+  'work_order',
+]);
+
 function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
   const { data: ledgerHistory = [] } = useEntityLedger(entityType, entityId);
   if (ledgerHistory.length === 0) return null;
@@ -213,15 +235,13 @@ export function EntityLensPage({
     bodyContent = (
       <EntityLensProvider value={contextValue}>
         <Content />
-        {/* Lenses opted out of the generic read-only ledger because they render
-            their own equivalent inside the tab system:
-              - certificate → its own AuditTrailSection from pms_audit_log
-              - work_order  → Audit Trail + History tabs already cover it; the
-                              appended ledger surfaces read-only receipts that
-                              duplicate those tabs + break the tab layout
-                              (CEO directive 2026-04-24). Removed per spec.
-           Add here when a new lens gains its own in-tab audit surface. */}
-        {entityType !== 'certificate' && entityType !== 'work_order' && (
+        {/* Entity types in SUPPRESS_LEDGER_HISTORY render their own
+            domain-specific AuditTrailSection from pms_audit_log (or the
+            equivalent inside a tab system). The generic read-only ledger
+            appended here duplicates that surface and leaks view_<entity>
+            events — wasteful, confusing, forbidden per CEO directive
+            2026-04-24. See the set declaration above for per-lens reasoning. */}
+        {!SUPPRESS_LEDGER_HISTORY.has(entityType) && (
           <LedgerHistory entityType={entityType} entityId={entityId} />
         )}
       </EntityLensProvider>
