@@ -64,7 +64,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
  * extra horizontal room per 2026-04-23 UX spec. Add here when a new lens
  * gains a LensFileViewer.
  */
-const WIDE_LENS_TYPES: Set<string> = new Set(['certificate', 'document', 'receiving', 'shopping_list']);
+const WIDE_LENS_TYPES: Set<string> = new Set(['certificate', 'document', 'receiving', 'shopping_list', 'purchase_order']);
 
 function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack: () => void }) {
   return (
