@@ -49,6 +49,18 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("equipment", "record_equipment_hours"):        {"equipment_id": "id"},
     ("equipment", "decommission_equipment"):        {"equipment_id": "id"},
     ("equipment", "set_equipment_status"):          {"equipment_id": "id"},
+    # PR-EQ-2 (Issue 4, 2026-04-23): these equipment actions already had
+    # field_metadata populated on their ActionDefinitions, but were missing
+    # CONTEXT_PREFILL_MAP entries. Without them equipment_id is never injected
+    # from the equipment lens entity, so the router's required-fields gate
+    # (p0_actions_routes.py:923) rejects every click with 400 MISSING_REQUIRED_FIELD.
+    # Same cohort pattern as PR #681 (CERTIFICATE04) + PR #685 (PURCHASE05).
+    ("equipment", "update_equipment_status"):       {"equipment_id": "id"},
+    ("equipment", "assign_parent_equipment"):       {"equipment_id": "id"},
+    ("equipment", "archive_equipment"):             {"equipment_id": "id"},
+    ("equipment", "restore_archived_equipment"):    {"equipment_id": "id"},
+    ("equipment", "get_open_faults_for_equipment"): {"equipment_id": "id"},
+    ("equipment", "get_related_entities_for_equipment"): {"equipment_id": "id"},
 
     # ── Fault ─────────────────────────────────────────────────────────────────
     ("fault", "create_work_order_from_fault"): {
