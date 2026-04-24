@@ -165,28 +165,37 @@ def test_availableActions_hides_add_to_handover_on_hours_of_rest_for_everyone() 
 def test_equipment_add_to_handover_prefill_surfaces_context_fields() -> None:
     from action_router.entity_prefill import resolve_prefill
 
+    # PR-EQ-5: equipment entity now emits the full 10-field context set.
+    # `system_type` is the canonical top-level key (entity_routes.py equipment
+    # branch also retains `equipment_type` as a backward-compat alias).
+    # `code` and `running_hours` are the two fields surfaced by this PR.
     entity = {
         "id": "eq-1",
         "name": "Main Engine",
+        "code": "ME-01",
         "manufacturer": "MTU",
         "model": "16V 4000 M73",
         "serial_number": "MTU-12345",
         "criticality": "high",
         "status": "operational",
+        "running_hours": 12345,
         "location": "Engine Room",
-        "equipment_type": "main_engine",
+        "system_type": "main_engine",
     }
 
     prefill = resolve_prefill("equipment", "add_to_handover", entity)
 
-    # Identity + context
+    # Identity + context — full 10-field surface
     assert prefill["entity_id"] == "eq-1"
     assert prefill["title"] == "Main Engine"
+    assert prefill["code"] == "ME-01"
+    assert prefill["name"] == "Main Engine"
     assert prefill["manufacturer"] == "MTU"
     assert prefill["model"] == "16V 4000 M73"
     assert prefill["serial_number"] == "MTU-12345"
     assert prefill["criticality"] == "high"
     assert prefill["status"] == "operational"
+    assert prefill["running_hours"] == 12345
     assert prefill["location"] == "Engine Room"
     assert prefill["system_type"] == "main_engine"
 

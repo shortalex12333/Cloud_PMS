@@ -95,6 +95,28 @@ _PURCHASE_ORDER_HIDDEN_ACTIONS = {
     "order_part",
 }
 
+# Equipment REMOVE-list per CEO locked matrix (EQUIPMENT05 PR-EQ-5, 2026-04-24).
+# These actions are structurally wrong for the equipment lens card dropdown.
+# Registry entries and handlers are retained (other callers may depend on them)
+# — this gate is just "don't surface from the equipment lens".
+_EQUIPMENT_HIDDEN_ACTIONS = {
+    # Fleet/vessel-level actions — not per-equipment card context
+    "view_fleet_summary",
+    "open_vessel",
+    "export_fleet_summary",
+    "request_predictive_insight",
+    # Redundant with decommission_equipment (which is kept); the replace variant
+    # conflates two mutations and the matrix drops it in favour of the simpler one.
+    "decommission_and_replace_equipment",
+    # Pure-view actions — user is already viewing the equipment lens, so a
+    # "View Equipment" / "View History" dropdown item is a no-op tautology.
+    # AuditTrailSection + HistorySection render inline on the lens.
+    "view_equipment_details",
+    "view_equipment_history",
+    "view_equipment",
+    "view_maintenance_history",
+}
+
 
 def get_available_actions(
     entity_type: str,
@@ -128,6 +150,8 @@ def get_available_actions(
         if entity_type == "shopping_list" and action_id in _SHOPPING_LIST_HIDDEN_ACTIONS:
             continue
         if entity_type == "purchase_order" and action_id in _PURCHASE_ORDER_HIDDEN_ACTIONS:
+            continue
+        if entity_type == "equipment" and action_id in _EQUIPMENT_HIDDEN_ACTIONS:
             continue
 
         # Role gate: omit entirely if not permitted
