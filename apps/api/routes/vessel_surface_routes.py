@@ -58,7 +58,7 @@ DOMAIN_TABLE_MAP = {
 
 # Select columns per domain (lightweight — only what list views need)
 DOMAIN_SELECT = {
-    "work_orders": "id, title, wo_number, status, priority, assigned_to, equipment_id, due_date, severity, created_at, updated_at",
+    "work_orders": "id, title, wo_number, status, priority, assigned_to, equipment_id, due_date, severity, type, work_order_type, frequency, completed_at, created_at, updated_at",
     "faults": "id, title, fault_code, status, severity, equipment_id, created_at, updated_at",
     "equipment": "id, name, code, system_type, location, status, manufacturer, model, serial_number, criticality, created_at, updated_at",
     "parts": "id, name, part_number, quantity_on_hand, minimum_quantity, location, unit_cost, manufacturer, category, is_critical, created_at, updated_at",
@@ -822,6 +822,47 @@ async def get_domain_records(
         # Format records for frontend (include yacht_id for overview attribution)
         formatted = [_format_record(domain, r) for r in records]
 
+        # Work orders: batch-resolve equipment_name + assigned_to_name
+        # (UX sheet `/Users/celeste7/Desktop/lens_card_upgrades.md:305-331` —
+        # UUIDs must not reach the frontend). Single round-trip per resolver.
+        if domain == "work_orders" and records:
+            # Lazy import so reloads/tests don't pay the hit when domain != work_orders
+            from lib.user_resolver import resolve_users, resolve_equipment_batch
+
+            eq_ids = list({r.get("equipment_id") for r in records if r.get("equipment_id")})
+            user_ids = list({r.get("assigned_to") for r in records if r.get("assigned_to")})
+
+            eq_name_map: Dict[str, str] = {}
+            eq_code_map: Dict[str, str] = {}
+            if eq_ids:
+                try:
+                    for eq in resolve_equipment_batch(supabase, yacht_id, eq_ids):
+                        if eq.get("id"):
+                            eq_name_map[eq["id"]] = eq.get("name") or ""
+                            eq_code_map[eq["id"]] = eq.get("code") or ""
+                except Exception as e:
+                    logger.warning(f"[DomainRecords] work_orders equipment resolve failed: {e}")
+
+            user_map: Dict[str, Dict[str, Optional[str]]] = {}
+            if user_ids:
+                try:
+                    user_map = resolve_users(supabase, yacht_id, user_ids)
+                except Exception as e:
+                    logger.warning(f"[DomainRecords] work_orders user resolve failed: {e}")
+
+            for raw, fmt in zip(records, formatted):
+                eid = raw.get("equipment_id")
+                if eid:
+                    fmt["linked_equipment_name"] = eq_name_map.get(eid) or None
+                    fmt["linked_equipment_code"] = eq_code_map.get(eid) or None
+                uid = raw.get("assigned_to")
+                if uid:
+                    u = user_map.get(uid) or {}
+                    name = u.get("name")
+                    if name:
+                        fmt["assigned_to_name"] = name
+                        fmt["assigned_to_role"] = u.get("role")
+
         # Shopping list: batch-resolve requester names from auth_users_profiles
         # (pms_shopping_list_items has no FK to the profiles table, so _format_record
         # cannot do the lookup row-by-row without N+1 queries).
@@ -1020,6 +1061,12 @@ def _format_record(domain: str, record: dict) -> dict:
             "title": record.get("title", ""),
             "status": record.get("status", "open"),
             "priority": record.get("priority", "normal"),
+            "severity": record.get("severity"),
+            # `type` column supersedes `work_order_type`; surface whichever is populated.
+            "wo_type": record.get("type") or record.get("work_order_type"),
+            "frequency": record.get("frequency"),
+            "due_date": record.get("due_date"),
+            "completed_at": record.get("completed_at"),
             "assigned_to": record.get("assigned_to", ""),
             "linked_equipment_id": record.get("equipment_id"),
             "meta": f"{record.get('priority', 'normal').upper()} · {record.get('status', 'open').upper()}",

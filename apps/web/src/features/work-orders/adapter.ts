@@ -49,7 +49,15 @@ export function workOrderToListResult(wo: WorkOrder): EntityListResult {
     metadata: {
       status: wo.status,
       priority: wo.priority,
+      severity: wo.severity,
+      // `type` column supersedes `work_order_type`; keep both until cleanup.
+      wo_type: wo.type ?? wo.work_order_type,
+      frequency: wo.frequency,
       equipment_name: wo.equipment_name,
+      assigned_to_name: wo.assigned_to_name,
+      wo_number: wo.wo_number,
+      due_date: wo.due_date,
+      completed_at: wo.completed_at,
       created_at: wo.created_at,
     },
 

@@ -69,9 +69,21 @@ function apiRecordToAdapterInput(record: Record<string, unknown>, domain: string
     wo_number: record.ref?.toString().replace('WO-', ''),
     equipment_id: record.linked_equipment_id,
     equipment_name: record.linked_equipment_name,
+    equipment_code: record.linked_equipment_code,
+    // `assigned_to` may be a UUID or a resolved name depending on backend
+    // revision. `assigned_to_name` is the post-resolver field from
+    // vessel_surface_routes.py work_orders batch enrichment (2026-04-23).
+    // Adapter (adapter.ts:60) already UUID-filters, so passing the raw
+    // assigned_to is safe when the resolved name is absent.
     assigned_to: record.assigned_to,
-    assigned_to_name: record.assigned_to,
+    assigned_to_name: record.assigned_to_name ?? record.assigned_to,
+    assigned_to_role: record.assigned_to_role,
     due_date: record.due_date,
+    completed_at: record.completed_at,
+    frequency: record.frequency,
+    // `type` column supersedes `work_order_type`; surface whichever is set.
+    type: record.wo_type ?? record.type,
+    work_order_type: record.work_order_type,
 
     // Faults
     fault_code: record.ref?.toString().replace('F-', ''),
