@@ -39,16 +39,29 @@ export interface DocumentLoadResult {
  * - Rate limits to prevent bulk downloads
  *
  * @param documentId - Document UUID from doc_metadata table
+ * @param yachtIdArg - Yacht UUID from AuthContext (preferred — useAuth().user.yachtId).
+ *                    Falls back to the deprecated getYachtId() (session user_metadata)
+ *                    only when the caller does not provide it, for backward compat
+ *                    with older call sites. The modern AuthContext path does a MASTER
+ *                    DB lookup and works for users whose JWT user_metadata does not
+ *                    carry yacht_id — the deprecated path silently fails for those
+ *                    users with "Yacht context required" and the viewer never loads.
+ *                    See useCelesteSearch.ts:408 for the "not from deprecated
+ *                    getYachtId()" rule that pre-dates this fix.
  * @returns DocumentLoadResult with blob URL
  */
 export async function loadDocumentWithBackend(
-  documentId: string
+  documentId: string,
+  yachtIdArg?: string | null
 ): Promise<DocumentLoadResult> {
   try {
     console.log('[documentLoader] Loading document via backend:', documentId);
 
-    // Get yacht ID for auth headers
-    const yachtId = await getYachtId();
+    // Prefer the caller-supplied yachtId (from AuthContext). Fall back to the
+    // deprecated user_metadata read only if the caller didn't provide one —
+    // that path is known to return null for users whose JWT is missing the
+    // yacht_id metadata claim.
+    const yachtId = yachtIdArg ?? (await getYachtId());
     if (!yachtId) {
       return {
         success: false,

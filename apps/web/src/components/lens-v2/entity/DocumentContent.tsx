@@ -120,10 +120,18 @@ export function DocumentContent() {
 
   React.useEffect(() => {
     if (!entityId) return;
+    // Wait for auth context to resolve yachtId before firing the signed-URL
+    // fetch. Previously we relied on documentLoader's internal getYachtId()
+    // (user_metadata read) which returns null when the JWT was minted without
+    // the yacht_id metadata claim — the viewer then failed with "Yacht
+    // context required" even though AuthContext could have resolved it via
+    // the MASTER DB lookup. Passing user.yachtId explicitly wires the modern
+    // resolution path into the loader.
+    if (!user?.yachtId) return;
     setFileLoading(true);
     setFileError(null);
     setBlobUrl(null);
-    loadDocumentWithBackend(entityId).then((result) => {
+    loadDocumentWithBackend(entityId, user.yachtId).then((result) => {
       if (result.success && result.url) {
         blobUrlRef.current = result.url;
         setBlobUrl(result.url);
@@ -138,7 +146,7 @@ export function DocumentContent() {
         blobUrlRef.current = null;
       }
     };
-  }, [entityId]);
+  }, [entityId, user?.yachtId]);
 
   // ── Extract entity fields ──
   // Memoised so downstream callbacks that depend on payload don't rebuild on
