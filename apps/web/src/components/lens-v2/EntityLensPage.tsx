@@ -220,8 +220,20 @@ export function EntityLensPage({
                               appended ledger surfaces read-only receipts that
                               duplicate those tabs + break the tab layout
                               (CEO directive 2026-04-24). Removed per spec.
+              - document    → DocumentContent.tsx:551 renders AuditTrailSection
+                              from the enriched /v1/entity/document/{id} audit
+                              trail (pms_audit_log, actor_name + actor_role +
+                              deleted flag). Appending LedgerHistory produces
+                              a second 'History'-titled section that shows
+                              ONLY read events (view_document, get_document_url)
+                              — no mutation info, duplicates the Renewal
+                              History section semantically, confuses users
+                              who correctly expect "History" to mean prior
+                              iterations of the document (renewals/revisions),
+                              not a receipt log of who viewed it. CEO
+                              directive 2026-04-24.
            Add here when a new lens gains its own in-tab audit surface. */}
-        {entityType !== 'certificate' && entityType !== 'work_order' && (
+        {entityType !== 'certificate' && entityType !== 'work_order' && entityType !== 'document' && (
           <LedgerHistory entityType={entityType} entityId={entityId} />
         )}
       </EntityLensProvider>
