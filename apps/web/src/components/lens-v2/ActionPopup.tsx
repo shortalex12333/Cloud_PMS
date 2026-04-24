@@ -93,6 +93,7 @@ function backdropClass(mode: 'read' | 'mutate', level: number): string {
 
 /** Keys that are backend-only plumbing and must NEVER surface to the user. */
 const SOURCE_NEVER_RENDER = new Set<string>([
+  // Generic plumbing
   'entity_id',
   'entity_type',
   'yacht_id',
@@ -103,6 +104,36 @@ const SOURCE_NEVER_RENDER = new Set<string>([
   'url',
   'entity_url',
   'metadata',
+  // Foreign-key UUIDs. Each of these is expected to come alongside a
+  // human-readable *_name (e.g. `equipment_id` + `equipment_name`). The UUID
+  // is routing plumbing; only the name belongs in the Source block.
+  // Per FAULT05 cohort review of PR #704 (2026-04-24): skipping UUID surfacing.
+  'equipment_id',
+  'part_id',
+  'work_order_id',
+  'fault_id',
+  'certificate_id',
+  'document_id',
+  'purchase_order_id',
+  'receiving_id',
+  'warranty_id',
+  'shopping_list_id',
+  'shopping_item_id',
+  'hours_of_rest_id',
+  'handover_id',
+  'handover_item_id',
+  'handover_export_id',
+  'previous_export_id',
+  'draft_id',
+  'added_by',
+  'updated_by',
+  'deleted_by',
+  'resolved_by',
+  'completed_by',
+  'reported_by',
+  'exported_by_user_id',
+  'outgoing_user_id',
+  'incoming_user_id',
 ]);
 
 /** Keys whose values are machine identifiers and should render in monospace. */
@@ -115,8 +146,23 @@ const SOURCE_MONO_KEYS = new Set<string>([
   'serial_number',
 ]);
 
+/**
+ * Per-key label overrides for prefill keys whose humanised form reads weakly
+ * because of an embedded acronym (e.g. "Po number" vs "PO number"). Keep this
+ * narrow — only add overrides when the default humanise produces something
+ * genuinely worse. Per PURCHASE05 cohort review of PR #704 (2026-04-24).
+ */
+const SOURCE_LABEL_OVERRIDES: Record<string, string> = {
+  po_number: 'PO number',
+  wonumber: 'WO number',
+  wo_number: 'WO number',
+  sku: 'SKU',
+};
+
 /** `serial_number` -> "Serial number"; "running_hours" -> "Running hours". */
 function humanizeKey(key: string): string {
+  const override = SOURCE_LABEL_OVERRIDES[key];
+  if (override) return override;
   const spaced = key.replace(/_/g, ' ').trim();
   if (!spaced) return key;
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);

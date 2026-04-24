@@ -124,4 +124,85 @@ describe('ActionPopup — Source context (prefill rendering)', () => {
       screen.queryByTestId('action-popup-source-row-some_null_field'),
     ).toBeNull();
   });
+
+  it('9. skips FK UUID rows when a paired human-readable name exists', () => {
+    // Per FAULT05 PR #704 review: equipment_id / part_id / work_order_id / etc.
+    // are routing plumbing; only the human-readable name surfaces to the user.
+    renderPopup({
+      prefill: {
+        fault_code: 'F-0102',
+        severity: 'high',
+        equipment_id: '11111111-2222-3333-4444-555555555555',
+        equipment_name: 'Main Engine',
+      },
+    });
+    expect(screen.getByTestId('action-popup-source-row-fault_code')).toBeTruthy();
+    expect(screen.getByTestId('action-popup-source-row-severity')).toBeTruthy();
+    expect(screen.getByTestId('action-popup-source-row-equipment_name')).toBeTruthy();
+    expect(
+      screen.queryByTestId('action-popup-source-row-equipment_id'),
+    ).toBeNull();
+  });
+
+  it('10a. applies acronym label overrides (po_number, wo_number, sku)', () => {
+    // Per PURCHASE05 PR #704 review: humanizeKey defaults read weakly when an
+    // embedded acronym is present ("Po number"). Override map fixes the
+    // common ones without burning a general acronym inflector.
+    renderPopup({
+      prefill: {
+        po_number: 'PO-2026-0042',
+        wonumber: 'WO-0074',
+        sku: 'XY-123',
+      },
+    });
+    // Each row's textContent contains both label + value; assert label token.
+    expect(
+      screen.getByTestId('action-popup-source-row-po_number'),
+    ).toHaveTextContent('PO number');
+    expect(
+      screen.getByTestId('action-popup-source-row-wonumber'),
+    ).toHaveTextContent('WO number');
+    expect(
+      screen.getByTestId('action-popup-source-row-sku'),
+    ).toHaveTextContent('SKU');
+    // Negative check: the raw humanised form must NOT leak through.
+    expect(
+      screen.getByTestId('action-popup-source-row-po_number'),
+    ).not.toHaveTextContent('Po number');
+  });
+
+  it('10. skips every FK UUID key in the hidden list', () => {
+    // Regression guard for the never-render list. If a FK UUID ever surfaces
+    // visually, this test should catch it.
+    renderPopup({
+      prefill: {
+        code: 'EQ-001',
+        equipment_id: 'x',
+        part_id: 'x',
+        work_order_id: 'x',
+        fault_id: 'x',
+        certificate_id: 'x',
+        purchase_order_id: 'x',
+        previous_export_id: 'x',
+        added_by: 'x',
+        outgoing_user_id: 'x',
+      },
+    });
+    expect(screen.getByTestId('action-popup-source-row-code')).toBeTruthy();
+    [
+      'equipment_id',
+      'part_id',
+      'work_order_id',
+      'fault_id',
+      'certificate_id',
+      'purchase_order_id',
+      'previous_export_id',
+      'added_by',
+      'outgoing_user_id',
+    ].forEach((key) => {
+      expect(
+        screen.queryByTestId(`action-popup-source-row-${key}`),
+      ).toBeNull();
+    });
+  });
 });
