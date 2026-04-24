@@ -17,7 +17,7 @@ Working alongside WORKORDER05 / HANDOVER08 / EQUIPMENT05 / FAULT05 / SHOPPINGLIS
 | PR-WO-3 | Lens card redesign — horizontal tabs + metadata de-UUID | OPEN | 10-tab LensTabBar; extended header metadata; "Change Status" rename |
 | PR-WO-4 | Checklist overhaul (DB audit + bucket wiring) | PENDING | `pms_work_order_checklist` + `pms_checklist` + `pms_checklist_items` audit first |
 | PR-WO-5 | Calendar tab (List / Calendar toggle) | PENDING | Seahub-style; clickable cards; colour by type/criticality |
-| PR-WO-6 | Fault→WO bridge + WO-complete→fault auto-resolve | PENDING | Coord with FAULT05 (`wq0prarm`); needs `pms_faults.resolved_by_work_order_id` migration |
+| PR-WO-6 | Fault→WO bridge + WO-complete→fault auto-resolve | OPEN | Migration + dispatcher bridge + ledger emission; graceful if FK column absent |
 | PR-WO-7 | Schema additions — `system_id`, running hours columns | PENDING | Strictly optional; no keyword inference |
 
 ---
@@ -132,4 +132,41 @@ UX sheet `/Users/celeste7/Desktop/lens_card_upgrades.md:300-405` — the legacy 
 
 ---
 
-## PR-WO-4..7 — detailed scope will be filled in as each opens.
+## PR-WO-6 — fault bridge (shipped 2026-04-23)
+
+### Scope
+Data-continuity USP. When a work order created from a fault (`pms_work_orders.fault_id IS NOT NULL`) reaches `status='completed'`, the linked fault must auto-transition to `status='resolved'` with a `resolved_at` timestamp, a `resolved_by_work_order_id` FK, and a `fault_auto_resolved` ledger row that FAULT05's lens reacts to. Coordinated with FAULT05 (`wq0prarm`) who confirmed the fault-status enum (`open / investigating / acknowledged / work_ordered / resolved / closed`) and the column absence.
+
+### Changes
+- **`supabase/migrations/20260423_pms_faults_resolved_by_work_order.sql` (new, temporary)** — adds nullable `resolved_by_work_order_id uuid REFERENCES pms_work_orders(id) ON DELETE SET NULL` + partial index. Per `feedback_migration_convention.md`, apply manually and delete the file afterwards.
+- **`apps/api/action_router/dispatchers/internal_dispatcher.py::close_work_order`** —
+  - Pre-reads `pms_work_orders.fault_id` before the status update (single extra select — supabase-py doesn't expose `RETURNING`).
+  - After WO status update succeeds, if `fault_id` is set and the linked fault's current status is NOT in `('resolved', 'closed')` (idempotent guard), writes `pms_faults.status='resolved'` + `resolved_at=now()` + `resolved_by=<user_id>` + `resolved_by_work_order_id=<wo_id>`.
+  - **FK write is guarded**: if the column doesn't exist yet (migration not applied), the bridge catches the exception and retries the same update without the FK. Fault status + ledger still flow; the FK just stays null until the migration lands.
+  - Emits a `fault_auto_resolved` ledger row via `routes.handlers.ledger_utils.build_ledger_event` with `event_type='status_change'`, `entity_type='fault'`, `metadata={resolved_by_work_order_id, previous_status, new_status}`. Ledger emission is try/except — never fails the WO close.
+  - Return envelope extended: adds `fault_auto_resolved: bool` and `linked_fault_id: str | null` so the frontend can render a post-close toast without a refetch.
+- **`apps/api/tests/test_close_work_order_bridge.py` (new)** — 5 pytest-asyncio cases covering:
+  - no `fault_id` → zero fault writes, zero ledger inserts
+  - open fault → single fault update with FK + ledger insert
+  - already-resolved / closed fault → idempotent, no writes
+  - FK column absent → first update raises, handler retries without FK, status still flips, ledger still fires
+  - WO update returns empty → `ValueError`, bridge never runs
+
+### Verification
+- `pytest tests/test_close_work_order_bridge.py` → 5/5 green
+- `python3 ast.parse` on `internal_dispatcher.py` → clean
+- Migration SQL includes verification query for CEO to run post-apply
+
+### Deploy steps (CEO owns DB apply)
+1. Merge this PR to `main`; Render deploys the handler. Frontend no-op.
+2. Apply the migration SQL (pooler auth currently failing from both WORKORDER05 and FAULT05 agents — CEO runs via Supabase dashboard SQL editor or proper psql env).
+3. Verify column: `SELECT column_name FROM information_schema.columns WHERE table_name='pms_faults' AND column_name='resolved_by_work_order_id';`
+4. Delete the migration file per `feedback_migration_convention.md`.
+5. Close any WO with a linked fault and inspect `ledger_events` for `fault_auto_resolved`.
+
+### Deferred
+- `pms_faults` frontend: FAULT05 will refetch on ledger change in their own PR.
+
+---
+
+## PR-WO-4, 5, 7 — detailed scope will be filled in as each opens.
