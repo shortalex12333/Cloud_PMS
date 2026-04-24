@@ -29,6 +29,7 @@ import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { ReceivingPackingList, type PackingItem } from '../sections/ReceivingPackingList';
 import { ReceivingOfficialDocuments, type OfficialDoc, type DocKind } from '../sections/ReceivingOfficialDocuments';
 import { ReceivingLinkedPO, type POItem, type ReceivingLineSummary } from '../sections/ReceivingLinkedPO';
+import { ReceivingDiscrepancies, type Discrepancy, type LineDiscrepancy, type FlagDiscrepancy, type DiscrepancyKind } from '../sections/ReceivingDiscrepancies';
 
 // Sections
 import {
@@ -128,6 +129,47 @@ export function ReceivingContent() {
   const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
   const history = ((entity?.audit_history ?? payload.audit_history ?? entity?.history ?? payload.history) as Array<Record<string, unknown>> | undefined) ?? [];
   const linked_entities = ((entity?.linked_entities ?? payload.linked_entities ?? entity?.related_entities ?? payload.related_entities) as Array<Record<string, unknown>> | undefined) ?? [];
+
+  // Discrepancy entries — auto-aggregated from two sources:
+  //   (a) per-line dispositions on items where crew clicked Short/Damaged/Wrong/Over
+  //   (b) free-text flag_discrepancy events from ledger_events (event_category='discrepancy')
+  // Empty array → ReceivingDiscrepancies hides the section per philosophy.
+  const lineDiscrepancyKinds = new Set<DiscrepancyKind>(['short', 'damaged', 'wrong_item', 'over']);
+  const lineDiscrepancies: LineDiscrepancy[] = items
+    .filter((it) => lineDiscrepancyKinds.has((it.disposition as DiscrepancyKind | undefined) as DiscrepancyKind))
+    .map((it) => {
+      const code = (it.part_number ?? it.part_code ?? it.sku) as string | undefined;
+      const name = (it.part_name ?? it.name ?? it.description ?? 'Item') as string;
+      return {
+        source: 'line' as const,
+        itemId: (it.id as string) ?? '',
+        partLabel: code ? `${code} — ${name}` : name,
+        kind: (it.disposition as DiscrepancyKind),
+        expected: it.quantity_expected === null || it.quantity_expected === undefined
+          ? null
+          : Number(it.quantity_expected),
+        received: Number(it.quantity_received ?? 0),
+        rejected: Number(it.quantity_rejected ?? 0),
+      };
+    });
+  const flagDiscrepancies: FlagDiscrepancy[] = history
+    .filter((h) => (h.event_category as string | undefined) === 'discrepancy' || (h.action as string | undefined) === 'flag_discrepancy')
+    .map((h) => {
+      const meta = (h.metadata as Record<string, unknown> | undefined) ?? {};
+      const kind = ((meta.discrepancy_type as DiscrepancyKind | undefined) ?? 'partial') as DiscrepancyKind;
+      const description = (meta.description as string | undefined) ?? (h.change_summary as string | undefined) ?? '';
+      const affected = (meta.affected_items as Array<Record<string, unknown>> | undefined) ?? [];
+      return {
+        source: 'flag' as const,
+        ledgerId: (h.id as string) ?? '',
+        kind,
+        description,
+        actor: (h.actor_name ?? h.actor) as string | null ?? null,
+        timestamp: (h.created_at ?? h.timestamp) as string ?? '',
+        affectedItems: affected,
+      };
+    });
+  const discrepancyEntries: Discrepancy[] = [...lineDiscrepancies, ...flagDiscrepancies];
 
   // -- Action gates --
   // Primary CTA = SIGNED accept_receiving (every status->accepted must be
@@ -387,6 +429,12 @@ export function ReceivingContent() {
           <DocRowsSection title="Related Work" docs={docItems} />
         </ScrollReveal>
       )}
+
+      {/* Discrepancies — aggregated from line dispositions + flag_discrepancy events.
+          Hidden when there's nothing to show (per philosophy). */}
+      <ScrollReveal>
+        <ReceivingDiscrepancies entries={discrepancyEntries} />
+      </ScrollReveal>
 
       {/* Linked PO — side-by-side reconciliation. Hidden when no PO is linked. */}
       <ScrollReveal>
