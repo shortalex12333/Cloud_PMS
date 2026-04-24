@@ -686,6 +686,9 @@ async def get_domain_records(
     vendor_reference: Optional[str] = Query(None, description="Vendor reference ilike (receiving)"),
     po_number: Optional[str] = Query(None, description="PO number ilike (receiving)"),
     currency: Optional[str] = Query(None, description="Currency exact match (receiving)"),
+    # Work-order-specific filters (2026-04-24, WORKORDER05 PR-WO-5 calendar tab)
+    due_from: Optional[str] = Query(None, description="Due date from (YYYY-MM-DD, work_orders)"),
+    due_to: Optional[str] = Query(None, description="Due date to (YYYY-MM-DD, work_orders)"),
     sort: Optional[str] = Query(None, description="Sort field"),
     limit: int = Query(50, ge=1, le=2000),
     offset: int = Query(0, ge=0),
@@ -750,6 +753,17 @@ async def get_domain_records(
         # Apply assigned filter
         if assigned and domain in ("work_orders",):
             query = query.eq("assigned_to", assigned)
+
+        # Work-order-specific due_date range (calendar tab, PR-WO-5).
+        # Calendar fetches the month window. NULL due_date rows are excluded
+        # by the range predicate — intentional (WOs without due dates have no
+        # position on the calendar).
+        if domain == "work_orders":
+            if due_from:
+                query = query.gte("due_date", due_from)
+            if due_to:
+                # Inclusive end-of-day so due_date<=YYYY-MM-DD catches same-day rows.
+                query = query.lte("due_date", f"{due_to}T23:59:59.999Z")
 
         # Apply cert sub-domain filter (vessel vs crew) — v_certificates_enriched has a `domain` column
         if cert_domain and domain == "certificates" and cert_domain in ("vessel", "crew"):
