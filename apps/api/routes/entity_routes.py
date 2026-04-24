@@ -55,17 +55,48 @@ def _sign_url(supabase, bucket: str, path: str, expires_in: int = 3600):
 
 
 def _get_attachments(supabase, entity_type: str, entity_id: str, yacht_id: str) -> list:
-    """Query pms_attachments, sign each, return list matching frontend Attachment shape."""
+    """Query pms_attachments, sign each, return list matching frontend Attachment shape.
+
+    Additive fields (2026-04-24, PR-EQ-4) — backward-compatible enrichment so the
+    cohort-shared ``LensImageViewer`` + threaded comments UI can render without
+    N+1 calls from the browser:
+
+      * ``description``       — legacy single-caption column on ``pms_attachments``.
+      * ``category``          — passed straight through.
+      * ``uploaded_at``       — ``pms_attachments.created_at`` (ISO).
+      * ``uploaded_by``       — raw UUID (UI never renders; used for auth checks).
+      * ``uploaded_by_name``  — resolved via ``lib.user_resolver.resolve_users``.
+      * ``signed_url``        — alias of ``url`` (matches brief's frontend shape).
+      * ``thumbnail_path``    — reserved for future thumb column; ``None`` today.
+
+    Existing consumers (WO, cert, etc.) continue to read ``id / filename / url /
+    mime_type / size_bytes`` unchanged.
+    """
     try:
         result = supabase.table("pms_attachments").select(
-            "id, filename, mime_type, storage_path, file_size, category, storage_bucket"
+            "id, filename, mime_type, storage_path, file_size, category, storage_bucket, "
+            "description, uploaded_by, created_at"
         ).eq("entity_type", entity_type).eq("entity_id", entity_id).eq(
             "yacht_id", yacht_id
         ).is_("deleted_at", "null").execute()
 
+        rows = result.data or []
+
+        # ── Batch-resolve uploader UUIDs → name/role (single round-trip) ──
+        # Mirrors vessel_surface_routes.py:820-840 pattern (batch resolver, never N+1).
+        user_ids = list({r.get("uploaded_by") for r in rows if r.get("uploaded_by")})
+        user_map: Dict[str, Dict[str, Optional[str]]] = {}
+        if user_ids:
+            try:
+                user_map = resolve_users(supabase, yacht_id, user_ids)
+            except Exception as exc:  # noqa: BLE001 — resolver failure is non-fatal
+                logger.warning(
+                    f"_get_attachments: uploader resolve failed for {entity_type}/{entity_id}: {exc}"
+                )
+
         attachments = []
         fallback_bucket = ATTACHMENT_BUCKET.get(entity_type, "attachments")
-        for att in (result.data or []):
+        for att in rows:
             path = att.get("storage_path")
             if not path:
                 continue
@@ -73,12 +104,23 @@ def _get_attachments(supabase, entity_type: str, entity_id: str, yacht_id: str) 
             url = _sign_url(supabase, bucket, path)
             if not url:
                 continue
+            uploader_uid = att.get("uploaded_by")
+            uploader_name = None
+            if uploader_uid:
+                uploader_name = (user_map.get(uploader_uid) or {}).get("name")
             attachments.append({
                 "id": att["id"],
                 "filename": att.get("filename", "file"),
                 "url": url,
+                "signed_url": url,                    # alias — matches LensImage contract
                 "mime_type": att.get("mime_type", "application/octet-stream"),
                 "size_bytes": att.get("file_size") or 0,
+                "category": att.get("category"),
+                "description": att.get("description"),
+                "uploaded_at": att.get("created_at"),
+                "uploaded_by": uploader_uid,
+                "uploaded_by_name": uploader_name,
+                "thumbnail_path": None,               # reserved — no thumb column yet
             })
         return attachments
     except Exception as e:
