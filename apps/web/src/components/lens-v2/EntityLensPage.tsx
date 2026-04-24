@@ -64,7 +64,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
  * extra horizontal room per 2026-04-23 UX spec. Add here when a new lens
  * gains a LensFileViewer.
  */
-const WIDE_LENS_TYPES: Set<string> = new Set(['certificate', 'document', 'receiving']);
+const WIDE_LENS_TYPES: Set<string> = new Set(['certificate', 'document', 'receiving', 'shopping_list', 'purchase_order']);
 
 function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack: () => void }) {
   return (
@@ -99,7 +99,13 @@ function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack:
  *   negating the one case keeps the intent explicit and extensible.
  */
 const SUPPRESS_LEDGER_HISTORY: ReadonlySet<string> = new Set<string>([
+  // CertificateContent renders its own AuditTrailSection from pms_audit_log
+  // with actor_name/actor_role enrichment. Merged alongside this directive,
+  // FAULT05/WORKORDER05 removed the ledger for work_order (audit + history
+  // tabs already cover it, CEO directive 2026-04-24). Add here when a new
+  // lens gains its own in-tab audit surface.
   'certificate',
+  'work_order',
 ]);
 
 function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
@@ -229,11 +235,12 @@ export function EntityLensPage({
     bodyContent = (
       <EntityLensProvider value={contextValue}>
         <Content />
-        {/* Lenses in SUPPRESS_LEDGER_HISTORY render their own domain-specific
-            AuditTrailSection from pms_audit_log; showing the generic read-only
-            ledger alongside it produces a second "History" section full of
-            view_<entity> read events — wasteful, confusing, forbidden per CEO
-            directive 2026-04-24. */}
+        {/* Entity types in SUPPRESS_LEDGER_HISTORY render their own
+            domain-specific AuditTrailSection from pms_audit_log (or the
+            equivalent inside a tab system). The generic read-only ledger
+            appended here duplicates that surface and leaks view_<entity>
+            events — wasteful, confusing, forbidden per CEO directive
+            2026-04-24. See the set declaration above for per-lens reasoning. */}
         {!SUPPRESS_LEDGER_HISTORY.has(entityType) && (
           <LedgerHistory entityType={entityType} entityId={entityId} />
         )}
