@@ -1512,6 +1512,12 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
         _entity_response = {
             "id": data.get('id'),
             "name": data.get('name', 'Unknown Equipment'),
+            # PR-EQ-5: `code` + `system_type` surfaced as top-level keys so
+            # the Handover modal Context block (entity_prefill.py equipment →
+            # add_to_handover map) can read them. `equipment_type` kept as a
+            # backward-compat alias consumed by EquipmentContent.tsx.
+            "code": data.get('code'),
+            "system_type": data.get('system_type'),
             "equipment_type": data.get('system_type') or metadata.get('category', 'General'),
             "manufacturer": data.get('manufacturer'),
             "model": data.get('model'),
@@ -1519,6 +1525,9 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
             "location": data.get('location', 'Unknown'),
             "status": metadata.get('status', 'operational'),
             "criticality": data.get('criticality'),
+            # PR-EQ-5: emit running_hours from the pms_equipment column
+            # (equipment_handlers.py:1374 writes it via record_equipment_hours).
+            "running_hours": data.get('running_hours'),
             "installation_date": data.get('installed_date'),
             "last_maintenance": metadata.get('last_maintenance'),
             "next_maintenance": metadata.get('next_maintenance'),

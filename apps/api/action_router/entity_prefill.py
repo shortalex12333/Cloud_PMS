@@ -260,22 +260,20 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("equipment", "add_to_handover"): {
         "entity_id":      "id",
         "title":          "name",
-        # CEO context fields (EQUIPMENT05 request):
-        # code is not surfaced on the lens response today — intentionally
-        # omitted; resolve_prefill drops missing keys. Add here when the
-        # equipment route starts emitting it.
+        # CEO context fields — full 10-field set (EQUIPMENT05 PR-EQ-5).
+        # All keys resolve against the equipment entity response
+        # (entity_routes.py get_equipment_entity) which now emits each
+        # field as a top-level key. resolve_prefill drops None/missing.
+        "code":           "code",
         "name":           "name",
         "manufacturer":   "manufacturer",
         "model":          "model",
         "serial_number":  "serial_number",
         "criticality":    "criticality",
         "status":         "status",
+        "running_hours":  "running_hours",
         "location":       "location",
-        "system_type":    "equipment_type",   # entity_routes.py:1473 maps system_type → equipment_type
-        # running_hours not on the equipment lens response yet (see
-        # pms_equipment.running_hours column usage in equipment_handlers.py:1374).
-        # Left out so we don't ship a key that resolves to None; add when the
-        # equipment route starts surfacing it.
+        "system_type":    "system_type",
     },
     ("part", "add_to_handover"):         {"entity_id": "id", "title": "name"},
     ("certificate", "add_to_handover"):  {"entity_id": "id", "title": "name"},
