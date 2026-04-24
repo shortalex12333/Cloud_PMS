@@ -3599,6 +3599,24 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
                           description="Linked fault (if created from a fault)"),
             FieldMetadata("severity", FieldClassification.OPTIONAL, description="Severity assessment"),
             FieldMetadata("work_order_type", FieldClassification.OPTIONAL, description="Sub-type classification"),
+            # PR-WO-7 schema additions. UX sheet /Users/celeste7/Desktop/
+            # lens_card_upgrades.md:354-356. Parent-system denormalised for
+            # frontend ergonomics; running-hours present on every WO with
+            # opt-in via `running_hours_required` (no keyword inference per
+            # CEO spec line 356).
+            FieldMetadata("system_id", FieldClassification.OPTIONAL,
+                          lookup_required=True,
+                          description="Parent system (top-level equipment this WO belongs to)"),
+            FieldMetadata("system_name", FieldClassification.OPTIONAL,
+                          description="Denormalised parent system name"),
+            FieldMetadata("frequency", FieldClassification.OPTIONAL,
+                          description="Recurrence cadence (daily, weekly, monthly, quarterly, annual)"),
+            FieldMetadata("running_hours_required", FieldClassification.OPTIONAL,
+                          description="Whether this WO tracks running hours (rotating machinery)"),
+            FieldMetadata("running_hours_current", FieldClassification.OPTIONAL,
+                          description="Current running-hours reading at WO creation"),
+            FieldMetadata("running_hours_checkpoint", FieldClassification.OPTIONAL,
+                          description="Running-hours checkpoint at which service is due"),
         ],
     ),
 
