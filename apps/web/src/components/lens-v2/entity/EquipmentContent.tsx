@@ -13,7 +13,14 @@
  *
  * TODO notes for next engineer:
  * - Add Note modal not wired (onClick is noop)
- * - File upload modal not wired
+ *
+ * PR-EQ-4 (2026-04-24) — attachment wiring completed:
+ * - `onAddFile` now opens AttachmentUploadModal (default pms_attachments mode).
+ * - Image-type attachments render via the cohort-shared `LensImageViewer`;
+ *   non-image rows continue through `AttachmentsSection` unchanged.
+ * - Threaded comments render in a panel adjacent to the viewer — NOT inside
+ *   the shared component (brief: "safest option: render threaded-comment UI
+ *   OUTSIDE the viewer, visually adjacent"). Comments lazy-load per image.
  */
 
 import * as React from 'react';
@@ -24,6 +31,7 @@ import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActio
 import { SplitButton, type DropdownItem } from '../SplitButton';
 import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
+import { useAuth } from '@/hooks/useAuth';
 import { getEntityRoute } from '@/lib/entityRoutes';
 
 // Sections
@@ -33,6 +41,7 @@ import {
   DocRowsSection,
   HistorySection,
   KVSection,
+  LensImageViewer,
   NotesSection,
   PartsSection,
   type AuditEvent,
@@ -40,11 +49,27 @@ import {
   type DocRowItem,
   type HistoryPeriod,
   type KVItem,
+  type LensImage,
   type NoteItem,
   type PartItem,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+
+// ── Threaded-comment shape (from list_attachment_comments) ──
+// Kept local to this file — the cohort LensImageViewer is single-caption MVP and
+// must not be forked. Threads render beside it in EquipmentContent.
+interface AttachmentCommentNode {
+  id: string;
+  comment: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+  parent_comment_id: string | null;
+  author_department?: string | null;
+  replies?: AttachmentCommentNode[];
+}
 
 // ─── Helpers ───
 
@@ -56,7 +81,8 @@ function formatLabel(str: string): string {
 
 export function EquipmentContent() {
   const router = useRouter();
-  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading, entityId, refetch } = useEntityLensContext();
+  const { user } = useAuth();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -106,6 +132,88 @@ export function EquipmentContent() {
     },
     [executeAction]
   );
+
+  // ── Attachment upload modal (PR-EQ-4) ──
+  // FIXME: migrate to pms-equipment-photos once CEO creates that bucket.
+  // pms-work-order-photos is RLS-correct for polymorphic attachments today.
+  const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
+
+  // ── Threaded-comment state (PR-EQ-4) ──
+  // Key = attachment_id; value = root comment tree (with nested `replies`).
+  // Populated lazily when the user opens an image in the viewer.
+  const [commentsByAttachment, setCommentsByAttachment] = React.useState<
+    Record<string, AttachmentCommentNode[]>
+  >({});
+  const [openCommentAttachmentId, setOpenCommentAttachmentId] = React.useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = React.useState('');
+  const [commentBusy, setCommentBusy] = React.useState(false);
+  const [commentsLoading, setCommentsLoading] = React.useState(false);
+
+  const loadComments = React.useCallback(
+    async (attachment_id: string) => {
+      setCommentsLoading(true);
+      try {
+        const result = await executeAction('list_attachment_comments', { attachment_id });
+        const data = result.data as { comments?: AttachmentCommentNode[] } | undefined;
+        setCommentsByAttachment((prev) => ({
+          ...prev,
+          [attachment_id]: data?.comments ?? [],
+        }));
+      } finally {
+        setCommentsLoading(false);
+      }
+    },
+    [executeAction],
+  );
+
+  const handleOpenComments = React.useCallback(
+    async (attachment_id: string) => {
+      setOpenCommentAttachmentId(attachment_id);
+      setCommentDraft('');
+      // Lazy-load: only fetch once per attachment until a mutation invalidates.
+      if (commentsByAttachment[attachment_id] === undefined) {
+        await loadComments(attachment_id);
+      }
+    },
+    [commentsByAttachment, loadComments],
+  );
+
+  const handleAddComment = React.useCallback(
+    async (parent_comment_id: string | null) => {
+      if (!openCommentAttachmentId || !commentDraft.trim()) return;
+      setCommentBusy(true);
+      try {
+        await executeAction('add_attachment_comment', {
+          attachment_id: openCommentAttachmentId,
+          comment: commentDraft.trim(),
+          parent_comment_id,
+        });
+        setCommentDraft('');
+        await loadComments(openCommentAttachmentId);
+      } finally {
+        setCommentBusy(false);
+      }
+    },
+    [openCommentAttachmentId, commentDraft, executeAction, loadComments],
+  );
+
+  const handleDeleteComment = React.useCallback(
+    async (comment_id: string) => {
+      if (!openCommentAttachmentId) return;
+      setCommentBusy(true);
+      try {
+        await executeAction('delete_attachment_comment', { comment_id });
+        await loadComments(openCommentAttachmentId);
+      } finally {
+        setCommentBusy(false);
+      }
+    },
+    [openCommentAttachmentId, executeAction, loadComments],
+  );
+
+  // NOTE: LensImageViewer.onEditComment intentionally NOT wired. No backend action
+  // exists to mutate pms_attachments.description after upload; the richer thread UI
+  // below replaces single-caption edits. Viewer renders description read-only.
 
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
     actionId: string; title: string; subtitle?: string;
@@ -238,13 +346,42 @@ export function EquipmentContent() {
     timestamp: (h.created_at ?? h.timestamp ?? h.completed_at) as string ?? '',
   }));
 
-  // Attachments → AttachmentItems
-  const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
+  // ── Attachments split: images → LensImageViewer, others → AttachmentsSection ──
+  // (PR-EQ-4 — mime_type-gated; keeps legacy row UI for PDFs/docs.)
+  const imageAttachments = React.useMemo(
+    () => attachments.filter((a) => {
+      const mime = (a.mime_type ?? a.content_type) as string | undefined;
+      return typeof mime === 'string' && mime.startsWith('image/');
+    }),
+    [attachments],
+  );
+  const nonImageAttachments = React.useMemo(
+    () => attachments.filter((a) => {
+      const mime = (a.mime_type ?? a.content_type) as string | undefined;
+      return !(typeof mime === 'string' && mime.startsWith('image/'));
+    }),
+    [attachments],
+  );
+
+  const lensImages: LensImage[] = imageAttachments.map((a, i) => ({
+    id: (a.id as string) ?? `img-${i}`,
+    url: (a.signed_url ?? a.url) as string ?? '',
+    thumbnail_url: (a.thumbnail_path ?? undefined) as string | undefined,
+    description: (a.description ?? a.caption ?? null) as string | null,
+    uploaded_by_name: (a.uploaded_by_name ?? null) as string | null,
+    uploaded_at: (a.uploaded_at ?? a.created_at ?? null) as string | null,
+    category: (a.category ?? null) as string | null,
+    filename: (a.filename ?? a.name ?? a.file_name ?? null) as string | null,
+  }));
+
+  // Non-image rows keep their existing AttachmentItem shape.
+  const attachmentItems: AttachmentItem[] = nonImageAttachments.map((a, i) => ({
     id: (a.id as string) ?? `att-${i}`,
     name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
     caption: (a.caption ?? a.description) as string | undefined,
     size: (a.size ?? a.file_size) as string | undefined,
-    kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
+    kind: 'document' as const,
+    url: (a.signed_url ?? a.url) as string | undefined,
   }));
 
   // Spare Parts → PartItems
@@ -449,11 +586,86 @@ export function EquipmentContent() {
         <AuditTrailSection events={auditEvents2} defaultCollapsed />
       </ScrollReveal>
 
-      {/* Attachments */}
+      {/* Photos — cohort-shared viewer (PR-EQ-4) */}
+      <ScrollReveal>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 4px',
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--txt2)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              Photos ({lensImages.length})
+            </span>
+          </div>
+          <LensImageViewer
+            images={lensImages}
+            onUpload={() => setUploadModalOpen(true)}
+            canUpload
+            emptyMessage="No photos yet."
+          />
+          {/* Per-image comment thread button — opens threaded panel below */}
+          {lensImages.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {lensImages.map((img) => (
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={() => handleOpenComments(img.id)}
+                  aria-pressed={openCommentAttachmentId === img.id}
+                  style={{
+                    appearance: 'none',
+                    background:
+                      openCommentAttachmentId === img.id
+                        ? 'var(--teal-bg)'
+                        : 'var(--surface)',
+                    border: '1px solid var(--border-sub)',
+                    borderRadius: 4,
+                    padding: '4px 8px',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    color:
+                      openCommentAttachmentId === img.id ? 'var(--mark)' : 'var(--txt2)',
+                  }}
+                >
+                  {img.filename ?? 'image'} — comments
+                </button>
+              ))}
+            </div>
+          )}
+          {openCommentAttachmentId && (
+            <AttachmentCommentThread
+              attachmentId={openCommentAttachmentId}
+              comments={commentsByAttachment[openCommentAttachmentId] ?? []}
+              loading={commentsLoading}
+              busy={commentBusy}
+              draft={commentDraft}
+              onDraftChange={setCommentDraft}
+              onAdd={handleAddComment}
+              onDelete={handleDeleteComment}
+              onClose={() => setOpenCommentAttachmentId(null)}
+              currentUserId={user?.id ?? null}
+            />
+          )}
+        </div>
+      </ScrollReveal>
+
+      {/* Attachments (non-image rows only) */}
       <ScrollReveal>
         <AttachmentsSection
           attachments={attachmentItems}
-          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
+          onAddFile={() => setUploadModalOpen(true)}
           canAddFile
         />
       </ScrollReveal>
@@ -478,6 +690,271 @@ export function EquipmentContent() {
         onSubmit={handleNoteSubmit}
         isLoading={isLoading}
       />
+      <AttachmentUploadModal
+        open={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        entityType="equipment"
+        entityId={entityId}
+        // FIXME: migrate to pms-equipment-photos once CEO creates that bucket.
+        // pms-work-order-photos is RLS-correct for polymorphic attachments today.
+        bucket="pms-work-order-photos"
+        category="equipment_photo"
+        yachtId={(entity?.yacht_id as string) ?? user?.yachtId ?? ''}
+        userId={user?.id ?? ''}
+        title="Upload Equipment Photo"
+        description="Attach a photo, schematic, or document to this equipment."
+        onComplete={() => { refetch(); }}
+      />
     </>
+  );
+}
+
+// ─── AttachmentCommentThread — local, not shared ──────────────────────────────
+// Renders the threaded comments tree returned by list_attachment_comments.
+// Lives next to the LensImageViewer (which stays single-caption MVP). Tokenised.
+
+interface AttachmentCommentThreadProps {
+  attachmentId: string;
+  comments: AttachmentCommentNode[];
+  loading: boolean;
+  busy: boolean;
+  draft: string;
+  onDraftChange: (next: string) => void;
+  onAdd: (parentCommentId: string | null) => void | Promise<void>;
+  onDelete: (commentId: string) => void | Promise<void>;
+  onClose: () => void;
+  currentUserId: string | null;
+}
+
+function AttachmentCommentThread({
+  attachmentId,
+  comments,
+  loading,
+  busy,
+  draft,
+  onDraftChange,
+  onAdd,
+  onDelete,
+  onClose,
+  currentUserId,
+}: AttachmentCommentThreadProps) {
+  const [replyTo, setReplyTo] = React.useState<string | null>(null);
+  return (
+    <div
+      data-testid={`equipment-comment-thread-${attachmentId}`}
+      style={{
+        marginTop: 8,
+        padding: 12,
+        background: 'var(--surface)',
+        border: '1px solid var(--border-faint)',
+        borderRadius: 6,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt)' }}>
+          Comments
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            appearance: 'none',
+            background: 'transparent',
+            border: '1px solid var(--border-sub)',
+            borderRadius: 4,
+            padding: '2px 8px',
+            fontSize: 11,
+            color: 'var(--txt2)',
+            cursor: 'pointer',
+          }}
+        >
+          Close
+        </button>
+      </div>
+
+      {loading && (
+        <div style={{ fontSize: 12, color: 'var(--txt3)' }}>Loading comments…</div>
+      )}
+
+      {!loading && comments.length === 0 && (
+        <div style={{ fontSize: 12, color: 'var(--txt3)', fontStyle: 'italic' }}>
+          No comments yet. Be the first.
+        </div>
+      )}
+
+      {!loading && comments.length > 0 && (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {comments.map((c) => (
+            <CommentNodeView
+              key={c.id}
+              node={c}
+              depth={0}
+              currentUserId={currentUserId}
+              onReply={setReplyTo}
+              onDelete={onDelete}
+              busy={busy}
+            />
+          ))}
+        </ul>
+      )}
+
+      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+        <textarea
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          placeholder={replyTo ? 'Write a reply…' : 'Add a comment…'}
+          rows={2}
+          disabled={busy}
+          style={{
+            flex: 1,
+            padding: '6px 8px',
+            background: 'var(--neutral-bg)',
+            border: '1px solid var(--border-sub)',
+            borderRadius: 4,
+            fontSize: 12,
+            color: 'var(--txt)',
+            resize: 'vertical',
+          }}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <button
+            type="button"
+            onClick={() => onAdd(replyTo)}
+            disabled={busy || !draft.trim()}
+            style={{
+              appearance: 'none',
+              background: busy || !draft.trim() ? 'var(--neutral-bg)' : 'var(--teal-bg)',
+              color: busy || !draft.trim() ? 'var(--txt3)' : 'var(--mark)',
+              border: '1px solid var(--mark-hover)',
+              borderRadius: 4,
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: busy || !draft.trim() ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {replyTo ? 'Reply' : 'Post'}
+          </button>
+          {replyTo && (
+            <button
+              type="button"
+              onClick={() => setReplyTo(null)}
+              disabled={busy}
+              style={{
+                appearance: 'none',
+                background: 'transparent',
+                border: '1px solid var(--border-sub)',
+                borderRadius: 4,
+                padding: '2px 6px',
+                fontSize: 10,
+                color: 'var(--txt2)',
+                cursor: busy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommentNodeView({
+  node,
+  depth,
+  currentUserId,
+  onReply,
+  onDelete,
+  busy,
+}: {
+  node: AttachmentCommentNode;
+  depth: number;
+  currentUserId: string | null;
+  onReply: (commentId: string | null) => void;
+  onDelete: (commentId: string) => void | Promise<void>;
+  busy: boolean;
+}) {
+  const canDelete = currentUserId !== null && node.created_by === currentUserId;
+  return (
+    <li style={{ marginLeft: depth * 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div
+        style={{
+          padding: '6px 8px',
+          background: 'var(--neutral-bg)',
+          border: '1px solid var(--border-faint)',
+          borderRadius: 4,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            color: 'var(--txt3)',
+            fontFamily: 'var(--font-mono)',
+            marginBottom: 2,
+          }}
+        >
+          {node.author_department ? `${node.author_department} · ` : ''}
+          {node.created_at?.slice(0, 19).replace('T', ' ')}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--txt)', whiteSpace: 'pre-wrap' }}>
+          {node.comment}
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={() => onReply(node.id)}
+            disabled={busy}
+            style={{
+              appearance: 'none',
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              fontSize: 10,
+              color: 'var(--mark)',
+              cursor: busy ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Reply
+          </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(node.id)}
+              disabled={busy}
+              style={{
+                appearance: 'none',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                fontSize: 10,
+                color: 'var(--txt3)',
+                cursor: busy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+      {node.replies && node.replies.length > 0 && (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {node.replies.map((child) => (
+            <CommentNodeView
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              currentUserId={currentUserId}
+              onReply={onReply}
+              onDelete={onDelete}
+              busy={busy}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
