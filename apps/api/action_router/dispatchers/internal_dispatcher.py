@@ -303,25 +303,115 @@ async def close_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
         - yacht_id: UUID
         - work_order_id: UUID
         - user_id: UUID (from JWT)
+
+    Side effect (PR-WO-6, 2026-04-23):
+        If the work order was created from a fault (fault_id IS NOT NULL) and
+        the linked fault is not yet terminal (status NOT IN {resolved, closed}),
+        transition the fault to status='resolved', stamp resolved_at + the FK
+        resolved_by_work_order_id, and emit a `fault_auto_resolved` ledger
+        event so FAULT05's lens can refetch.
+
+        The FK column write is gated by the 20260423 migration. If the column
+        does not exist yet (migration not applied in this environment) the
+        status + timestamp still flow and the FK write is skipped — no 500.
     """
     supabase = get_supabase_client()
+    wo_id = params["work_order_id"]
+    yacht_id = params["yacht_id"]
+    user_id = params["user_id"]
+
+    # Pre-read: need the fault_id to know whether to bridge. One extra read
+    # is cheap; the alternative (returning fault_id from the UPDATE ... RETURNING)
+    # needs supabase-py support we don't have here.
+    wo_pre = supabase.table("pms_work_orders").select(
+        "id, fault_id"
+    ).eq("id", wo_id).eq("yacht_id", yacht_id).limit(1).execute()
+    fault_id = (wo_pre.data[0].get("fault_id") if wo_pre.data else None)
 
     # Update work order status
+    now_iso = datetime.utcnow().isoformat()
     result = supabase.table("pms_work_orders").update({
         "status": "completed",
-        "completed_at": datetime.utcnow().isoformat(),
-        "completed_by": params["user_id"],
-    }).eq("id", params["work_order_id"]).eq(
-        "yacht_id", params["yacht_id"]
-    ).execute()
+        "completed_at": now_iso,
+        "completed_by": user_id,
+    }).eq("id", wo_id).eq("yacht_id", yacht_id).execute()
 
     if not result.data:
-        raise ValueError(f"Work order {params['work_order_id']} not found or access denied")
+        raise ValueError(f"Work order {wo_id} not found or access denied")
+
+    # ── Fault auto-resolve bridge ──
+    fault_auto_resolved = False
+    if fault_id:
+        try:
+            # Inspect current fault state — only transition if not terminal.
+            fr = supabase.table("pms_faults").select(
+                "id, status"
+            ).eq("id", fault_id).eq("yacht_id", yacht_id).limit(1).execute()
+            current_status = (fr.data[0].get("status") if fr.data else None)
+
+            if current_status and current_status not in ("resolved", "closed"):
+                update_payload: Dict[str, Any] = {
+                    "status": "resolved",
+                    "resolved_at": now_iso,
+                    "resolved_by": user_id,
+                }
+                # Try to include the FK — guarded because the 20260423
+                # migration may not be applied in every environment.
+                try:
+                    supabase.table("pms_faults").update({
+                        **update_payload,
+                        "resolved_by_work_order_id": wo_id,
+                    }).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
+                except Exception as col_err:
+                    logger.warning(
+                        "close_work_order: fault FK write failed (column "
+                        "likely absent; retrying without FK): %s", col_err
+                    )
+                    supabase.table("pms_faults").update(update_payload).eq(
+                        "id", fault_id
+                    ).eq("yacht_id", yacht_id).execute()
+
+                fault_auto_resolved = True
+
+                # Ledger emission — FAULT05's lens reacts to this to refetch.
+                try:
+                    from routes.handlers.ledger_utils import build_ledger_event
+                    ev = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="fault",
+                        entity_id=fault_id,
+                        action="fault_auto_resolved",
+                        change_summary=f"Auto-resolved by WO {wo_id} completion",
+                        metadata={
+                            "resolved_by_work_order_id": wo_id,
+                            "previous_status": current_status,
+                            "new_status": "resolved",
+                        },
+                    )
+                    supabase.table("ledger_events").insert(ev).execute()
+                except Exception as ledger_err:
+                    logger.warning(
+                        "close_work_order: fault_auto_resolved ledger "
+                        "emission failed (fault=%s, wo=%s): %s",
+                        fault_id, wo_id, ledger_err
+                    )
+        except Exception as bridge_err:
+            # Bridge is best-effort; don't fail the WO close just because the
+            # fault side couldn't transition. Operator will see the ledger
+            # gap and can fix manually.
+            logger.warning(
+                "close_work_order: fault bridge failed (fault=%s, wo=%s): %s",
+                fault_id, wo_id, bridge_err
+            )
 
     return {
         "work_order_id": result.data[0]["id"],
         "status": result.data[0]["status"],
         "completed_at": result.data[0]["completed_at"],
+        "fault_auto_resolved": fault_auto_resolved,
+        "linked_fault_id": fault_id,
     }
 
 
