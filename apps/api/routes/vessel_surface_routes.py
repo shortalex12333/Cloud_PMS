@@ -686,6 +686,9 @@ async def get_domain_records(
     vendor_reference: Optional[str] = Query(None, description="Vendor reference ilike (receiving)"),
     po_number: Optional[str] = Query(None, description="PO number ilike (receiving)"),
     currency: Optional[str] = Query(None, description="Currency exact match (receiving)"),
+    received_by_name: Optional[str] = Query(None, description="Received-by NAME ilike (receiving) — joined to auth_users_profiles"),
+    has_linked_work_order: Optional[str] = Query(None, description="'true' | 'false' — filter by linked_work_order_id presence (receiving)"),
+    has_discrepancies: Optional[str] = Query(None, description="'true' | 'false' — filter by presence of discrepancy ledger entries (receiving)"),
     # Work-order-specific filters (2026-04-24, WORKORDER05 PR-WO-5 calendar tab)
     due_from: Optional[str] = Query(None, description="Due date from (YYYY-MM-DD, work_orders)"),
     due_to: Optional[str] = Query(None, description="Due date to (YYYY-MM-DD, work_orders)"),
@@ -812,6 +815,48 @@ async def get_domain_records(
                 query = query.gte("received_date", date_from)
             if date_to:
                 query = query.lte("received_date", date_to)
+            if has_linked_work_order in ("true", "false"):
+                if has_linked_work_order == "true":
+                    query = query.not_.is_("linked_work_order_id", "null")
+                else:
+                    query = query.is_("linked_work_order_id", "null")
+            if received_by_name:
+                try:
+                    prof_q = supabase.table("auth_users_profiles").select("id").ilike(
+                        "name", f"%{received_by_name}%"
+                    )
+                    if len(yacht_ids) == 1:
+                        prof_q = prof_q.eq("yacht_id", yacht_ids[0])
+                    else:
+                        prof_q = prof_q.in_("yacht_id", yacht_ids)
+                    prof_r = prof_q.execute()
+                    user_ids = [u["id"] for u in (prof_r.data or []) if u.get("id")]
+                    if not user_ids:
+                        return {"domain": domain, "total_count": 0, "filtered_count": 0, "records": []}
+                    query = query.in_("received_by", user_ids)
+                except Exception as e:
+                    logger.warning(f"[DomainRecords] receiving received_by_name resolve failed: {e}")
+            if has_discrepancies in ("true", "false"):
+                try:
+                    ev_q = supabase.table("ledger_events").select("entity_id").eq(
+                        "entity_type", "receiving"
+                    ).eq("event_category", "discrepancy")
+                    if len(yacht_ids) == 1:
+                        ev_q = ev_q.eq("yacht_id", yacht_ids[0])
+                    else:
+                        ev_q = ev_q.in_("yacht_id", yacht_ids)
+                    ev_r = ev_q.execute()
+                    flagged_ids = list({e["entity_id"] for e in (ev_r.data or []) if e.get("entity_id")})
+                    if has_discrepancies == "true":
+                        if not flagged_ids:
+                            return {"domain": domain, "total_count": 0, "filtered_count": 0, "records": []}
+                        query = query.in_("id", flagged_ids)
+                    else:
+                        if flagged_ids:
+                            ids_csv = ",".join(flagged_ids)
+                            query = query.filter("id", "not.in", f"({ids_csv})")
+                except Exception as e:
+                    logger.warning(f"[DomainRecords] receiving has_discrepancies resolve failed: {e}")
 
         # Soft-delete filter — hide deleted records
         if domain in ("documents", "purchase_orders"):
