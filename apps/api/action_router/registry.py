@@ -2066,6 +2066,90 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # ========================================================================
+    # Domain: cohort-shared (polymorphic across work_orders, equipment, faults,
+    #                       handovers, etc. via pms_attachments.entity_type)
+    # Table : pms_attachment_comments
+    # Added : 2026-04-24 — CEO pivot from single-caption to threaded comments.
+    #         Mirrors doc_metadata_comments 1:1 with attachment_id key.
+    # ========================================================================
+
+    "add_attachment_comment": ActionDefinition(
+        action_id="add_attachment_comment",
+        label="Add Comment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "attachment_id", "comment"],
+        domain=None,  # polymorphic — attachment.entity_type drives the host lens
+        variant=ActionVariant.MUTATE,
+        search_keywords=["comment", "note", "photo", "attachment", "add", "remark", "caption", "annotation"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("attachment_id", FieldClassification.REQUIRED, description="pms_attachments.id UUID"),
+            FieldMetadata("comment", FieldClassification.REQUIRED, description="Comment text"),
+            FieldMetadata("parent_comment_id", FieldClassification.OPTIONAL, description="Parent comment UUID for threaded reply"),
+        ],
+    ),
+
+    "update_attachment_comment": ActionDefinition(
+        action_id="update_attachment_comment",
+        label="Edit Comment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "comment_id", "comment"],
+        domain=None,
+        variant=ActionVariant.MUTATE,
+        search_keywords=["edit", "update", "comment", "revise", "correct", "caption"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("comment_id", FieldClassification.REQUIRED, description="pms_attachment_comments.id UUID"),
+            FieldMetadata("comment", FieldClassification.REQUIRED, description="New comment text"),
+        ],
+    ),
+
+    "delete_attachment_comment": ActionDefinition(
+        action_id="delete_attachment_comment",
+        label="Delete Comment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "comment_id"],
+        domain=None,
+        variant=ActionVariant.MUTATE,
+        search_keywords=["delete", "remove", "comment", "erase", "caption"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("comment_id", FieldClassification.REQUIRED, description="pms_attachment_comments.id UUID"),
+        ],
+    ),
+
+    "list_attachment_comments": ActionDefinition(
+        action_id="list_attachment_comments",
+        label="View Comments",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "attachment_id"],
+        domain=None,
+        variant=ActionVariant.READ,
+        search_keywords=["list", "view", "comments", "attachment", "photo", "show"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("attachment_id", FieldClassification.REQUIRED, description="pms_attachments.id UUID"),
+            FieldMetadata("include_threads", FieldClassification.OPTIONAL, description="Include threaded replies (default: true)"),
+        ],
+    ),
+
+    # ========================================================================
     # PARTS/INVENTORY ACTIONS (Part Lens v2)
     # ========================================================================
     # 10 actions: 2 READ, 6 MUTATE, 2 SIGNED
