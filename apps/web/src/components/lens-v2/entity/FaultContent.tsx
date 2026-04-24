@@ -118,7 +118,11 @@ export function FaultContent() {
   const auditTrail = ((entity?.audit_trail ?? payload.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
-  const investigateAction = getAction('investigate_fault');
+  // Note: investigate_fault is removed per Issue 7 spec (wasteful; status flips via
+  //   acknowledge_fault instead). resolve_fault/archive_fault/link_parts_to_fault
+  //   are pending in the backend consolidated pass; until they ship, getAction
+  //   returns null and the corresponding UI paths are hidden automatically.
+  const acknowledgeAction = getAction('acknowledge_fault');
   const resolveAction = getAction('resolve_fault');
   const closeAction = getAction('close_fault');
   const addNoteAction = getAction('add_fault_note');
@@ -185,29 +189,34 @@ export function FaultContent() {
   );
 
   // ── Split button config ──
-  // Primary action depends on current status
+  // Primary-action matrix (locked in docs/ongoing_work/faults/FAULT_CARD_DESIGN_SPEC.md §4):
+  //   open           → Acknowledge Fault
+  //   investigating  → Resolve Fault (direct; WO creation optional, via dropdown)
+  //   acknowledged   → Resolve Fault
+  //   resolved       → Close Fault
+  //   archived (deleted_at IS NOT NULL) → no primary (Reopen via dropdown only)
   const isOpen = status === 'open';
   const isInvestigating = ['investigating', 'under_review', 'acknowledged'].includes(status);
   const isResolved = status === 'resolved';
-  const isClosed = status === 'closed';
+  const isArchived = Boolean((entity as any)?.deleted_at ?? payload.deleted_at);
 
-  let primaryLabel: string;
-  let primaryAction: string;
-  if (isOpen && investigateAction !== null) {
-    primaryLabel = 'Investigate';
-    primaryAction = 'investigate_fault';
+  let primaryLabel = '';
+  let primaryAction = '';
+  if (isArchived) {
+    // No primary action on archived; user can Reopen via dropdown.
+  } else if (isOpen && acknowledgeAction !== null) {
+    primaryLabel = 'Acknowledge Fault';
+    primaryAction = 'acknowledge_fault';
   } else if (isInvestigating && resolveAction !== null) {
     primaryLabel = 'Resolve Fault';
     primaryAction = 'resolve_fault';
-  } else if ((isOpen || isInvestigating) && closeAction !== null) {
+  } else if (isInvestigating && closeAction !== null) {
+    // Fallback until resolve_fault lands in the registry
     primaryLabel = 'Close Fault';
     primaryAction = 'close_fault';
   } else if (isResolved && closeAction !== null) {
     primaryLabel = 'Close Fault';
     primaryAction = 'close_fault';
-  } else {
-    primaryLabel = 'Edit Details';
-    primaryAction = '';
   }
 
   const hasPrimaryAction = primaryAction !== '';
@@ -317,7 +326,9 @@ export function FaultContent() {
   const handleAddNote = React.useCallback(() => setAddNoteOpen(true), []);
   const handleNoteSubmit = React.useCallback(
     async (noteText: string) => {
-      const result = await executeAction('add_fault_note', { note_text: noteText });
+      // Field name must match registry (apps/api/action_router/registry.py:1188)
+      // + DB column (pms_notes.text). Previous 'note_text' caused 400 BAD_REQUEST.
+      const result = await executeAction('add_fault_note', { text: noteText });
       const isSuccess = result.success === true ||
         (result as unknown as { status?: string }).status === 'success';
       return { success: isSuccess, error: result.error ?? result.message };

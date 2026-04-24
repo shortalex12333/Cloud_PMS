@@ -826,7 +826,7 @@ async def execute_action(
         "add_wo_note": ["work_order_id", "note_text"],
         # Tier 1 - Fault/WO History
         "view_fault_history": ["equipment_id"],
-        "add_fault_note": ["note_text"],
+        "add_fault_note": ["text"],  # Must match registry.py:1188 + pms_notes.text column (was "note_text" → caused 400 on every fault note submit)
         "view_work_order_history": ["equipment_id"],
         "suggest_parts": ["fault_id"],
         # Tier 2 - Equipment Views
