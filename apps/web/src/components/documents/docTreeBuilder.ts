@@ -138,18 +138,48 @@ export function buildDocTree(docs: Doc[]): TreeNode[] {
     return getOrCreateFolder(rest, depth + 1, folder.children, folderMap, fullPath);
   };
 
-  // UUID pattern — first storage_path segment is the yacht UUID prefix; strip it.
+  // UUID pattern — used twice below:
+  //   1. The leading yacht_uuid segment that always prefixes storage_path.
+  //   2. The per-doc uniqueness UUID segment produced by the lens upload path
+  //      (storage_path_template = "{yacht_id}/documents/{doc_id}/{filename}").
+  //      That second segment is storage housekeeping, NOT a user-intended
+  //      folder — showing it in the tree produces 20+ UUID rows under a
+  //      single "documents" parent. We strip it when the pattern matches.
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   for (const doc of docs) {
     // Use storage_path (the real bucket path) to build the folder hierarchy.
     // storage_path format: {yacht_uuid}/{folder_1}/.../{folder_n}/{filename}
-    // Strip the leading yacht UUID so the tree mirrors the bucket folder structure.
+    // Strip the leading yacht UUID so the tree mirrors the bucket structure.
+    // Additionally collapse the upload-uniqueness namespace
+    // `documents/{doc_uuid}/` when the lens-upload path produced it — that
+    // namespace is for blob-key uniqueness, not user navigation.
     const rawPath = doc.storage_path || '';
     const allSegments = (() => {
       if (!rawPath) return [];
-      const segs = splitPath(rawPath);
-      return segs.length > 0 && UUID_RE.test(segs[0]) ? segs.slice(1) : segs;
+      let segs = splitPath(rawPath);
+      // Strip leading yacht UUID
+      if (segs.length > 0 && UUID_RE.test(segs[0])) {
+        segs = segs.slice(1);
+      }
+      // Collapse `documents/{doc_uuid}/` lens-upload namespace.
+      //   ["documents", "<uuid>", <filename>]     ← typical lens upload
+      //   ["documents", "<uuid>", "sub", <file>]  ← same + extra (rare)
+      // We keep any segments AFTER the uuid. If NO segments remain after
+      // the filename is dropped (common case — just the filename), return
+      // an empty array so the doc_type-fallback bucket takes over. Dumping
+      // the file at root with no folder is worse UX than grouping by type.
+      if (
+        segs.length >= 3 &&
+        segs[0] === 'documents' &&
+        UUID_RE.test(segs[1])
+      ) {
+        segs = segs.slice(2);
+        // After stripping: if only the filename remains, hand off to the
+        // doc_type fallback by returning an empty list here.
+        if (segs.length <= 1) return [];
+      }
+      return segs;
     })();
     // Drop the final segment — it's the file itself, not a folder.
     const folderSegments = allSegments.length > 0 ? allSegments.slice(0, -1) : [];
