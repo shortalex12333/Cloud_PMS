@@ -26,20 +26,19 @@ import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
+import { ReceivingPackingList, type PackingItem } from '../sections/ReceivingPackingList';
 
 // Sections
 import {
   NotesSection,
   AuditTrailSection,
   AttachmentsSection,
-  PartsSection,
   DocRowsSection,
   KVSection,
   HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
-  type PartItem,
   type DocRowItem,
   type KVItem,
   type HistoryPeriod,
@@ -205,33 +204,26 @@ export function ReceivingContent() {
     }));
 
   // -- Map section data --
-  const partItems: PartItem[] = items.map((item, i) => {
-    const expected = item.quantity_ordered ?? item.quantity_expected ?? item.quantity;
-    const received = item.quantity_received ?? item.received;
-    const itemStatus = (item.status as string) ?? '';
-    const discrepancyReason = (item.discrepancy_reason ?? item.reason) as string | undefined;
-
-    let stockDisplay: string | undefined;
-    if (expected !== undefined && received !== undefined) {
-      stockDisplay = `Exp: ${expected} / Rcvd: ${received}`;
-      if (discrepancyReason) {
-        stockDisplay += ` — ${discrepancyReason}`;
-      }
-    } else if (itemStatus) {
-      stockDisplay = formatLabel(itemStatus);
-    }
-
-    return {
-      id: (item.id as string) ?? `item-${i}`,
-      name: (item.name ?? item.description ?? item.part_name) as string ?? 'Item',
-      partNumber: (item.part_number ?? item.sku) as string | undefined,
-      quantity: received !== undefined ? `x ${received}` : undefined,
-      stock: stockDisplay,
-      onNavigate: item.part_id
-        ? () => router.push(getEntityRoute('parts' as Parameters<typeof getEntityRoute>[0], item.part_id as string))
-        : undefined,
-    };
-  });
+  // Packing list = the reconciliation grid (canonical "Checklist" section
+  // per the design philosophy spec). Maps backend pms_receiving_items rows
+  // to the column shape the grid expects. Δ computed client-side in the
+  // section component.
+  const packingItems: PackingItem[] = items.map((item, i) => ({
+    id: (item.id as string) ?? `item-${i}`,
+    partId: (item.part_id as string | null | undefined) ?? null,
+    partCode: (item.part_number ?? item.part_code ?? item.sku) as string | null | undefined,
+    partName: (item.part_name ?? item.name) as string | null | undefined,
+    description: (item.description) as string | null | undefined,
+    manufacturer: (item.manufacturer) as string | null | undefined,
+    quantityExpected: item.quantity_expected === null || item.quantity_expected === undefined
+      ? null
+      : Number(item.quantity_expected),
+    quantityReceived: Number(item.quantity_received ?? 0),
+    unitPrice: item.unit_price === null || item.unit_price === undefined
+      ? null
+      : Number(item.unit_price),
+    currency: (item.currency) as string | null | undefined,
+  }));
 
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
@@ -300,10 +292,14 @@ export function ReceivingContent() {
         }
       />
 
-      {/* Packing List (line items with expected vs received) */}
+      {/* Packing List — reconciliation grid (the hero section per philosophy) */}
       <ScrollReveal>
-        <PartsSection
-          parts={partItems}
+        <ReceivingPackingList
+          items={packingItems}
+          storedSubtotal={(entity?.subtotal ?? payload.subtotal) as number | null | undefined}
+          storedTaxTotal={(entity?.tax_total ?? payload.tax_total) as number | null | undefined}
+          storedTotal={total}
+          headerCurrency={currency}
         />
       </ScrollReveal>
 
