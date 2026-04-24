@@ -106,6 +106,11 @@ const SUPPRESS_LEDGER_HISTORY: ReadonlySet<string> = new Set<string>([
   // lens gains its own in-tab audit surface.
   'certificate',
   'work_order',
+  // FaultContent renders HistorySection (prior iterations) + AuditTrailSection
+  // (mutation ledger from audit_trail field) inline. The appended read-action
+  // receipt was wasteful and conflated with the real History above
+  // (CEO directive 2026-04-24, list_of_faults.md Issue 7).
+  'fault',
 ]);
 
 function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
