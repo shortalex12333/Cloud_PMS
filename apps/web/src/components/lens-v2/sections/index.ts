@@ -33,3 +33,8 @@ export {
   type RenewalHistorySectionProps,
   type SupersededBannerProps,
 } from './RenewalHistorySection';
+
+// ── Cohort-shared image viewer (2026-04-24) ──
+// 1 comment per image per CEO ruling → pms_attachments.description.
+// Consumed by work-orders (PR-WO-4b) + equipment (PR-EQ-4) + future lenses.
+export { LensImageViewer, type LensImage, type LensImageViewerProps } from './LensImageViewer';
