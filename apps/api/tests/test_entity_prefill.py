@@ -66,6 +66,70 @@ class TestResolvePrefill:
         result = resolve_prefill("purchase_order", "any_action", {"id": "po-1"})
         assert result == {}
 
+    # ── Work-order long-form prefills (Issue 6 button audit 2026-04-23) ──
+    # Regression: before this PR the prefill map only keyed short aliases
+    # (add_wo_*) — the dropdown dispatched long ids (add_note_to_work_order,
+    # add_parts_to_work_order, add_work_order_note, add_work_order_photo) and
+    # the lookup missed, so work_order_id was never injected, so every action
+    # 400'd at the required-fields validator.
+    @pytest.mark.parametrize("action_id", [
+        "add_note_to_work_order",
+        "add_work_order_note",
+        "add_parts_to_work_order",
+        "add_part_to_work_order",
+        "add_work_order_hours",
+        "add_work_order_photo",
+        "start_work_order",
+        "close_work_order",
+        "cancel_work_order",
+        "assign_work_order",
+        "reassign_work_order",
+        "update_work_order",
+        "view_checklist",
+        "view_work_order_checklist",
+        "add_checklist_note",
+        "add_checklist_photo",
+        "mark_checklist_item_complete",
+        "update_worklist_progress",
+        "view_work_order_detail",
+        "view_work_order_history",
+    ])
+    def test_work_order_action_receives_work_order_id(self, action_id):
+        from action_router.entity_prefill import resolve_prefill
+        entity_data = {"id": "wo-uuid-1", "title": "Service main engine"}
+        result = resolve_prefill("work_order", action_id, entity_data)
+        assert result.get("work_order_id") == "wo-uuid-1", (
+            f"action {action_id!r} must prefill work_order_id to prevent 400 "
+            f"at the required-fields validator"
+        )
+
+    def test_work_order_archive_supplies_entity_id(self):
+        # archive_work_order declares entity_id (not work_order_id) in
+        # required_fields — the prefill should supply both so the dispatcher
+        # can route regardless of which field name it trims against.
+        from action_router.entity_prefill import resolve_prefill
+        entity_data = {"id": "wo-uuid-1"}
+        result = resolve_prefill("work_order", "archive_work_order", entity_data)
+        assert result.get("entity_id") == "wo-uuid-1"
+        assert result.get("work_order_id") == "wo-uuid-1"
+
+    def test_work_order_delete_uses_entity_id(self):
+        from action_router.entity_prefill import resolve_prefill
+        entity_data = {"id": "wo-uuid-1"}
+        result = resolve_prefill("work_order", "delete_work_order", entity_data)
+        assert result.get("entity_id") == "wo-uuid-1"
+
+    def test_work_order_short_aliases_still_work(self):
+        # Short aliases (add_wo_*) remain keyed for backward-compat with
+        # shard-33 + shard-41 HARD-PROOF e2e tests that call them directly
+        # via callAction bypassing the UI. Do not remove without migrating
+        # those suites.
+        from action_router.entity_prefill import resolve_prefill
+        entity_data = {"id": "wo-uuid-1"}
+        for alias in ("add_wo_note", "add_wo_part", "add_wo_hours", "add_wo_photo"):
+            result = resolve_prefill("work_order", alias, entity_data)
+            assert result.get("work_order_id") == "wo-uuid-1", alias
+
 
 class TestGetFieldSchema:
     def test_required_and_optional_split(self):

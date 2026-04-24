@@ -28,9 +28,24 @@ export const ACTION_DISPLAY: Record<string, { icon: string; cluster: ActionClust
   reassign_work_order:            { icon: 'user',          cluster: 'entity'       },
   update_work_order:              { icon: 'edit',          cluster: 'entity'       },
   // Work Order — inline content
+  // Canonical long-form action_ids (matches registry + entity_prefill).
+  // Short aliases kept for backward-compat with in-flight callers.
+  add_work_order_note:            { icon: 'message',       cluster: 'notes'        },
+  add_note_to_work_order:         { icon: 'message',       cluster: 'notes'        },
   add_wo_note:                    { icon: 'message',       cluster: 'notes'        },
+  add_parts_to_work_order:        { icon: 'package',       cluster: 'inventory'    },
   add_wo_part:                    { icon: 'package',       cluster: 'inventory'    },
+  add_work_order_hours:           { icon: 'clock',         cluster: 'notes'        },
   add_wo_hours:                   { icon: 'clock',         cluster: 'notes'        },
+  add_work_order_photo:           { icon: 'camera',        cluster: 'notes'        },
+  add_wo_photo:                   { icon: 'camera',        cluster: 'notes'        },
+  assign_work_order:              { icon: 'user',          cluster: 'entity'       },
+  view_checklist:                 { icon: 'list',          cluster: 'compliance'   },
+  add_checklist_note:             { icon: 'message',       cluster: 'compliance'   },
+  add_checklist_photo:            { icon: 'camera',        cluster: 'compliance'   },
+  mark_checklist_item_complete:   { icon: 'check',         cluster: 'compliance'   },
+  update_worklist_progress:       { icon: 'activity',      cluster: 'lifecycle'    },
+  add_to_handover:                { icon: 'clipboard',     cluster: 'entity'       },
   // Fault — lifecycle
   close_fault:                    { icon: 'check',         cluster: 'lifecycle'    },
   reopen_fault:                   { icon: 'rotate-ccw',   cluster: 'lifecycle'    },
