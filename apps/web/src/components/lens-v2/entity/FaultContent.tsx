@@ -317,7 +317,9 @@ export function FaultContent() {
   const handleAddNote = React.useCallback(() => setAddNoteOpen(true), []);
   const handleNoteSubmit = React.useCallback(
     async (noteText: string) => {
-      const result = await executeAction('add_fault_note', { note_text: noteText });
+      // Field name must match registry (apps/api/action_router/registry.py:1188)
+      // + DB column (pms_notes.text). Previous 'note_text' caused 400 BAD_REQUEST.
+      const result = await executeAction('add_fault_note', { text: noteText });
       const isSuccess = result.success === true ||
         (result as unknown as { status?: string }).status === 'success';
       return { success: isSuccess, error: result.error ?? result.message };
