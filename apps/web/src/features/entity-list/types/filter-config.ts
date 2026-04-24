@@ -377,6 +377,33 @@ export const RECEIVING_FILTERS: FilterFieldConfig[] = [
     ],
     category: 'properties',
   },
+  {
+    key: 'received_by_name',
+    label: 'Received By',
+    type: 'text',
+    placeholder: 'Filter by crew name...',
+    category: 'properties',
+  },
+  {
+    key: 'has_linked_work_order',
+    label: 'Linked Work Order',
+    type: 'select',
+    options: [
+      { value: 'true', label: 'Has linked WO' },
+      { value: 'false', label: 'No linked WO' },
+    ],
+    category: 'properties',
+  },
+  {
+    key: 'has_discrepancies',
+    label: 'Discrepancies',
+    type: 'select',
+    options: [
+      { value: 'true', label: 'Has discrepancies' },
+      { value: 'false', label: 'No discrepancies' },
+    ],
+    category: 'status-priority',
+  },
 ];
 
 // SHOPPING LIST — every filterable column on pms_shopping_list_items (no UUIDs).
