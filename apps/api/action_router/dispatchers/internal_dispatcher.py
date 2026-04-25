@@ -3700,6 +3700,26 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
             "updated_by": user_id,
         }).eq("id", item["id"]).eq("yacht_id", yacht_id).execute()
 
+    # Data continuity: PO placed — prompt receipt + invoice when goods arrive
+    if user_id:
+        try:
+            import uuid as _uuid_notif
+            supabase.table("pms_notifications").insert({
+                "yacht_id": yacht_id,
+                "user_id": user_id,
+                "notification_type": "purchase_order.placed_pending_receipt",
+                "title": f"{po_number} placed — mark received when goods arrive",
+                "body": f"{len(items)} item(s) ordered. Mark as received and upload the supplier invoice when goods arrive.",
+                "priority": "normal",
+                "entity_type": "purchase_order",
+                "entity_id": po_id,
+                "idempotency_key": f"po_placed_{po_id}_{str(_uuid_notif.uuid4())[:8]}",
+                "is_read": False,
+                "triggered_by": user_id,
+            }).execute()
+        except Exception as notif_err:
+            logger.warning(f"[Notification] convert_to_po notification failed (non-fatal): {notif_err}")
+
     return {
         "status": "success",
         "po_id": po_id,

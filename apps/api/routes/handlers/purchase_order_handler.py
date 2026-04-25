@@ -16,6 +16,36 @@ from routes.handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 
+
+def _push_po_notification(
+    db_client: Client,
+    yacht_id: str,
+    user_id: str,
+    notification_type: str,
+    title: str,
+    body: str,
+    entity_id: str,
+    priority: str = "normal",
+) -> None:
+    import uuid as _uuid
+    try:
+        db_client.table("pms_notifications").insert({
+            "yacht_id": yacht_id,
+            "user_id": user_id,
+            "notification_type": notification_type,
+            "title": title,
+            "body": body,
+            "priority": priority,
+            "entity_type": "purchase_order",
+            "entity_id": entity_id,
+            "idempotency_key": f"po_{notification_type}_{entity_id}_{str(_uuid.uuid4())[:8]}",
+            "is_read": False,
+            "triggered_by": user_id,
+        }).execute()
+    except Exception as notif_err:
+        logger.warning(f"[Notification] po {notification_type} failed (non-fatal): {notif_err}")
+
+
 # Used by approve_purchase_order, mark_po_received, cancel_purchase_order only.
 # submit_purchase_order is intentionally open to all authenticated users.
 # purser = financial officer on board; chief_officer / chief_steward = department heads
@@ -130,6 +160,21 @@ async def mark_po_received(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record mark_po_received: {ledger_err}")
+        # Data continuity: prompt invoice upload — goods received but record is open until invoice filed
+        try:
+            po_row = db_client.table("pms_purchase_orders").select("po_number").eq(
+                "id", po_id
+            ).limit(1).execute()
+            po_number = po_row.data[0]["po_number"] if po_row.data else "PO"
+        except Exception:
+            po_number = "PO"
+        _push_po_notification(
+            db_client=db_client, yacht_id=yacht_id, user_id=user_id,
+            notification_type="purchase_order.received_no_invoice",
+            title=f"{po_number} received — upload invoice",
+            body="Goods received. Upload the supplier invoice to close this purchase order.",
+            entity_id=po_id, priority="high",
+        )
         return {"status": "success", "message": "Purchase order marked as received"}
     else:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update purchase order"}
@@ -498,6 +543,15 @@ async def create_purchase_order(
     except Exception as ledger_err:
         if "204" not in str(ledger_err):
             logger.warning(f"[Ledger] Failed to record create_purchase_order: {ledger_err}")
+
+    # Data continuity: draft PO has no items yet — remind creator to complete it
+    _push_po_notification(
+        db_client=db_client, yacht_id=yacht_id, user_id=user_id,
+        notification_type="purchase_order.draft_created",
+        title=f"{po_number} created — add items to order",
+        body="Draft PO is open. Add line items and confirm the supplier before submitting for approval.",
+        entity_id=po_id,
+    )
 
     return {"status": "success", "purchase_order_id": po_id, "po_number": po_number}
 
