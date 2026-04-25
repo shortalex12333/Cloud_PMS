@@ -76,7 +76,7 @@ function ViewToggle({
               cursor: 'pointer',
               textTransform: 'capitalize',
               boxShadow: isActive
-                ? '0 1px 2px rgba(0,0,0,0.08)'
+                ? 'var(--shadow-card)'
                 : 'none',
               transition: 'background 120ms ease, color 120ms ease',
             }}
