@@ -957,9 +957,9 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
         description = params.get("description")
         request_context = params.get("request_context")
 
-        # Get current item
+        # Get current item (fetch disposition fields for Q4 clamp logic)
         item_result = db.table("pms_receiving_items").select(
-            "id, quantity_received, unit_price, description"
+            "id, quantity_received, quantity_accepted, quantity_rejected, disposition, unit_price, description, part_id"
         ).eq("id", receiving_item_id).eq("yacht_id", yacht_id).eq("receiving_id", receiving_id).maybe_single().execute()
 
         if not item_result.data:
@@ -973,6 +973,8 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
 
         # Build update payload
         update_payload = {}
+        hod_override_clamp: dict | None = None  # populated when HOD reduces quantity_received
+
         if quantity_received is not None:
             if quantity_received < 0:
                 return {
@@ -981,7 +983,32 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
                     "message": "Quantity received cannot be negative"
                 }
             update_payload["quantity_received"] = quantity_received
-        if quantity_accepted is not None:
+
+            # Q4: HOD downward-quantity override — auto-clamp accepted/rejected so
+            # the DB check constraint (accepted+rejected <= received) never fires.
+            # Emit ledger + notify HOD so nothing is silently lost.
+            old_qty = float(old_data.get("quantity_received") or 0)
+            new_qty = float(quantity_received)
+            if new_qty < old_qty:
+                old_accepted = float(old_data.get("quantity_accepted") or 0)
+                old_rejected = float(old_data.get("quantity_rejected") or 0)
+                clamped_accepted = min(old_accepted, new_qty)
+                clamped_rejected = min(old_rejected, max(0.0, new_qty - clamped_accepted))
+                if clamped_accepted != old_accepted or clamped_rejected != old_rejected:
+                    update_payload["quantity_accepted"] = clamped_accepted
+                    update_payload["quantity_rejected"] = clamped_rejected
+                    if clamped_accepted + clamped_rejected < new_qty:
+                        update_payload["disposition"] = "pending"
+                    hod_override_clamp = {
+                        "old_received": old_qty,
+                        "new_received": new_qty,
+                        "old_accepted": old_accepted,
+                        "new_accepted": clamped_accepted,
+                        "old_rejected": old_rejected,
+                        "new_rejected": clamped_rejected,
+                    }
+
+        if quantity_accepted is not None and "quantity_accepted" not in update_payload:
             if quantity_accepted < 0:
                 return {
                     "status": "error",
@@ -989,7 +1016,7 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
                     "message": "Quantity accepted cannot be negative"
                 }
             update_payload["quantity_accepted"] = quantity_accepted
-        if quantity_rejected is not None:
+        if quantity_rejected is not None and "quantity_rejected" not in update_payload:
             if quantity_rejected < 0:
                 return {
                     "status": "error",
@@ -997,7 +1024,7 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
                     "message": "Quantity rejected cannot be negative"
                 }
             update_payload["quantity_rejected"] = quantity_rejected
-        if disposition is not None:
+        if disposition is not None and "disposition" not in update_payload:
             valid = ("pending", "accepted", "short", "damaged", "wrong_item", "over")
             if disposition not in valid:
                 return {
@@ -1022,6 +1049,63 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
         db.table("pms_receiving_items").update(update_payload).eq(
             "id", receiving_item_id
         ).execute()
+
+        # Q4: if a downward clamp happened, write ledger + notify HOD so the
+        # override is visible and requires follow-up — not silently swallowed.
+        if hod_override_clamp:
+            try:
+                from routes.handlers.ledger_utils import build_ledger_event
+                ledger_row = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id or "system",
+                    event_type="update",
+                    entity_type="receiving",
+                    entity_id=receiving_id,
+                    action="hod_quantity_override",
+                    event_category="override",
+                    change_summary=(
+                        f"HOD reduced quantity_received on item {receiving_item_id}: "
+                        f"{hod_override_clamp['old_received']} → {hod_override_clamp['new_received']}. "
+                        f"Accepted auto-clamped {hod_override_clamp['old_accepted']} → {hod_override_clamp['new_accepted']}."
+                    ),
+                    metadata=hod_override_clamp,
+                    new_state={"requires_followup": True},
+                )
+                db.table("ledger_events").insert(ledger_row).execute()
+            except Exception as e:
+                logger.warning(f"hod_quantity_override ledger write failed: {e}")
+
+            try:
+                hod_rows = db.table("auth_users_roles").select("user_id, role").eq(
+                    "yacht_id", yacht_id
+                ).in_("role", ["chief_engineer", "chief_officer", "captain", "manager"]).eq("is_active", True).execute()
+                notifs = []
+                for hod in (hod_rows.data or []):
+                    notifs.append({
+                        "id": str(uuid.uuid4()),
+                        "yacht_id": yacht_id,
+                        "user_id": hod["user_id"],
+                        "notification_type": "hod_quantity_override",
+                        "title": "Receiving quantity corrected — follow-up required",
+                        "body": (
+                            f"Quantity received was reduced from {hod_override_clamp['old_received']} to "
+                            f"{hod_override_clamp['new_received']}. Accepted quantities have been clamped. "
+                            "Please review and confirm the receiving checklist."
+                        ),
+                        "priority": "high",
+                        "entity_type": "receiving",
+                        "entity_id": receiving_id,
+                        "triggered_by": user_id,
+                        "idempotency_key": f"hod_override:{receiving_item_id}:{update_payload.get('quantity_received')}",
+                        "is_read": False,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                if notifs:
+                    db.table("pms_notifications").upsert(
+                        notifs, on_conflict="yacht_id,user_id,idempotency_key"
+                    ).execute()
+            except Exception as e:
+                logger.warning(f"hod_quantity_override notification failed: {e}")
 
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
