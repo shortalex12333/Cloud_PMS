@@ -15,7 +15,9 @@ type HandlerFunction = (
 ) => Promise<ActionResult>;
 
 // Import all handler modules
-import { faultHandlers } from './faults';
+// NOTE: faults.ts was deleted — it queried TENANT tables from a MASTER-scoped
+// Supabase client (broken in production). All fault actions now route through
+// executeAction() → Render backend which holds TENANT credentials.
 import { workOrderHandlers } from './workOrders';
 import { equipmentHandlers } from './equipment';
 import { inventoryHandlers } from './inventory';
@@ -27,7 +29,6 @@ import { procurementHandlers } from './procurement';
  * All handlers grouped by domain
  */
 const allHandlers = {
-  ...faultHandlers,
   ...workOrderHandlers,
   ...equipmentHandlers,
   ...inventoryHandlers,
@@ -43,10 +44,8 @@ const allHandlers = {
  * all microaction handlers.
  */
 export function registerAllHandlers(): void {
-  // Fault handlers
-  for (const [name, handler] of Object.entries(faultHandlers)) {
-    registerHandler(name, handler as HandlerFunction);
-  }
+  // Fault handlers: REMOVED — queried TENANT from MASTER client (broken in prod).
+  // All fault actions route via executeAction() → Render backend (TENANT creds).
 
   // Work order handlers
   for (const [name, handler] of Object.entries(workOrderHandlers)) {
@@ -84,7 +83,6 @@ export function registerAllHandlers(): void {
  */
 function getHandlerStats(): Record<string, number> {
   return {
-    faults: Object.keys(faultHandlers).length,
     workOrders: Object.keys(workOrderHandlers).length,
     equipment: Object.keys(equipmentHandlers).length,
     inventory: Object.keys(inventoryHandlers).length,

@@ -379,6 +379,16 @@ async def close_fault(
         .execute()
     )
     if fault_result.data:
+        # Write close_reason to metadata if provided
+        close_reason = payload.get("close_reason", "")
+        if close_reason:
+            try:
+                current_meta = check.data.get("metadata") or {}
+                current_meta["close_reason"] = close_reason
+                db_client.table("pms_faults").update({"metadata": current_meta}).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
+            except Exception as meta_err:
+                logger.warning(f"[close_fault] Failed to write close_reason to metadata: {meta_err}")
+
         try:
             ev = build_ledger_event(
                 yacht_id=yacht_id,
@@ -391,7 +401,7 @@ async def close_fault(
                 change_summary=f"Fault closed — status: {current_status} → closed",
                 entity_name=entity_name,
                 previous_state={"status": current_status},
-                new_state={"status": "closed"},
+                new_state={"status": "closed", "close_reason": close_reason},
             )
             db_client.table("ledger_events").insert(ev).execute()
         except Exception as ledger_err:
@@ -856,6 +866,194 @@ async def list_faults(
     }
 
 
+async def archive_fault(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    """Soft-delete: writes deleted_at, deleted_by, deletion_reason. Does NOT change status column."""
+    fault_id = payload.get("fault_id") or payload.get("entity_id")
+    reason = payload.get("reason", "")
+
+    if not fault_id:
+        raise HTTPException(status_code=400, detail="fault_id is required")
+
+    check = (
+        db_client.table("pms_faults")
+        .select("id, status, title, deleted_at")
+        .eq("id", fault_id)
+        .eq("yacht_id", yacht_id)
+        .single()
+        .execute()
+    )
+    if not check.data:
+        raise HTTPException(status_code=404, detail="Fault not found")
+    if check.data.get("deleted_at"):
+        return {"status": "error", "error_code": "ALREADY_ARCHIVED", "message": "Fault is already archived"}
+
+    entity_name = check.data.get("title") or ""
+
+    update_result = (
+        db_client.table("pms_faults")
+        .update({
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "deleted_by": user_id,
+            "deletion_reason": reason,
+            "updated_by": user_id,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+        .eq("id", fault_id)
+        .eq("yacht_id", yacht_id)
+        .execute()
+    )
+
+    if update_result.data:
+        try:
+            ev = build_ledger_event(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                event_type="archive",
+                entity_type="fault",
+                entity_id=fault_id,
+                action="archive_fault",
+                user_role=user_context.get("role"),
+                change_summary=f"Fault archived — reason: {reason or 'not specified'}",
+                entity_name=entity_name,
+                new_state={"deleted_at": "NOW()", "deletion_reason": reason},
+            )
+            db_client.table("ledger_events").insert(ev).execute()
+        except Exception as ledger_err:
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] Failed to record archive_fault: {ledger_err}")
+        return {"status": "success", "fault_id": fault_id, "message": "Fault archived"}
+    return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to archive fault"}
+
+
+async def link_parts_to_fault(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    """Insert rows into pms_fault_parts (upsert — ignore duplicates)."""
+    fault_id = payload.get("fault_id")
+    part_ids = payload.get("part_ids", [])
+    notes = payload.get("notes", "")
+
+    if not fault_id:
+        raise HTTPException(status_code=400, detail="fault_id is required")
+    if not part_ids:
+        raise HTTPException(status_code=400, detail="part_ids is required and must be non-empty")
+
+    check = (
+        db_client.table("pms_faults")
+        .select("id")
+        .eq("id", fault_id)
+        .eq("yacht_id", yacht_id)
+        .single()
+        .execute()
+    )
+    if not check.data:
+        raise HTTPException(status_code=404, detail="Fault not found")
+
+    inserted = 0
+    skipped = 0
+    for part_id in part_ids:
+        try:
+            result = (
+                db_client.table("pms_fault_parts")
+                .upsert(
+                    {"fault_id": fault_id, "part_id": part_id, "linked_by": user_id, "notes": notes},
+                    on_conflict="fault_id,part_id",
+                    ignore_duplicates=True,
+                )
+                .execute()
+            )
+            if result.data:
+                inserted += 1
+            else:
+                skipped += 1
+        except Exception as e:
+            logger.warning(f"[link_parts_to_fault] Could not link part {part_id}: {e}")
+            skipped += 1
+
+    try:
+        ev = build_ledger_event(
+            yacht_id=yacht_id,
+            user_id=user_id,
+            event_type="update",
+            entity_type="fault",
+            entity_id=fault_id,
+            action="link_parts_to_fault",
+            user_role=user_context.get("role"),
+            change_summary=f"Parts linked to fault — {inserted} inserted, {skipped} skipped",
+            entity_name=fault_id,
+            new_state={"part_ids": part_ids, "inserted": inserted},
+        )
+        db_client.table("ledger_events").insert(ev).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[Ledger] Failed to record link_parts_to_fault: {ledger_err}")
+
+    return {"status": "success", "inserted": inserted, "skipped": skipped}
+
+
+async def unlink_part_from_fault(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    """Delete a row from pms_fault_parts."""
+    fault_id = payload.get("fault_id")
+    part_id = payload.get("part_id")
+
+    if not fault_id:
+        raise HTTPException(status_code=400, detail="fault_id is required")
+    if not part_id:
+        raise HTTPException(status_code=400, detail="part_id is required")
+
+    check = (
+        db_client.table("pms_faults")
+        .select("id")
+        .eq("id", fault_id)
+        .eq("yacht_id", yacht_id)
+        .single()
+        .execute()
+    )
+    if not check.data:
+        raise HTTPException(status_code=404, detail="Fault not found")
+
+    db_client.table("pms_fault_parts").delete().eq("fault_id", fault_id).eq("part_id", part_id).execute()
+
+    try:
+        ev = build_ledger_event(
+            yacht_id=yacht_id,
+            user_id=user_id,
+            event_type="update",
+            entity_type="fault",
+            entity_id=fault_id,
+            action="unlink_part_from_fault",
+            user_role=user_context.get("role"),
+            change_summary=f"Part unlinked from fault — part_id: {part_id}",
+            entity_name=fault_id,
+            new_state={"unlinked_part_id": part_id},
+        )
+        db_client.table("ledger_events").insert(ev).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[Ledger] Failed to record unlink_part_from_fault: {ledger_err}")
+
+    return {"status": "success", "message": "Part unlinked from fault"}
+
+
 HANDLERS: dict = {
     "report_fault": report_fault,
     "acknowledge_fault": acknowledge_fault,
@@ -870,4 +1068,7 @@ HANDLERS: dict = {
     "view_fault_history": view_fault_history,
     "add_fault_note": add_fault_note,
     "list_faults": list_faults,
+    "archive_fault": archive_fault,
+    "link_parts_to_fault": link_parts_to_fault,
+    "unlink_part_from_fault": unlink_part_from_fault,
 }
