@@ -334,7 +334,8 @@ export function HandoverContent() {
   //   pending_review         → outgoing user signs (any crew can sign their own draft)
   //   pending_hod_signature  → HOD+ countersigns
   //   complete               → read-only, no sign actions
-  const canSignOutgoing = review_status === 'pending_review';
+  const isDraft = review_status === 'pending_review';
+  const canSignOutgoing = isDraft;
   const canCountersign = review_status === 'pending_hod_signature' && isHodOrAbove;
 
   // Acknowledge: any authenticated user on the yacht when:
@@ -383,6 +384,19 @@ export function HandoverContent() {
       },
     });
   }, [canAcknowledge, entityId, user?.id]);
+
+  // Fetch signed HTML for iframe hero when not in draft state.
+  // export_url is a time-limited signed URL already minted by the entity route.
+  React.useEffect(() => {
+    if (isDraft || !export_url) { setIframeHtml(null); return; }
+    let cancelled = false;
+    setIframeLoading(true);
+    fetch(export_url)
+      .then(r => { if (!r.ok) throw new Error(`fetch ${r.status}`); return r.text(); })
+      .then(html => { if (!cancelled) { setIframeHtml(html); setIframeLoading(false); } })
+      .catch(() => { if (!cancelled) setIframeLoading(false); });
+    return () => { cancelled = true; };
+  }, [isDraft, export_url]);
 
   // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
@@ -465,9 +479,29 @@ export function HandoverContent() {
   }, [entity]);
   const hasCriticalItems = criticalItemCount > 0;
 
+  // Items from sections that link back to source entities — used by the related rail.
+  const relatedItems = React.useMemo(() => {
+    const secs = (entity?.sections ?? []) as Array<{
+      items?: Array<{ content?: string; entity_type?: string; entity_url?: string }>;
+    }>;
+    return secs
+      .flatMap(s => s.items ?? [])
+      .filter(item => !!item.entity_url)
+      .map(item => ({
+        entity_type: item.entity_type ?? 'item',
+        entity_url: item.entity_url as string,
+        label: (item.content ?? item.entity_type ?? 'Item').slice(0, 80),
+      }));
+  }, [entity?.sections]);
+
   // Acknowledge modal state (separate from outgoing/HOD canvas — reuses the same
   // signature canvas component; adds a critical-acknowledgement checkbox).
   const [ackCriticalChecked, setAckCriticalChecked] = React.useState(false);
+
+  // ── Iframe hero state (non-draft states) ──
+  const [iframeHtml, setIframeHtml] = React.useState<string | null>(null);
+  const [iframeLoading, setIframeLoading] = React.useState(false);
+  const [relatedRailOpen, setRelatedRailOpen] = React.useState(true);
 
   const handlePrimary = React.useCallback(() => {
     if (canAcknowledge && !userReady) return; // PR#607 auth-race guard
@@ -720,7 +754,7 @@ export function HandoverContent() {
         pills={pills}
         details={details}
         actionSlot={
-          canSign ? (
+          (canSign && isDraft) ? (
             <SplitButton
               label={signButtonLabel}
               icon={
@@ -748,8 +782,8 @@ export function HandoverContent() {
         }
       />
 
-      {/* ═══ Professional Handover Document ═══ */}
-      {(() => {
+      {/* ═══ Document View ═══ */}
+      {isDraft ? (() => {
         const secs = (entity?.sections ?? []) as Array<{
           title?: string; id?: string;
           items?: Array<{ content?: string; priority?: string; entity_type?: string; entity_url?: string }>;
@@ -758,7 +792,7 @@ export function HandoverContent() {
         const totalItems = secs.reduce((n, s) => n + (s.items?.length ?? 0), 0);
         const criticalSecs = secs.filter(s => s.is_critical).length;
         const docNumber = (entity?.doc_number as string) ?? '0001';
-        const isEditable = status === 'pending_review';
+        const isEditable = true;
 
         if (isLoading) {
           return <div style={{ textAlign: 'center', color: 'var(--txt-ghost)', padding: '48px 0', fontSize: 12 }}>Loading document...</div>;
@@ -943,7 +977,103 @@ export function HandoverContent() {
             </div>
           </div>
         );
-      })()}
+      })() : (
+        /* ── Signed: iframe hero + collapsible related rail ── */
+        <div style={{ display: 'flex', gap: 16, margin: '24px 0 80px' }}>
+          {/* Main iframe column */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {iframeLoading && (
+              <div style={{ textAlign: 'center', color: 'var(--txt-ghost)', padding: '64px 0', fontSize: 12 }}>
+                Loading document...
+              </div>
+            )}
+            {!iframeLoading && !iframeHtml && (
+              <div style={{ textAlign: 'center', color: 'var(--txt-ghost)', padding: '64px 0', fontSize: 12, fontStyle: 'italic' }}>
+                {export_url ? 'Failed to load document — try refreshing' : 'No signed document available yet'}
+              </div>
+            )}
+            {!iframeLoading && iframeHtml && (
+              <iframe
+                srcDoc={iframeHtml}
+                sandbox="allow-same-origin"
+                style={{
+                  width: '100%',
+                  height: 900,
+                  border: '1px solid var(--border-sub)',
+                  borderRadius: 6,
+                  background: '#fff',
+                  display: 'block',
+                }}
+                title="Handover Document"
+              />
+            )}
+          </div>
+
+          {/* Related items rail */}
+          {relatedItems.length > 0 && (
+            <div style={{
+              width: relatedRailOpen ? 220 : 28,
+              flexShrink: 0,
+              transition: 'width 0.2s ease',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: relatedRailOpen ? 'space-between' : 'center',
+                padding: '0 0 8px',
+                borderBottom: '1px solid var(--border-sub)',
+                marginBottom: 8,
+                minWidth: 28,
+              }}>
+                {relatedRailOpen && (
+                  <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--txt3)' }}>
+                    Referenced
+                  </span>
+                )}
+                <button
+                  onClick={() => setRelatedRailOpen(o => !o)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt3)', padding: 2, flexShrink: 0 }}
+                  title={relatedRailOpen ? 'Collapse' : 'Expand references'}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d={relatedRailOpen ? 'M8 5L6 3 4 5M8 7l-2 2-2-2' : 'M4 5l2-2 2 2M4 7l2 2 2-2'} stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+              {relatedRailOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {relatedItems.map((item, i) => (
+                    <a
+                      key={i}
+                      href={item.entity_url}
+                      style={{
+                        display: 'block',
+                        padding: '7px 10px',
+                        fontSize: 11,
+                        color: 'var(--txt2)',
+                        textDecoration: 'none',
+                        borderRadius: 4,
+                        border: '1px solid var(--border-sub)',
+                        lineHeight: 1.4,
+                      }}
+                      onMouseOver={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--mark)'; (e.currentTarget as HTMLElement).style.color = 'var(--mark)'; }}
+                      onMouseOut={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-sub)'; (e.currentTarget as HTMLElement).style.color = 'var(--txt2)'; }}
+                    >
+                      <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--txt-ghost)', marginBottom: 2 }}>
+                        {item.entity_type.replace(/_/g, ' ')}
+                      </div>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.label}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Embedded Entity Links */}
       {entityLinks.length > 0 && (
@@ -1010,6 +1140,60 @@ export function HandoverContent() {
           signatureLevel={0}
           onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
           onClose={() => setActionPopupConfig(null)} />
+      )}
+
+      {/* Sticky sign bar — non-draft states where this user must still sign */}
+      {!isDraft && canSign && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 'var(--shell-sidebar-w, 220px)',
+          right: 0,
+          zIndex: 100,
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border-sub)',
+          padding: '12px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          boxShadow: '0 -2px 12px rgba(0,0,0,0.08)',
+        }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt2)' }}>
+              {canAcknowledge
+                ? 'Your signature closes the compliance chain for this handover'
+                : canCountersign
+                  ? 'HOD countersignature required before incoming crew can acknowledge'
+                  : 'Sign to submit for HOD countersignature'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 2 }}>
+              {formatLabel(review_status)}
+            </div>
+          </div>
+          <button
+            onClick={handlePrimary}
+            style={{
+              flexShrink: 0,
+              padding: '10px 24px',
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 6,
+              border: 'none',
+              background: 'var(--mark)',
+              color: '#fff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="14" height="14">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            {signButtonLabel}
+          </button>
+        </div>
       )}
 
       {/* Wet Signature Modal — no PIN */}
