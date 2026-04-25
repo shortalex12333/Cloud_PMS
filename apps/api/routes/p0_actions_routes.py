@@ -589,11 +589,12 @@ _EQUIPMENT_ACTIONS = frozenset({
 })
 
 _FAULT_ACTIONS = frozenset({
-    "close_fault", "diagnose_fault", "acknowledge_fault", "resolve_fault",
-    "reopen_fault", "mark_fault_false_alarm", "create_work_order_from_fault",
-    "update_fault", "add_fault_photo", "view_fault_detail",
+    "close_fault", "acknowledge_fault", "resolve_fault",
+    "reopen_fault", "create_work_order_from_fault",
+    "add_fault_photo",
     "add_fault_note", "report_fault", "classify_fault",
     "investigate_fault", "archive_fault", "delete_fault",
+    "link_parts_to_fault", "unlink_part_from_fault",
 })
 
 _WORK_ORDER_ACTIONS = frozenset({
@@ -777,165 +778,11 @@ async def execute_action(
         logger.debug(f"Could not validate role for action '{action}': {e}")
 
     # ========================================================================
-    # REQUIRED FIELD VALIDATION - Return 400 instead of 500 for missing fields
+    # REQUIRED FIELD VALIDATION - Delegated to registry.py (authoritative source)
     # ========================================================================
-    REQUIRED_FIELDS = {
-        "report_fault": ["equipment_id", "description"],
-        "diagnose_fault": ["fault_id"],
-        "close_fault": ["fault_id"],
-        "update_fault": ["fault_id"],
-        "add_fault_photo": ["fault_id", "photo_url"],
-        "view_fault_detail": ["fault_id"],
-        "acknowledge_fault": ["fault_id"],
-        "resolve_fault": ["fault_id"],
-        "reopen_fault": ["fault_id"],
-        "mark_fault_false_alarm": ["fault_id"],
-        "create_work_order_from_fault": ["fault_id"],
-        "add_note_to_work_order": ["work_order_id", "note_text"],
-        "add_part_to_work_order": ["work_order_id", "part_id", "quantity"],
-        "mark_work_order_complete": ["work_order_id", "completion_notes", "signature"],
-        "update_work_order": ["work_order_id"],
-        "assign_work_order": ["work_order_id", "assigned_to"],
-        "close_work_order": ["work_order_id"],
-        "start_work_order": ["work_order_id"],
-        "cancel_work_order": ["work_order_id"],
-        "create_work_order": ["title"],
-        "view_work_order": ["work_order_id"],
-        "view_work_order_detail": ["work_order_id"],
-        "add_work_order_photo": ["work_order_id", "photo_url"],
-        "add_parts_to_work_order": ["work_order_id", "part_id"],
-        "view_work_order_checklist": ["work_order_id"],
-        "add_worklist_task": ["task_description"],
-        "check_stock_level": ["part_id"],
-        "log_part_usage": ["part_id", "quantity", "usage_reason"],
-        "add_to_handover": ["summary"],
-        "show_manual_section": ["equipment_id"],
-        "update_equipment_status": ["equipment_id", "new_status"],
-        # Document Lens v2 Actions
-        "upload_document": ["file_name", "mime_type"],
-        "update_document": ["document_id"],
-        "delete_document": ["document_id", "reason", "signature"],
-        "add_document_tags": ["document_id", "tags"],
-        "get_document_url": ["document_id"],
-        # Document Comment Actions (Document Lens v2 - Comments MVP)
-        # Document comment actions migrated to action router - see registry.py
-        "delete_shopping_item": ["item_id"],
-        # Add_wo_* variants
-        "add_wo_hours": ["work_order_id", "hours"],
-        "add_wo_part": ["work_order_id", "part_id"],
-        "add_wo_note": ["work_order_id", "note_text"],
-        # Tier 1 - Fault/WO History
-        "view_fault_history": ["equipment_id"],
-        "add_fault_note": ["text"],  # Must match registry.py:1188 + pms_notes.text column (was "note_text" → caused 400 on every fault note submit)
-        "view_work_order_history": ["equipment_id"],
-        "suggest_parts": ["fault_id"],
-        # Tier 2 - Equipment Views
-        "view_equipment_details": ["equipment_id"],
-        "view_equipment_history": ["equipment_id"],
-        "view_equipment_parts": ["equipment_id"],
-        "view_linked_faults": ["equipment_id"],
-        "view_equipment_manual": ["equipment_id"],
-        "add_equipment_note": ["equipment_id", "note_text"],
-        # Tier 3 - Inventory
-        "view_part_stock": ["part_id"],
-        "view_part_location": ["part_id"],
-        "view_part_usage": ["part_id"],
-        "view_linked_equipment": ["part_id"],
-        "order_part": ["part_id"],
-        "scan_part_barcode": ["barcode"],
-        # Part Lens v2 Actions
-        "view_part_details": ["part_id"],
-        "add_to_shopping_list": ["part_id", "suggested_qty"],
-        "consume_part": ["part_id", "quantity"],
-        "receive_part": ["part_id", "to_location_id", "quantity", "idempotency_key"],
-        "transfer_part": ["part_id", "from_location_id", "to_location_id", "quantity"],
-        "adjust_stock_quantity": ["part_id", "quantity_change", "reason", "signature"],
-        "write_off_part": ["part_id", "quantity", "reason", "signature"],
-        "generate_part_labels": ["part_ids"],
-        "request_label_output": ["label_request_id", "output_format"],
-        # Tier 4 - Checklists
-        "view_checklist": ["checklist_id"],
-        "mark_checklist_item_complete": ["checklist_item_id"],
-        "add_checklist_note": ["checklist_item_id", "note_text"],
-        "add_checklist_item": ["work_order_id", "title"],
-        "add_checklist_photo": ["checklist_item_id", "photo_url"],
-        # Tier 5 - Handover/Communication
-        "add_document_to_handover": ["handover_id", "document_id"],
-        "add_predictive_insight_to_handover": ["handover_id", "insight_text"],
-        "edit_handover_section": ["handover_id", "section_name"],
-        "export_handover": ["handover_id"],
-        "regenerate_handover_summary": ["handover_id"],
-        "view_smart_summary": ["entity_type", "entity_id"],
-        "upload_photo": ["entity_type", "entity_id", "photo_url"],
-        "record_voice_note": ["entity_type", "entity_id"],
-        # Tier 6 - Compliance/HoR
-        "view_compliance_status": [],
-        "tag_for_survey": ["equipment_id"],
-        # Hours of Rest Actions (Crew Lens v3 - Action Registry)
-        "get_hours_of_rest": ["yacht_id"],
-        "upsert_hours_of_rest": ["yacht_id", "user_id", "record_date"],
-        "get_monthly_signoff": ["yacht_id", "signoff_id"],
-        "list_monthly_signoffs": ["yacht_id"],
-        "create_monthly_signoff": ["yacht_id", "user_id", "month", "department"],
-        "sign_monthly_signoff": ["signoff_id", "signature_level", "signature_data"],
-        "create_crew_template": ["yacht_id", "user_id", "schedule_name", "schedule_template"],
-        "apply_crew_template": ["yacht_id", "user_id", "week_start_date"],
-        "list_crew_templates": ["yacht_id"],
-        "list_crew_warnings": ["yacht_id"],
-        "acknowledge_warning": ["warning_id"],
-        "dismiss_warning": ["warning_id", "hod_justification", "dismissed_by_role"],
-        # Tier 7 - Purchasing
-        "add_item_to_purchase": ["purchase_order_id"],
-        "approve_purchase": ["purchase_order_id"],
-        "upload_invoice": ["purchase_order_id"],
-        "update_purchase_status": ["purchase_order_id", "status"],
-        # New frontend-facing aliases
-        "submit_po": ["purchase_order_id"],
-        "approve_po": ["purchase_order_id"],
-        "receive_po": ["purchase_order_id"],
-        "add_po_note": ["note_text"],
-        "order_part": ["purchase_order_id", "part_id", "quantity"],
-        # Tier 8 - Fleet View
-        "view_fleet_summary": [],
-        "open_vessel": ["vessel_id"],
-        "export_fleet_summary": [],
-        # Tier 9 - Remaining Actions
-        "update_worklist_progress": ["worklist_item_id", "progress"],
-        "view_related_documents": ["entity_type", "entity_id"],
-        "view_document_section": ["document_id", "section_id"],
-        "request_predictive_insight": ["entity_type", "entity_id"],
-        "add_work_order_note": ["work_order_id", "note_text"],
-        # Certificate Actions (Certificate Lens v2)
-        "create_vessel_certificate": ["certificate_type", "certificate_name", "issuing_authority"],
-        "create_crew_certificate": ["person_name", "certificate_type", "issuing_authority"],
-        "update_certificate": ["certificate_id"],
-        "link_document_to_certificate": ["certificate_id", "document_id"],
-        "supersede_certificate": ["certificate_id", "reason", "signature"],
-        # Shopping List Actions (Shopping List Lens v1)
-        "create_shopping_list_item": ["source_type"],  # part_name auto-filled from part_id; quantity defaults to 1
-        "approve_shopping_list_item": ["item_id", "quantity_approved"],
-        "reject_shopping_list_item": ["item_id", "rejection_reason"],
-        "promote_candidate_to_part": ["item_id"],
-        "view_shopping_list_history": ["item_id"],
-        "mark_shopping_list_ordered": ["item_id"],
-    }
-
-    if action in REQUIRED_FIELDS:
-        # Merge context + payload: context holds entity_id/certificate_id, payload holds user fields
-        merged_for_check = {**request.context, **payload}
-        missing = [f for f in REQUIRED_FIELDS[action] if not merged_for_check.get(f)]
-        # Allow task_description OR description for add_worklist_task
-        if action == "add_worklist_task" and not merged_for_check.get("task_description") and merged_for_check.get("description"):
-            missing = [f for f in missing if f != "task_description"]
-        if missing:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "status": "error",
-                    "error_code": "MISSING_REQUIRED_FIELD",
-                    "message": f"Missing required field(s): {', '.join(missing)}"
-                }
-            )
+    # NOTE: The hardcoded REQUIRED_FIELDS dict was removed 2026-04-25 (FAULT05 Issue 7).
+    # Registry.py carries required_fields per action and is the single source of truth.
+    # Validation via registry happens in the handler dispatch below via _ACTION_HANDLERS.
 
     # ========================================================================
     # INPUT VALIDATION - Security Fix 2026-02-10 (Day 3)
