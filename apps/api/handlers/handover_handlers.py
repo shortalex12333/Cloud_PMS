@@ -214,6 +214,52 @@ class HandoverHandlers:
                     "priority": "high" if stock_status == "low stock" else "normal"
                 })
 
+            elif entity_type == "receiving":
+                result = self.db.table("pms_receiving").select(
+                    "id, vendor_name, vendor_reference, status, total, currency, "
+                    "po_id, purchase_order:po_id(order_number)"
+                ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                if not result.data:
+                    return {
+                        "status": "error",
+                        "error_code": "ENTITY_NOT_FOUND",
+                        "message": f"Receiving not found: {entity_id}"
+                    }
+
+                entity = result.data
+                po = entity.get("purchase_order") or {}
+                po_ref = po.get("order_number") or entity.get("vendor_reference") or "—"
+
+                # Count line items + discrepancies
+                items_r = self.db.table("pms_receiving_items").select(
+                    "id", count="exact"
+                ).eq("receiving_id", entity_id).eq("yacht_id", yacht_id).execute()
+                line_count = items_r.count if hasattr(items_r, "count") and items_r.count is not None else len(items_r.data or [])
+
+                disc_r = self.db.table("ledger_events").select(
+                    "id", count="exact"
+                ).eq("entity_id", entity_id).eq("entity_type", "receiving").eq("event_category", "discrepancy").execute()
+                disc_count = disc_r.count if hasattr(disc_r, "count") and disc_r.count is not None else len(disc_r.data or [])
+
+                prefill_data.update({
+                    "title": (
+                        f"Receiving — {entity.get('vendor_name', 'Unknown Vendor')} "
+                        f"({po_ref})"
+                    ),
+                    "summary_text": (
+                        f"Receiving from {entity.get('vendor_name', 'Unknown Vendor')}\n"
+                        f"PO / Reference: {po_ref}\n"
+                        f"Status: {entity.get('status', 'pending')}\n"
+                        f"Lines: {line_count} | Discrepancies: {disc_count}\n"
+                        f"Value: {entity.get('currency', '')} {entity.get('total') or '—'}"
+                    ),
+                    "category": "work_in_progress" if disc_count > 0 else "fyi",
+                    "equipment_name": "",
+                    "location": "",
+                    "priority": "high" if disc_count > 0 else "normal",
+                })
+
             else:
                 return {
                     "status": "error",
@@ -265,7 +311,7 @@ class HandoverHandlers:
         """
         try:
             # Validate entity type
-            valid_types = ["fault", "work_order", "equipment", "document_chunk", "document", "part", "note"]
+            valid_types = ["fault", "work_order", "equipment", "document_chunk", "document", "part", "note", "receiving", "purchase_order", "shopping_list"]
             if entity_type not in valid_types:
                 return ResponseBuilder.error(
                     action="add_to_handover",
@@ -410,6 +456,69 @@ class HandoverHandlers:
                         self.db.table("ledger_events").insert(ledger_event).execute()
                 except Exception as e:
                     logger.warning(f"Critical item HOD notification failed: {e}")
+
+            # Data-continuity: for receiving entities, write a ledger row that marks
+            # this handover as requiring follow-up, and immediately create a
+            # pms_notifications entry for all HOD+ on the vessel.
+            # The philosophy: never trust "I'll fill it in later". Force the loop.
+            if entity_type == "receiving":
+                try:
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="receiving",
+                        entity_id=entity_id,
+                        action="added_to_handover",
+                        event_category="handover",
+                        change_summary=f"Receiving added to shift handover by {user_name}: {summary[:120]}",
+                        metadata={
+                            "handover_item_id": item_id,
+                            "summary": summary[:300],
+                            "requires_followup": True,
+                        },
+                        new_state={"in_handover": True, "requires_followup": True},
+                    )
+                    self.db.table("ledger_events").insert(ledger_event).execute()
+                except Exception as e:
+                    logger.warning(f"Receiving handover ledger write failed: {e}")
+
+                try:
+                    purser_band = self.db.table("auth_users_roles").select("user_id, role").eq(
+                        "yacht_id", yacht_id
+                    ).in_("role", [
+                        "purser", "chief_engineer", "chief_officer",
+                        "chief_steward", "captain", "manager",
+                    ]).eq("is_active", True).execute()
+                    now_iso = datetime.now(timezone.utc).isoformat()
+                    notifs = []
+                    for member in (purser_band.data or []):
+                        if member["user_id"] == user_id:
+                            continue  # don't notify yourself
+                        notifs.append({
+                            "id": str(uuid.uuid4()),
+                            "yacht_id": yacht_id,
+                            "user_id": member["user_id"],
+                            "notification_type": "receiving_added_to_handover",
+                            "title": "Receiving added to handover — follow-up required",
+                            "body": (
+                                f"{user_name} has added a receiving record to the shift handover. "
+                                f"Please review and complete: {summary[:200]}"
+                            ),
+                            "priority": "high" if is_critical else "normal",
+                            "entity_type": "receiving",
+                            "entity_id": entity_id,
+                            "triggered_by": user_id,
+                            "idempotency_key": f"rcv_handover:{entity_id}:{item_id}:{member['user_id']}",
+                            "is_read": False,
+                            "created_at": now_iso,
+                        })
+                    if notifs:
+                        self.db.table("pms_notifications").upsert(
+                            notifs, on_conflict="yacht_id,user_id,idempotency_key"
+                        ).execute()
+                except Exception as e:
+                    logger.warning(f"Receiving handover notification loop failed: {e}")
 
             # Build response
             return ResponseBuilder.success(
