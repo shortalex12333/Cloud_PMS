@@ -6,7 +6,7 @@ Per `feedback_migration_convention.md`: SQL migration files are temporary — ap
 
 ## HANDOVER08-M01 — drop orphaned `handover_draft_edits`
 
-**Status:** pending CEO manual apply
+**Status:** APPLIED 2026-04-25 (HANDOVER08 B11 session). Table dropped, verified NULL via to_regclass check.
 **Evidence:**
 - `SELECT count(*) FROM handover_draft_edits` → **0** (probe 2026-04-23)
 - Code grep across `apps/api`, `apps/web`, `supabase/migrations` → **0** readers, **0** writers

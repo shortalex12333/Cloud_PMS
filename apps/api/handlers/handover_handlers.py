@@ -265,7 +265,13 @@ class HandoverHandlers:
         """
         try:
             # Validate entity type
-            valid_types = ["fault", "work_order", "equipment", "document_chunk", "document", "part", "note"]
+            # Gating matrix (add_to_handover_gating.py) controls which entity types
+            # each role can use — this list is the full set supported by handover_items.
+            valid_types = [
+                "fault", "work_order", "equipment", "part", "document", "document_chunk",
+                "certificate", "purchase_order", "warranty", "hours_of_rest",
+                "shopping_list", "receiving", "location", "note",
+            ]
             if entity_type not in valid_types:
                 return ResponseBuilder.error(
                     action="add_to_handover",
@@ -692,19 +698,6 @@ class HandoverHandlers:
             )
 
 
-    # =========================================================================
-    # Alias methods for backward compatibility
-    # =========================================================================
-
-    # Alias for tests that use summary_text instead of summary.
-    # [DEPRECATED — HANDOVER08 flag, 2026-04-24]
-    # Test-only compatibility shim. Once the test suite is cut over to the
-    # canonical summary param (task B9 follow-up), this method is deleted.
-    async def add_to_handover_execute_legacy(self, *args, summary_text: str = None, **kwargs):
-        """Legacy wrapper - converts summary_text to summary. DEPRECATED — see class comment."""
-        if summary_text and 'summary' not in kwargs:
-            kwargs['summary'] = summary_text
-        return await self.add_to_handover_execute(*args, **kwargs)
 
 
 __all__ = ["HandoverHandlers"]
