@@ -2318,6 +2318,43 @@ async def add_work_order_photo(params: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+async def add_shopping_list_photo(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Attach a photo to a shopping_list item.
+
+    Required params:
+        - yacht_id: UUID
+        - item_id: UUID (pms_shopping_list_items.id)
+        - photo_url: str (storage_path returned by upload)
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    attachment_id = str(uuid_lib.uuid4())
+    attachment_data = {
+        "id": attachment_id,
+        "yacht_id": params["yacht_id"],
+        "entity_type": "shopping_list",
+        "entity_id": params["item_id"],
+        "storage_path": params["photo_url"],
+        "storage_bucket": "pms-shopping-list-photos",
+        "filename": params.get("filename", "photo.jpg"),
+        "mime_type": params.get("mime_type", "image/jpeg"),
+        "description": params.get("caption"),
+        "uploaded_by": params["user_id"],
+        "uploaded_at": datetime.utcnow().isoformat(),
+    }
+
+    supabase.table("pms_attachments").insert(attachment_data).execute()
+
+    return {
+        "attachment_id": attachment_id,
+        "item_id": params["item_id"],
+        "photo_url": params["photo_url"],
+    }
+
+
 async def add_parts_to_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
     """
     Add parts to a work order.
@@ -4298,6 +4335,7 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "create_work_order": create_work_order,
     "view_work_order_detail": view_work_order_detail,
     "add_work_order_photo": add_work_order_photo,
+    "add_shopping_list_photo": add_shopping_list_photo,
     "add_parts_to_work_order": add_parts_to_work_order,
     "view_work_order_checklist": view_work_order_checklist,
 

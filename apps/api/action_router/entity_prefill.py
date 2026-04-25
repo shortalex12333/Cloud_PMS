@@ -215,6 +215,7 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("shopping_list", "view_shopping_list_history"): {"item_id": "id"},
     ("shopping_list", "delete_shopping_item"):       {"item_id": "id"},
     ("shopping_list", "mark_shopping_list_ordered"): {"item_id": "id"},
+    ("shopping_list", "add_shopping_list_photo"):    {"item_id": "id"},
     # ── Hours of Rest ─────────────────────────────────────────────────────────
     # hours_of_rest prefill intentionally empty for Phase 2 — add as needed
 
