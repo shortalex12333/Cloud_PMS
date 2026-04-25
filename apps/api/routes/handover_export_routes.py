@@ -1016,7 +1016,8 @@ async def countersign_export(
 
     # Fetch export
     result = supabase.table("handover_exports").select(
-        "id, yacht_id, review_status, signed_storage_url, edited_content, user_signature"
+        "id, yacht_id, review_status, signed_storage_url, edited_content, user_signature, "
+        "incoming_user_id, incoming_role"
     ).eq("id", export_id).maybe_single().execute()
 
     if not result.data:
@@ -1084,6 +1085,48 @@ async def countersign_export(
             new_values={"review_status": "complete"},
             department=notify_user.get("department"),
         )
+
+    # Data-continuity: notify incoming user that the handover is countersigned
+    # and their acknowledgement is now required. Never trust they will notice
+    # passively — push a ledger event so the Notifications tab surfaces it.
+    incoming_user_id = export_data.get("incoming_user_id")
+    incoming_role = export_data.get("incoming_role")
+    if incoming_user_id:
+        try:
+            _write_handover_event(
+                db=supabase,
+                yacht_id=yacht_id,
+                actor_id=hod_actor_id,
+                actor_role=hod_actor_role,
+                target_user_id=incoming_user_id,
+                entity_id=export_id,
+                event_type="handover",
+                action="incoming_acknowledgement_required",
+                change_summary=f"Handover {export_id} countersigned — your incoming acknowledgement is now required",
+                new_values={"review_status": "complete", "hod_signed_at": request.hodSignature.signed_at},
+            )
+        except Exception as e:
+            logger.warning("Failed to notify incoming user after countersign (export=%s): %s", export_id, e)
+    elif incoming_role:
+        # Incoming user not yet assigned — notify all users with that role
+        try:
+            incoming_role_users = _get_role_users(supabase, yacht_id, [incoming_role])
+            for u in incoming_role_users:
+                _write_handover_event(
+                    db=supabase,
+                    yacht_id=yacht_id,
+                    actor_id=hod_actor_id,
+                    actor_role=hod_actor_role,
+                    target_user_id=u["user_id"],
+                    entity_id=export_id,
+                    event_type="handover",
+                    action="incoming_acknowledgement_required",
+                    change_summary=f"Handover {export_id} ready for {incoming_role} incoming acknowledgement",
+                    new_values={"review_status": "complete"},
+                    department=u.get("department"),
+                )
+        except Exception as e:
+            logger.warning("Failed to notify incoming role users after countersign (export=%s): %s", export_id, e)
 
     # Trigger search indexing
     _trigger_indexing(supabase, export_id, yacht_id, export_data["edited_content"]["sections"])
