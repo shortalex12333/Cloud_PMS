@@ -3718,8 +3718,8 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
         po_data["supplier_id"] = params["supplier_id"]
     supabase.table("pms_purchase_orders").insert(po_data).execute()
 
-    # Create PO line items + update shopping list status
-    for item in items:
+    # Create PO line items + write back order_id/order_line_number to shopping items
+    for line_number, item in enumerate(items, start=1):
         line_id = str(uuid_lib.uuid4())
         supabase.table("pms_purchase_order_items").insert({
             "id": line_id,
@@ -3729,15 +3729,13 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
             "description": item["part_name"],
             "quantity_ordered": int(item.get("quantity_approved") or item["quantity_requested"]),
         }).execute()
-
-    # Mark shopping list items as ordered
-    ordered_ids = [item["id"] for item in items]
-    for oid in ordered_ids:
         supabase.table("pms_shopping_list_items").update({
             "status": "ordered",
+            "order_id": po_id,
+            "order_line_number": line_number,
             "updated_at": datetime.utcnow().isoformat(),
             "updated_by": user_id,
-        }).eq("id", oid).eq("yacht_id", yacht_id).execute()
+        }).eq("id", item["id"]).eq("yacht_id", yacht_id).execute()
 
     return {
         "status": "success",
