@@ -72,6 +72,145 @@ class ShoppingListHandlers:
         self.db = supabase_client
 
     # =========================================================================
+    # DATA-CONTINUITY HELPERS
+    # =========================================================================
+
+    def _open_candidate_followup(
+        self,
+        yacht_id: str,
+        item_id: str,
+        part_name: str,
+        requester_id: str,
+    ) -> None:
+        """
+        Write a ledger event + notification when a candidate part row is created
+        (is_candidate_part=True, no part_id). Both serve as persistent reminders
+        that the item needs to be promoted to catalogue (or rejected) — they are
+        dismissed by _close_candidate_followup.
+
+        Never raises — data-continuity writes are best-effort fire-and-forget.
+        """
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            ledger_id = str(uuid.uuid4())
+            # idempotency key shared across open/close so close can dismiss
+            idem_base = f"sl_candidate:{item_id}"
+
+            self.db.table("ledger_events").insert({
+                "id": ledger_id,
+                "yacht_id": yacht_id,
+                "event_type": "shopping_list.candidate_captured",
+                "entity_type": "shopping_list",
+                "entity_id": item_id,
+                "action": "create_shopping_list_item",
+                "user_id": requester_id,
+                "change_summary": f"Candidate part '{part_name}' captured — follow up to promote to catalogue.",
+                "new_state": {"is_candidate_part": True},
+                "metadata": {
+                    "requires_followup": True,
+                    "followup_target": "promote_candidate_to_part",
+                    "idem_base": idem_base,
+                },
+                "proof_hash": "n/a",
+                "event_timestamp": now,
+                "created_at": now,
+            }).execute()
+
+            self.db.table("pms_notifications").upsert({
+                "id": str(uuid.uuid4()),
+                "yacht_id": yacht_id,
+                "user_id": requester_id,
+                "notification_type": "shopping_list.candidate_followup",
+                "title": "Candidate part needs catalogue entry",
+                "body": (
+                    f"'{part_name}' was added as a candidate part. "
+                    "Once ordered and received, promote it to the Parts Catalogue "
+                    "so stock levels and history are tracked."
+                ),
+                "priority": "normal",
+                "entity_type": "shopping_list",
+                "entity_id": item_id,
+                "cta_action_id": "promote_candidate_to_part",
+                "cta_payload": {"item_id": item_id},
+                "idempotency_key": f"{idem_base}:open",
+                "is_read": False,
+                "created_at": now,
+            }, on_conflict="yacht_id,user_id,idempotency_key").execute()
+
+        except Exception as exc:
+            logger.warning(f"[shopping] _open_candidate_followup failed (non-critical): {exc}")
+
+    def _close_candidate_followup(
+        self,
+        yacht_id: str,
+        item_id: str,
+        part_name: str,
+        user_id: str,
+        requester_id: str,
+        outcome: str,  # "promoted" | "rejected"
+    ) -> None:
+        """
+        Close the open follow-up: write a closing ledger row + dismiss the
+        open notification + notify the requester of the outcome.
+        """
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            idem_base = f"sl_candidate:{item_id}"
+
+            self.db.table("ledger_events").insert({
+                "id": str(uuid.uuid4()),
+                "yacht_id": yacht_id,
+                "event_type": f"shopping_list.candidate_{outcome}",
+                "entity_type": "shopping_list",
+                "entity_id": item_id,
+                "action": f"{'promote_candidate_to_part' if outcome == 'promoted' else 'reject_shopping_list_item'}",
+                "user_id": user_id,
+                "change_summary": f"Candidate '{part_name}' {outcome} — follow-up closed.",
+                "new_state": {"requires_followup": False, "outcome": outcome},
+                "metadata": {"requires_followup": False, "idem_base": idem_base},
+                "proof_hash": "n/a",
+                "event_timestamp": now,
+                "created_at": now,
+            }).execute()
+
+            # Dismiss the open follow-up notification
+            self.db.table("pms_notifications").update({
+                "dismissed_at": now,
+            }).eq("yacht_id", yacht_id).eq(
+                "idempotency_key", f"{idem_base}:open"
+            ).execute()
+
+            # Outcome notification to requester
+            if requester_id:
+                title = (
+                    "Part promoted to catalogue" if outcome == "promoted"
+                    else "Shopping list item rejected"
+                )
+                body = (
+                    f"'{part_name}' has been added to the Parts Catalogue."
+                    if outcome == "promoted"
+                    else f"'{part_name}' was rejected from the shopping list."
+                )
+                self.db.table("pms_notifications").upsert({
+                    "id": str(uuid.uuid4()),
+                    "yacht_id": yacht_id,
+                    "user_id": requester_id,
+                    "notification_type": f"shopping_list.candidate_{outcome}",
+                    "title": title,
+                    "body": body,
+                    "priority": "normal",
+                    "entity_type": "shopping_list",
+                    "entity_id": item_id,
+                    "cta_action_id": None,
+                    "idempotency_key": f"{idem_base}:{outcome}",
+                    "is_read": False,
+                    "created_at": now,
+                }, on_conflict="yacht_id,user_id,idempotency_key").execute()
+
+        except Exception as exc:
+            logger.warning(f"[shopping] _close_candidate_followup failed (non-critical): {exc}")
+
+    # =========================================================================
     # MUTATION HANDLERS
     # =========================================================================
 
@@ -294,6 +433,18 @@ class ShoppingListHandlers:
                 self.db.table("pms_audit_log").insert(audit_payload).execute()
             except Exception as audit_err:
                 logger.warning(f"Audit log insert failed (non-critical): {audit_err}")
+
+            # ============================================================
+            # DATA-CONTINUITY — open follow-up for candidate parts
+            # ============================================================
+
+            if is_candidate_part:
+                self._open_candidate_followup(
+                    yacht_id=yacht_id,
+                    item_id=new_item_id,
+                    part_name=part_name,
+                    requester_id=user_id,
+                )
 
             # ============================================================
             # RESPONSE
@@ -629,7 +780,7 @@ class ShoppingListHandlers:
             # ============================================================
 
             item_result = self.db.table("pms_shopping_list_items").select(
-                "id, part_name, quantity_requested, status, created_by, rejected_at"
+                "id, part_name, quantity_requested, status, created_by, requested_by, is_candidate_part, rejected_at"
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not item_result or not item_result.data:
@@ -729,6 +880,20 @@ class ShoppingListHandlers:
                 logger.warning(f"Audit log insert failed (non-critical): {audit_err}")
 
             # ============================================================
+            # DATA-CONTINUITY — close follow-up on reject (if candidate)
+            # ============================================================
+
+            if item.get("is_candidate_part"):
+                self._close_candidate_followup(
+                    yacht_id=yacht_id,
+                    item_id=entity_id,
+                    part_name=item["part_name"],
+                    user_id=user_id,
+                    requester_id=item.get("requested_by") or item.get("created_by") or user_id,
+                    outcome="rejected",
+                )
+
+            # ============================================================
             # RESPONSE
             # ============================================================
 
@@ -824,7 +989,7 @@ class ShoppingListHandlers:
             # ============================================================
 
             item_result = self.db.table("pms_shopping_list_items").select(
-                "id, part_name, part_number, manufacturer, unit, is_candidate_part, candidate_promoted_to_part_id"
+                "id, part_name, part_number, manufacturer, unit, is_candidate_part, candidate_promoted_to_part_id, requested_by"
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not item_result or not item_result.data:
@@ -935,6 +1100,19 @@ class ShoppingListHandlers:
                 self.db.table("pms_audit_log").insert(audit_payload).execute()
             except Exception as audit_err:
                 logger.warning(f"Audit log insert failed (non-critical): {audit_err}")
+
+            # ============================================================
+            # DATA-CONTINUITY — close follow-up on promote
+            # ============================================================
+
+            self._close_candidate_followup(
+                yacht_id=yacht_id,
+                item_id=entity_id,
+                part_name=item["part_name"],
+                user_id=user_id,
+                requester_id=item.get("requested_by") or user_id,
+                outcome="promoted",
+            )
 
             # ============================================================
             # RESPONSE
