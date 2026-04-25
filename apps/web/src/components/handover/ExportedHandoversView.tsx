@@ -40,7 +40,7 @@ import {
 
 type SortKey =
   | 'exported_at'
-  | 'period_start'
+  | 'shift_date'
   | 'outgoing_user_name'
   | 'hod_signed_at'
   | 'incoming_signed_at'
@@ -113,7 +113,7 @@ function resolveStatusPill(row: HandoverExportListItem): StatusPill {
 function getSortValue(row: HandoverExportListItem, key: SortKey): string {
   switch (key) {
     case 'exported_at': return row.exported_at || '';
-    case 'period_start': return row.period_start || '';
+    case 'shift_date': return row.shift_date || '';
     case 'outgoing_user_name': return row.outgoing_user_name || '';
     case 'hod_signed_at': return row.hod_signed_at || '';
     case 'incoming_signed_at': return row.incoming_signed_at || '';
@@ -223,7 +223,7 @@ function KebabMenu({
             background: 'var(--surface)',
             border: '1px solid var(--border-sub)',
             borderRadius: 6,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
+            boxShadow: 'var(--shadow-tip)',
             padding: 4,
           }}
           onClick={e => e.stopPropagation()}
@@ -461,7 +461,7 @@ export function ExportedHandoversView() {
           borderBottom: '1px solid var(--border-sub)',
         }}>
           <SortableHeader label="Generated" colKey="exported_at" active={sortKey === 'exported_at'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.generated} />
-          <SortableHeader label="Rotation" colKey="period_start" active={sortKey === 'period_start'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.rotation} />
+          <SortableHeader label="Shift date" colKey="shift_date" active={sortKey === 'shift_date'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.rotation} />
           <SortableHeader label="Outgoing" colKey="outgoing_user_name" active={sortKey === 'outgoing_user_name'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.outgoing} />
           <SortableHeader label="HOD signed" colKey="hod_signed_at" active={sortKey === 'hod_signed_at'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.hod} />
           <SortableHeader label="Incoming signed" colKey="incoming_signed_at" active={sortKey === 'incoming_signed_at'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.incoming} />
@@ -539,9 +539,7 @@ function ExportedRow({
     currentUserRole !== '' &&
     row.incoming_user_id !== currentUserId; // user hasn't claimed the row yet
 
-  const rotation = row.period_start && row.period_end
-    ? `${formatDate(row.period_start)} → ${formatDate(row.period_end)}`
-    : '—';
+  const rotation = row.shift_date ? formatDate(row.shift_date) : '—';
 
   return (
     <div
