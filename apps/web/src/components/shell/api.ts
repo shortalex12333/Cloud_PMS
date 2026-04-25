@@ -239,8 +239,7 @@ export interface HandoverExportListItem {
   draft_id: string | null;
   yacht_id: string;
   exported_at: string;
-  period_start: string | null;
-  period_end: string | null;
+  shift_date: string | null;
   department: string | null;
   export_type: string | null;
   export_status: string | null;

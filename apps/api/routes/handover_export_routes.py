@@ -501,7 +501,7 @@ async def list_exports(
         select_cols = (
             "id, draft_id, yacht_id, export_type, exported_at, exported_by_user_id, "
             "document_hash, export_status, file_name, "
-            "period_start, period_end, department, "
+            "department, shift_date, "
             "outgoing_user_id, outgoing_role, outgoing_signed_at, "
             "incoming_user_id, incoming_role, incoming_signed_at, "
             "hod_signature, hod_signed_at, "
@@ -556,9 +556,8 @@ async def list_exports(
                 "draft_id": r.get("draft_id"),
                 "yacht_id": r.get("yacht_id"),
                 "exported_at": r.get("exported_at"),
-                "period_start": r.get("period_start"),
-                "period_end": r.get("period_end"),
                 "department": r.get("department"),
+                "shift_date": r.get("shift_date"),
                 "export_type": r.get("export_type"),
                 "export_status": r.get("export_status"),
                 "file_name": r.get("file_name"),
