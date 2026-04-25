@@ -753,6 +753,26 @@ def _update_equipment_status_adapter(handlers: EquipmentHandlers):
             **audit_meta,  # session_id, ip_address, source, lens
         })
 
+        # Data continuity: if equipment is degraded/failed, remind to create a work order
+        if new_status in ("failed", "degraded"):
+            equipment_name = eq_result.data.get("name", "Equipment")
+            try:
+                db.rpc("upsert_notification", {
+                    "p_yacht_id": yacht_id,
+                    "p_user_id": user_id,
+                    "p_notification_type": "equipment_status_degraded",
+                    "p_title": f"Action required: {equipment_name} is {new_status}",
+                    "p_body": "Create a work order to address this issue before it worsens.",
+                    "p_priority": "high" if new_status == "failed" else "normal",
+                    "p_entity_type": "equipment",
+                    "p_entity_id": equipment_id,
+                    "p_cta_action_id": "create_work_order_for_equipment",
+                    "p_cta_payload": {"equipment_id": equipment_id},
+                    "p_idempotency_key": f"equip:{equipment_id}:degraded:{datetime.now(timezone.utc).date()}",
+                }).execute()
+            except Exception:
+                pass
+
         return {
             "status": "success",
             "equipment_id": equipment_id,
@@ -1164,6 +1184,26 @@ def _link_part_to_equipment_adapter(handlers: EquipmentHandlers):
             "signature": {},
         })
 
+        # Data continuity: ledger follow-up if quantity_required was not explicitly set
+        if quantity_required == 1:  # default suggests it was not intentionally set
+            try:
+                _write_audit_log(db, {
+                    "yacht_id": yacht_id,
+                    "entity_type": "equipment",
+                    "entity_id": equipment_id,
+                    "action": "part_linked_follow_up",
+                    "user_id": user_id,
+                    "old_values": None,
+                    "new_values": {
+                        "bom_id": bom_id,
+                        "part_name": part_name,
+                        "reminder": "Verify quantity_required is correct for this equipment.",
+                    },
+                    "signature": {},
+                })
+            except Exception:
+                pass
+
         return {
             "status": "success",
             "bom_id": bom_id,
@@ -1228,6 +1268,27 @@ def _flag_equipment_attention_adapter(handlers: EquipmentHandlers):
             "new_values": {"attention_flag": attention_flag, "attention_reason": attention_reason},
             "signature": {},
         })
+
+        # Data continuity: notify the actor to follow up when flagging attention
+        if attention_flag:
+            try:
+                eq_name_r = db.table("pms_equipment").select("name").eq("id", equipment_id).maybe_single().execute()
+                eq_name = (eq_name_r.data or {}).get("name", "Equipment") if eq_name_r else "Equipment"
+                db.rpc("upsert_notification", {
+                    "p_yacht_id": yacht_id,
+                    "p_user_id": user_id,
+                    "p_notification_type": "equipment_attention_flagged",
+                    "p_title": f"Follow up: {eq_name} flagged for attention",
+                    "p_body": attention_reason or "Equipment has been flagged — assign a responsible party and create a work order if needed.",
+                    "p_priority": "normal",
+                    "p_entity_type": "equipment",
+                    "p_entity_id": equipment_id,
+                    "p_cta_action_id": "create_work_order_for_equipment",
+                    "p_cta_payload": {"equipment_id": equipment_id},
+                    "p_idempotency_key": f"equip:{equipment_id}:attention:{datetime.now(timezone.utc).date()}",
+                }).execute()
+            except Exception:
+                pass
 
         return {
             "status": "success",
@@ -1410,6 +1471,24 @@ def _record_equipment_hours_adapter(handlers: EquipmentHandlers):
             "signature": {},
         })
 
+        # Data continuity: ledger follow-up prompts maintenance schedule review
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "equipment",
+                "entity_id": equipment_id,
+                "action": "hours_recorded_follow_up",
+                "user_id": user_id,
+                "old_values": None,
+                "new_values": {
+                    "running_hours": hours_reading,
+                    "reminder": "Verify maintenance schedule intervals are still current.",
+                },
+                "signature": {},
+            })
+        except Exception:
+            pass
+
         return {
             "status": "success",
             "log_id": log_id,
@@ -1490,6 +1569,30 @@ def _create_equipment_adapter(handlers: EquipmentHandlers):
             "new_values": {"name": name, "category": category},
             "signature": {},
         })
+
+        # Data continuity: notify creator if key fields are missing
+        _missing = []
+        if not manufacturer: _missing.append("manufacturer")
+        if not model: _missing.append("model")
+        if not serial_number: _missing.append("serial number")
+        if running_hours is None: _missing.append("running hours")
+        if _missing and equipment_id:
+            try:
+                db.rpc("upsert_notification", {
+                    "p_yacht_id": yacht_id,
+                    "p_user_id": user_id,
+                    "p_notification_type": "equipment_record_incomplete",
+                    "p_title": f"Complete record: {name}",
+                    "p_body": f"Missing: {', '.join(_missing)}. Open the equipment card to fill in these details.",
+                    "p_priority": "low",
+                    "p_entity_type": "equipment",
+                    "p_entity_id": equipment_id,
+                    "p_cta_action_id": "view_equipment",
+                    "p_cta_payload": {"equipment_id": equipment_id},
+                    "p_idempotency_key": f"equip:{equipment_id}:incomplete:created",
+                }).execute()
+            except Exception:
+                pass
 
         return {
             "status": "success",
