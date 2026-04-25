@@ -1,19 +1,27 @@
 'use client';
 
 /**
- * FaultContent — lens-v2 entity view.
- * Prototype: public/prototypes/lens-fault.html
+ * FaultContent — lens-v2 entity view (full redesign, Issue 7 v2).
  *
  * Data flow:
  * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
  * - Actions from availableActions[] → backend /v1/actions/execute
  * - ActionPopup auto-builds form fields from action.required_fields
  *
- * Sections: Identity → Corrective Action → RCA → Related → Notes → Docs → History → Audit Trail → Attachments
+ * Sections (document metaphor, top → bottom):
+ * 1. Hero image (first attachment photo, or placeholder)
+ * 2. Identity strip (title, fault code, status pills, context line)
+ * 3. Detail lines (severity, location, reported date)
+ * 4. Corrective Action / Description KV block
+ * 5. Root Cause Analysis
+ * 6. Related Entities
+ * 7. NOTES
+ * 8. ATTACHMENTS
+ * 9. LINKED PARTS
+ * 10. AUDIT TRAIL
  *
- * TODO notes for next engineer:
- * - Add Comment handler not wired (onClick is noop)
- * - File upload modal not wired
+ * History section deliberately omitted — not applicable to faults entity.
+ * Duplicate audit-trail section removed in PR #706.
  */
 
 import * as React from 'react';
@@ -27,6 +35,8 @@ import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { useAuth } from '@/hooks/useAuth';
 
 // Sections
 import {
@@ -35,16 +45,14 @@ import {
   AttachmentsSection,
   DocRowsSection,
   KVSection,
-  HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
   type DocRowItem,
   type KVItem,
-  type HistoryPeriod,
 } from '../sections';
 
-// ─── Colour mapping helpers ───
+// ─── Colour mapping helpers ───────────────────────────────────────────────────
 
 function statusToPillVariant(status: string): PillDef['variant'] {
   switch (status) {
@@ -52,6 +60,7 @@ function statusToPillVariant(status: string): PillDef['variant'] {
       return 'red';
     case 'investigating':
     case 'under_review':
+      return 'amber';
     case 'acknowledged':
       return 'amber';
     case 'resolved':
@@ -82,11 +91,185 @@ function formatLabel(str: string): string {
   return str.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// ─── Component ───
+// ─── Hero Image ───────────────────────────────────────────────────────────────
+
+interface HeroImageProps {
+  url: string | undefined;
+  alt: string;
+}
+
+function HeroImage({ url, alt }: HeroImageProps) {
+  if (url) {
+    return (
+      <div style={{ marginBottom: '16px', borderRadius: '8px', overflow: 'hidden', maxHeight: '280px' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={alt}
+          style={{
+            width: '100%',
+            maxHeight: '280px',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+        />
+      </div>
+    );
+  }
+  return (
+    <div
+      style={{
+        marginBottom: '16px',
+        borderRadius: '8px',
+        background: 'var(--surface)',
+        border: '1px solid var(--border-sub)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        minHeight: '120px',
+        color: 'var(--txt-ghost)',
+      }}
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+        <circle cx="12" cy="13" r="4" />
+      </svg>
+      <span style={{ fontSize: '12px', letterSpacing: '0.04em' }}>No photos yet</span>
+    </div>
+  );
+}
+
+// ─── Linked Parts Section ─────────────────────────────────────────────────────
+
+interface LinkedPart {
+  part_id: string;
+  part_name: string;
+  part_number?: string;
+  stock_level?: number | string;
+  notes?: string;
+  created_at?: string;
+}
+
+interface LinkedPartsSectionProps {
+  parts: LinkedPart[];
+  canLink: boolean;
+  onLink: () => void;
+  onUnlink: (partId: string) => void;
+}
+
+function LinkedPartsSection({ parts, canLink, onLink, onUnlink }: LinkedPartsSectionProps) {
+  return (
+    <section style={{ padding: '0 0 16px 0' }}>
+      {/* Section heading — design system pattern */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTop: '1px solid var(--border-sub)',
+        paddingTop: '16px',
+        marginBottom: '12px',
+      }}>
+        <span style={{
+          fontSize: '14px',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--txt3)',
+        }}>
+          Linked Parts
+        </span>
+        {canLink && (
+          <button
+            type="button"
+            onClick={onLink}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--mark)',
+              fontSize: '13px',
+              fontWeight: 500,
+              padding: '4px 0',
+            }}
+          >
+            + Link Parts
+          </button>
+        )}
+      </div>
+
+      {parts.length === 0 ? (
+        <p style={{ fontSize: '12px', color: 'var(--txt-ghost)', margin: 0 }}>No parts linked</p>
+      ) : (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {parts.map((part) => (
+            <LinkedPartRow key={part.part_id} part={part} onUnlink={onUnlink} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function LinkedPartRow({ part, onUnlink }: { part: LinkedPart; onUnlink: (id: string) => void }) {
+  const [hovered, setHovered] = React.useState(false);
+
+  return (
+    <li
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        minHeight: '44px',
+        padding: '8px 12px',
+        background: hovered ? 'var(--surface-hover)' : 'transparent',
+        borderRadius: '6px',
+        transition: 'background 0.15s ease',
+      }}
+    >
+      <span style={{ fontSize: '14px', color: 'var(--txt2)' }}>
+        {part.part_name}
+        {part.part_number && (
+          <>
+            {' · '}
+            <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>{part.part_number}</span>
+          </>
+        )}
+        {part.stock_level !== undefined && part.stock_level !== null && (
+          <> · Stock: {part.stock_level}</>
+        )}
+      </span>
+      {hovered && (
+        <button
+          type="button"
+          aria-label={`Unlink ${part.part_name}`}
+          onClick={() => onUnlink(part.part_id)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--txt3)',
+            fontSize: '16px',
+            lineHeight: 1,
+            padding: '0 4px',
+          }}
+        >
+          ×
+        </button>
+      )}
+    </li>
+  );
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function FaultContent() {
   const router = useRouter();
-  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading, refetch } = useEntityLensContext();
+  const { user } = useAuth();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -98,7 +281,12 @@ export function FaultContent() {
   const equipment_id = (entity?.equipment_id ?? payload.equipment_id) as string | undefined;
   const equipment_name = (entity?.equipment_name ?? payload.equipment_name) as string | undefined;
   const equipment_code = (entity?.equipment_code ?? payload.equipment_code) as string | undefined;
-  const reported_by = (entity?.reported_by ?? payload.reported_by) as string | undefined;
+  // UUID → human name enrichment: prefer *_name variants, fallback to truncated UUID
+  const reported_by_raw = (entity?.reported_by ?? payload.reported_by) as string | undefined;
+  const reported_by_name = (entity?.reported_by_name ?? payload.reported_by_name) as string | undefined;
+  const reported_by = reported_by_name ?? (reported_by_raw && reported_by_raw.length > 12
+    ? `${reported_by_raw.slice(0, 8)}…`
+    : reported_by_raw);
   const reported_date = (entity?.reported_date ?? payload.reported_date ?? entity?.reported_at ?? payload.reported_at ?? entity?.created_at ?? payload.created_at) as string | undefined;
   const resolved_date = (entity?.resolved_date ?? payload.resolved_date ?? entity?.resolved_at ?? payload.resolved_at) as string | undefined;
   const location = (entity?.location ?? payload.location) as string | undefined;
@@ -106,48 +294,63 @@ export function FaultContent() {
   const root_cause = (entity?.root_cause ?? payload.root_cause) as string | undefined;
   const corrective_action = (entity?.corrective_action ?? payload.corrective_action) as string | undefined;
   const vessel = (entity?.vessel_name ?? payload.vessel_name ?? entity?.yacht_name ?? payload.yacht_name) as string | undefined;
+  const deleted_at = (entity?.deleted_at ?? payload.deleted_at) as string | null | undefined;
 
   // Section data
-  const notes = ((entity?.notes ?? payload.notes ?? entity?.comments ?? payload.comments ?? entity?.journal ?? payload.journal) as Array<Record<string, unknown>> | undefined) ?? [];
+  const notes = ((entity?.notes ?? payload.notes ?? entity?.comments ?? payload.comments) as Array<Record<string, unknown>> | undefined) ?? [];
   const related_entities = ((entity?.related_entities ?? payload.related_entities) as Array<Record<string, unknown>> | undefined) ?? [];
   const documents = ((entity?.documents ?? payload.documents ?? entity?.reference_documents ?? payload.reference_documents) as Array<Record<string, unknown>> | undefined) ?? [];
-  // NOTE: `history` field (read-action log) deliberately NOT extracted — it rendered
-  // as a duplicate audit-trail section below the real "History". Per CEO rule
-  // 2026-04-24: History = prior iterations only (2022/23/24/25 periods etc.),
-  // NOT a read-only action receipt. Real audit chain continues via `auditTrail`.
   const attachments = ((entity?.attachments ?? payload.attachments) as Array<Record<string, unknown>> | undefined) ?? [];
   const root_cause_items = ((entity?.root_cause_analysis ?? payload.root_cause_analysis) as Array<Record<string, unknown>> | undefined) ?? [];
-  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
   const auditTrail = ((entity?.audit_trail ?? payload.audit_trail) as Array<Record<string, unknown>> | undefined) ?? [];
+  const linkedPartsRaw = ((entity?.linked_parts ?? payload.linked_parts) as Array<Record<string, unknown>> | undefined) ?? [];
+
+  // ── Hero image: first attachment with a url ──
+  const heroAttachment = attachments.find((a) => {
+    const url = (a.url ?? a.signed_url ?? a.storage_path) as string | undefined;
+    return !!url;
+  });
+  const heroUrl = heroAttachment
+    ? ((heroAttachment.url ?? heroAttachment.signed_url) as string | undefined)
+    : undefined;
 
   // ── Action gates ──
-  // Note: investigate_fault is removed per Issue 7 spec (wasteful; status flips via
-  //   acknowledge_fault instead). resolve_fault/archive_fault/link_parts_to_fault
-  //   are pending in the backend consolidated pass; until they ship, getAction
-  //   returns null and the corresponding UI paths are hidden automatically.
   const acknowledgeAction = getAction('acknowledge_fault');
   const resolveAction = getAction('resolve_fault');
   const closeAction = getAction('close_fault');
   const addNoteAction = getAction('add_fault_note');
+  const addPhotoAction = getAction('add_fault_photo');
   const archiveAction = getAction('archive_fault');
+  const linkPartsAction = getAction('link_parts_to_fault');
+  const addToHandoverAction = getAction('add_to_handover');
+  const reopenAction = getAction('reopen_fault');
 
-  // BACKEND_AUTO moved to mapActionFields.ts
+  // ── Popup state ──
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
     actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
   } | null>(null);
+  const [addNoteOpen, setAddNoteOpen] = React.useState(false);
+  const [uploadOpen, setUploadOpen] = React.useState(false);
 
   function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
-    const fields = mapActionFields(action as any);
-    const sigLevel = getSignatureLevel(action as any);
+    const fields = mapActionFields(action as never);
+    const sigLevel = getSignatureLevel(action as never);
     setActionPopupConfig({ actionId: action.action_id, title: action.label, fields, signatureLevel: sigLevel });
   }
 
   // ── Derived display ──
+  const isArchived = Boolean(deleted_at);
+  const isOpen = status === 'open';
+  const isInvestigating = ['investigating', 'under_review', 'acknowledged'].includes(status);
+  const isResolved = status === 'resolved';
+  const isClosed = status === 'closed';
+  const canMutate = !isArchived;
+
   const statusLabel = formatLabel(status);
   const severityLabel = formatLabel(severity);
 
   const pills: PillDef[] = [
-    { label: statusLabel, variant: statusToPillVariant(status) },
+    { label: isArchived ? 'Archived' : statusLabel, variant: isArchived ? 'neutral' : statusToPillVariant(status) },
   ];
   if (severity !== 'medium') {
     pills.push({ label: severityLabel, variant: severityToPillVariant(severity) });
@@ -191,35 +394,31 @@ export function FaultContent() {
     </>
   );
 
-  // ── Split button config ──
-  // Primary-action matrix (locked in docs/ongoing_work/faults/FAULT_CARD_DESIGN_SPEC.md §4):
-  //   open           → Acknowledge Fault
-  //   investigating  → Resolve Fault (direct; WO creation optional, via dropdown)
-  //   acknowledged   → Resolve Fault
-  //   resolved       → Close Fault
-  //   archived (deleted_at IS NOT NULL) → no primary (Reopen via dropdown only)
-  const isOpen = status === 'open';
-  const isInvestigating = ['investigating', 'under_review', 'acknowledged'].includes(status);
-  const isResolved = status === 'resolved';
-  const isArchived = Boolean((entity as any)?.deleted_at ?? payload.deleted_at);
+  // ── Primary-action matrix ──
+  // open           → Acknowledge Fault
+  // investigating  → Create Work Order (spec §4 v2 update)
+  // acknowledged   → Create Work Order
+  // resolved       → Close Fault
+  // closed         → no primary
+  // archived       → no primary
+  const createWOAction = getAction('create_work_order_from_fault');
 
   let primaryLabel = '';
   let primaryAction = '';
-  if (isArchived) {
-    // No primary action on archived; user can Reopen via dropdown.
-  } else if (isOpen && acknowledgeAction !== null) {
-    primaryLabel = 'Acknowledge Fault';
-    primaryAction = 'acknowledge_fault';
-  } else if (isInvestigating && resolveAction !== null) {
-    primaryLabel = 'Resolve Fault';
-    primaryAction = 'resolve_fault';
-  } else if (isInvestigating && closeAction !== null) {
-    // Fallback until resolve_fault lands in the registry
-    primaryLabel = 'Close Fault';
-    primaryAction = 'close_fault';
-  } else if (isResolved && closeAction !== null) {
-    primaryLabel = 'Close Fault';
-    primaryAction = 'close_fault';
+  if (!isArchived && !isClosed) {
+    if (isOpen && acknowledgeAction !== null) {
+      primaryLabel = 'Acknowledge Fault';
+      primaryAction = 'acknowledge_fault';
+    } else if (isInvestigating && createWOAction !== null) {
+      primaryLabel = 'Create Work Order';
+      primaryAction = 'create_work_order_from_fault';
+    } else if (isInvestigating && resolveAction !== null) {
+      primaryLabel = 'Resolve Fault';
+      primaryAction = 'resolve_fault';
+    } else if (isResolved && closeAction !== null) {
+      primaryLabel = 'Close Fault';
+      primaryAction = 'close_fault';
+    }
   }
 
   const hasPrimaryAction = primaryAction !== '';
@@ -229,28 +428,88 @@ export function FaultContent() {
 
   const handlePrimary = React.useCallback(async () => {
     if (primaryAction) {
-      await executeAction(primaryAction, {});
+      const gate = getAction(primaryAction);
+      if (gate && (actionHasFields(gate as never) || gate.requires_signature)) {
+        openActionPopup(gate);
+      } else {
+        await executeAction(primaryAction, {});
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaryAction, executeAction]);
 
-  const SPECIAL_HANDLERS: Record<string, () => void> = {};
-  const DANGER_ACTIONS = new Set(['archive_fault', 'delete_fault']);
-  const primaryActionId = primaryAction;
+  // ── Add note handler ──
+  const handleAddNote = React.useCallback(() => setAddNoteOpen(true), []);
+  const handleNoteSubmit = React.useCallback(
+    async (noteText: string) => {
+      const result = await executeAction('add_fault_note', { text: noteText });
+      const isSuccess = result.success === true ||
+        (result as unknown as { status?: string }).status === 'success';
+      return { success: isSuccess, error: result.error ?? result.message };
+    },
+    [executeAction]
+  );
 
-  const dropdownItems: DropdownItem[] = availableActions
-    .filter((a) => a.action_id !== primaryActionId)
-    .map((a) => ({
-      label: a.label,
-      onClick: SPECIAL_HANDLERS[a.action_id]
-        ? SPECIAL_HANDLERS[a.action_id]
-        : () => {
-            const hasFields = actionHasFields(a as any);
-            if (hasFields || a.requires_signature) { openActionPopup(a); } else { executeAction(a.action_id); }
-          },
-      disabled: a.disabled,
-      disabledReason: a.disabled_reason ?? undefined,
-      danger: DANGER_ACTIONS.has(a.action_id),
-    }));
+  // ── Linked parts unlink handler ──
+  const handleUnlinkPart = React.useCallback(async (partId: string) => {
+    await executeAction('unlink_part_from_fault', { fault_id: entity?.id, part_id: partId });
+    refetch();
+  }, [executeAction, entity?.id, refetch]);
+
+  // ── Build dropdown items explicitly (not from availableActions filter) ──
+  const dropdownItems: DropdownItem[] = [];
+
+  if (canMutate) {
+    if (addNoteAction) {
+      dropdownItems.push({
+        label: 'Add Note',
+        onClick: handleAddNote,
+        disabled: addNoteAction.disabled,
+        disabledReason: addNoteAction.disabled_reason ?? undefined,
+      });
+    }
+    if (addPhotoAction) {
+      dropdownItems.push({
+        label: 'Add Photo',
+        onClick: () => setUploadOpen(true),
+        disabled: addPhotoAction.disabled,
+        disabledReason: addPhotoAction.disabled_reason ?? undefined,
+      });
+    }
+    if (addToHandoverAction) {
+      dropdownItems.push({
+        label: 'Add to Handover',
+        onClick: () => openActionPopup(addToHandoverAction),
+        disabled: addToHandoverAction.disabled,
+        disabledReason: addToHandoverAction.disabled_reason ?? undefined,
+      });
+    }
+    if (linkPartsAction) {
+      dropdownItems.push({
+        label: 'Link Parts',
+        onClick: () => openActionPopup(linkPartsAction),
+        disabled: linkPartsAction.disabled,
+        disabledReason: linkPartsAction.disabled_reason ?? undefined,
+      });
+    }
+    if ((isResolved || isClosed) && reopenAction) {
+      dropdownItems.push({
+        label: 'Reopen Fault',
+        onClick: () => openActionPopup(reopenAction),
+        disabled: reopenAction.disabled,
+        disabledReason: reopenAction.disabled_reason ?? undefined,
+      });
+    }
+    if (!isArchived && archiveAction) {
+      dropdownItems.push({
+        label: 'Archive Fault',
+        onClick: () => openActionPopup(archiveAction),
+        disabled: archiveAction.disabled,
+        disabledReason: archiveAction.disabled_reason ?? undefined,
+        danger: true,
+      });
+    }
+  }
 
   // ── Map section data ──
 
@@ -264,7 +523,7 @@ export function FaultContent() {
   // Notes → NoteItems
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
-    author: (n.author ?? n.created_by ?? n.user_name ?? n.added_by) as string ?? 'Unknown',
+    author: (n.author ?? n.created_by_name ?? n.created_by ?? n.user_name ?? n.added_by) as string ?? 'Unknown',
     timestamp: (n.created_at ?? n.timestamp ?? n.added_at) as string ?? '',
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
@@ -290,24 +549,11 @@ export function FaultContent() {
     onClick: d.document_id ? () => router.push(getEntityRoute('documents' as Parameters<typeof getEntityRoute>[0], d.document_id as string)) : undefined,
   }));
 
-  // (Removed: read-action log mapping — `history` field was rendered as a duplicate
-  // audit trail below the real "History" section. Real audit chain continues to
-  // render from the canonical `audit_trail` field via `auditEvents2` below.)
-
-  // Prior Periods → HistoryPeriods
-  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
-    id: (p.id as string) ?? `period-${i}`,
-    year: (p.year ?? p.period_year) as string ?? '',
-    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
-    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
-    summary: (p.summary ?? p.period_summary) as string ?? '',
-  }));
-
-  // Audit Trail → AuditEvents (distinct from history)
-  const auditEvents2: AuditEvent[] = auditTrail.map((h, i) => ({
-    id: (h.id as string) ?? `audit2-${i}`,
+  // Audit Trail → AuditEvents
+  const auditEvents: AuditEvent[] = auditTrail.map((h, i) => ({
+    id: (h.id as string) ?? `audit-${i}`,
     action: (h.action ?? h.description ?? h.event) as string ?? '',
-    actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
+    actor: (h.actor ?? h.actor_name ?? h.user_name ?? h.performed_by) as string | undefined,
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
   }));
 
@@ -320,24 +566,22 @@ export function FaultContent() {
     kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
   }));
 
-  // Add note handler
-  const [addNoteOpen, setAddNoteOpen] = React.useState(false);
-  const handleAddNote = React.useCallback(() => setAddNoteOpen(true), []);
-  const handleNoteSubmit = React.useCallback(
-    async (noteText: string) => {
-      // Field name must match registry (apps/api/action_router/registry.py:1188)
-      // + DB column (pms_notes.text). Previous 'note_text' caused 400 BAD_REQUEST.
-      const result = await executeAction('add_fault_note', { text: noteText });
-      const isSuccess = result.success === true ||
-        (result as unknown as { status?: string }).status === 'success';
-      return { success: isSuccess, error: result.error ?? result.message };
-    },
-    [executeAction]
-  );
+  // Linked Parts
+  const linkedParts: LinkedPart[] = linkedPartsRaw.map((p) => ({
+    part_id: (p.part_id ?? p.id) as string,
+    part_name: (p.part_name ?? p.name) as string ?? 'Unknown Part',
+    part_number: (p.part_number ?? p.number) as string | undefined,
+    stock_level: (p.stock_level ?? p.stock) as number | string | undefined,
+    notes: (p.notes ?? p.note) as string | undefined,
+    created_at: (p.created_at) as string | undefined,
+  }));
 
   return (
     <>
-      {/* Identity Strip */}
+      {/* 1. Hero Image */}
+      <HeroImage url={heroUrl} alt={title} />
+
+      {/* 2. Identity Strip */}
       <IdentityStrip
         overline={fault_number}
         title={title}
@@ -364,7 +608,7 @@ export function FaultContent() {
         }
       />
 
-      {/* Corrective Action */}
+      {/* 3. Corrective Action */}
       {corrective_action && (
         <ScrollReveal>
           <KVSection
@@ -379,7 +623,7 @@ export function FaultContent() {
         </ScrollReveal>
       )}
 
-      {/* Description (only if no corrective_action, to avoid duplication) */}
+      {/* 3b. Description (only if no corrective_action) */}
       {!corrective_action && description && (
         <ScrollReveal>
           <KVSection
@@ -395,7 +639,7 @@ export function FaultContent() {
         </ScrollReveal>
       )}
 
-      {/* Root Cause Analysis */}
+      {/* 4. Root Cause Analysis */}
       {rcaItems.length > 0 && (
         <ScrollReveal>
           <KVSection
@@ -412,7 +656,7 @@ export function FaultContent() {
         </ScrollReveal>
       )}
 
-      {/* Related Entities */}
+      {/* 5. Related Entities */}
       {relatedItems.length > 0 && (
         <ScrollReveal>
           <DocRowsSection
@@ -428,7 +672,7 @@ export function FaultContent() {
         </ScrollReveal>
       )}
 
-      {/* Comments / Journal */}
+      {/* 6. Notes */}
       <ScrollReveal>
         <NotesSection
           notes={noteItems}
@@ -437,43 +681,76 @@ export function FaultContent() {
         />
       </ScrollReveal>
 
-      {/* Reference Documents */}
+      {/* 7. Attachments */}
+      <ScrollReveal>
+        <AttachmentsSection
+          attachments={attachmentItems}
+          onAddFile={addPhotoAction ? () => setUploadOpen(true) : undefined}
+          canAddFile={!!addPhotoAction}
+        />
+      </ScrollReveal>
+
+      {/* 8. Reference Documents (when present) */}
       {docItems.length > 0 && (
         <ScrollReveal>
           <DocRowsSection title="Reference Documents" docs={docItems} />
         </ScrollReveal>
       )}
 
-      {/* Evidence & Attachments */}
+      {/* 9. Linked Parts */}
       <ScrollReveal>
-        <AttachmentsSection
-          attachments={attachmentItems}
-          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
-          canAddFile
+        <LinkedPartsSection
+          parts={linkedParts}
+          canLink={!!linkPartsAction && canMutate}
+          onLink={() => linkPartsAction && openActionPopup(linkPartsAction)}
+          onUnlink={handleUnlinkPart}
         />
       </ScrollReveal>
 
-      {/* History (prior iterations only — 2022/23/24/25 periods etc.) */}
-      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
+      {/* 10. Audit Trail */}
+      <ScrollReveal>
+        <AuditTrailSection events={auditEvents} defaultCollapsed />
+      </ScrollReveal>
 
-      {/* Audit Trail — canonical mutation ledger from audit_trail field.
-          A second read-action-log section used to render here from the `history`
-          field; deleted 2026-04-24 per CEO: "read-only action receipts" under a
-          History label are wasteful and conflate with the real History above. */}
-      <ScrollReveal><AuditTrailSection events={auditEvents2} defaultCollapsed /></ScrollReveal>
-
+      {/* ── Modals ── */}
       {actionPopupConfig && (
-        <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
+        <ActionPopup
+          mode="mutate"
+          title={actionPopupConfig.title}
+          fields={actionPopupConfig.fields}
           signatureLevel={actionPopupConfig.signatureLevel}
-          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
-          onClose={() => setActionPopupConfig(null)} />
+          onSubmit={async (values) => {
+            await executeAction(actionPopupConfig.actionId, values);
+            setActionPopupConfig(null);
+          }}
+          onClose={() => setActionPopupConfig(null)}
+        />
       )}
+
       <AddNoteModal
         open={addNoteOpen}
         onClose={() => setAddNoteOpen(false)}
         onSubmit={handleNoteSubmit}
         isLoading={isLoading}
       />
+
+      {user?.yachtId && user?.id && (
+        <AttachmentUploadModal
+          open={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          entityType="fault"
+          entityId={(entity?.id as string | undefined) ?? ''}
+          bucket="pms-fault-photos"
+          category="fault_photo"
+          yachtId={user.yachtId}
+          userId={user.id}
+          onComplete={() => {
+            setUploadOpen(false);
+            refetch();
+          }}
+          title="Add Fault Photo"
+        />
+      )}
     </>
   );
 }
