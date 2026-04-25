@@ -114,6 +114,8 @@ export function EquipmentContent() {
   const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
   const auditTrail = ((entity?.audit_trail ?? payload.audit_trail ?? entity?.audit_history ?? payload.audit_history) as Array<Record<string, unknown>> | undefined) ?? [];
   const notes = ((entity?.notes ?? payload.notes) as Array<Record<string, unknown>> | undefined) ?? [];
+  const parent_equipment = (entity?.parent_equipment ?? payload.parent_equipment) as { id: string; name: string; code?: string; system_type?: string } | null | undefined;
+  const linked_parts = ((entity?.linked_parts ?? payload.linked_parts) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
   const createWOAction = getAction('create_work_order_for_equipment');
@@ -413,6 +415,21 @@ export function EquipmentContent() {
       : undefined,
   }));
 
+  const linkedPartItems: PartItem[] = linked_parts.map((lp, i) => ({
+    id: (lp.id as string) ?? `lp-${i}`,
+    name: (lp.name as string) ?? 'Part',
+    partNumber: (lp.part_number as string | undefined),
+    quantity: lp.quantity_required !== undefined && lp.quantity_required !== null
+      ? `Req: ${lp.quantity_required}`
+      : undefined,
+    stock: lp.quantity_on_hand !== undefined
+      ? `On hand: ${lp.quantity_on_hand}`
+      : undefined,
+    onNavigate: lp.id
+      ? () => router.push(getEntityRoute('parts' as Parameters<typeof getEntityRoute>[0], lp.id as string))
+      : undefined,
+  }));
+
   // Upcoming Maintenance → KVItems
   const upcomingMaintItems: KVItem[] = upcoming_maintenance.map((m, i) => {
     const title = (m.title ?? m.name ?? m.description) as string ?? `Maintenance ${i + 1}`;
@@ -504,6 +521,44 @@ export function EquipmentContent() {
           <PartsSection
             parts={sparePartItems}
             canAddPart
+          />
+        </ScrollReveal>
+      )}
+
+      {/* Parent Equipment */}
+      {parent_equipment && (
+        <ScrollReveal>
+          <DocRowsSection
+            title="Parent Equipment"
+            docs={[{
+              id: parent_equipment.id,
+              name: parent_equipment.name,
+              code: parent_equipment.code ?? undefined,
+              meta: parent_equipment.system_type ?? undefined,
+              icon: (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <rect x="1" y="4" width="14" height="9" rx="1" stroke="currentColor" strokeWidth="1.3" />
+                  <path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                </svg>
+              ),
+              onClick: () => router.push(getEntityRoute('equipment' as Parameters<typeof getEntityRoute>[0], parent_equipment.id)),
+            }]}
+            icon={
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="1" y="4" width="14" height="9" rx="1" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+              </svg>
+            }
+          />
+        </ScrollReveal>
+      )}
+
+      {/* Linked Parts */}
+      {linkedPartItems.length > 0 && (
+        <ScrollReveal>
+          <PartsSection
+            parts={linkedPartItems}
+            canAddPart={false}
           />
         </ScrollReveal>
       )}
