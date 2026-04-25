@@ -1657,6 +1657,34 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
         except Exception:
             pass
 
+        parent_equipment = None
+        parent_id = data.get("parent_id")
+        if parent_id:
+            try:
+                pe_r = supabase.table("pms_equipment").select(
+                    "id, name, code, system_type"
+                ).eq("id", parent_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                if pe_r and pe_r.data:
+                    parent_equipment = pe_r.data
+            except Exception:
+                pass
+
+        linked_parts = []
+        try:
+            bom_r = supabase.table("pms_equipment_parts_bom").select(
+                "part_id, quantity_required, notes, pms_parts(id, name, part_number, quantity_on_hand, location)"
+            ).eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).limit(50).execute()
+            for row in (bom_r.data or []):
+                part = row.get("pms_parts")
+                if part:
+                    linked_parts.append({
+                        **part,
+                        "quantity_required": row.get("quantity_required"),
+                        "bom_notes": row.get("notes"),
+                    })
+        except Exception:
+            pass
+
         _entity_response = {
             "id": data.get('id'),
             "name": data.get('name', 'Unknown Equipment'),
@@ -1687,6 +1715,8 @@ async def get_equipment_entity(equipment_id: str, auth: dict = Depends(get_authe
             "attachments": attachments,
             "related_entities": nav,
             "notes": equipment_notes,
+            "parent_equipment": parent_equipment,
+            "linked_parts": linked_parts,
         }
         _entity_response["available_actions"] = get_available_actions(
             "equipment", _entity_response, auth.get("role", "crew")
