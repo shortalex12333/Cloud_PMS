@@ -1005,181 +1005,25 @@ async def update_equipment_status(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    [DEPRECATED — HANDOVER08 flag, 2026-04-24]
-
-    Duplicate of handlers.handover_handlers.HandoverHandlers.add_to_handover_execute
-    (the canonical path registered at action_router.registry:948-973 → POST
-    /v1/handover/add-item). Does its own handover_items insert, its own
-    category normalisation, its own notifications write — all a copy of what
-    the canonical handler already does. Drift between this and the canonical
-    is a data-integrity hazard.
-
-    Removal plan (tracked as HANDOVER08 task B9, follow-up PR):
-      1. Trace every remaining call site to this module-level function.
-      2. Redirect all callers to HandoverHandlers.add_to_handover_execute.
-      3. Delete this function + its helpers.
-
-    Do NOT add new callers. Do NOT add new behaviour here. If a bug surfaces,
-    patch it in the canonical handler and leave this stub unchanged so the
-    dedupe remains visible to reviewers.
-
-    Original params contract (kept verbatim for traceability):
-        - yacht_id: UUID
-        - entity_type: str (equipment, fault, work_order, part, document, note, purchase_order)
-        - entity_id: UUID (optional for notes)
-        - summary: str (also accepts summary_text for backwards compat)
-        - category: str (critical, standard, low, urgent, in_progress, completed, watch, fyi)
-        - user_id: UUID (from JWT)
-        - priority: str (optional: low, normal, high)
-        - section: str (optional: Engineering, Deck, Interior, Command)
-        - entity_url: str (optional: deep link back to entity)
-    """
-    import logging as _hndvr_logging
-    _hndvr_logging.getLogger(__name__).warning(
-        "[DEPRECATED] action_router.dispatchers.internal_dispatcher.add_to_handover "
-        "called — this duplicates HandoverHandlers.add_to_handover_execute and is "
-        "scheduled for removal. Tracked as HANDOVER08 task B9."
-    )
-    import uuid as uuid_lib
+    """Adapter — delegates to HandoverHandlers.add_to_handover_execute (canonical)."""
+    from handlers.handover_handlers import HandoverHandlers
     supabase = get_supabase_client()
-
-    # Accept both "summary" (new frontend) and "summary_text" (legacy) field names
+    handler = HandoverHandlers(supabase)
     summary = params.get("summary") or params.get("summary_text", "")
-    if not summary or len(summary.strip()) < 3:
-        raise ValueError("summary must be at least 3 characters")
-
-    # Normalise category — accept new UI values (critical/standard/low) and legacy values
-    raw_category = params.get("category", "standard")
-    category_map = {
-        "critical": "urgent",
-        "standard": "fyi",
-        "low": "fyi",
-        # legacy values pass through unchanged
-        "urgent": "urgent",
-        "in_progress": "in_progress",
-        "completed": "completed",
-        "watch": "watch",
-        "fyi": "fyi",
-    }
-    category = category_map.get(raw_category, "fyi")
-
-    # SECURITY FIX P1-004: Verify entity belongs to yacht before INSERT
-    # Notes (entity_type='note') and purchase_orders are exempt from entity lookup
-    entity_id = params.get("entity_id") or params.get("equipment_id")
-    entity_type = params.get("entity_type", "equipment")
-    yacht_id = params["yacht_id"]
-
-    entity_table_map = {
-        "equipment": "pms_equipment",
-        "fault": "pms_faults",
-        "work_order": "pms_work_orders",
-        "part": "pms_parts",
-        "document": "documents",
-    }
-
-    if entity_id and entity_type in entity_table_map:
-        table_name = entity_table_map[entity_type]
-        entity_result = supabase.table(table_name).select("id").eq(
-            "id", entity_id
-        ).eq("yacht_id", yacht_id).execute()
-
-        if not entity_result.data:
-            raise ValueError(f"{entity_type.capitalize()} {entity_id} not found or access denied")
-
-    # For note type, generate a stable UUID if entity_id not provided
-    if entity_type == "note" and not entity_id:
-        entity_id = str(uuid_lib.uuid4())
-
-    # Map priority to integer
-    priority_value = {"low": 1, "normal": 2, "high": 3, "urgent": 4}.get(
-        params.get("priority", "normal"), 2
+    return await handler.add_to_handover_execute(
+        entity_type=params.get("entity_type", "note"),
+        entity_id=params.get("entity_id") or params.get("equipment_id"),
+        summary=summary,
+        category=params.get("category", "fyi"),
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        priority=params.get("priority", "normal"),
+        section=params.get("section"),
+        is_critical=params.get("is_critical", False),
+        requires_action=params.get("requires_action", False),
+        action_summary=params.get("action_summary"),
+        entity_url=params.get("entity_url"),
     )
-    # critical category always gets high priority
-    if raw_category == "critical":
-        priority_value = 3
-
-    is_critical = raw_category == "critical"
-
-    # Create handover entry — correct column names matching handover_items schema
-    handover_id = str(uuid_lib.uuid4())
-    handover_entry = {
-        "id": handover_id,
-        "yacht_id": yacht_id,
-        "entity_type": entity_type,
-        "entity_id": entity_id,
-        "summary": summary.strip(),
-        "category": category,
-        "priority": priority_value,
-        "status": "pending",
-        "export_status": "pending",
-        "is_critical": is_critical,
-        "requires_action": params.get("requires_action", False),
-        "action_summary": params.get("action_summary"),
-        "section": params.get("section"),
-        "entity_url": params.get("entity_url"),
-        "added_by": params["user_id"],
-    }
-
-    result = supabase.table("handover_items").insert(handover_entry).execute()
-
-    if not result.data:
-        raise Exception("Failed to create handover entry")
-
-    # Audit log — SECURITY FIX P1-005: warn on failure, never block
-    try:
-        supabase.table("pms_audit_log").insert({
-            "id": str(uuid_lib.uuid4()),
-            "yacht_id": yacht_id,
-            "action": "add_to_handover",
-            "entity_type": "handover_item",
-            "entity_id": handover_id,
-            "user_id": params["user_id"],
-            "actor_id": params["user_id"],
-            "signature": {"user_id": params["user_id"], "timestamp": datetime.utcnow().isoformat()},
-            "new_values": {
-                "entity_type": entity_type,
-                "entity_id": entity_id,
-                "category": category,
-                "is_critical": is_critical,
-            },
-        }).execute()
-    except Exception as e:
-        logger.warning(f"Audit log failed for add_to_handover (handover_id={handover_id}): {e}")
-
-    # If item is critical — notify HODs immediately via ledger_events
-    if is_critical:
-        try:
-            from routes.handlers.ledger_utils import build_ledger_event
-            hod_rows = supabase.table("auth_users_roles").select("user_id, role, department") \
-                .eq("yacht_id", yacht_id) \
-                .in_("role", ["chief_engineer", "chief_officer", "captain"]) \
-                .eq("is_active", True).execute()
-            for hod in (hod_rows.data or []):
-                ledger_event = build_ledger_event(
-                    yacht_id=yacht_id,
-                    user_id=hod["user_id"],
-                    event_type="escalation",
-                    entity_type="handover_item",
-                    entity_id=handover_id,
-                    action="critical_item_added",
-                    user_role=hod["role"],
-                    change_summary=f"Critical handover item added: {summary[:100]}",
-                    metadata={"added_by": params["user_id"], "item_id": handover_id}
-                )
-                supabase.table("ledger_events").insert(ledger_event).execute()
-        except Exception as e:
-            logger.warning(f"Critical item HOD notification failed (add_to_handover): {e}")
-
-    return {
-        "handover_id": handover_id,
-        "entity_type": entity_type,
-        "entity_id": entity_id,
-        "summary": summary.strip(),
-        "category": category,
-        "priority": params.get("priority", "normal"),
-        "added_by": params["user_id"],
-    }
 
 
 async def delete_document(params: Dict[str, Any]) -> Dict[str, Any]:

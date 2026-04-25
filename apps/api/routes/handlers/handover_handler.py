@@ -79,16 +79,7 @@ async def filter_handover(
 
 
 # ============================================================================
-# add_to_handover  (was L1982-2064 — delegates to HandoverHandlers)
-# ============================================================================
-# [DEPRECATED — HANDOVER08 flag, 2026-04-24]
-# This route-level wrapper thinly delegates to HandoverHandlers but duplicates
-# payload-massaging (summary fallback chain, title+description concatenation,
-# min-length 10 instead of canonical 3) that drifts from the handler. Keep it
-# while tracing call sites; the removal follow-up PR will either (a) fold its
-# payload-massaging into the canonical handler if any caller relies on it, or
-# (b) delete this wrapper and route callers to the canonical directly.
-# Tracked as HANDOVER08 task B9.
+# add_to_handover — Phase 4 dispatch target (p0_actions_routes.py)
 # ============================================================================
 async def add_to_handover(
     payload: dict,
@@ -108,13 +99,13 @@ async def add_to_handover(
         description = payload.get("description", "")
         summary = f"{title}\n\n{description}" if title and description else (title or description or "")
 
-    if not summary or len(summary) < 10:
+    if not summary or len(summary.strip()) < 3:
         raise HTTPException(
             status_code=400,
             detail={
                 "status": "error",
                 "error_code": "VALIDATION_ERROR",
-                "message": "Summary must be at least 10 characters"
+                "message": "Summary must be at least 3 characters"
             }
         )
 
