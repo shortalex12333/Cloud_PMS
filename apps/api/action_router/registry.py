@@ -1181,36 +1181,18 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         method="POST",
         # Canonical: HOD + captain only
         allowed_roles=["chief_engineer", "chief_officer", "captain"],
-        required_fields=["yacht_id", "fault_id"],
+        required_fields=["yacht_id", "fault_id", "close_reason"],
         domain="faults",
         variant=ActionVariant.MUTATE,
         search_keywords=["close", "resolve", "fault", "complete"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("fault_id", FieldClassification.REQUIRED, auto_populate_from="fault", lookup_required=True),
+            FieldMetadata("close_reason", FieldClassification.REQUIRED, description="Reason for closing the fault"),
             FieldMetadata("resolution_notes", FieldClassification.OPTIONAL),
         ],
     ),
-
-    "update_fault": ActionDefinition(
-        action_id="update_fault",
-        label="Update Fault",
-        endpoint="/v1/faults/update",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        # Canonical: HOD + captain only
-        allowed_roles=["chief_engineer", "chief_officer", "captain"],
-        required_fields=["yacht_id", "fault_id"],
-        domain="faults",
-        variant=ActionVariant.MUTATE,
-        search_keywords=["update", "edit", "modify", "fault"],
-        field_metadata=[
-            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
-            FieldMetadata("fault_id", FieldClassification.REQUIRED, auto_populate_from="fault", lookup_required=True),
-            FieldMetadata("severity", FieldClassification.OPTIONAL, options=["cosmetic", "minor", "major", "critical", "safety"]),
-            FieldMetadata("status", FieldClassification.OPTIONAL, options=["open", "investigating", "work_ordered", "resolved", "closed"]),
-        ],
-    ),
+    # update_fault REMOVED 2026-04-25 (FAULT05 Issue 7) — deprecated, use close_fault/resolve_fault/reopen_fault.
 
     "add_fault_photo": ActionDefinition(
         action_id="add_fault_photo",
@@ -1253,23 +1235,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
-    "view_fault_detail": ActionDefinition(
-        action_id="view_fault_detail",
-        label="View Fault Detail",
-        endpoint="/v1/faults/view",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        # Canonical: all including manager and purser
-        allowed_roles=["crew", "chief_engineer", "chief_officer", "captain", "manager", "purser"],
-        required_fields=["yacht_id", "fault_id"],
-        domain="faults",
-        variant=ActionVariant.READ,
-        search_keywords=["view", "detail", "show", "fault", "see"],
-        field_metadata=[
-            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
-            FieldMetadata("fault_id", FieldClassification.REQUIRED, auto_populate_from="fault", lookup_required=True),
-        ],
-    ),
+    # view_fault_detail REMOVED 2026-04-25 (FAULT05 Issue 7) — stale, fault detail served by fault_routes.py GET endpoint.
 
     "view_fault_history": ActionDefinition(
         action_id="view_fault_history",
@@ -1290,25 +1256,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
-    "diagnose_fault": ActionDefinition(
-        action_id="diagnose_fault",
-        label="Diagnose Fault",
-        endpoint="/v1/faults/diagnose",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        # Canonical: HOD + captain only
-        allowed_roles=["chief_engineer", "chief_officer", "captain"],
-        required_fields=["yacht_id", "fault_id"],
-        domain="faults",
-        variant=ActionVariant.MUTATE,
-        search_keywords=["diagnose", "analysis", "fault", "troubleshoot"],
-        field_metadata=[
-            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
-            FieldMetadata("fault_id", FieldClassification.REQUIRED, auto_populate_from="fault", lookup_required=True),
-            FieldMetadata("diagnosis", FieldClassification.REQUIRED, description="Root cause analysis text"),
-            FieldMetadata("recommended_action", FieldClassification.OPTIONAL),
-        ],
-    ),
+    # diagnose_fault REMOVED 2026-04-25 (FAULT05 Issue 7) — stale action, diagnosis recorded via add_fault_note.
 
     "reopen_fault": ActionDefinition(
         action_id="reopen_fault",
@@ -1329,24 +1277,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
-    "mark_fault_false_alarm": ActionDefinition(
-        action_id="mark_fault_false_alarm",
-        label="Mark Fault as False Alarm",
-        endpoint="/v1/faults/mark-false-alarm",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        # Canonical: HOD + captain only
-        allowed_roles=["chief_engineer", "chief_officer", "captain"],
-        required_fields=["yacht_id", "fault_id"],
-        domain="faults",
-        variant=ActionVariant.MUTATE,
-        search_keywords=["false", "alarm", "dismiss", "fault", "cancel"],
-        field_metadata=[
-            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
-            FieldMetadata("fault_id", FieldClassification.REQUIRED, auto_populate_from="fault", lookup_required=True),
-            FieldMetadata("reason", FieldClassification.OPTIONAL, description="Reason for marking as false alarm"),
-        ],
-    ),
+    # mark_fault_false_alarm REMOVED 2026-04-25 (FAULT05 Issue 7) — stale action, use close_fault with close_reason.
 
     "show_manual_section": ActionDefinition(
         action_id="show_manual_section",
@@ -3838,6 +3769,41 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "entity_id"],
         domain="faults",
         variant=ActionVariant.SIGNED,
+    ),
+
+    "link_parts_to_fault": ActionDefinition(
+        action_id="link_parts_to_fault",
+        label="Link Parts",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["fault_id", "part_ids"],
+        domain="faults",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["link", "parts", "fault", "spare"],
+        field_metadata=[
+            FieldMetadata("fault_id", FieldClassification.REQUIRED, auto_populate_from="fault", lookup_required=True),
+            FieldMetadata("part_ids", FieldClassification.REQUIRED, description="List of part UUIDs to link"),
+            FieldMetadata("notes", FieldClassification.OPTIONAL),
+        ],
+    ),
+
+    "unlink_part_from_fault": ActionDefinition(
+        action_id="unlink_part_from_fault",
+        label="Unlink Part",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["fault_id", "part_id"],
+        domain="faults",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["unlink", "remove", "part", "fault"],
+        field_metadata=[
+            FieldMetadata("fault_id", FieldClassification.REQUIRED, auto_populate_from="fault", lookup_required=True),
+            FieldMetadata("part_id", FieldClassification.REQUIRED, description="Part UUID to unlink"),
+        ],
     ),
 
     "archive_certificate": ActionDefinition(
