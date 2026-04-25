@@ -623,6 +623,7 @@ _PO_ACTIONS = frozenset({
     "submit_po", "approve_po", "receive_po", "cancel_po", "delete_po",
     "add_po_note", "order_part", "approve_purchase",
     "add_item_to_purchase", "update_purchase_status", "upload_invoice",
+    "create_purchase_order",
 })
 
 _RECEIVING_ACTIONS = frozenset({

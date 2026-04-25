@@ -3602,6 +3602,28 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         variant=ActionVariant.MUTATE,
     ),
 
+    "create_purchase_order": ActionDefinition(
+        action_id="create_purchase_order",
+        label="Create Purchase Order",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id"],
+        domain="purchase_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["create", "new", "purchase", "order", "draft"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("supplier_name", FieldClassification.OPTIONAL, description="Supplier name"),
+            FieldMetadata("description", FieldClassification.OPTIONAL, description="What is this order for?"),
+            FieldMetadata("currency", FieldClassification.OPTIONAL,
+                          options=["USD", "EUR", "GBP", "AUD", "SGD"],
+                          description="Currency"),
+            FieldMetadata("notes", FieldClassification.OPTIONAL, description="Notes"),
+        ],
+    ),
+
     "upload_invoice": ActionDefinition(
         action_id="upload_invoice",
         label="Upload Invoice",

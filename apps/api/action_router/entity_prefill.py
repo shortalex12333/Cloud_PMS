@@ -283,10 +283,12 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("warranty", "add_to_handover"):     {"entity_id": "id", "title": "vendor_name"},
     ("hours_of_rest", "add_to_handover"):{"entity_id": "id", "title": "crew_member_name"},
     ("purchase_order", "add_to_handover"): {
-        "entity_id":  "id",
-        "title":      "po_number",
-        "status":     "status",
-        "department": "department",
+        "entity_id":    "id",
+        "title":        "po_number",
+        "status":       "status",
+        "department":   "department",
+        "po_number":    "po_number",
+        "supplier_name":"supplier_name",
     },
 
     # ── Purchase Order action prefill (Issue #14 — 400 fix, 2026-04-23) ──

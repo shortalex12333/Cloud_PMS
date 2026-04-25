@@ -106,6 +106,10 @@ export function PurchaseOrderContent() {
   const description = (entity?.description ?? entity?.notes ?? payload.description ?? payload.notes) as string | undefined;
   const shipping_cost = (entity?.shipping_cost ?? payload.shipping_cost) as number | undefined;
 
+  // Supplier block — entity_routes.py:get_purchase_order_entity resolves this
+  type SupplierBlock = { id?: string | null; name?: string | null; contact_name?: string | null; email?: string | null; phone?: string | null; address?: string | null } | null | undefined;
+  const supplierBlock = (entity?.supplier as SupplierBlock) ?? null;
+
   // Section data
   const line_items = ((entity?.line_items ?? entity?.items ?? payload.line_items ?? payload.items) as Array<Record<string, unknown>> | undefined) ?? [];
   const notes = ((entity?.notes ?? payload.notes) as Array<Record<string, unknown>> | undefined) ?? [];
@@ -124,6 +128,15 @@ export function PurchaseOrderContent() {
   const addNoteAction = getAction('add_po_note');
   const editAction = getAction('edit_purchase_order');
   const addAttachmentAction = getAction('add_po_attachment');
+  const uploadInvoiceAction = getAction('upload_invoice');
+
+  // Upload invoice file-picker state
+  const [invoicePickerOpen, setInvoicePickerOpen] = React.useState(false);
+  const [invoiceFile, setInvoiceFile] = React.useState<File | null>(null);
+  const [invoiceTitle, setInvoiceTitle] = React.useState('');
+  const [invoiceDesc, setInvoiceDesc] = React.useState('');
+  const [invoiceUploading, setInvoiceUploading] = React.useState(false);
+  const invoiceInputRef = React.useRef<HTMLInputElement>(null);
 
   // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
@@ -213,7 +226,14 @@ export function PurchaseOrderContent() {
     await executeAction(primaryActionKey, {});
   }, [primaryAction, primaryActionKey, executeAction]);
 
-  const SPECIAL_HANDLERS: Record<string, () => void> = {};
+  const SPECIAL_HANDLERS: Record<string, () => void> = {
+    upload_invoice: () => {
+      setInvoiceFile(null);
+      setInvoiceTitle('');
+      setInvoiceDesc('');
+      setInvoicePickerOpen(true);
+    },
+  };
   const DANGER_ACTIONS = new Set(['cancel_po', 'delete_po']);
   const primaryActionId2 = primaryActionKey;
 
@@ -251,10 +271,22 @@ export function PurchaseOrderContent() {
         ? `${formatCurrency(unitPrice, currency)} ea`
         : undefined,
       onNavigate: item.part_id
-        ? () => router.push(getEntityRoute('parts' as Parameters<typeof getEntityRoute>[0], item.part_id as string))
+        ? () => router.push(getEntityRoute('inventory', item.part_id as string))
         : undefined,
     };
   });
+
+  // Supplier KV
+  const supplierItems: KVItem[] = [];
+  if (supplierBlock) {
+    if (supplierBlock.name)         supplierItems.push({ label: 'Supplier',       value: supplierBlock.name });
+    if (supplierBlock.contact_name) supplierItems.push({ label: 'Contact',        value: supplierBlock.contact_name });
+    if (supplierBlock.email)        supplierItems.push({ label: 'Email',          value: supplierBlock.email, mono: true });
+    if (supplierBlock.phone)        supplierItems.push({ label: 'Phone',          value: supplierBlock.phone, mono: true });
+    if (supplierBlock.address)      supplierItems.push({ label: 'Address',        value: supplierBlock.address });
+  } else if (supplier) {
+    supplierItems.push({ label: 'Supplier', value: supplier });
+  }
 
   // Budget context KV
   const budgetItems: KVItem[] = [];
@@ -384,6 +416,22 @@ export function PurchaseOrderContent() {
         }
       />
 
+      {/* Supplier Details */}
+      {supplierItems.length > 0 && (
+        <ScrollReveal>
+          <KVSection
+            title="Supplier"
+            items={supplierItems}
+            icon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            }
+          />
+        </ScrollReveal>
+      )}
+
       {/* Line Items */}
       <ScrollReveal>
         <PartsSection
@@ -463,14 +511,165 @@ export function PurchaseOrderContent() {
       <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
 
       {/* Receiving Log */}
-      <ScrollReveal>
-        <AuditTrailSection events={receivingEvents} defaultCollapsed />
-      </ScrollReveal>
+      {receivingEvents.length > 0 && (
+        <ScrollReveal>
+          <AuditTrailSection title="Receiving Log" events={receivingEvents} defaultCollapsed />
+        </ScrollReveal>
+      )}
 
       {/* Audit Trail */}
       <ScrollReveal>
-        <AuditTrailSection events={auditEvents} defaultCollapsed />
+        <AuditTrailSection title="Audit Trail" events={auditEvents} defaultCollapsed />
       </ScrollReveal>
+
+      {/* Upload Invoice — file-picker modal */}
+      {invoicePickerOpen && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'var(--overlay-bg)', zIndex: 1000 }}
+            onClick={() => setInvoicePickerOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: 'fixed', left: '50%', top: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 1001,
+              width: 480, maxWidth: 'calc(100vw - 32px)',
+              background: 'var(--surface-elevated)',
+              border: '1px solid var(--border-sub)',
+              borderRadius: 8,
+              padding: '20px 24px 20px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: 'var(--txt)' }}>
+              Upload Invoice
+            </div>
+
+            {/* File picker — first and primary */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--txt3)', marginBottom: 5 }}>
+                File
+              </div>
+              <div
+                onClick={() => invoiceInputRef.current?.click()}
+                style={{
+                  padding: '10px 14px',
+                  border: `1px dashed ${invoiceFile ? 'var(--green-border)' : 'var(--border-sub)'}`,
+                  borderRadius: 5,
+                  background: invoiceFile ? 'var(--green-bg)' : 'var(--surface-primary)',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: invoiceFile ? 'var(--green)' : 'var(--txt3)',
+                  textAlign: 'center',
+                }}
+              >
+                {invoiceFile ? `${invoiceFile.name}  ·  ${(invoiceFile.size / 1024).toFixed(1)} KB` : 'Click to choose file…'}
+              </div>
+              <input
+                ref={invoiceInputRef}
+                type="file"
+                accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setInvoiceFile(f);
+                  if (f && !invoiceTitle) setInvoiceTitle(f.name.replace(/\.[^.]+$/, ''));
+                }}
+              />
+            </div>
+
+            {/* Title — auto-populated from filename, user can edit */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--txt3)', marginBottom: 5 }}>
+                Title (optional)
+              </div>
+              <input
+                type="text"
+                value={invoiceTitle}
+                onChange={(e) => setInvoiceTitle(e.target.value)}
+                placeholder={invoiceFile ? invoiceFile.name.replace(/\.[^.]+$/, '') : 'Invoice title…'}
+                style={{
+                  width: '100%', padding: '7px 10px',
+                  border: '1px solid var(--border-sub)',
+                  borderRadius: 4, background: 'var(--surface-primary)',
+                  color: 'var(--txt)', fontSize: 12, boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* Description */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--txt3)', marginBottom: 5 }}>
+                Description (optional)
+              </div>
+              <textarea
+                value={invoiceDesc}
+                onChange={(e) => setInvoiceDesc(e.target.value)}
+                placeholder="Any notes about this invoice…"
+                rows={2}
+                style={{
+                  width: '100%', padding: '7px 10px',
+                  border: '1px solid var(--border-sub)',
+                  borderRadius: 4, background: 'var(--surface-primary)',
+                  color: 'var(--txt)', fontSize: 12, resize: 'none',
+                  boxSizing: 'border-box', fontFamily: 'inherit',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                onClick={() => setInvoicePickerOpen(false)}
+                style={{
+                  height: 30, padding: '0 14px', borderRadius: 4,
+                  border: '1px solid var(--border-sub)',
+                  background: 'var(--surface-el)', color: 'var(--txt3)',
+                  fontSize: 11, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!invoiceFile || invoiceUploading}
+                onClick={async () => {
+                  if (!invoiceFile) return;
+                  setInvoiceUploading(true);
+                  try {
+                    // No storage bucket yet — record filename/mime/size only.
+                    // storage_path uses a placeholder until bucket is wired.
+                    const fakePath = `pending/${Date.now()}_${invoiceFile.name}`;
+                    await executeAction('upload_invoice', {
+                      storage_path: fakePath,
+                      filename: invoiceFile.name,
+                      mime_type: invoiceFile.type || 'application/octet-stream',
+                      file_size: invoiceFile.size,
+                      description: invoiceDesc.trim() || undefined,
+                      title: invoiceTitle.trim() || undefined,
+                    });
+                    setInvoicePickerOpen(false);
+                  } finally {
+                    setInvoiceUploading(false);
+                  }
+                }}
+                style={{
+                  height: 30, padding: '0 14px', borderRadius: 4,
+                  border: '1px solid var(--mark-hover)',
+                  background: (!invoiceFile || invoiceUploading) ? 'var(--surface-raised)' : 'var(--teal-bg)',
+                  color: (!invoiceFile || invoiceUploading) ? 'var(--txt-ghost)' : 'var(--mark)',
+                  fontSize: 11, fontWeight: 500,
+                  cursor: (!invoiceFile || invoiceUploading) ? 'not-allowed' : 'pointer',
+                  opacity: (!invoiceFile || invoiceUploading) ? 0.5 : 1,
+                }}
+              >
+                {invoiceUploading ? 'Saving…' : 'Attach Invoice'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {actionPopupConfig && (
         <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}

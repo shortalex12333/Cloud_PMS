@@ -418,6 +418,91 @@ async def add_item_to_purchase(
 
 
 # ============================================================================
+# create_purchase_order — create a new draft PO from the list-view modal
+# ============================================================================
+async def create_purchase_order(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    import uuid as uuid_lib
+    supplier_name = (payload.get("supplier_name") or "").strip()
+    description = (payload.get("description") or "").strip()
+    currency = (payload.get("currency") or "USD").strip().upper()
+    notes = (payload.get("notes") or "").strip()
+
+    # Generate PO number: PO-YYYY-NNN
+    from datetime import date
+    year = date.today().year
+    existing = db_client.table("pms_purchase_orders").select(
+        "po_number"
+    ).eq("yacht_id", yacht_id).like("po_number", f"PO-{year}-%").execute()
+    next_num = len(existing.data or []) + 1
+    po_number = f"PO-{year}-{next_num:03d}"
+
+    po_id = str(uuid_lib.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    row = {
+        "id": po_id,
+        "yacht_id": yacht_id,
+        "po_number": po_number,
+        "status": "draft",
+        "currency": currency,
+        "ordered_by": user_id,
+        "created_at": now,
+        "updated_at": now,
+    }
+    if description:
+        row["description"] = description
+    if notes:
+        row["notes"] = notes
+
+    ins = db_client.table("pms_purchase_orders").insert(row).execute()
+    if not ins.data:
+        return {"status": "error", "error_code": "INSERT_FAILED",
+                "message": "Failed to create purchase order"}
+
+    # If supplier_name given, resolve or create supplier row
+    if supplier_name:
+        try:
+            sup = db_client.table("pms_suppliers").select("id").eq(
+                "yacht_id", yacht_id
+            ).ilike("name", supplier_name).limit(1).execute()
+            if sup.data:
+                supplier_id = sup.data[0]["id"]
+            else:
+                new_sup = db_client.table("pms_suppliers").insert({
+                    "yacht_id": yacht_id,
+                    "name": supplier_name,
+                    "created_at": now,
+                }).execute()
+                supplier_id = new_sup.data[0]["id"] if new_sup.data else None
+            if supplier_id:
+                db_client.table("pms_purchase_orders").update(
+                    {"supplier_id": supplier_id, "updated_at": now}
+                ).eq("id", po_id).execute()
+        except Exception as sup_err:
+            logger.warning(f"[create_purchase_order] Supplier resolve failed: {sup_err}")
+
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id, user_id=user_id, event_type="create",
+            entity_type="purchase_order", entity_id=po_id, action="create_purchase_order",
+            user_role=user_context.get("role"),
+            change_summary=f"PO created: {po_number}",
+        )
+        db_client.table("ledger_events").insert(ledger_event).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[Ledger] Failed to record create_purchase_order: {ledger_err}")
+
+    return {"status": "success", "purchase_order_id": po_id, "po_number": po_number}
+
+
+# ============================================================================
 # upload_invoice — attach an invoice document to a PO (Issue #14, 2026-04-23)
 #
 # Frontend uploads the file to the "pms-finance-documents" bucket first
@@ -506,6 +591,7 @@ HANDLERS: dict = {
     "update_purchase_status": update_purchase_status,
     "add_item_to_purchase": add_item_to_purchase,
     "upload_invoice": upload_invoice,
+    "create_purchase_order": create_purchase_order,
     # Frontend-facing aliases (match action IDs used by PurchaseOrderContent.tsx)
     "submit_po": submit_purchase_order,
     "approve_po": approve_purchase_order,
