@@ -370,7 +370,7 @@ function Lightbox({
         position: 'fixed',
         inset: 0,
         zIndex: 200,
-        background: 'var(--overlay-bg, rgba(0,0,0,0.85))',
+        background: 'var(--overlay-heavy)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

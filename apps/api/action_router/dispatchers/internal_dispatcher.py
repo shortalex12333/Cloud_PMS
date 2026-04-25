@@ -18,6 +18,36 @@ from integrations.supabase import get_supabase_client
 # SECURITY FIX P1-005: Logger for audit failures
 logger = logging.getLogger(__name__)
 
+
+def _emit_wo_notification(
+    supabase: Client,
+    yacht_id: str,
+    user_id: str,
+    notification_type: str,
+    title: str,
+    body: str,
+    entity_id: str,
+    priority: str = "normal",
+) -> None:
+    """Insert a pms_notifications row for a work-order event. Fire-and-forget."""
+    import uuid as _uuid
+    try:
+        supabase.table("pms_notifications").insert({
+            "id": str(_uuid.uuid4()),
+            "yacht_id": yacht_id,
+            "user_id": user_id,
+            "notification_type": notification_type,
+            "title": title,
+            "body": body,
+            "priority": priority,
+            "entity_type": "work_order",
+            "entity_id": entity_id,
+            "is_read": False,
+            "created_at": datetime.utcnow().isoformat(),
+        }).execute()
+    except Exception as _e:
+        logger.warning("_emit_wo_notification failed (type=%s, wo=%s): %s", notification_type, entity_id, _e)
+
 # Import handler classes for P1/P3 handlers
 import sys
 from pathlib import Path
@@ -336,13 +366,14 @@ async def close_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
     yacht_id = params["yacht_id"]
     user_id = params["user_id"]
 
-    # Pre-read: need the fault_id to know whether to bridge. One extra read
-    # is cheap; the alternative (returning fault_id from the UPDATE ... RETURNING)
-    # needs supabase-py support we don't have here.
+    # Pre-read: fault_id for bridge + metadata for checklist completeness check.
     wo_pre = supabase.table("pms_work_orders").select(
-        "id, fault_id"
+        "id, title, fault_id, metadata"
     ).eq("id", wo_id).eq("yacht_id", yacht_id).limit(1).execute()
-    fault_id = (wo_pre.data[0].get("fault_id") if wo_pre.data else None)
+    wo_pre_row = wo_pre.data[0] if wo_pre.data else {}
+    fault_id = wo_pre_row.get("fault_id")
+    wo_title = wo_pre_row.get("title", "Work order")
+    wo_metadata = wo_pre_row.get("metadata") or {}
 
     # Read the fault's pre-update status for ledger metadata, BEFORE the WO
     # UPDATE triggers the cascade.
@@ -418,6 +449,33 @@ async def close_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
                 "failed (fault=%s, wo=%s): %s",
                 fault_id, wo_id, ledger_err,
             )
+
+    # Data-continuity: if any required checklist items are incomplete, notify
+    # the closer. This prevents silently completing WOs with safety gaps.
+    try:
+        checklist = wo_metadata.get("checklist") or []
+        incomplete_required = [
+            c for c in checklist
+            if c.get("is_required") and not c.get("is_completed")
+        ]
+        if incomplete_required:
+            n = len(incomplete_required)
+            _emit_wo_notification(
+                supabase,
+                yacht_id=yacht_id,
+                user_id=user_id,
+                notification_type="wo_closed_incomplete_checklist",
+                title=f"WO closed with {n} incomplete required item{'s' if n != 1 else ''}",
+                body=(
+                    f"'{wo_title}' was closed but {n} required checklist item"
+                    f"{'s were' if n != 1 else ' was'} not completed. "
+                    "Review the checklist and follow up."
+                ),
+                entity_id=wo_id,
+                priority="high",
+            )
+    except Exception as _chk_err:
+        logger.warning("close_work_order: checklist notification failed (wo=%s): %s", wo_id, _chk_err)
 
     return {
         "work_order_id": result.data[0]["id"],
@@ -1928,6 +1986,20 @@ async def assign_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
     if not result.data:
         raise ValueError(f"Work order {params['work_order_id']} not found or access denied")
 
+    # Data-continuity: notify the assignee so they know action is required.
+    if assignee and assignee != params["user_id"]:
+        wo_title = result.data[0].get("title", "Work order") if result.data else "Work order"
+        _emit_wo_notification(
+            supabase,
+            yacht_id=params["yacht_id"],
+            user_id=assignee,
+            notification_type="wo_assigned",
+            title=f"Work order assigned to you",
+            body=f"'{wo_title}' has been assigned to you. Open it to begin.",
+            entity_id=params["work_order_id"],
+            priority="normal",
+        )
+
     return {
         "work_order_id": params["work_order_id"],
         "assigned_to": assignee,
@@ -2099,6 +2171,20 @@ async def create_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
 
     if not result.data:
         raise Exception("Failed to create work order")
+
+    # Data-continuity: notify creator if no engineer assigned yet.
+    # They created the WO but left it unassigned — nudge them to assign.
+    if not params.get("assigned_to"):
+        _emit_wo_notification(
+            supabase,
+            yacht_id=params["yacht_id"],
+            user_id=params["user_id"],
+            notification_type="wo_unassigned",
+            title=f"WO unassigned — assign an engineer",
+            body=f"Work order '{params['title']}' has no assigned engineer. Open it and tap Assign.",
+            entity_id=wo_id,
+            priority="normal",
+        )
 
     return {
         "work_order_id": wo_id,

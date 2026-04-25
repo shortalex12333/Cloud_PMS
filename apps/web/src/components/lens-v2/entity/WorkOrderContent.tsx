@@ -26,6 +26,8 @@ import { LensTabBar, type LensTab } from '../LensTabBar';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { useAuth } from '@/hooks/useAuth';
+import { API_BASE } from '@/lib/apiBase';
 
 // Sections
 import {
@@ -84,9 +86,38 @@ export function WorkOrderContent() {
   const router = useRouter();
   const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
-  // Modal states (simplified — full modals come from production actions/)
+  const { session } = useAuth();
+  const token = session?.access_token ?? null;
+
+  // Modal states
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
   const [addPartOpen, setAddPartOpen] = React.useState(false);
+  const [assignOpen, setAssignOpen] = React.useState(false);
+
+  // Toast feedback for generic dropdown actions
+  const [actionFeedback, setActionFeedback] = React.useState<{ msg: string; ok: boolean } | null>(null);
+  const showFeedback = React.useCallback((msg: string, ok: boolean) => {
+    setActionFeedback({ msg, ok });
+    setTimeout(() => setActionFeedback(null), 3500);
+  }, []);
+
+  const runAction = React.useCallback(
+    async (actionId: string, payload?: Record<string, unknown>) => {
+      try {
+        const result = await executeAction(actionId, payload);
+        const ok = result.success === true || (result as unknown as Record<string, unknown>).status === 'success';
+        const msg = ok
+          ? `Done.`
+          : (result.error as string | undefined) ?? (result.message as string | undefined) ?? 'Action failed';
+        showFeedback(msg, ok);
+        return result;
+      } catch (e) {
+        showFeedback(e instanceof Error ? e.message : 'Unexpected error', false);
+        throw e;
+      }
+    },
+    [executeAction, showFeedback]
+  );
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -151,6 +182,9 @@ export function WorkOrderContent() {
   const assignAction = getAction('assign_work_order') ?? getAction('reassign_work_order');
   const archiveAction = getAction('archive_work_order');
   const addAttachmentAction = getAction('add_work_order_photo') ?? getAction('add_wo_photo');
+
+  const yacht_id = (entity?.yacht_id ?? payload.yacht_id) as string | undefined;
+  const wo_id = (entity?.id ?? payload.id) as string | undefined;
 
   const canStart = startAction !== null && ['draft', 'planned', 'open'].includes(status);
   const isCloseable = !['completed', 'closed', 'cancelled'].includes(status);
@@ -248,13 +282,16 @@ export function WorkOrderContent() {
   }, [canStart, executeAction]);
 
   // Build dropdown from ALL available actions (except the primary action)
-  // Actions with special handlers get wired; everything else calls executeAction directly
+  // Actions with special handlers open inline modals; everything else routes
+  // through runAction (which shows toast feedback on success/failure).
   const SPECIAL_HANDLERS: Record<string, () => void> = {
     add_work_order_note:    () => setAddNoteOpen(true),
     add_note_to_work_order: () => setAddNoteOpen(true),
     add_wo_note:            () => setAddNoteOpen(true),
     add_parts_to_work_order: () => setAddPartOpen(true),
     add_wo_part:             () => setAddPartOpen(true),
+    assign_work_order:       () => setAssignOpen(true),
+    reassign_work_order:     () => setAssignOpen(true),
   };
   const DANGER_ACTIONS = new Set(['archive_work_order', 'cancel_work_order', 'delete_work_order']);
 
@@ -283,6 +320,7 @@ export function WorkOrderContent() {
   //     record_voice_note          — wasteful, not MVP
   //     upload_photo               — duplicate of add_work_order_photo
   const HIDDEN_FROM_DROPDOWN = new Set<string>([
+    // ── Short-alias duplicates (canonical exposed instead) ──────────────────
     'add_wo_note',
     'add_note_to_work_order',
     'add_wo_part',
@@ -290,7 +328,8 @@ export function WorkOrderContent() {
     'add_wo_hours',
     'add_work_order_hours',
     'add_wo_photo',
-    'reassign_work_order',
+    'reassign_work_order',          // alias — assign_work_order has SPECIAL_HANDLER
+    // ── Issue 6 KEEP/REMOVE removals ────────────────────────────────────────
     'cancel_work_order',
     'delete_work_order',
     'create_work_order',
@@ -302,6 +341,20 @@ export function WorkOrderContent() {
     'view_smart_summary',
     'record_voice_note',
     'upload_photo',
+    // ── Inline-only actions (handled inside tabs, not from dropdown) ────────
+    'add_checklist_item',           // Checklist tab inline
+    'upsert_sop',                   // Safety tab inline
+    'mark_checklist_item_complete', // Per-item toggle
+    'add_work_order_photo',         // Uploads tab — needs photo_url, no dropdown form
+    // ── Attachment comment thread actions (image viewer handles these) ──────
+    'add_attachment_comment',
+    'update_attachment_comment',
+    'delete_attachment_comment',
+    'list_attachment_comments',
+    // ── Backend-only stubs with no meaningful dropdown UX ───────────────────
+    'update_work_order',            // No-op without an edit form (updates only updated_at)
+    'update_worklist_progress',     // Needs progress % form + broken registry config
+    'view_checklist',
   ]);
 
   // Dropdown-display label overrides.
@@ -322,7 +375,7 @@ export function WorkOrderContent() {
       label: LABEL_OVERRIDES[a.action_id] ?? a.label,
       onClick: SPECIAL_HANDLERS[a.action_id]
         ? SPECIAL_HANDLERS[a.action_id]
-        : () => executeAction(a.action_id),
+        : () => runAction(a.action_id),
       disabled: a.disabled,
       disabledReason: a.disabled_reason ?? undefined,
       danger: DANGER_ACTIONS.has(a.action_id),
@@ -592,12 +645,47 @@ export function WorkOrderContent() {
         />
       </ScrollReveal>
 
+      {/* Action feedback toast */}
+      {actionFeedback && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          padding: '10px 16px', borderRadius: 8,
+          background: actionFeedback.ok ? 'var(--green-bg)' : 'var(--red-bg)',
+          color: actionFeedback.ok ? 'var(--green)' : 'var(--red)',
+          border: `1px solid ${actionFeedback.ok ? 'var(--green)' : 'var(--red)'}`,
+          fontSize: 13, maxWidth: 320,
+          boxShadow: 'var(--shadow-card)',
+        }}>
+          {actionFeedback.msg}
+        </div>
+      )}
+
       {/* Modals */}
       <AddNoteModal
         open={addNoteOpen}
         onClose={() => setAddNoteOpen(false)}
         onSubmit={handleNoteSubmit}
         isLoading={isLoading}
+      />
+      <AddPartModal
+        open={addPartOpen}
+        onClose={() => setAddPartOpen(false)}
+        yachtId={yacht_id ?? ''}
+        token={token ?? ''}
+        onSubmit={async (partId, quantity) => {
+          await runAction('add_parts_to_work_order', { part_id: partId, quantity });
+          setAddPartOpen(false);
+        }}
+      />
+      <AssignModal
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        yachtId={yacht_id ?? ''}
+        token={token ?? ''}
+        onSubmit={async (userId) => {
+          await runAction('assign_work_order', { assigned_to: userId });
+          setAssignOpen(false);
+        }}
       />
     </>
   );
@@ -1009,6 +1097,263 @@ function SafetyTabBody({
           />
         </div>
       </section>
+    </div>
+  );
+}
+
+// ── AddPartModal ────────────────────────���───────────────────────────────────
+
+interface PartRecord {
+  id: string;
+  name: string;
+  part_number?: string;
+  quantity_on_hand?: number;
+  location?: string;
+}
+
+function AddPartModal({
+  open,
+  onClose,
+  yachtId,
+  token,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  yachtId: string;
+  token: string;
+  onSubmit: (partId: string, quantity: number) => Promise<void>;
+}) {
+  const [parts, setParts] = React.useState<PartRecord[]>([]);
+  const [search, setSearch] = React.useState('');
+  const [selected, setSelected] = React.useState<PartRecord | null>(null);
+  const [quantity, setQuantity] = React.useState(1);
+  const [loading, setLoading] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open || !token || !yachtId) return;
+    setLoading(true);
+    setSelected(null);
+    setSearch('');
+    setQuantity(1);
+    fetch(`${API_BASE}/v1/${yachtId}/domain/parts/records?limit=200`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => setParts((d.records ?? []) as PartRecord[]))
+      .catch(() => setParts([]))
+      .finally(() => setLoading(false));
+  }, [open, token, yachtId]);
+
+  if (!open) return null;
+
+  const filtered = parts.filter(
+    (p) =>
+      !search ||
+      p.name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.part_number?.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const handleSubmit = async () => {
+    if (!selected) return;
+    setSubmitting(true);
+    try {
+      await onSubmit(selected.id, quantity);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9000,
+        background: 'var(--overlay-bg)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div style={{
+        background: 'var(--surface)', borderRadius: 10, padding: 24,
+        width: 420, maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+        border: '1px solid var(--border-sub)', boxShadow: 'var(--shadow-card)',
+      }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--txt)', marginBottom: 16 }}>
+          Add Part to Work Order
+        </div>
+        <input
+          placeholder="Search by name or part number…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border-sub)',
+            background: 'var(--bg)', color: 'var(--txt)', fontSize: 13,
+            marginBottom: 8, fontFamily: 'var(--font-sans)',
+          }}
+        />
+        {loading ? (
+          <div style={{ color: 'var(--txt3)', fontSize: 13, padding: '12px 0' }}>Loading parts…</div>
+        ) : (
+          <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-faint)', borderRadius: 6, marginBottom: 12 }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: 12, color: 'var(--txt3)', fontSize: 13 }}>No parts found.</div>
+            ) : filtered.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelected(p)}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '10px 12px',
+                  background: selected?.id === p.id ? 'var(--teal-bg)' : 'transparent',
+                  border: 'none', borderBottom: '1px solid var(--border-faint)',
+                  cursor: 'pointer', color: 'var(--txt)', fontSize: 13,
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                <div style={{ fontWeight: 500 }}>{p.name}</div>
+                {p.part_number && (
+                  <div style={{ fontSize: 11, color: 'var(--txt3)' }}>
+                    {p.part_number}{p.quantity_on_hand != null ? ` · Stock: ${p.quantity_on_hand}` : ''}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+        {selected && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <label style={{ fontSize: 13, color: 'var(--txt2)', whiteSpace: 'nowrap' }}>Qty:</label>
+            <input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+              style={{
+                width: 72, padding: '6px 8px', borderRadius: 6,
+                border: '1px solid var(--border-sub)', background: 'var(--bg)',
+                color: 'var(--txt)', fontSize: 13, fontFamily: 'var(--font-sans)',
+              }}
+            />
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={{
+            padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-sub)',
+            background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+          }}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!selected || submitting}
+            style={{
+              padding: '8px 14px', borderRadius: 6, border: 'none',
+              background: selected ? 'var(--mark)' : 'var(--border-faint)',
+              color: selected ? 'var(--surface)' : 'var(--txt3)',
+              fontSize: 13, cursor: selected ? 'pointer' : 'not-allowed',
+              fontFamily: 'var(--font-sans)', fontWeight: 500,
+            }}
+          >
+            {submitting ? 'Adding…' : 'Add Part'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── AssignModal ─────────────────────────────────────────────────────────────
+
+function AssignModal({
+  open,
+  onClose,
+  yachtId,
+  token,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  yachtId: string;
+  token: string;
+  onSubmit: (userId: string) => Promise<void>;
+}) {
+  const [userId, setUserId] = React.useState('');
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) setUserId('');
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleSubmit = async () => {
+    if (!userId.trim()) return;
+    setSubmitting(true);
+    try {
+      await onSubmit(userId.trim());
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9000,
+        background: 'var(--overlay-bg)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div style={{
+        background: 'var(--surface)', borderRadius: 10, padding: 24,
+        width: 360, border: '1px solid var(--border-sub)',
+        boxShadow: 'var(--shadow-card)',
+      }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--txt)', marginBottom: 16 }}>
+          Assign Work Order
+        </div>
+        <label style={{ fontSize: 13, color: 'var(--txt2)', display: 'block', marginBottom: 6 }}>
+          User ID (crew member)
+        </label>
+        <input
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          placeholder="Paste crew member user ID…"
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6,
+            border: '1px solid var(--border-sub)', background: 'var(--bg)',
+            color: 'var(--txt)', fontSize: 13, marginBottom: 16,
+            fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
+          }}
+        />
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={{
+            padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-sub)',
+            background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+          }}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!userId.trim() || submitting}
+            style={{
+              padding: '8px 14px', borderRadius: 6, border: 'none',
+              background: userId.trim() ? 'var(--mark)' : 'var(--border-faint)',
+              color: userId.trim() ? 'var(--surface)' : 'var(--txt3)',
+              fontSize: 13, cursor: userId.trim() ? 'pointer' : 'not-allowed',
+              fontFamily: 'var(--font-sans)', fontWeight: 500,
+            }}
+          >
+            {submitting ? 'Assigning…' : 'Assign'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

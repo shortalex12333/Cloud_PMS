@@ -36,7 +36,8 @@
   --shadow-tip:   0 4px 12px rgba(0,0,0,0.40);
 
   /* ── Overlay ── */
-  --overlay-bg: rgba(0,0,0,0.50);
+  --overlay-bg:     rgba(0,0,0,0.50);
+  --overlay-heavy:  rgba(0,0,0,0.85);
 
   /* ── Glass / Split ── */
   --glass-bg:       rgba(16,14,12,0.65);
@@ -221,7 +222,8 @@
   --shadow-tip:   0 4px 12px rgba(0,0,0,0.08);
 
   /* ── Overlay ── */
-  --overlay-bg: rgba(0,0,0,0.30);
+  --overlay-bg:     rgba(0,0,0,0.30);
+  --overlay-heavy:  rgba(0,0,0,0.72);
 
   /* ── Glass / Split ── */
   --glass-bg:       rgba(248,248,248,0.85);
