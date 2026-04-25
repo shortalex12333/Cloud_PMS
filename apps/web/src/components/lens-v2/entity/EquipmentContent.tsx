@@ -9,10 +9,12 @@
  * - Actions from availableActions[] → backend /v1/actions/execute
  * - ActionPopup auto-builds form fields from action.required_fields
  *
- * Sections: Identity → Specs → Spare Parts → Work Orders → Faults → Upcoming Maint → Certs → Notes → History → Audit Trail → Attachments
+ * Sections: Identity → Tabs (Overview · Work Orders · Faults · Maintenance · History · Photos · Documents · Notes · Audit Trail)
  *
- * TODO notes for next engineer:
- * - Add Note modal not wired (onClick is noop)
+ * PR-EQ-6 (2026-04-25) — horizontal LensTabBar + wider panel:
+ * - All stacked ScrollReveal sections replaced with LensTabBar tabs.
+ * - Wrapped in maxWidth: var(--lens-max-width-wide) (1120px token, tokens.css:484).
+ * - IdentityStrip + modals stay OUTSIDE the tab bar (above/below it).
  *
  * PR-EQ-4 (2026-04-24) — attachment wiring completed:
  * - `onAddFile` now opens AttachmentUploadModal (default pms_attachments mode).
@@ -29,7 +31,7 @@ import styles from '../lens.module.css';
 import { IdentityStrip, type PillDef, type DetailLine } from '../IdentityStrip';
 import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActionFields';
 import { SplitButton, type DropdownItem } from '../SplitButton';
-import { ScrollReveal } from '../ScrollReveal';
+import { LensTabBar, type LensTab } from '../LensTabBar';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { useAuth } from '@/hooks/useAuth';
 import { getEntityRoute } from '@/lib/entityRoutes';
@@ -469,12 +471,258 @@ export function EquipmentContent() {
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
 
+  // ── Tab definitions (PR-EQ-6) ──
+  const tabs: LensTab[] = [
+    { key: 'overview',    label: 'Overview' },
+    { key: 'work_orders', label: 'Work Orders', count: woItems.length || undefined },
+    { key: 'faults',      label: 'Faults',      count: faultItems.length || undefined },
+    { key: 'maintenance', label: 'Maintenance' },
+    { key: 'history',     label: 'History' },
+    { key: 'photos',      label: 'Photos',      count: lensImages.length || undefined },
+    { key: 'documents',   label: 'Documents',   count: attachmentItems.length || undefined },
+    { key: 'notes',       label: 'Notes',       count: noteItems.length || undefined },
+    { key: 'audit',       label: 'Audit Trail', count: auditEvents2.length || undefined },
+  ];
+
+  const renderTabBody = (activeKey: string): React.ReactNode => {
+    switch (activeKey) {
+      case 'overview':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {specItems.length > 0 && (
+              <KVSection
+                title="Specifications"
+                items={specItems}
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M9 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V5L9 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                    <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                    <line x1="5" y1="9" x2="11" y2="9" stroke="currentColor" strokeWidth="1.3" />
+                    <line x1="5" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.3" />
+                  </svg>
+                }
+              />
+            )}
+            {sparePartItems.length > 0 && (
+              <PartsSection parts={sparePartItems} canAddPart />
+            )}
+            {parent_equipment && (
+              <DocRowsSection
+                title="Parent Equipment"
+                docs={[{
+                  id: parent_equipment.id,
+                  name: parent_equipment.name,
+                  code: parent_equipment.code ?? undefined,
+                  meta: parent_equipment.system_type ?? undefined,
+                  icon: (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="1" y="4" width="14" height="9" rx="1" stroke="currentColor" strokeWidth="1.3" />
+                      <path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                    </svg>
+                  ),
+                  onClick: () => router.push(getEntityRoute('equipment' as Parameters<typeof getEntityRoute>[0], parent_equipment.id)),
+                }]}
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <rect x="1" y="4" width="14" height="9" rx="1" stroke="currentColor" strokeWidth="1.3" />
+                    <path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                  </svg>
+                }
+              />
+            )}
+            {linkedPartItems.length > 0 && (
+              <PartsSection parts={linkedPartItems} canAddPart={false} />
+            )}
+          </div>
+        );
+
+      case 'work_orders':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <DocRowsSection
+              title="Active Work Orders"
+              docs={woItems}
+              icon={
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 3H5a1 1 0 00-1 1v9a1 1 0 001 1h6a1 1 0 001-1V4a1 1 0 00-1-1h-1" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                  <rect x="6" y="1.5" width="4" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.3" />
+                </svg>
+              }
+            />
+          </div>
+        );
+
+      case 'faults':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <DocRowsSection
+              title="Active Faults"
+              docs={faultItems}
+              icon={
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M7.13 2.58L1.22 12a1.33 1.33 0 001.14 2h11.28a1.33 1.33 0 001.14-2L8.87 2.58a1.33 1.33 0 00-2.28 0z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                  <line x1="8" y1="6" x2="8" y2="9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  <circle cx="8" cy="11" r="0.5" fill="currentColor" />
+                </svg>
+              }
+            />
+          </div>
+        );
+
+      case 'maintenance':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {upcomingMaintItems.length > 0 && (
+              <KVSection
+                title="Upcoming Maintenance"
+                items={upcomingMaintItems}
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <rect x="2" y="2.67" width="12" height="12" rx="1.33" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                    <line x1="10.67" y1="1.33" x2="10.67" y2="4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                    <line x1="5.33" y1="1.33" x2="5.33" y2="4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                    <line x1="2" y1="6.67" x2="14" y2="6.67" stroke="currentColor" strokeWidth="1.3" />
+                  </svg>
+                }
+              />
+            )}
+            {certItems.length > 0 && (
+              <DocRowsSection
+                title="Certificates"
+                docs={certItems}
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 14s5.33-2.67 5.33-6.67V3.33L8 1.33 2.67 3.33v4C2.67 11.33 8 14 8 14z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                  </svg>
+                }
+              />
+            )}
+          </div>
+        );
+
+      case 'history':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <AuditTrailSection events={auditEvents} />
+            <HistorySection periods={historyPeriods} />
+          </div>
+        );
+
+      case 'photos':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 4px',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--txt2)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                }}
+              >
+                Photos ({lensImages.length})
+              </span>
+            </div>
+            <LensImageViewer
+              images={lensImages}
+              onUpload={() => setUploadModalOpen(true)}
+              canUpload
+              emptyMessage="No photos yet."
+            />
+            {/* Per-image comment thread button — opens threaded panel below */}
+            {lensImages.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {lensImages.map((img) => (
+                  <button
+                    key={img.id}
+                    type="button"
+                    onClick={() => handleOpenComments(img.id)}
+                    aria-pressed={openCommentAttachmentId === img.id}
+                    style={{
+                      appearance: 'none',
+                      background:
+                        openCommentAttachmentId === img.id
+                          ? 'var(--teal-bg)'
+                          : 'var(--surface)',
+                      border: '1px solid var(--border-sub)',
+                      borderRadius: 4,
+                      padding: '4px 8px',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      color:
+                        openCommentAttachmentId === img.id ? 'var(--mark)' : 'var(--txt2)',
+                    }}
+                  >
+                    {img.filename ?? 'image'} — comments
+                  </button>
+                ))}
+              </div>
+            )}
+            {openCommentAttachmentId && (
+              <AttachmentCommentThread
+                attachmentId={openCommentAttachmentId}
+                comments={commentsByAttachment[openCommentAttachmentId] ?? []}
+                loading={commentsLoading}
+                busy={commentBusy}
+                draft={commentDraft}
+                onDraftChange={setCommentDraft}
+                onAdd={handleAddComment}
+                onDelete={handleDeleteComment}
+                onClose={() => setOpenCommentAttachmentId(null)}
+                currentUserId={user?.id ?? null}
+              />
+            )}
+          </div>
+        );
+
+      case 'documents':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <AttachmentsSection
+              attachments={attachmentItems}
+              onAddFile={() => setUploadModalOpen(true)}
+              canAddFile
+            />
+          </div>
+        );
+
+      case 'notes':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <NotesSection
+              notes={noteItems}
+              onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
+              canAddNote={!!addNoteAction}
+            />
+          </div>
+        );
+
+      case 'audit':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <AuditTrailSection events={auditEvents2} />
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
-    <>
-      {/* Identity Strip */}
+    <div style={{ maxWidth: 'var(--lens-max-width-wide)' }}>
+      {/* Identity Strip — stays outside tabs */}
       <IdentityStrip
         overline={equipment_code}
-        title={manufacturer && model ? `${name} \u2014 ${manufacturer} ${model}` : name}
+        title={manufacturer && model ? `${name} — ${manufacturer} ${model}` : name}
         context={contextNode}
         pills={pills}
         details={details}
@@ -497,248 +745,14 @@ export function EquipmentContent() {
         }
       />
 
-      {/* Specifications */}
-      {specItems.length > 0 && (
-        <ScrollReveal>
-          <KVSection
-            title="Specifications"
-            items={specItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M9 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V5L9 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                <line x1="5" y1="9" x2="11" y2="9" stroke="currentColor" strokeWidth="1.3" />
-                <line x1="5" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.3" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
+      <LensTabBar
+        tabs={tabs}
+        defaultActiveKey="overview"
+        aria-label="Equipment sections"
+        renderBody={renderTabBody}
+      />
 
-      {/* Spare Parts */}
-      {sparePartItems.length > 0 && (
-        <ScrollReveal>
-          <PartsSection
-            parts={sparePartItems}
-            canAddPart
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Parent Equipment */}
-      {parent_equipment && (
-        <ScrollReveal>
-          <DocRowsSection
-            title="Parent Equipment"
-            docs={[{
-              id: parent_equipment.id,
-              name: parent_equipment.name,
-              code: parent_equipment.code ?? undefined,
-              meta: parent_equipment.system_type ?? undefined,
-              icon: (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="1" y="4" width="14" height="9" rx="1" stroke="currentColor" strokeWidth="1.3" />
-                  <path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                </svg>
-              ),
-              onClick: () => router.push(getEntityRoute('equipment' as Parameters<typeof getEntityRoute>[0], parent_equipment.id)),
-            }]}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="1" y="4" width="14" height="9" rx="1" stroke="currentColor" strokeWidth="1.3" />
-                <path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Linked Parts */}
-      {linkedPartItems.length > 0 && (
-        <ScrollReveal>
-          <PartsSection
-            parts={linkedPartItems}
-            canAddPart={false}
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Active Work Orders */}
-      {woItems.length > 0 && (
-        <ScrollReveal>
-          <DocRowsSection
-            title="Work Orders"
-            docs={woItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M6 3H5a1 1 0 00-1 1v9a1 1 0 001 1h6a1 1 0 001-1V4a1 1 0 00-1-1h-1" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                <rect x="6" y="1.5" width="4" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.3" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Active Faults */}
-      {faultItems.length > 0 && (
-        <ScrollReveal>
-          <DocRowsSection
-            title="Active Faults"
-            docs={faultItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M7.13 2.58L1.22 12a1.33 1.33 0 001.14 2h11.28a1.33 1.33 0 001.14-2L8.87 2.58a1.33 1.33 0 00-2.28 0z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                <line x1="8" y1="6" x2="8" y2="9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                <circle cx="8" cy="11" r="0.5" fill="currentColor" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Upcoming Maintenance */}
-      {upcomingMaintItems.length > 0 && (
-        <ScrollReveal>
-          <KVSection
-            title="Upcoming Maintenance"
-            items={upcomingMaintItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="2.67" width="12" height="12" rx="1.33" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                <line x1="10.67" y1="1.33" x2="10.67" y2="4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                <line x1="5.33" y1="1.33" x2="5.33" y2="4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                <line x1="2" y1="6.67" x2="14" y2="6.67" stroke="currentColor" strokeWidth="1.3" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Certificates */}
-      {certItems.length > 0 && (
-        <ScrollReveal>
-          <DocRowsSection
-            title="Certificates"
-            docs={certItems}
-            defaultCollapsed
-            icon={
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 14s5.33-2.67 5.33-6.67V3.33L8 1.33 2.67 3.33v4C2.67 11.33 8 14 8 14z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Maintenance History */}
-      <ScrollReveal>
-        <AuditTrailSection events={auditEvents} defaultCollapsed />
-      </ScrollReveal>
-
-      {/* Notes */}
-      <ScrollReveal>
-        <NotesSection
-          notes={noteItems}
-          onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
-          canAddNote={!!addNoteAction}
-        />
-      </ScrollReveal>
-
-      {/* History — prior periods */}
-      <ScrollReveal>
-        <HistorySection periods={historyPeriods} defaultCollapsed />
-      </ScrollReveal>
-
-      {/* Audit Trail */}
-      <ScrollReveal>
-        <AuditTrailSection events={auditEvents2} defaultCollapsed />
-      </ScrollReveal>
-
-      {/* Photos — cohort-shared viewer (PR-EQ-4) */}
-      <ScrollReveal>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0 4px',
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--txt2)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-              }}
-            >
-              Photos ({lensImages.length})
-            </span>
-          </div>
-          <LensImageViewer
-            images={lensImages}
-            onUpload={() => setUploadModalOpen(true)}
-            canUpload
-            emptyMessage="No photos yet."
-          />
-          {/* Per-image comment thread button — opens threaded panel below */}
-          {lensImages.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {lensImages.map((img) => (
-                <button
-                  key={img.id}
-                  type="button"
-                  onClick={() => handleOpenComments(img.id)}
-                  aria-pressed={openCommentAttachmentId === img.id}
-                  style={{
-                    appearance: 'none',
-                    background:
-                      openCommentAttachmentId === img.id
-                        ? 'var(--teal-bg)'
-                        : 'var(--surface)',
-                    border: '1px solid var(--border-sub)',
-                    borderRadius: 4,
-                    padding: '4px 8px',
-                    cursor: 'pointer',
-                    fontSize: 11,
-                    color:
-                      openCommentAttachmentId === img.id ? 'var(--mark)' : 'var(--txt2)',
-                  }}
-                >
-                  {img.filename ?? 'image'} — comments
-                </button>
-              ))}
-            </div>
-          )}
-          {openCommentAttachmentId && (
-            <AttachmentCommentThread
-              attachmentId={openCommentAttachmentId}
-              comments={commentsByAttachment[openCommentAttachmentId] ?? []}
-              loading={commentsLoading}
-              busy={commentBusy}
-              draft={commentDraft}
-              onDraftChange={setCommentDraft}
-              onAdd={handleAddComment}
-              onDelete={handleDeleteComment}
-              onClose={() => setOpenCommentAttachmentId(null)}
-              currentUserId={user?.id ?? null}
-            />
-          )}
-        </div>
-      </ScrollReveal>
-
-      {/* Attachments (non-image rows only) */}
-      <ScrollReveal>
-        <AttachmentsSection
-          attachments={attachmentItems}
-          onAddFile={() => setUploadModalOpen(true)}
-          canAddFile
-        />
-      </ScrollReveal>
-
-      {/* ActionPopup */}
+      {/* Modals — outside tab bar */}
       {actionPopupConfig && (
         <ActionPopup
           mode="mutate"
@@ -773,7 +787,7 @@ export function EquipmentContent() {
         description="Attach a photo, schematic, or document to this equipment."
         onComplete={() => { refetch(); }}
       />
-    </>
+    </div>
   );
 }
 
