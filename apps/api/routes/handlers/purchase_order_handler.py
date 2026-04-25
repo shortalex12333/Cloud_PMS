@@ -384,19 +384,6 @@ async def add_item_to_purchase(
                 "message": "Failed to add item to purchase order"}
     item_id = insert_res.data[0].get("id") if isinstance(insert_res.data, list) else None
 
-    # If sourced from a shopping list item, write back the PO link.
-    shopping_item_id = payload.get("shopping_list_item_id")
-    if shopping_item_id:
-        existing_lines = db_client.table("pms_purchase_order_items").select(
-            "id"
-        ).eq("purchase_order_id", po_id).execute()
-        line_number = len(existing_lines.data) if existing_lines.data else 1
-        db_client.table("pms_shopping_list_items").update({
-            "order_id": po_id,
-            "order_line_number": line_number,
-            "status": "ordered",
-        }).eq("id", shopping_item_id).eq("yacht_id", yacht_id).execute()
-
     # Bump the PO's updated_at so the lens reload picks it up.
     now = datetime.now(timezone.utc).isoformat()
     db_client.table("pms_purchase_orders").update(
