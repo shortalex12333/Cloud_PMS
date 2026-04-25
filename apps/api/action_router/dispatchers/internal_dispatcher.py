@@ -3611,8 +3611,8 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
         po_data["supplier_id"] = params["supplier_id"]
     supabase.table("pms_purchase_orders").insert(po_data).execute()
 
-    # Create PO line items + update shopping list status
-    for item in items:
+    # Create PO line items + write back order_id/order_line_number to shopping items
+    for line_number, item in enumerate(items, start=1):
         line_id = str(uuid_lib.uuid4())
         supabase.table("pms_purchase_order_items").insert({
             "id": line_id,
@@ -3622,15 +3622,33 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
             "description": item["part_name"],
             "quantity_ordered": int(item.get("quantity_approved") or item["quantity_requested"]),
         }).execute()
-
-    # Mark shopping list items as ordered
-    ordered_ids = [item["id"] for item in items]
-    for oid in ordered_ids:
         supabase.table("pms_shopping_list_items").update({
             "status": "ordered",
+            "order_id": po_id,
+            "order_line_number": line_number,
             "updated_at": datetime.utcnow().isoformat(),
             "updated_by": user_id,
-        }).eq("id", oid).eq("yacht_id", yacht_id).execute()
+        }).eq("id", item["id"]).eq("yacht_id", yacht_id).execute()
+
+    # Data continuity: PO placed — prompt receipt + invoice when goods arrive
+    if user_id:
+        try:
+            import uuid as _uuid_notif
+            supabase.table("pms_notifications").insert({
+                "yacht_id": yacht_id,
+                "user_id": user_id,
+                "notification_type": "purchase_order.placed_pending_receipt",
+                "title": f"{po_number} placed — mark received when goods arrive",
+                "body": f"{len(items)} item(s) ordered. Mark as received and upload the supplier invoice when goods arrive.",
+                "priority": "normal",
+                "entity_type": "purchase_order",
+                "entity_id": po_id,
+                "idempotency_key": f"po_placed_{po_id}_{str(_uuid_notif.uuid4())[:8]}",
+                "is_read": False,
+                "triggered_by": user_id,
+            }).execute()
+        except Exception as notif_err:
+            logger.warning(f"[Notification] convert_to_po notification failed (non-fatal): {notif_err}")
 
     return {
         "status": "success",

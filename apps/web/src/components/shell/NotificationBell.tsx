@@ -57,6 +57,7 @@ export function getNotificationRoute(entityType: string, entityId: string): stri
     document: '/documents',
     handover: '/handover',
     hours_of_rest: '/hours-of-rest',
+    purchase_order: '/purchasing',
   };
   const base = routes[entityType] || `/${entityType}`;
   return `${base}?id=${entityId}`;

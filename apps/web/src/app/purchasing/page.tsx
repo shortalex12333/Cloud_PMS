@@ -45,10 +45,11 @@ function poAdapter(po: PurchaseOrder): EntityListResult {
   const amount = po.total_amount
     ? `${currencySymbol}${po.total_amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
     : '';
-  // Title carries the supplier or description so the row is not "PO-123 \u2014 PO-123".
-  // entityRef stays as po_number so the mono teal id cell still renders the PO number.
+  // Title carries the supplier name; entityRef stays as po_number.
+  // Never fall back to po.description \u2014 apiRecordToAdapterInput maps description=meta
+  // (= status.upper()), which would make the Supplier column show "DRAFT" etc.
   const supplier = po.supplier_name?.trim();
-  const title = supplier || po.description?.trim() || 'Purchase order';
+  const title = supplier || 'Purchase Order';
   const subtitleParts = [amount].filter(Boolean);
   return {
     id: po.id,

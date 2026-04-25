@@ -37,6 +37,7 @@ import { SearchOverlay } from './SearchOverlay';
 import { useBreakpoint } from './useBreakpoint';
 import SettingsModal from '@/components/SettingsModal';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
+import { CreatePurchaseOrderModal } from '@/components/actions/modals/CreatePurchaseOrderModal';
 import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
 import { FileWarrantyClaimModal } from '@/components/lens-v2/actions/FileWarrantyClaimModal';
 import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
@@ -168,6 +169,7 @@ export function AppShell({ children }: AppShellProps) {
   const [fileWarrantyOpen, setFileWarrantyOpen] = React.useState(false);
   const [documentUploadOpen, setDocumentUploadOpen] = React.useState(false);
   const [confirmExportOpen, setConfirmExportOpen] = React.useState(false);
+  const [createPOOpen, setCreatePOOpen] = React.useState(false);
 
   // React Query client — used to invalidate the documents list after an upload
   // so the newly-uploaded document appears immediately. Mirrors the pattern
@@ -205,6 +207,9 @@ export function AppShell({ children }: AppShellProps) {
         // handoverExport.exportHandover(); the hook already drives POST
         // /v1/handover/export + mark-exported + route-to-export-view.
         setConfirmExportOpen(true);
+        break;
+      case 'purchasing':
+        setCreatePOOpen(true);
         break;
       default:
         // Domains without a create modal — navigate to domain (already there, but no-op is fine)
@@ -301,6 +306,7 @@ export function AppShell({ children }: AppShellProps) {
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <LedgerPanel isOpen={ledgerOpen} onClose={() => setLedgerOpen(false)} />
       <CreateWorkOrderModal open={createWOOpen} onOpenChange={setCreateWOOpen} />
+      <CreatePurchaseOrderModal open={createPOOpen} onOpenChange={setCreatePOOpen} />
       <ReportFaultModal open={reportFaultOpen} onOpenChange={setReportFaultOpen} />
       <FileWarrantyClaimModal open={fileWarrantyOpen} onOpenChange={setFileWarrantyOpen} />
       <AttachmentUploadModal
