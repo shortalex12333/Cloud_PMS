@@ -49,7 +49,7 @@ export function ConfirmExportModal({
       aria-labelledby="confirm-export-title"
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'var(--scrim, rgba(0,0,0,0.55))',
+        background: 'var(--overlay-bg)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 16,
       }}

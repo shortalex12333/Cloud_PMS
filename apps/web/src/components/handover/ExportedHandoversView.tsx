@@ -223,7 +223,7 @@ function KebabMenu({
             background: 'var(--surface)',
             border: '1px solid var(--border-sub)',
             borderRadius: 6,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
+            boxShadow: 'var(--shadow-tip)',
             padding: 4,
           }}
           onClick={e => e.stopPropagation()}
