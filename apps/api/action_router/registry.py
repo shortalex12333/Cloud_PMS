@@ -2344,6 +2344,27 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
+    "add_shopping_list_photo": ActionDefinition(
+        action_id="add_shopping_list_photo",
+        label="Add Shopping List Photo",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "item_id", "photo_url"],
+        domain="shopping_list",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "upload", "photo", "image", "shopping", "list", "item"],
+        storage_bucket="pms-shopping-list-photos",
+        storage_path_template="{yacht_id}/shopping_list/{item_id}/{filename}",
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("item_id", FieldClassification.REQUIRED, auto_populate_from="shopping_list", lookup_required=True),
+            FieldMetadata("photo_url", FieldClassification.REQUIRED, description="Storage path after upload"),
+            FieldMetadata("caption", FieldClassification.OPTIONAL),
+        ],
+    ),
+
     "consume_part": ActionDefinition(
         action_id="consume_part",
         label="Consume Part",
@@ -4311,6 +4332,13 @@ ACTION_STORAGE_CONFIG: Dict[str, Dict[str, Any]] = {
         "bucket": "pms-work-order-photos",
         "path_template": "{yacht_id}/work_orders/{work_order_id}/{filename}",
         "writable_prefixes": ["{yacht_id}/work_orders/"],
+        "confirmation_required": True,
+    },
+    # Shopping list
+    "add_shopping_list_photo": {
+        "bucket": "pms-shopping-list-photos",
+        "path_template": "{yacht_id}/shopping_list/{item_id}/{filename}",
+        "writable_prefixes": ["{yacht_id}/shopping_list/"],
         "confirmation_required": True,
     },
     # Parts - receiving images

@@ -37,14 +37,18 @@ import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 
 import {
+  AttachmentsSection,
   AuditTrailSection,
   DocRowsSection,
   KVSection,
+  type AttachmentItem,
   type AuditEvent,
   type DocRowItem,
   type KVItem,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
+import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { useAuth } from '@/hooks/useAuth';
 
 // ── Pill + format helpers ─────────────────────────────────────────────────────
 
@@ -104,8 +108,13 @@ function kv(label: string, value: React.ReactNode, opts?: { mono?: boolean }): K
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function ShoppingListContent() {
-  const { entity, availableActions, executeAction, getAction } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, refetch } = useEntityLensContext();
   const router = useRouter();
+  const { user } = useAuth();
+  const [uploadOpen, setUploadOpen] = React.useState(false);
+
+  const entityId = (entity?.id as string | undefined) ?? '';
+  const photoAction = getAction('add_shopping_list_photo');
 
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
   const get = <T = unknown>(key: string): T | undefined =>
@@ -473,8 +482,23 @@ export function ShoppingListContent() {
   }
 
   function renderAttachmentsTab(): React.ReactNode {
+    const attachments = (get<Array<Record<string, unknown>>>('attachments') ?? []) as Array<Record<string, unknown>>;
+    const items: AttachmentItem[] = attachments.map((a, i) => ({
+      id: (a.id as string) ?? `att-${i}`,
+      name: (a.filename ?? a.name ?? a.file_name) as string ?? 'File',
+      caption: (a.description ?? a.caption) as string | undefined,
+      size: (a.file_size ?? a.size) as string | undefined,
+      kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image')
+        ? ('image' as const)
+        : ('document' as const),
+    }));
+    const canUpload = !!(user?.yachtId && user?.id && photoAction);
     return (
-      <EmptyTab message="Photo uploads + comments arrive in the next release — cohort-shared pms_attachments + pms_attachment_comments (PR #696)." />
+      <AttachmentsSection
+        attachments={items}
+        onAddFile={canUpload ? () => setUploadOpen(true) : undefined}
+        canAddFile={canUpload}
+      />
     );
   }
 
@@ -548,6 +572,25 @@ export function ShoppingListContent() {
             setPopupConfig(null);
           }}
           onClose={() => setPopupConfig(null)}
+        />
+      )}
+
+      {user?.yachtId && user?.id && entityId && (
+        <AttachmentUploadModal
+          open={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          entityType="shopping_list"
+          entityId={entityId}
+          bucket="pms-shopping-list-photos"
+          category="photo"
+          yachtId={user.yachtId}
+          userId={user.id}
+          onComplete={() => {
+            setUploadOpen(false);
+            refetch();
+          }}
+          title="Upload Shopping List Photo"
+          description="Attach a photo or supporting document to this shopping list item (quote, label, packaging, etc.)."
         />
       )}
     </>

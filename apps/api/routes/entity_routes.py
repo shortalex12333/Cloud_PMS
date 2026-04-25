@@ -39,6 +39,7 @@ ATTACHMENT_BUCKET = {
     "warranty": "pms-warranty-documents",
     "receiving": "pms-receiving-images",
     "certificate": "pms-certificate-documents",
+    "shopping_list": "pms-shopping-list-photos",
 }
 
 
@@ -933,7 +934,7 @@ async def get_shopping_list_entity(item_id: str, auth: dict = Depends(get_authen
             "items": [item],
             "notes": [],
             "yacht_id": data.get("yacht_id"),
-            "attachments": [],
+            "attachments": _get_attachments(supabase, "shopping_list", item_id, yacht_id),
             "related_entities": nav,
             "audit_history": audit_history,
         }
