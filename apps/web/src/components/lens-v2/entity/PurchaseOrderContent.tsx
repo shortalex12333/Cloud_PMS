@@ -4,25 +4,16 @@
  * PurchaseOrderContent — lens-v2 entity view.
  * Prototype: public/prototypes/lens-purchase-order.html
  *
- * Data flow:
- * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
- * - Actions from availableActions[] → backend /v1/actions/execute
- * - ActionPopup auto-builds form fields from action.required_fields
- *
- * Sections: Identity → Line Items → Budget → Delivery → Approvals → Notes → Attachments → History → Receiving Log → Audit Trail
- *
- * TODO notes for next engineer:
- * - Edit handler not wired
- * - Add Note handler not wired
+ * Layout: IdentityStrip (sticky) → 7-tab LensTabBar
+ * Tabs: Items | Invoice | Supplier | Related Parts | Docs | Notes | Audit Trail
  */
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import styles from '../lens.module.css';
 import { IdentityStrip, type PillDef, type DetailLine } from '../IdentityStrip';
 import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActionFields';
 import { SplitButton, type DropdownItem } from '../SplitButton';
-import { ScrollReveal } from '../ScrollReveal';
+import { LensTabBar, type LensTab } from '../LensTabBar';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
@@ -35,13 +26,11 @@ import {
   AttachmentsSection,
   PartsSection,
   KVSection,
-  HistorySection,
   type NoteItem,
   type AuditEvent,
   type AttachmentItem,
   type PartItem,
   type KVItem,
-  type HistoryPeriod,
 } from '../sections';
 
 // ─── Status colour mapping ───
@@ -68,7 +57,7 @@ function formatLabel(str: string): string {
 }
 
 function formatCurrency(amount: number, currency?: string): string {
-  const sym = currency === 'EUR' ? '\u20AC' : currency === 'GBP' ? '\u00A3' : '$';
+  const sym = currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$';
   return `${sym}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
@@ -82,7 +71,6 @@ export function PurchaseOrderContent() {
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
   const po_number = (entity?.po_number ?? payload.po_number) as string | undefined;
   const supplier = ((entity?.supplier_name ?? (entity?.supplier as { name?: string } | undefined)?.name ?? entity?.vendor_name ?? payload.supplier_name ?? payload.supplier ?? payload.vendor_name) as string | undefined);
-  // Title shows the supplier name; entityRef (overline) carries the po_number.
   const title = supplier ?? ((entity?.title ?? payload.title) as string | undefined) ?? 'Purchase Order';
   const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
   const total_amount = (entity?.total_amount ?? payload.total_amount) as number | undefined;
@@ -119,15 +107,13 @@ export function PurchaseOrderContent() {
   const budget_context = ((entity?.budget_context ?? payload.budget_context ?? entity?.budget ?? payload.budget) as Record<string, unknown> | undefined);
   const approval_signatures = ((entity?.approval_signatures ?? payload.approval_signatures ?? entity?.approvals ?? payload.approvals) as Array<Record<string, unknown>> | undefined) ?? [];
   const delivery = ((entity?.delivery ?? payload.delivery) as Record<string, unknown> | undefined);
+  const related_parts = ((entity?.related_parts ?? payload.related_parts) as Array<Record<string, unknown>> | undefined) ?? [];
 
   // ── Action gates ──
   const submitAction = getAction('submit_purchase_order');
   const approveAction = getAction('approve_purchase_order');
   const receiveAction = getAction('mark_po_received');
-  const cancelAction = getAction('cancel_po');
   const addNoteAction = getAction('add_po_note');
-  const editAction = getAction('edit_purchase_order');
-  const addAttachmentAction = getAction('add_po_attachment');
   const uploadInvoiceAction = getAction('upload_invoice');
 
   // Upload invoice file-picker state
@@ -138,7 +124,6 @@ export function PurchaseOrderContent() {
   const [invoiceUploading, setInvoiceUploading] = React.useState(false);
   const invoiceInputRef = React.useRef<HTMLInputElement>(null);
 
-  // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
     actionId: string; title: string; fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
   } | null>(null);
@@ -173,7 +158,7 @@ export function PurchaseOrderContent() {
   else if (expected_delivery) details.push({ label: 'Expected Delivery', value: fmtDate(expected_delivery)!, mono: true });
   if (total_amount !== undefined && total_amount !== null) {
     const totalLabel = item_count !== undefined && item_count !== null
-      ? `${formatCurrency(total_amount, currency)}  \u00B7  ${item_count} item${item_count === 1 ? '' : 's'}`
+      ? `${formatCurrency(total_amount, currency)}  ·  ${item_count} item${item_count === 1 ? '' : 's'}`
       : formatCurrency(total_amount, currency);
     details.push({ label: 'Total', value: totalLabel, mono: true });
   }
@@ -183,12 +168,12 @@ export function PurchaseOrderContent() {
   const approvedLine = actorLine(approvedByActor, approved_by);
   if (approvedLine) {
     const approvedDate = fmtDate(approved_at);
-    details.push({ label: 'Approved by', value: approvedDate ? `${approvedLine}  \u00B7  ${approvedDate}` : approvedLine });
+    details.push({ label: 'Approved by', value: approvedDate ? `${approvedLine}  ·  ${approvedDate}` : approvedLine });
   }
   const receivedLine = actorLine(receivedByActor, received_by);
   if (receivedLine) {
     const recDate = fmtDate(received_date);
-    details.push({ label: 'Received by', value: recDate ? `${receivedLine}  \u00B7  ${recDate}` : receivedLine });
+    details.push({ label: 'Received by', value: recDate ? `${receivedLine}  ·  ${recDate}` : receivedLine });
   }
 
   const contextNode = supplier ? <>{supplier}</> : null;
@@ -197,7 +182,6 @@ export function PurchaseOrderContent() {
   const isDraft = status === 'draft';
   const isSubmitted = status === 'submitted';
   const isApproved = ['approved', 'partially_received'].includes(status);
-  const isFinal = ['received', 'cancelled'].includes(status);
 
   let primaryLabel = 'Submit';
   let primaryAction = submitAction;
@@ -235,10 +219,9 @@ export function PurchaseOrderContent() {
     },
   };
   const DANGER_ACTIONS = new Set(['cancel_po', 'delete_po']);
-  const primaryActionId2 = primaryActionKey;
 
   const dropdownItems: DropdownItem[] = availableActions
-    .filter((a) => a.action_id !== primaryActionId2)
+    .filter((a) => a.action_id !== primaryActionKey)
     .map((a) => ({
       label: a.label,
       onClick: SPECIAL_HANDLERS[a.action_id]
@@ -254,41 +237,44 @@ export function PurchaseOrderContent() {
 
   // ── Map section data ──
 
-  // Line items as part rows with quantity x price
   const lineItemRows: PartItem[] = line_items.map((item, i) => {
     const qty = (item.quantity as number | undefined) ?? 1;
     const unitPrice = (item.unit_price ?? item.price) as number | undefined;
-    const lineTotal = unitPrice !== undefined ? qty * unitPrice : undefined;
     const partNumber = (item.part_number ?? item.sku ?? item.part_id) as string | undefined;
     const itemName = (item.description ?? item.name ?? item.part_name) as string ?? `Item ${i + 1}`;
-
     return {
       id: (item.id as string) ?? `line-${i}`,
       name: itemName,
       partNumber: partNumber,
-      quantity: `\u00D7 ${qty}`,
-      stock: unitPrice !== undefined
-        ? `${formatCurrency(unitPrice, currency)} ea`
-        : undefined,
+      quantity: `× ${qty}`,
+      stock: unitPrice !== undefined ? `${formatCurrency(unitPrice, currency)} ea` : undefined,
       onNavigate: item.part_id
         ? () => router.push(getEntityRoute('inventory', item.part_id as string))
         : undefined,
     };
   });
 
-  // Supplier KV
+  const relatedPartRows: PartItem[] = related_parts.map((p, i) => ({
+    id: (p.id as string) ?? `rp-${i}`,
+    name: (p.name ?? p.part_name ?? p.description) as string ?? `Part ${i + 1}`,
+    partNumber: (p.part_number ?? p.sku) as string | undefined,
+    quantity: (p.quantity as number | undefined) !== undefined ? `× ${p.quantity}` : undefined,
+    onNavigate: p.id
+      ? () => router.push(getEntityRoute('inventory', p.id as string))
+      : undefined,
+  }));
+
   const supplierItems: KVItem[] = [];
   if (supplierBlock) {
-    if (supplierBlock.name)         supplierItems.push({ label: 'Supplier',       value: supplierBlock.name });
-    if (supplierBlock.contact_name) supplierItems.push({ label: 'Contact',        value: supplierBlock.contact_name });
-    if (supplierBlock.email)        supplierItems.push({ label: 'Email',          value: supplierBlock.email, mono: true });
-    if (supplierBlock.phone)        supplierItems.push({ label: 'Phone',          value: supplierBlock.phone, mono: true });
-    if (supplierBlock.address)      supplierItems.push({ label: 'Address',        value: supplierBlock.address });
+    if (supplierBlock.name)         supplierItems.push({ label: 'Supplier',  value: supplierBlock.name });
+    if (supplierBlock.contact_name) supplierItems.push({ label: 'Contact',   value: supplierBlock.contact_name });
+    if (supplierBlock.email)        supplierItems.push({ label: 'Email',     value: supplierBlock.email, mono: true });
+    if (supplierBlock.phone)        supplierItems.push({ label: 'Phone',     value: supplierBlock.phone, mono: true });
+    if (supplierBlock.address)      supplierItems.push({ label: 'Address',   value: supplierBlock.address });
   } else if (supplier) {
     supplierItems.push({ label: 'Supplier', value: supplier });
   }
 
-  // Budget context KV
   const budgetItems: KVItem[] = [];
   if (budget_context) {
     const budgetTotal = (budget_context.total ?? budget_context.budget_total) as number | undefined;
@@ -307,7 +293,6 @@ export function PurchaseOrderContent() {
     budgetItems.push({ label: 'Shipping', value: formatCurrency(shipping_cost, currency), mono: true });
   }
 
-  // Approval signatures KV
   const approvalItems: KVItem[] = approval_signatures.map((s) => ({
     label: (s.role ?? s.title ?? 'Approval') as string,
     value: (s.name ?? s.signed_by ?? s.approved_by) as string ?? 'Pending',
@@ -316,7 +301,6 @@ export function PurchaseOrderContent() {
     approvalItems.push({ label: 'Approved By', value: approved_by });
   }
 
-  // Delivery KV
   const deliveryItems: KVItem[] = [];
   if (delivery) {
     const carrier = (delivery.carrier ?? delivery.shipping_carrier) as string | undefined;
@@ -330,7 +314,6 @@ export function PurchaseOrderContent() {
     if (contact) deliveryItems.push({ label: 'Contact', value: contact });
   }
 
-  // Notes
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
     author: (n.author ?? n.created_by ?? n.user_name) as string ?? 'Unknown',
@@ -338,16 +321,25 @@ export function PurchaseOrderContent() {
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
 
-  // Attachments
-  const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
-    id: (a.id as string) ?? `att-${i}`,
-    name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
-    caption: (a.caption ?? a.description) as string | undefined,
-    size: (a.size ?? a.file_size) as string | undefined,
-    kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
-  }));
+  // Split attachments: invoice vs general docs
+  const invoiceAttachments: AttachmentItem[] = [];
+  const docAttachments: AttachmentItem[] = [];
+  attachments.forEach((a, i) => {
+    const item: AttachmentItem = {
+      id: (a.id as string) ?? `att-${i}`,
+      name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
+      caption: (a.caption ?? a.description) as string | undefined,
+      size: (a.size ?? a.file_size) as string | undefined,
+      kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
+    };
+    const cat = ((a.category ?? a.document_type ?? a.attachment_type) as string ?? '').toLowerCase();
+    if (cat === 'invoice' || ((a.name ?? a.file_name ?? '') as string).toLowerCase().includes('invoice')) {
+      invoiceAttachments.push(item);
+    } else {
+      docAttachments.push(item);
+    }
+  });
 
-  // Receiving log as audit trail
   const receivingEvents: AuditEvent[] = receiving_log.map((r, i) => ({
     id: (r.id as string) ?? `recv-${i}`,
     action: (r.action ?? r.description ?? r.event) as string ?? '',
@@ -355,23 +347,11 @@ export function PurchaseOrderContent() {
     timestamp: (r.created_at ?? r.timestamp ?? r.date) as string ?? '',
   }));
 
-  // Audit trail
   const auditEvents: AuditEvent[] = audit_history.map((h, i) => ({
     id: (h.id as string) ?? `audit-${i}`,
     action: (h.action ?? h.description ?? h.event) as string ?? '',
     actor: (h.actor ?? h.user_name ?? h.performed_by) as string | undefined,
     timestamp: (h.created_at ?? h.timestamp) as string ?? '',
-  }));
-
-  // History periods
-  const priorPeriods = ((entity?.prior_periods ?? payload.prior_periods ?? entity?.history_periods ?? payload.history_periods) as Array<Record<string, unknown>> | undefined) ?? [];
-
-  const historyPeriods: HistoryPeriod[] = priorPeriods.map((p, i) => ({
-    id: (p.id as string) ?? `period-${i}`,
-    year: (p.year ?? p.period_year) as string ?? '',
-    label: (p.label ?? p.period_label ?? p.description) as string ?? '',
-    status: ((p.status as string) === 'active' || (p.status as string) === 'current') ? 'active' as const : 'closed' as const,
-    summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
@@ -385,6 +365,166 @@ export function PurchaseOrderContent() {
     [executeAction]
   );
 
+  // ── Tabs ──
+  const tabs: LensTab[] = [
+    { key: 'items',   label: 'Items',    count: line_items.length || undefined },
+    { key: 'invoice', label: 'Invoice',  count: invoiceAttachments.length || undefined },
+    { key: 'supplier',label: 'Supplier' },
+    { key: 'parts',   label: 'Related Parts', count: related_parts.length || undefined },
+    { key: 'docs',    label: 'Docs',     count: docAttachments.length || undefined },
+    { key: 'notes',   label: 'Notes',    count: noteItems.length || undefined },
+    { key: 'audit',   label: 'Audit Trail', count: (auditEvents.length + receivingEvents.length) || undefined },
+  ];
+
+  const renderTabBody = React.useCallback((key: string): React.ReactNode => {
+    switch (key) {
+
+      case 'items':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '0 4px' }}>
+            <PartsSection parts={lineItemRows} defaultCollapsed={false} />
+            {budgetItems.length > 0 && (
+              <KVSection title="Budget" items={budgetItems}
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+                  </svg>
+                }
+              />
+            )}
+            {deliveryItems.length > 0 && (
+              <KVSection title="Delivery" items={deliveryItems}
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <rect x="1" y="3" width="15" height="13" />
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                    <circle cx="5.5" cy="18.5" r="2.5" />
+                    <circle cx="18.5" cy="18.5" r="2.5" />
+                  </svg>
+                }
+              />
+            )}
+          </div>
+        );
+
+      case 'invoice':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '0 4px' }}>
+            {invoiceAttachments.length > 0 ? (
+              <AttachmentsSection attachments={invoiceAttachments} canAddFile={false} />
+            ) : (
+              <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 12, color: 'var(--txt-ghost)' }}>
+                No invoice attached
+              </div>
+            )}
+            {uploadInvoiceAction && (
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <button
+                  onClick={() => {
+                    setInvoiceFile(null); setInvoiceTitle(''); setInvoiceDesc('');
+                    setInvoicePickerOpen(true);
+                  }}
+                  style={{
+                    height: 30, padding: '0 16px', borderRadius: 4,
+                    border: '1px solid var(--mark-hover)',
+                    background: 'var(--teal-bg)', color: 'var(--mark)',
+                    fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                  }}
+                >
+                  Upload Invoice
+                </button>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'supplier':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '0 4px' }}>
+            {supplierItems.length > 0 ? (
+              <KVSection title="Supplier" items={supplierItems}
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                }
+              />
+            ) : (
+              <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 12, color: 'var(--txt-ghost)' }}>
+                No supplier linked
+              </div>
+            )}
+            {approvalItems.length > 0 && (
+              <KVSection title="Approvals" items={approvalItems}
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                }
+              />
+            )}
+          </div>
+        );
+
+      case 'parts':
+        return (
+          <div style={{ padding: '0 4px' }}>
+            {relatedPartRows.length > 0 ? (
+              <PartsSection parts={relatedPartRows} defaultCollapsed={false} />
+            ) : (
+              <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 12, color: 'var(--txt-ghost)' }}>
+                No related parts
+              </div>
+            )}
+          </div>
+        );
+
+      case 'docs':
+        return (
+          <div style={{ padding: '0 4px' }}>
+            <AttachmentsSection
+              attachments={docAttachments}
+              onAddFile={() => {/* TODO: general doc upload */}}
+              canAddFile
+            />
+          </div>
+        );
+
+      case 'notes':
+        return (
+          <div style={{ padding: '0 4px' }}>
+            <NotesSection
+              notes={noteItems}
+              onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
+              canAddNote={!!addNoteAction}
+            />
+          </div>
+        );
+
+      case 'audit':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '0 4px' }}>
+            {receivingEvents.length > 0 && (
+              <AuditTrailSection title="Receiving Log" events={receivingEvents} defaultCollapsed={false} />
+            )}
+            <AuditTrailSection title="Audit Trail" events={auditEvents} defaultCollapsed={receivingEvents.length > 0} />
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  }, [
+    lineItemRows, budgetItems, deliveryItems,
+    invoiceAttachments, uploadInvoiceAction,
+    supplierItems, approvalItems,
+    relatedPartRows, docAttachments,
+    noteItems, addNoteAction,
+    receivingEvents, auditEvents,
+  ]);
+
   return (
     <>
       {deleted_at && (
@@ -395,7 +535,7 @@ export function PurchaseOrderContent() {
           .{deletion_reason ? ` Reason: ${deletion_reason}` : ''}
         </div>
       )}
-      {/* Identity Strip */}
+
       <IdentityStrip
         overline={po_number}
         title={title}
@@ -416,111 +556,12 @@ export function PurchaseOrderContent() {
         }
       />
 
-      {/* Supplier Details */}
-      {supplierItems.length > 0 && (
-        <ScrollReveal>
-          <KVSection
-            title="Supplier"
-            items={supplierItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Line Items */}
-      <ScrollReveal>
-        <PartsSection
-          parts={lineItemRows}
-          defaultCollapsed={false}
-        />
-      </ScrollReveal>
-
-      {/* Budget Context */}
-      {budgetItems.length > 0 && (
-        <ScrollReveal>
-          <KVSection
-            title="Budget Context"
-            items={budgetItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Delivery */}
-      {deliveryItems.length > 0 && (
-        <ScrollReveal>
-          <KVSection
-            title="Delivery"
-            items={deliveryItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <rect x="1" y="3" width="15" height="13" />
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                <circle cx="5.5" cy="18.5" r="2.5" />
-                <circle cx="18.5" cy="18.5" r="2.5" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Approval Signatures */}
-      {approvalItems.length > 0 && (
-        <ScrollReveal>
-          <KVSection
-            title="Approval Signatures"
-            items={approvalItems}
-            icon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-            }
-          />
-        </ScrollReveal>
-      )}
-
-      {/* Notes */}
-      <ScrollReveal>
-        <NotesSection
-          notes={noteItems}
-          onAddNote={addNoteAction ? () => setAddNoteOpen(true) : undefined}
-          canAddNote={!!addNoteAction}
-        />
-      </ScrollReveal>
-
-      {/* Attachments */}
-      <ScrollReveal>
-        <AttachmentsSection
-          attachments={attachmentItems}
-          onAddFile={() => {/* TODO: file upload modal (no component exists yet) */}}
-          canAddFile
-        />
-      </ScrollReveal>
-
-      {/* History */}
-      <ScrollReveal><HistorySection periods={historyPeriods} defaultCollapsed /></ScrollReveal>
-
-      {/* Receiving Log */}
-      {receivingEvents.length > 0 && (
-        <ScrollReveal>
-          <AuditTrailSection title="Receiving Log" events={receivingEvents} defaultCollapsed />
-        </ScrollReveal>
-      )}
-
-      {/* Audit Trail */}
-      <ScrollReveal>
-        <AuditTrailSection title="Audit Trail" events={auditEvents} defaultCollapsed />
-      </ScrollReveal>
+      <LensTabBar
+        tabs={tabs}
+        defaultActiveKey="items"
+        aria-label="Purchase order sections"
+        renderBody={renderTabBody}
+      />
 
       {/* Upload Invoice — file-picker modal */}
       {invoicePickerOpen && (
@@ -547,8 +588,6 @@ export function PurchaseOrderContent() {
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: 'var(--txt)' }}>
               Upload Invoice
             </div>
-
-            {/* File picker — first and primary */}
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--txt3)', marginBottom: 5 }}>
                 File
@@ -580,8 +619,6 @@ export function PurchaseOrderContent() {
                 }}
               />
             </div>
-
-            {/* Title — auto-populated from filename, user can edit */}
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--txt3)', marginBottom: 5 }}>
                 Title (optional)
@@ -599,8 +636,6 @@ export function PurchaseOrderContent() {
                 }}
               />
             </div>
-
-            {/* Description */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--txt3)', marginBottom: 5 }}>
                 Description (optional)
@@ -619,7 +654,6 @@ export function PurchaseOrderContent() {
                 }}
               />
             </div>
-
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button
                 onClick={() => setInvoicePickerOpen(false)}
@@ -638,8 +672,6 @@ export function PurchaseOrderContent() {
                   if (!invoiceFile) return;
                   setInvoiceUploading(true);
                   try {
-                    // No storage bucket yet — record filename/mime/size only.
-                    // storage_path uses a placeholder until bucket is wired.
                     const fakePath = `pending/${Date.now()}_${invoiceFile.name}`;
                     await executeAction('upload_invoice', {
                       storage_path: fakePath,
