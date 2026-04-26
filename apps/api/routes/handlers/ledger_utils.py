@@ -32,7 +32,7 @@ def build_ledger_event(
 
     event_type must be one of:
     - create, update, delete, status_change, assignment, approval, rejection,
-      escalation, handover, import, export
+      escalation, handover, import, export, follow_up_required
     """
     event_data = {
         "yacht_id": str(yacht_id),
