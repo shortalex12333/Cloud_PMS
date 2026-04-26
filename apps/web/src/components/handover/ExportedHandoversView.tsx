@@ -41,10 +41,12 @@ import {
 type SortKey =
   | 'exported_at'
   | 'shift_date'
+  | 'vessel_name'
+  | 'department'
   | 'outgoing_user_name'
-  | 'hod_signed_at'
-  | 'incoming_signed_at'
-  | 'review_status';
+  | 'incoming_user_name'
+  | 'review_status'
+  | 'item_count';
 
 type SortDir = 'asc' | 'desc';
 
@@ -114,11 +116,45 @@ function getSortValue(row: HandoverExportListItem, key: SortKey): string {
   switch (key) {
     case 'exported_at': return row.exported_at || '';
     case 'shift_date': return row.shift_date || '';
-    case 'outgoing_user_name': return row.outgoing_user_name || '';
-    case 'hod_signed_at': return row.hod_signed_at || '';
-    case 'incoming_signed_at': return row.incoming_signed_at || '';
+    case 'vessel_name': return row.vessel_name || '';
+    case 'department': return row.department || '';
+    case 'outgoing_user_name': return row.outgoing_user_name || row.outgoing_role || '';
+    case 'incoming_user_name': return row.incoming_user_name || row.incoming_role || '';
     case 'review_status': return row.review_status || '';
+    case 'item_count': return String(row.item_count ?? 0).padStart(6, '0');
   }
+}
+
+// Three-dot sign chain indicator: outgoing → HOD → incoming
+function SignChain({ row }: { row: HandoverExportListItem }) {
+  const steps = [
+    { done: !!row.user_signed_at, label: 'Outgoing signed' },
+    { done: !!row.hod_signed_at, label: 'HOD countersigned' },
+    { done: !!row.incoming_signed_at, label: 'Incoming acknowledged' },
+  ];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      {steps.map((s, i) => (
+        <React.Fragment key={i}>
+          <div
+            title={`${s.label}: ${s.done ? '✓' : 'pending'}`}
+            style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: s.done ? 'var(--green)' : 'var(--border-sub)',
+              border: `1px solid ${s.done ? 'var(--green)' : 'var(--border-sub)'}`,
+              flexShrink: 0,
+            }}
+          />
+          {i < 2 && (
+            <div style={{
+              width: 12, height: 1,
+              background: s.done ? 'var(--green)' : 'var(--border-sub)',
+            }} />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
 }
 
 // ============================================================================
@@ -283,9 +319,9 @@ function SkeletonRow() {
       height: 44, padding: '0 12px',
       borderTop: '1px solid var(--border-faint)',
     }}>
-      {[180, 180, 140, 130, 130, 100].map((w, i) => (
+      {[148, 140, 100, 180, 180, 96, 60, 130].map((w, i) => (
         <div key={i} style={{
-          width: w, height: 12, marginRight: 12,
+          width: w, height: 12, marginRight: 12, flexShrink: 0,
           borderRadius: 3, background: 'var(--border-sub)', opacity: 0.5,
         }} />
       ))}
@@ -297,14 +333,16 @@ function SkeletonRow() {
 // MAIN COMPONENT
 // ============================================================================
 
-// Column widths sum = table minimum; table is horizontally scrollable if needed.
+// Column widths — table is horizontally scrollable if needed.
 const COL_WIDTHS = {
-  generated: '160px',
-  rotation: '200px',
-  outgoing: '200px',
-  hod: '160px',
-  incoming: '200px',
-  status: '140px',
+  generated: '148px',
+  vessel: '140px',
+  dept: '100px',
+  outgoing: '180px',
+  incoming: '180px',
+  chain: '96px',
+  items: '60px',
+  status: '130px',
   kebab: '40px',
 };
 
@@ -461,10 +499,14 @@ export function ExportedHandoversView() {
           borderBottom: '1px solid var(--border-sub)',
         }}>
           <SortableHeader label="Generated" colKey="exported_at" active={sortKey === 'exported_at'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.generated} />
-          <SortableHeader label="Shift date" colKey="shift_date" active={sortKey === 'shift_date'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.rotation} />
+          <SortableHeader label="Vessel" colKey="vessel_name" active={sortKey === 'vessel_name'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.vessel} />
+          <SortableHeader label="Dept" colKey="department" active={sortKey === 'department'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.dept} />
           <SortableHeader label="Outgoing" colKey="outgoing_user_name" active={sortKey === 'outgoing_user_name'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.outgoing} />
-          <SortableHeader label="HOD signed" colKey="hod_signed_at" active={sortKey === 'hod_signed_at'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.hod} />
-          <SortableHeader label="Incoming signed" colKey="incoming_signed_at" active={sortKey === 'incoming_signed_at'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.incoming} />
+          <SortableHeader label="Incoming" colKey="incoming_user_name" active={sortKey === 'incoming_user_name'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.incoming} />
+          <div style={{ width: COL_WIDTHS.chain, padding: '0 12px', display: 'flex', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--txt3)' }}>Signed</span>
+          </div>
+          <SortableHeader label="Items" colKey="item_count" active={sortKey === 'item_count'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.items} align="right" />
           <SortableHeader label="Status" colKey="review_status" active={sortKey === 'review_status'} dir={sortDir} onClick={handleSort} width={COL_WIDTHS.status} />
           <div style={{ width: COL_WIDTHS.kebab }} />
         </div>
@@ -515,6 +557,40 @@ export function ExportedHandoversView() {
 // ROW
 // ============================================================================
 
+function PersonCell({ name, role, signedAt, overdueForMe, width }: {
+  name: string | null;
+  role: string | null;
+  signedAt: string | null;
+  overdueForMe: boolean;
+  width: string;
+}) {
+  const nameColor = signedAt ? 'var(--txt)' : overdueForMe ? 'var(--red)' : 'var(--txt-ghost)';
+  const roleColor = signedAt ? 'var(--txt3)' : overdueForMe ? 'var(--red)' : 'var(--txt-ghost)';
+
+  return (
+    <div style={{
+      width, padding: '0 12px',
+      display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1,
+      minWidth: 0, flexShrink: 0,
+    }}>
+      <div style={{
+        fontSize: 12, fontWeight: 500, color: nameColor,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>
+        {name || roleLabel(role || '') || '—'}
+      </div>
+      {role && (
+        <div style={{
+          fontSize: 10, fontFamily: 'var(--font-mono)', color: roleColor, textTransform: 'capitalize',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {roleLabel(role)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ExportedRow({
   row, isHod, currentUserRole, currentUserId, downloading,
   onRowClick, onOpen, onDownload,
@@ -530,16 +606,12 @@ function ExportedRow({
 }) {
   const status = resolveStatusPill(row);
 
-  // Red "Incoming signed" cell when: this user should sign, handover is complete,
-  // but incoming has not been signed yet.
   const incomingOverdueForMe =
     !row.incoming_signed_at &&
     row.review_status === 'complete' &&
     row.incoming_role === currentUserRole &&
     currentUserRole !== '' &&
-    row.incoming_user_id !== currentUserId; // user hasn't claimed the row yet
-
-  const rotation = row.shift_date ? formatDate(row.shift_date) : '—';
+    row.incoming_user_id !== currentUserId;
 
   return (
     <div
@@ -548,105 +620,80 @@ function ExportedRow({
       onClick={onRowClick}
       onKeyDown={(e) => { if (e.key === 'Enter') onRowClick(); }}
       style={{
-        display: 'flex',
-        alignItems: 'center',
+        display: 'flex', alignItems: 'center',
         minHeight: 44,
         borderTop: '1px solid var(--border-faint)',
-        cursor: 'pointer',
-        transition: 'background 60ms',
+        cursor: 'pointer', transition: 'background 60ms',
       }}
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'; }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; }}
     >
       {/* Generated */}
       <div style={{
-        width: COL_WIDTHS.generated, padding: '0 12px',
-        fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--txt2)',
+        width: COL_WIDTHS.generated, padding: '0 12px', flexShrink: 0,
+        fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--txt3)',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
         {formatTimestamp(row.exported_at)}
       </div>
 
-      {/* Rotation */}
+      {/* Vessel */}
       <div style={{
-        width: COL_WIDTHS.rotation, padding: '0 12px',
-        fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--txt2)',
+        width: COL_WIDTHS.vessel, padding: '0 12px', flexShrink: 0,
+        fontSize: 12, fontWeight: 500, color: 'var(--txt2)',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
-        {rotation}
+        {row.vessel_name || '—'}
       </div>
 
-      {/* Outgoing (name + role) */}
+      {/* Department */}
       <div style={{
-        width: COL_WIDTHS.outgoing, padding: '0 12px',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2,
-        minWidth: 0,
-      }}>
-        <div style={{
-          fontSize: 13, fontWeight: 500, color: 'var(--txt)',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {row.outgoing_user_name || '—'}
-        </div>
-        {row.outgoing_role && (
-          <div style={{
-            fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--txt3)',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {roleLabel(row.outgoing_role)}
-          </div>
-        )}
-      </div>
-
-      {/* HOD signed */}
-      <div style={{
-        width: COL_WIDTHS.hod, padding: '0 12px',
-        fontSize: 12, fontFamily: 'var(--font-mono)',
-        color: row.hod_signed_at ? 'var(--txt2)' : 'var(--txt-ghost)',
+        width: COL_WIDTHS.dept, padding: '0 12px', flexShrink: 0,
+        fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--txt3)',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        textTransform: 'capitalize',
       }}>
-        {formatTimestamp(row.hod_signed_at)}
+        {row.department || '—'}
       </div>
 
-      {/* Incoming signed (name + role + timestamp, dim/red rules) */}
+      {/* Outgoing — name primary, rank secondary */}
+      <PersonCell
+        name={row.outgoing_user_name}
+        role={row.outgoing_role}
+        signedAt={row.user_signed_at}
+        overdueForMe={false}
+        width={COL_WIDTHS.outgoing}
+      />
+
+      {/* Incoming — name primary, rank secondary */}
+      <PersonCell
+        name={row.incoming_user_name}
+        role={row.incoming_role}
+        signedAt={row.incoming_signed_at}
+        overdueForMe={incomingOverdueForMe}
+        width={COL_WIDTHS.incoming}
+      />
+
+      {/* Sign chain ●–●–● */}
       <div style={{
-        width: COL_WIDTHS.incoming, padding: '0 12px',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2,
-        minWidth: 0,
+        width: COL_WIDTHS.chain, padding: '0 12px', flexShrink: 0,
+        display: 'flex', alignItems: 'center',
       }}>
-        {row.incoming_user_name || row.incoming_role ? (
-          <>
-            <div style={{
-              fontSize: 13, fontWeight: 500,
-              color: row.incoming_signed_at
-                ? 'var(--txt)'
-                : incomingOverdueForMe ? 'var(--red)' : 'var(--txt-ghost)',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {row.incoming_user_name || roleLabel(row.incoming_role || '')}
-            </div>
-            <div style={{
-              fontSize: 10, fontFamily: 'var(--font-mono)',
-              color: row.incoming_signed_at
-                ? 'var(--txt3)'
-                : incomingOverdueForMe ? 'var(--red)' : 'var(--txt-ghost)',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {row.incoming_signed_at ? formatTimestamp(row.incoming_signed_at) : 'awaiting signature'}
-            </div>
-          </>
-        ) : (
-          <div style={{
-            fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--txt-ghost)',
-          }}>
-            —
-          </div>
-        )}
+        <SignChain row={row} />
+      </div>
+
+      {/* Items count */}
+      <div style={{
+        width: COL_WIDTHS.items, padding: '0 12px', flexShrink: 0,
+        fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--txt3)',
+        textAlign: 'right',
+      }}>
+        {row.item_count != null ? row.item_count : '—'}
       </div>
 
       {/* Status pill */}
       <div style={{
-        width: COL_WIDTHS.status, padding: '0 12px',
+        width: COL_WIDTHS.status, padding: '0 12px', flexShrink: 0,
         display: 'flex', alignItems: 'center',
       }}>
         <span style={{
@@ -654,8 +701,7 @@ function ExportedRow({
           padding: '3px 8px', borderRadius: 3,
           fontSize: 10, fontWeight: 600, letterSpacing: '0.02em',
           fontFamily: 'var(--font-sans)',
-          color: status.fg,
-          background: status.bg,
+          color: status.fg, background: status.bg,
           border: `1px solid ${status.border}33`,
           whiteSpace: 'nowrap',
         }}>

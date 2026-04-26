@@ -238,13 +238,16 @@ export interface HandoverExportListItem {
   id: string;
   draft_id: string | null;
   yacht_id: string;
+  vessel_name: string | null;
   exported_at: string;
   shift_date: string | null;
   department: string | null;
   export_type: string | null;
   export_status: string | null;
   file_name: string | null;
+  file_size_bytes: number | null;
   document_hash: string | null;
+  item_count: number | null;
   outgoing_user_id: string | null;
   outgoing_user_name: string | null;
   outgoing_role: string | null;
