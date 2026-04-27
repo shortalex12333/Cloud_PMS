@@ -2,6 +2,8 @@ from handlers.part_handlers import HANDLERS
 
 
 def test_all_actions_registered():
+    # archive_part, delete_part, suggest_parts are served via ADAPTER_HANDLERS
+    # (INTERNAL_HANDLERS soft-delete / NYI shim) — not registered here
     expected = {
         "view_part_details", "update_part_details",
         "add_to_shopping_list", "reorder_part",
@@ -12,7 +14,6 @@ def test_all_actions_registered():
         "view_linked_equipment", "order_part", "scan_part_barcode",
         "check_stock_level", "log_part_usage",
         "view_low_stock",
-        "suggest_parts", "archive_part", "delete_part",
     }
     assert set(HANDLERS.keys()) == expected
 

@@ -2478,7 +2478,5 @@ HANDLERS: Dict[str, Any] = {
     "check_stock_level": _p4_check_stock_level,
     "log_part_usage": _p4_log_part_usage,
     "view_low_stock": _p4_view_low_stock,
-    "suggest_parts": None,
-    "archive_part": None,
-    "delete_part": None,
+    # archive_part, delete_part, suggest_parts served via ADAPTER_HANDLERS (INTERNAL_HANDLERS)
 }

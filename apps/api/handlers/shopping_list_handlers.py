@@ -218,14 +218,7 @@ class ShoppingListHandlers:
             yacht_id
         )
 
-        _CREATE_ITEM_ROLES = frozenset({"crew", "chief_engineer", "chief_officer", "captain", "manager"})
-
         try:
-            user_role = params.get("user_role", "")
-            if user_role not in _CREATE_ITEM_ROLES:
-                builder.set_error("FORBIDDEN", f"Role '{user_role}' is not authorized to create shopping list items", 403)
-                return builder.build()
-
             user_id = params.get("user_id")
             if not user_id:
                 builder.set_error("UNAUTHORIZED", "User not authenticated", 401)
@@ -406,15 +399,6 @@ class ShoppingListHandlers:
         )
 
         try:
-            user_role = params.get("user_role", "")
-            if user_role not in HOD_ROLES:
-                builder.set_error(
-                    "FORBIDDEN",
-                    "Only HoD (chief engineer, chief officer, captain, manager) can approve shopping list items",
-                    403
-                )
-                return builder.build()
-
             user_id = params.get("user_id")
             if not user_id:
                 builder.set_error("UNAUTHORIZED", "User not authenticated", 401)

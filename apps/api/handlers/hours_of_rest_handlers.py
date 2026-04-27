@@ -3292,6 +3292,20 @@ def _make_hor_read_handler(method_name: str):
     return _handler
 
 
+# get_unread_notifications uses params= (not payload=) — needs a dedicated wrapper.
+async def _hor_get_unread_notifications(
+    payload: dict, context: dict, yacht_id: str, user_id: str, user_context: dict, db_client
+) -> dict:
+    instance = HoursOfRestHandlers(db_client)
+    entity_id = context.get("entity_id") or user_id
+    return await instance.get_unread_notifications(
+        entity_id=entity_id,
+        yacht_id=yacht_id,
+        user_id=user_id,
+        params=payload,
+    )
+
+
 HANDLERS: dict = {
     # READ
     "get_hours_of_rest":    _make_hor_read_handler("get_hours_of_rest"),
@@ -3306,12 +3320,13 @@ HANDLERS: dict = {
     "sign_monthly_signoff":   _make_hor_handler("sign_monthly_signoff"),
     "create_crew_template":   _make_hor_handler("create_crew_template"),
     "apply_crew_template":    _make_hor_handler("apply_crew_template"),
+    "apply_template":         _make_hor_handler("apply_crew_template"),  # registry alias
     "acknowledge_warning":    _make_hor_handler("acknowledge_warning"),
     "dismiss_warning":        _make_hor_handler("dismiss_warning"),
     "undo_hours_of_rest":     _make_hor_handler("undo_hours_of_rest"),
     "create_hor_correction":  _make_hor_handler("create_hor_correction"),
     "request_hor_correction": _make_hor_handler("request_hor_correction"),
-    "get_unread_notifications": _make_hor_handler("get_unread_notifications"),
+    "get_unread_notifications": _hor_get_unread_notifications,
     "mark_notifications_read":  _make_hor_handler("mark_notifications_read"),
 }
 
