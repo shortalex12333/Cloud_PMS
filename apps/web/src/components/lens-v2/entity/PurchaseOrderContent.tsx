@@ -19,7 +19,7 @@ import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
-import { supabase } from '@/lib/supabaseClient';
+import { getAuthHeaders } from '@/lib/authHelpers';
 
 // Sections
 import {
@@ -249,7 +249,7 @@ export function PurchaseOrderContent() {
 
   // PDF export — always available regardless of available_actions (read-only, no mutation)
   const yachtParam = entity?.yacht_id ? `?yacht_id=${entity.yacht_id}` : '';
-  const pdfUrl = entityId ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/v1/purchase-order/${entityId}/pdf${yachtParam}` : null;
+  const pdfUrl = entityId ? `${process.env.NEXT_PUBLIC_API_URL ?? ''}/v1/purchase-order/${entityId}/pdf${yachtParam}` : null;
 
   // ── Map section data ──
 
@@ -792,36 +792,30 @@ export function PurchaseOrderContent() {
                   if (!invoiceFile) return;
                   setInvoiceUploading(true);
                   try {
-                    // Upload to Supabase Storage (TENANT bucket) first, then record the attachment row.
                     const poId = (entity?.id as string | undefined) ?? '';
-                    const yachtIdForPath = (entity?.yacht_id as string | undefined) ?? 'unknown';
-                    const storagePath = `${yachtIdForPath}/invoices/${poId}/${Date.now()}_${invoiceFile.name}`;
-                    const { error: uploadErr } = await supabase.storage
-                      .from('pms-finance-documents')
-                      .upload(storagePath, invoiceFile, {
-                        contentType: invoiceFile.type || 'application/octet-stream',
-                        upsert: false,
-                      });
-                    if (uploadErr) {
-                      toast.error('Upload failed', { description: uploadErr.message });
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+                    const authHeaders = await getAuthHeaders();
+                    const form = new FormData();
+                    form.append('file', invoiceFile);
+                    form.append('entity_type', 'purchase_order');
+                    form.append('entity_id', poId);
+                    form.append('bucket', 'pms-finance-documents');
+                    form.append('category', 'invoice');
+                    if (invoiceTitle.trim()) form.append('title', invoiceTitle.trim());
+                    if (invoiceDesc.trim()) form.append('description', invoiceDesc.trim());
+                    const res = await fetch(`${apiUrl}/v1/attachments/upload`, {
+                      method: 'POST',
+                      headers: authHeaders,
+                      body: form,
+                    });
+                    if (!res.ok) {
+                      let detail = `Upload failed (${res.status})`;
+                      try { const b = await res.json(); detail = b.detail ?? detail; } catch { /* */ }
+                      toast.error('Upload failed', { description: detail });
                       return;
                     }
-                    const result = await executeAction('upload_invoice', {
-                      storage_path: storagePath,
-                      filename: invoiceFile.name,
-                      mime_type: invoiceFile.type || 'application/octet-stream',
-                      file_size: invoiceFile.size,
-                      description: invoiceDesc.trim() || undefined,
-                      title: invoiceTitle.trim() || undefined,
-                    });
-                    const r = result as unknown as Record<string, unknown>;
-                    const ok = r.status === 'success' || result.success;
-                    if (ok) {
-                      toast.success('Invoice attached');
-                      setInvoicePickerOpen(false);
-                    } else {
-                      toast.error('Failed to record invoice', { description: r.message as string });
-                    }
+                    toast.success('Invoice attached');
+                    setInvoicePickerOpen(false);
                   } finally {
                     setInvoiceUploading(false);
                   }

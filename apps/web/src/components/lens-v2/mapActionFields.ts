@@ -11,8 +11,19 @@
 
 import type { ActionPopupField } from './ActionPopup';
 
-/** Fields the backend handles automatically — never shown in the form */
-const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+/** Fields the backend injects automatically — NEVER shown in the form.
+ *  Sourced from entity_prefill.py CONTEXT_PREFILL_MAP + p0_actions_routes.py auth injection. */
+const BACKEND_AUTO = new Set([
+  // Auth / request context — always injected server-side
+  'yacht_id', 'user_id', 'created_by', 'recorded_by',
+  'signature', 'idempotency_key',
+  // Entity UUID references — injected by CONTEXT_PREFILL_MAP in entity_prefill.py
+  'equipment_id', 'part_id', 'fault_id', 'work_order_id',
+  'certificate_id', 'document_id', 'purchase_order_id',
+  'receiving_id', 'shopping_list_id', 'warranty_id',
+  'claim_id', 'entity_id', 'item_id', 'source_doc_id',
+  'handover_id', 'handover_export_id',
+]);
 
 interface FieldSchemaDef {
   name: string;
@@ -57,7 +68,9 @@ export function mapActionFields(action: ActionDef): ActionPopupField[] {
 
   // Build deduplicated ordered list: required fields first, then optional fields.
   // Both lists exclude backend-auto fields and pre-filled fields.
-  const requiredNames = action.required_fields.filter(
+  // Guard: backend occasionally sends required_fields as {} instead of [] — coerce to array.
+  const requiredFields: string[] = Array.isArray(action.required_fields) ? action.required_fields : [];
+  const requiredNames = requiredFields.filter(
     (f) => !BACKEND_AUTO.has(f) && !(f in action.prefill)
   );
   const optionalNames = (action.optional_fields ?? []).filter(
