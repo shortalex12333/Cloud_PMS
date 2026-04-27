@@ -19,6 +19,7 @@ from .parts import HANDLERS as _parts
 from .receiving import HANDLERS as _receiving
 from .p3 import HANDLERS as _p3
 from .p1_p2 import HANDLERS as _p1_p2
+from .handover import HANDLERS as _handover
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ for _domain in (
     _warranty,
     _parts,
     _receiving,
+    _handover,
     _equipment,  # last — wins any overlapping read-aliases (view_equipment_parts, view_linked_faults)
 ):
     _merged.update(_domain)

@@ -680,6 +680,17 @@ async def add_fault_photo(
     )
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to add photo"}
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "add_fault_photo", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": None,
+            "new_values": {"photo_url": photo_url, "photos_count": len(photos)},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] add_fault_photo: {e}")
     return {"status": "success", "message": "Photo added to fault"}
 
 
@@ -748,6 +759,17 @@ async def add_fault_note(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to add fault note"}
 
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "add_fault_note", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": None,
+            "new_values": {"note_text": note_text, "added_by": user_id},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] add_fault_note: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
@@ -808,6 +830,17 @@ async def archive_fault(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to archive fault"}
 
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "archive_fault", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": {"deleted_at": None},
+            "new_values": {"deleted_at": now, "deletion_reason": reason},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] archive_fault: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
@@ -858,6 +891,17 @@ async def link_parts_to_fault(
             logger.warning(f"[link_parts_to_fault] part {part_id}: {e}")
             skipped += 1
 
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "link_parts_to_fault", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": None,
+            "new_values": {"part_ids": part_ids, "inserted": inserted, "skipped": skipped},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] link_parts_to_fault: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
@@ -886,6 +930,17 @@ async def unlink_part_from_fault(
 
     db_client.table("pms_fault_parts").delete().eq("fault_id", fault_id).eq("part_id", part_id).execute()
 
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "unlink_part_from_fault", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": {"part_id": part_id},
+            "new_values": {"unlinked_part_id": part_id},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] unlink_part_from_fault: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,

@@ -1205,11 +1205,6 @@ async def export_handover_route(
     user_id = auth["user_id"]
     user_role = auth.get("role")
 
-    # Require officer+ role
-    officer_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
-    if user_role not in officer_roles:
-        raise HTTPException(status_code=403, detail=f"Requires officer+ role. Your role: {user_role}")
-
     handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
     _handover_wf = handlers.get("handover_workflow_handlers")
     if not _handover_wf:
@@ -1220,7 +1215,8 @@ async def export_handover_route(
         user_id=user_id,
         export_type=export_type,
         department=department,
-        shift_date=shift_date
+        shift_date=shift_date,
+        user_role=user_role,
     )
 
     if result.get("status") == "error":
@@ -1236,6 +1232,8 @@ async def export_handover_route(
             status_code = 503
         elif error_code in ["DATABASE_ERROR", "EXPORT_FAILED"]:
             status_code = 500
+        elif error_code == "FORBIDDEN":
+            status_code = 403
 
         raise HTTPException(
             status_code=status_code,

@@ -4,7 +4,7 @@ from typing import Dict, Any
 import logging
 from datetime import datetime
 from integrations.supabase import get_supabase_client
-from handlers.document_handlers import get_document_handlers as _get_document_handlers_raw
+from handlers.document_handler import get_document_handlers as _get_document_handlers_raw
 from handlers.document_comment_handlers import get_document_comment_handlers as _get_document_comment_handlers_raw
 from handlers.attachment_comment_handlers import get_attachment_comment_handlers as _get_attachment_comment_handlers_raw
 from .shared import _append_unique_uuid, _remove_uuid

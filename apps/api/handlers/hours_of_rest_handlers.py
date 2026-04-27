@@ -2799,6 +2799,326 @@ class HoursOfRestHandlers:
             builder.set_error("DATABASE_ERROR", str(e))
             return builder.build()
 
+    # =========================================================================
+    # COMPLIANCE VIEW HANDLERS — used by hor_compliance_routes.py
+    # =========================================================================
+
+    async def get_my_week(
+        self,
+        user_id: str,
+        yacht_id: str,
+        department: str,
+        week_monday: "date",
+    ) -> Dict:
+        """
+        GET /v1/hours-of-rest/my-week
+
+        Returns the current crew member's 7-day HoR grid with compliance
+        indicators for each day, plus the weekly MLC totals.
+        """
+        from datetime import date as date_type
+        week_end = (week_monday + timedelta(days=6)).isoformat()
+        week_start_str = week_monday.isoformat()
+
+        records_r = self.db.table("pms_hours_of_rest").select("*").eq(
+            "yacht_id", yacht_id
+        ).eq("user_id", user_id).gte(
+            "record_date", week_start_str
+        ).lte("record_date", week_end).execute()
+
+        records = {r["record_date"]: r for r in (records_r.data or [])}
+
+        days = []
+        total_rest = 0.0
+        for i in range(7):
+            d = (week_monday + timedelta(days=i)).isoformat()
+            rec = records.get(d)
+            rest_h = float(rec.get("total_rest_hours") or 0) if rec else 0.0
+            total_rest += rest_h
+            days.append({
+                "record_date": d,
+                "rest_hours": rest_h,
+                "work_periods": (rec or {}).get("work_periods") or [],
+                "rest_periods": (rec or {}).get("rest_periods") or [],
+                "is_daily_compliant": (rec or {}).get("is_daily_compliant"),
+                "crew_comment": (rec or {}).get("crew_comment"),
+                "submitted": rec is not None,
+            })
+
+        weekly_compliant = total_rest >= MLC_WEEKLY_MIN_REST_HOURS
+
+        # Check if weekly signoff exists
+        signoff_r = self.db.table("pms_hor_monthly_signoffs").select(
+            "id, status"
+        ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
+            "period_type", "weekly"
+        ).eq("week_start", week_start_str).limit(1).execute()
+
+        signoff = (signoff_r.data or [None])[0]
+
+        return {
+            "status": "success",
+            "week_start": week_start_str,
+            "days": days,
+            "total_rest_hours": round(total_rest, 2),
+            "weekly_compliant": weekly_compliant,
+            "mlc_weekly_minimum": MLC_WEEKLY_MIN_REST_HOURS,
+            "signoff": signoff,
+        }
+
+    async def get_department_status(
+        self,
+        user_role: str,
+        yacht_id: str,
+        department: str,
+        week_monday: "date",
+    ) -> Dict:
+        """
+        GET /v1/hours-of-rest/department-status
+
+        HOD view: for each crew member in the department, return submission
+        count, compliance status and sign-off state for the given week.
+        """
+        week_end = (week_monday + timedelta(days=6)).isoformat()
+        week_start_str = week_monday.isoformat()
+
+        # Crew in this department/vessel
+        crew_r = self.db.table("crew_members").select(
+            "id, first_name, last_name, role, department"
+        ).eq("yacht_id", yacht_id).eq("department", department).eq(
+            "is_active", True
+        ).execute()
+        crew = crew_r.data or []
+
+        results = []
+        for member in crew:
+            uid = member["id"]
+
+            # Records for this week
+            recs_r = self.db.table("pms_hours_of_rest").select(
+                "record_date, total_rest_hours, is_daily_compliant"
+            ).eq("yacht_id", yacht_id).eq("user_id", uid).gte(
+                "record_date", week_start_str
+            ).lte("record_date", week_end).execute()
+            recs = recs_r.data or []
+
+            days_submitted = len(recs)
+            total_rest = sum(float(r.get("total_rest_hours") or 0) for r in recs)
+            non_compliant_days = sum(1 for r in recs if not r.get("is_daily_compliant"))
+
+            # Signoff
+            so_r = self.db.table("pms_hor_monthly_signoffs").select(
+                "id, status, hod_signed_at"
+            ).eq("yacht_id", yacht_id).eq("user_id", uid).eq(
+                "period_type", "weekly"
+            ).eq("week_start", week_start_str).limit(1).execute()
+            signoff = (so_r.data or [None])[0]
+
+            results.append({
+                "user_id": uid,
+                "name": f"{member.get('first_name','')} {member.get('last_name','')}".strip(),
+                "role": member.get("role", ""),
+                "days_submitted": days_submitted,
+                "total_rest_hours": round(total_rest, 2),
+                "non_compliant_days": non_compliant_days,
+                "weekly_compliant": total_rest >= MLC_WEEKLY_MIN_REST_HOURS,
+                "signoff_status": (signoff or {}).get("status"),
+                "signoff_id": (signoff or {}).get("id"),
+                "hod_signed_at": (signoff or {}).get("hod_signed_at"),
+            })
+
+        return {
+            "status": "success",
+            "week_start": week_start_str,
+            "department": department,
+            "crew": results,
+        }
+
+    async def get_vessel_compliance(
+        self,
+        yacht_id: str,
+        week_monday: "date",
+    ) -> Dict:
+        """
+        GET /v1/hours-of-rest/vessel-compliance
+
+        Captain view: aggregate compliance metrics for every department
+        on this vessel for the given week.
+        """
+        week_end = (week_monday + timedelta(days=6)).isoformat()
+        week_start_str = week_monday.isoformat()
+
+        recs_r = self.db.table("pms_hours_of_rest").select(
+            "user_id, record_date, total_rest_hours, is_daily_compliant"
+        ).eq("yacht_id", yacht_id).gte(
+            "record_date", week_start_str
+        ).lte("record_date", week_end).execute()
+        recs = recs_r.data or []
+
+        # Group by user
+        by_user: Dict[str, list] = {}
+        for r in recs:
+            by_user.setdefault(r["user_id"], []).append(r)
+
+        total_crew = len(by_user)
+        fully_compliant = 0
+        non_compliant_users = 0
+        total_violations = 0
+
+        for uid, user_recs in by_user.items():
+            total_rest = sum(float(r.get("total_rest_hours") or 0) for r in user_recs)
+            violations = sum(1 for r in user_recs if not r.get("is_daily_compliant"))
+            total_violations += violations
+            weekly_ok = total_rest >= MLC_WEEKLY_MIN_REST_HOURS and violations == 0
+            if weekly_ok:
+                fully_compliant += 1
+            else:
+                non_compliant_users += 1
+
+        return {
+            "status": "success",
+            "week_start": week_start_str,
+            "yacht_id": yacht_id,
+            "total_crew_with_records": total_crew,
+            "fully_compliant": fully_compliant,
+            "non_compliant_users": non_compliant_users,
+            "total_daily_violations": total_violations,
+            "compliance_rate": round(fully_compliant / total_crew * 100, 1) if total_crew else 100.0,
+        }
+
+    async def get_fleet_compliance(
+        self,
+        vessel_ids: List[str],
+        week_monday: "date",
+        yacht_name_by_id: Dict[str, str],
+    ) -> Dict:
+        """
+        GET /v1/hours-of-rest/fleet-compliance
+
+        Fleet manager view: vessel-by-vessel compliance summary for the week.
+        """
+        week_end = (week_monday + timedelta(days=6)).isoformat()
+        week_start_str = week_monday.isoformat()
+
+        vessels = []
+        for yacht_id in vessel_ids:
+            recs_r = self.db.table("pms_hours_of_rest").select(
+                "user_id, total_rest_hours, is_daily_compliant"
+            ).eq("yacht_id", yacht_id).gte(
+                "record_date", week_start_str
+            ).lte("record_date", week_end).execute()
+            recs = recs_r.data or []
+
+            by_user: Dict[str, list] = {}
+            for r in recs:
+                by_user.setdefault(r["user_id"], []).append(r)
+
+            total_crew = len(by_user)
+            violations = sum(1 for r in recs if not r.get("is_daily_compliant"))
+            compliant_users = sum(
+                1 for uid, urecs in by_user.items()
+                if sum(float(r.get("total_rest_hours") or 0) for r in urecs) >= MLC_WEEKLY_MIN_REST_HOURS
+                and all(r.get("is_daily_compliant") for r in urecs)
+            )
+
+            vessels.append({
+                "yacht_id": yacht_id,
+                "yacht_name": yacht_name_by_id.get(yacht_id, ""),
+                "total_crew_with_records": total_crew,
+                "compliant_crew": compliant_users,
+                "daily_violations": violations,
+                "compliance_rate": round(compliant_users / total_crew * 100, 1) if total_crew else 100.0,
+            })
+
+        return {
+            "status": "success",
+            "week_start": week_start_str,
+            "vessels": vessels,
+        }
+
+    async def get_month_status(
+        self,
+        user_id: str,
+        yacht_id: str,
+        month_start: "date",
+        month_end: "date",
+    ) -> Dict:
+        """
+        GET /v1/hours-of-rest/month-status
+
+        Returns a crew member's monthly HoR summary: days logged,
+        total rest hours, daily violations, and monthly sign-off state.
+        """
+        recs_r = self.db.table("pms_hours_of_rest").select(
+            "record_date, total_rest_hours, is_daily_compliant"
+        ).eq("yacht_id", yacht_id).eq("user_id", user_id).gte(
+            "record_date", month_start.isoformat()
+        ).lte("record_date", month_end.isoformat()).execute()
+        recs = recs_r.data or []
+
+        days_logged = len(recs)
+        total_rest = sum(float(r.get("total_rest_hours") or 0) for r in recs)
+        daily_violations = sum(1 for r in recs if not r.get("is_daily_compliant"))
+
+        month_str = month_start.strftime("%Y-%m")
+        so_r = self.db.table("pms_hor_monthly_signoffs").select(
+            "id, status, hod_signed_at, master_signed_at"
+        ).eq("yacht_id", yacht_id).eq("user_id", user_id).eq(
+            "period_type", "monthly"
+        ).gte("month", month_str).limit(1).execute()
+        signoff = (so_r.data or [None])[0]
+
+        return {
+            "status": "success",
+            "month": month_str,
+            "days_logged": days_logged,
+            "total_rest_hours": round(total_rest, 2),
+            "daily_violations": daily_violations,
+            "signoff": signoff,
+        }
+
+    @staticmethod
+    def preview_schedule_compliance(entries: list, week_start: Optional[str] = None) -> Dict:
+        """
+        POST /v1/hours-of-rest/schedule/preview
+
+        Stateless compliance preview — does NOT touch the database.
+        Accepts up to 7 {record_date, work_periods} entries and returns
+        per-day compliance + weekly running total.
+        """
+        days = []
+        total_rest = 0.0
+        for entry in entries:
+            record_date = entry.get("record_date", "")
+            work_periods = entry.get("work_periods") or []
+            # Sort work periods by start time
+            try:
+                work_periods = sorted(work_periods, key=lambda p: p.get("start", "00:00"))
+            except Exception:
+                pass
+            rest_periods = complement(work_periods)
+            qualifying = filter_qualifying_periods(rest_periods)
+            rest_h = round(sum(period_hours(p) for p in qualifying), 2)
+            total_rest += rest_h
+            daily_ok = rest_h >= MLC_DAILY_MIN_REST_HOURS
+            days.append({
+                "record_date": record_date,
+                "rest_hours": rest_h,
+                "daily_compliant": daily_ok,
+                "rest_periods": rest_periods,
+            })
+
+        weekly_ok = total_rest >= MLC_WEEKLY_MIN_REST_HOURS
+        return {
+            "status": "success",
+            "week_start": week_start,
+            "days": days,
+            "total_rest_hours": round(total_rest, 2),
+            "weekly_compliant": weekly_ok,
+            "mlc_daily_minimum": MLC_DAILY_MIN_REST_HOURS,
+            "mlc_weekly_minimum": MLC_WEEKLY_MIN_REST_HOURS,
+        }
+
     async def get_hor_sign_chain(
         self,
         entity_id: str,
@@ -2915,4 +3235,83 @@ class HoursOfRestHandlers:
             logger.error(f"Error fetching HoR sign chain: {e}")
             builder.set_error("DATABASE_ERROR", str(e))
             return builder.build()
+
+
+# =============================================================================
+# PHASE 4 HANDLERS DICT
+#
+# Wraps HoursOfRestHandlers class methods in the Phase 4 calling convention:
+#   (payload, context, yacht_id, user_id, user_context, db_client) -> dict
+#
+# Used by routes/handlers/__init__.py to build the unified _ACTION_HANDLERS
+# dispatch table.
+# =============================================================================
+
+def _make_hor_handler(method_name: str):
+    """Return a Phase 4 callable for the named HoursOfRestHandlers method."""
+    async def _handler(
+        payload: dict,
+        context: dict,
+        yacht_id: str,
+        user_id: str,
+        user_context: dict,
+        db_client,
+    ) -> dict:
+        instance = HoursOfRestHandlers(db_client)
+        method = getattr(instance, method_name)
+        entity_id = context.get("entity_id") or user_id
+        return await method(
+            entity_id=entity_id,
+            yacht_id=yacht_id,
+            user_id=user_id,
+            payload=payload,
+        )
+    _handler.__name__ = f"hor_{method_name}"
+    return _handler
+
+
+def _make_hor_read_handler(method_name: str):
+    """Return a Phase 4 callable for READ methods (entity_id + params, no user_id/payload)."""
+    async def _handler(
+        payload: dict,
+        context: dict,
+        yacht_id: str,
+        user_id: str,
+        user_context: dict,
+        db_client,
+    ) -> dict:
+        instance = HoursOfRestHandlers(db_client)
+        method = getattr(instance, method_name)
+        entity_id = context.get("entity_id") or user_id
+        return await method(
+            entity_id=entity_id,
+            yacht_id=yacht_id,
+            params={**payload, **context, "user_id": user_id},
+        )
+    _handler.__name__ = f"hor_read_{method_name}"
+    return _handler
+
+
+HANDLERS: dict = {
+    # READ
+    "get_hours_of_rest":    _make_hor_read_handler("get_hours_of_rest"),
+    "list_monthly_signoffs": _make_hor_read_handler("list_monthly_signoffs"),
+    "get_monthly_signoff":  _make_hor_read_handler("get_monthly_signoff"),
+    "list_crew_templates":  _make_hor_read_handler("list_crew_templates"),
+    "list_crew_warnings":   _make_hor_read_handler("list_crew_warnings"),
+    "get_hor_sign_chain":   _make_hor_read_handler("get_hor_sign_chain"),
+    # MUTATE
+    "upsert_hours_of_rest":   _make_hor_handler("upsert_hours_of_rest"),
+    "create_monthly_signoff": _make_hor_handler("create_monthly_signoff"),
+    "sign_monthly_signoff":   _make_hor_handler("sign_monthly_signoff"),
+    "create_crew_template":   _make_hor_handler("create_crew_template"),
+    "apply_crew_template":    _make_hor_handler("apply_crew_template"),
+    "acknowledge_warning":    _make_hor_handler("acknowledge_warning"),
+    "dismiss_warning":        _make_hor_handler("dismiss_warning"),
+    "undo_hours_of_rest":     _make_hor_handler("undo_hours_of_rest"),
+    "create_hor_correction":  _make_hor_handler("create_hor_correction"),
+    "request_hor_correction": _make_hor_handler("request_hor_correction"),
+    "get_unread_notifications": _make_hor_handler("get_unread_notifications"),
+    "mark_notifications_read":  _make_hor_handler("mark_notifications_read"),
+}
 

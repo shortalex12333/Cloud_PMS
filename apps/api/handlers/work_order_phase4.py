@@ -274,6 +274,8 @@ async def create_work_order_for_equipment(
     if not wo_result.data:
         return {"status": "error", "error_code": "CREATE_FAILED", "message": "Failed to create work order"}
     wo_id = wo_result.data[0]["id"]
+    await _audit(db_client, yacht_id, "create_work_order_for_equipment", "work_order", wo_id, user_id,
+                 new_values=wo_data)
     _ledger(db_client, yacht_id, user_id, "create", "work_order", wo_id, "create_work_order_for_equipment",
             user_context.get("role", ""), f"Work order created for equipment {equipment_id}")
     return {"status": "success", "work_order_id": wo_id, "message": "Work order created for equipment"}
@@ -306,6 +308,9 @@ async def update_work_order(
     res = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
     if not res.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update work order"}
+    await _audit(db_client, yacht_id, "update_work_order", "work_order", work_order_id, user_id,
+                 old_values={k: prev.get(k) for k in ("title", "description", "priority", "status")},
+                 new_values=update_data)
     _ledger(db_client, yacht_id, user_id, "update", "work_order", work_order_id, "update_work_order",
             user_context.get("role", ""), "Work order updated", entity_name=prev.get("title", ""))
     return {"status": "success", "message": "Work order updated", "_ledger_written": True}
@@ -327,6 +332,9 @@ async def assign_work_order(
     }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
     if not res.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to assign work order"}
+    await _audit(db_client, yacht_id, "assign_work_order", "work_order", work_order_id, user_id,
+                 old_values={"assigned_to": prev.get("assigned_to")},
+                 new_values={"assigned_to": assigned_to})
     _ledger(db_client, yacht_id, user_id, "assignment", "work_order", work_order_id, "assign_work_order",
             user_context.get("role", ""), f"Assigned: {prev.get('assigned_to')} → {assigned_to}",
             entity_name=prev.get("title", ""))
@@ -346,6 +354,8 @@ async def start_work_order(
     }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
     if not res.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to start work order"}
+    await _audit(db_client, yacht_id, "start_work_order", "work_order", work_order_id, user_id,
+                 old_values={"status": prev.get("status")}, new_values={"status": "in_progress"})
     _ledger(db_client, yacht_id, user_id, "status_change", "work_order", work_order_id, "start_work_order",
             user_context.get("role", ""), f"Status: {prev.get('status')} → in_progress",
             entity_name=prev.get("title", ""))
@@ -365,6 +375,8 @@ async def cancel_work_order(
     }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
     if not res.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to cancel work order"}
+    await _audit(db_client, yacht_id, "cancel_work_order", "work_order", work_order_id, user_id,
+                 old_values={"status": prev.get("status")}, new_values={"status": "cancelled"})
     _ledger(db_client, yacht_id, user_id, "status_change", "work_order", work_order_id, "cancel_work_order",
             user_context.get("role", ""), f"Status: {prev.get('status')} → cancelled",
             entity_name=prev.get("title", ""))
@@ -388,6 +400,8 @@ async def close_work_order(
     res = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
     if not res.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close work order"}
+    await _audit(db_client, yacht_id, "close_work_order", "work_order", work_order_id, user_id,
+                 old_values={"status": prev.get("status")}, new_values={"status": "completed"})
     _ledger(db_client, yacht_id, user_id, "status_change", "work_order", work_order_id, "close_work_order",
             user_context.get("role", ""), f"Status: {prev.get('status')} → completed",
             entity_name=prev.get("title", ""))
@@ -600,6 +614,8 @@ async def add_wo_note(
     }).execute()
     if not res.data:
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to add note"}
+    await _audit(db_client, yacht_id, "add_wo_note", "work_order", work_order_id, user_id,
+                 new_values={"note_text": note_text, "note_type": note_type})
     _ledger(db_client, yacht_id, user_id, "update", "work_order", work_order_id, "add_wo_note",
             user_context.get("role", ""), "Note added", entity_name=entity_name)
     return {"status": "success", "message": "Note added to work order"}
@@ -665,6 +681,8 @@ async def add_wo_hours(
     }).execute()
     if not res.data:
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to log hours"}
+    await _audit(db_client, yacht_id, "add_wo_hours", "work_order", work_order_id, user_id,
+                 new_values={"hours": hours, "description": description})
     _ledger(db_client, yacht_id, user_id, "update", "work_order", work_order_id, "add_wo_hours",
             user_context.get("role", ""), f"Logged {hours} hours", entity_name=entity_name)
     return {"status": "success", "message": f"Logged {hours} hours", "_ledger_written": True}
@@ -693,6 +711,8 @@ async def add_wo_part(
     }, on_conflict="work_order_id,part_id").execute()
     if not res.data:
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to add part"}
+    await _audit(db_client, yacht_id, "add_wo_part", "work_order", work_order_id, user_id,
+                 new_values={"part_id": part_id, "quantity": quantity})
     _ledger(db_client, yacht_id, user_id, "update", "work_order", work_order_id, "add_wo_part",
             user_context.get("role", ""), f"Part added: {part_id}, qty={quantity}")
     return {"status": "success", "message": "Part added to work order", "_ledger_written": True}

@@ -17,8 +17,9 @@ from handlers.shopping_list_handlers import HANDLERS as SHOP_HANDLERS
 from handlers.pm_handler import HANDLERS as PM_HANDLERS
 from handlers.fault_handler import HANDLERS as FAULT_HANDLERS
 from handlers.equipment_handler import HANDLERS as EQUIP_HANDLERS
-from handlers.parts_handler_p5 import HANDLERS as PARTS_P5_HANDLERS
+from handlers.part_handlers import HANDLERS as PARTS_HANDLERS
 from handlers.compliance_handler import HANDLERS as COMPLIANCE_HANDLERS
+from handlers.hours_of_rest_handlers import HANDLERS as HOR_HANDLERS
 from .internal_adapter import HANDLERS as ADAPTER_HANDLERS
 
 HANDLERS: dict = {
@@ -28,10 +29,11 @@ HANDLERS: dict = {
     **DOC_HANDLERS,
     **HAND_HANDLERS,
     **SHOP_HANDLERS,
+    **HOR_HANDLERS,
     **PM_HANDLERS,
     **FAULT_HANDLERS,
     **EQUIP_HANDLERS,
-    **PARTS_P5_HANDLERS,
+    **PARTS_HANDLERS,
     **MEDIA_HANDLERS,
     **COMPLIANCE_HANDLERS,
     **PO_HANDLERS,
@@ -43,6 +45,7 @@ HANDLERS: dict = {
        and k not in DOC_HANDLERS
        and k not in HAND_HANDLERS
        and k not in SHOP_HANDLERS
+       and k not in HOR_HANDLERS
        and k not in PM_HANDLERS
        and k not in FAULT_HANDLERS
        and k not in EQUIP_HANDLERS

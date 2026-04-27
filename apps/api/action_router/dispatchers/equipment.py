@@ -1,224 +1,157 @@
-"""Equipment domain action handlers."""
+"""Equipment domain action handlers.
+
+Phase C: re-pointed to equipment_handler.HANDLERS (canonical flat-function file).
+equipment_handlers.py has been deleted; all its unique actions were merged into
+equipment_handler.py.
+
+Calling convention bridge:
+  - dispatchers/index.py calls these as: await fn(params)
+  - Phase 5 flat handlers expect: (payload, context, yacht_id, user_id, user_context, db_client)
+  - Phase C **params handlers expect: **params including db_client
+  - This module bridges both by injecting get_supabase_client() as db_client.
+"""
 
 from typing import Dict, Any
 import logging
 from integrations.supabase import get_supabase_client
-from handlers.equipment_handlers import get_equipment_handlers as _get_equipment_handlers_raw
+from handlers.equipment_handler import HANDLERS as _EQUIP_HANDLERS
 
 logger = logging.getLogger(__name__)
 
-_equipment_handlers = None
+
+def _phase5_call(action_id: str, params: Dict[str, Any]) -> Any:
+    """
+    Call a Phase 5 flat handler (payload, context, yacht_id, user_id, user_context, db_client).
+    Returns the coroutine — caller must await it.
+    """
+    fn = _EQUIP_HANDLERS.get(action_id)
+    if not fn:
+        raise ValueError(f"{action_id} handler not registered")
+    db = params.get("db_client") or get_supabase_client()
+    return fn(
+        payload=params,
+        context={},
+        yacht_id=params["yacht_id"],
+        user_id=params.get("user_id", ""),
+        user_context=params,
+        db_client=db,
+    )
 
 
-def _get_equipment_handlers():
-    global _equipment_handlers
-    if _equipment_handlers is None:
-        _equipment_handlers = _get_equipment_handlers_raw(get_supabase_client())
-    return _equipment_handlers
+def _adapter_call(action_id: str, params: Dict[str, Any]) -> Any:
+    """
+    Call a Phase C adapter handler (**params contract).
+    Returns the coroutine — caller must await it.
+    """
+    fn = _EQUIP_HANDLERS.get(action_id)
+    if not fn:
+        raise ValueError(f"{action_id} handler not registered")
+    db = params.get("db_client") or get_supabase_client()
+    return fn(**{**params, "db_client": db})
 
+
+# ---------------------------------------------------------------------------
+# Phase 5 READ wrappers
+# ---------------------------------------------------------------------------
 
 async def _eq_view_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("view_equipment")
-    if not fn:
-        raise ValueError("view_equipment handler not registered")
-    return await fn(
-        entity_id=params.get("equipment_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        params=params,
-    )
+    return await _phase5_call("view_equipment", params)
 
 
 async def _eq_view_maintenance_history(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("view_maintenance_history")
-    if not fn:
-        raise ValueError("view_maintenance_history handler not registered")
-    return await fn(
-        entity_id=params.get("equipment_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        params=params,
-    )
+    return await _adapter_call("view_maintenance_history", params)
 
 
 async def _eq_view_equipment_parts(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("view_equipment_parts")
-    if not fn:
-        raise ValueError("view_equipment_parts handler not registered")
-    return await fn(
-        entity_id=params.get("equipment_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        params=params,
-    )
+    return await _phase5_call("view_equipment_parts", params)
 
 
 async def _eq_view_linked_faults(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("view_linked_faults")
-    if not fn:
-        raise ValueError("view_linked_faults handler not registered")
-    return await fn(
-        entity_id=params.get("equipment_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        params=params,
-    )
+    return await _phase5_call("view_linked_faults", params)
 
 
 async def _eq_view_equipment_manual(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("view_equipment_manual")
-    if not fn:
-        raise ValueError("view_equipment_manual handler not registered")
-    return await fn(
-        entity_id=params.get("equipment_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        params=params,
-    )
+    return await _phase5_call("view_equipment_manual", params)
 
+
+# ---------------------------------------------------------------------------
+# Phase C MUTATE wrappers
+# ---------------------------------------------------------------------------
 
 async def _eq_update_equipment_status(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("update_equipment_status")
-    if not fn:
-        raise ValueError("update_equipment_status handler not registered")
-    return await fn(**params)
+    return await _phase5_call("update_equipment_status", params)
+
+
+async def _eq_set_equipment_status(params: Dict[str, Any]) -> Dict[str, Any]:
+    return await _adapter_call("set_equipment_status", params)
 
 
 async def _eq_add_equipment_note(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("add_equipment_note")
-    if not fn:
-        raise ValueError("add_equipment_note handler not registered")
-    return await fn(**params)
+    return await _phase5_call("add_equipment_note", params)
 
 
 async def _eq_attach_file_to_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("attach_file_to_equipment")
-    if not fn:
-        raise ValueError("attach_file_to_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("attach_file_to_equipment", params)
 
 
 async def _eq_create_work_order_for_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("create_work_order_for_equipment")
-    if not fn:
-        raise ValueError("create_work_order_for_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("create_work_order_for_equipment", params)
 
 
 async def _eq_link_part_to_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("link_part_to_equipment")
-    if not fn:
-        raise ValueError("link_part_to_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("link_part_to_equipment", params)
 
 
 async def _eq_flag_equipment_attention(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("flag_equipment_attention")
-    if not fn:
-        raise ValueError("flag_equipment_attention handler not registered")
-    return await fn(**params)
+    return await _adapter_call("flag_equipment_attention", params)
 
 
 async def _eq_decommission_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("decommission_equipment")
-    if not fn:
-        raise ValueError("decommission_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("decommission_equipment", params)
 
 
 async def _eq_record_equipment_hours(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("record_equipment_hours")
-    if not fn:
-        raise ValueError("record_equipment_hours handler not registered")
-    return await fn(**params)
+    return await _adapter_call("record_equipment_hours", params)
 
 
 async def _eq_create_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("create_equipment")
-    if not fn:
-        raise ValueError("create_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("create_equipment", params)
 
 
 async def _eq_assign_parent_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("assign_parent_equipment")
-    if not fn:
-        raise ValueError("assign_parent_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("assign_parent_equipment", params)
 
 
 async def _eq_archive_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("archive_equipment")
-    if not fn:
-        raise ValueError("archive_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("archive_equipment", params)
 
 
 async def _eq_restore_archived_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("restore_archived_equipment")
-    if not fn:
-        raise ValueError("restore_archived_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("restore_archived_equipment", params)
 
 
 async def _eq_get_open_faults_for_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("get_open_faults_for_equipment")
-    if not fn:
-        raise ValueError("get_open_faults_for_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("get_open_faults_for_equipment", params)
 
 
 async def _eq_get_related_entities_for_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("get_related_entities_for_equipment")
-    if not fn:
-        raise ValueError("get_related_entities_for_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("get_related_entities_for_equipment", params)
 
 
 async def _eq_add_entity_link(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("add_entity_link")
-    if not fn:
-        raise ValueError("add_entity_link handler not registered")
-    return await fn(**params)
+    return await _adapter_call("add_entity_link", params)
 
 
 async def _eq_link_document_to_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("link_document_to_equipment")
-    if not fn:
-        raise ValueError("link_document_to_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("link_document_to_equipment", params)
 
 
 async def _eq_attach_image_with_comment(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("attach_image_with_comment")
-    if not fn:
-        raise ValueError("attach_image_with_comment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("attach_image_with_comment", params)
 
 
 async def _eq_decommission_and_replace(params: Dict[str, Any]) -> Dict[str, Any]:
-    handlers = _get_equipment_handlers()
-    fn = handlers.get("decommission_and_replace_equipment")
-    if not fn:
-        raise ValueError("decommission_and_replace_equipment handler not registered")
-    return await fn(**params)
+    return await _adapter_call("decommission_and_replace_equipment", params)
 
 
 HANDLERS: Dict[str, Any] = {
@@ -228,6 +161,7 @@ HANDLERS: Dict[str, Any] = {
     "view_linked_faults": _eq_view_linked_faults,
     "view_equipment_manual": _eq_view_equipment_manual,
     "update_equipment_status": _eq_update_equipment_status,
+    "set_equipment_status": _eq_set_equipment_status,
     "add_equipment_note": _eq_add_equipment_note,
     "attach_file_to_equipment": _eq_attach_file_to_equipment,
     "create_work_order_for_equipment": _eq_create_work_order_for_equipment,

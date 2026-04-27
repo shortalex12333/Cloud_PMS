@@ -43,7 +43,7 @@ Compliance Warnings:
 All routes require JWT authentication and yacht isolation validation.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
@@ -57,7 +57,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from handlers.hours_of_rest_handlers import HoursOfRestHandlers
+from handlers.hours_of_rest_handlers import HoursOfRestHandlers, _HOD_ROLES, _CAPTAIN_ROLES
 from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
 
@@ -1085,3 +1085,249 @@ async def get_hor_sign_chain_route(
     except Exception as e:
         logger.error(f"get_hor_sign_chain error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+# ============================================================================
+# COMPLIANCE ENRICHED VIEW ENDPOINTS (merged from hor_compliance_routes.py)
+# ============================================================================
+
+def _get_hor_handlers_direct(tenant_key_alias: str) -> HoursOfRestHandlers:
+    """Instantiate HoursOfRestHandlers directly (no caching, for compliance views)."""
+    supabase = get_tenant_client(tenant_key_alias)
+    if not supabase:
+        raise HTTPException(status_code=503, detail={"error": "DB_UNAVAILABLE"})
+    return HoursOfRestHandlers(supabase)
+
+
+def _parse_week_start(week_start_str: Optional[str]):
+    """Parse week_start string into a date, defaulting to this Monday."""
+    from datetime import date as date_type
+    if week_start_str:
+        try:
+            return date_type.fromisoformat(week_start_str)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "INVALID_DATE", "message": "week_start must be YYYY-MM-DD"}
+            )
+    today = date_type.today()
+    return today - timedelta(days=today.weekday())  # Monday
+
+
+@router.get("/my-week")
+async def get_my_week(
+    week_start: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Crew member's weekly HoR grid with compliance indicators.
+
+    **Action**: get_my_week
+    **Endpoint**: GET /v1/hours-of-rest/my-week
+    """
+    week_monday = _parse_week_start(week_start)
+    hor = _get_hor_handlers_direct(auth["tenant_key_alias"])
+    try:
+        result = await hor.get_my_week(
+            user_id=auth["user_id"],
+            yacht_id=auth["yacht_id"],
+            department=auth.get("department", "general"),
+            week_monday=week_monday,
+        )
+        return JSONResponse(content=result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_my_week error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.get("/department-status")
+async def get_department_status(
+    week_start: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    HOD view: department crew submission and compliance status for the week.
+
+    **Action**: get_department_status
+    **Endpoint**: GET /v1/hours-of-rest/department-status
+    """
+    user_role = auth.get("role", "crew")
+    if user_role.lower() not in _HOD_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "FORBIDDEN", "message": f"Role '{user_role}' cannot access department status. HOD+ required."}
+        )
+    week_monday = _parse_week_start(week_start)
+    hor = _get_hor_handlers_direct(auth["tenant_key_alias"])
+    try:
+        result = await hor.get_department_status(
+            user_role=user_role,
+            yacht_id=auth["yacht_id"],
+            department=auth.get("department", ""),
+            week_monday=week_monday,
+        )
+        return JSONResponse(content=result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_department_status error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.get("/vessel-compliance")
+async def get_vessel_compliance(
+    week_start: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Captain view: vessel-wide compliance aggregates for the week.
+
+    **Action**: get_vessel_compliance
+    **Endpoint**: GET /v1/hours-of-rest/vessel-compliance
+    """
+    user_role = auth.get("role", "crew")
+    if user_role.lower() not in _CAPTAIN_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "FORBIDDEN", "message": f"Role '{user_role}' cannot access vessel compliance. Captain+ required."}
+        )
+    week_monday = _parse_week_start(week_start)
+    hor = _get_hor_handlers_direct(auth["tenant_key_alias"])
+    try:
+        result = await hor.get_vessel_compliance(
+            yacht_id=auth["yacht_id"],
+            week_monday=week_monday,
+        )
+        return JSONResponse(content=result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_vessel_compliance error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.get("/fleet-compliance")
+async def get_fleet_compliance(
+    week_start: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Fleet manager view: vessel-by-vessel compliance summary for the week.
+
+    **Action**: get_fleet_compliance
+    **Endpoint**: GET /v1/hours-of-rest/fleet-compliance
+    """
+    user_role = auth.get("role", "crew")
+    if user_role.lower() not in _CAPTAIN_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "FORBIDDEN", "message": f"Role '{user_role}' cannot access fleet compliance. Manager/captain required."}
+        )
+    week_monday = _parse_week_start(week_start)
+    vessel_ids: list = auth.get("vessel_ids") or [auth["yacht_id"]]
+    fleet_vessels: list = auth.get("fleet_vessels") or []
+    yacht_name_by_id = {v["yacht_id"]: v.get("yacht_name", "") for v in fleet_vessels}
+    primary_yacht_id = auth["yacht_id"]
+    if primary_yacht_id not in yacht_name_by_id:
+        yacht_name_by_id[primary_yacht_id] = auth.get("yacht_name", "")
+
+    hor = _get_hor_handlers_direct(auth["tenant_key_alias"])
+    try:
+        result = await hor.get_fleet_compliance(
+            vessel_ids=vessel_ids,
+            week_monday=week_monday,
+            yacht_name_by_id=yacht_name_by_id,
+        )
+        return JSONResponse(content=result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_fleet_compliance error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.get("/month-status")
+async def get_month_status(
+    month: Optional[str] = None,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Crew member's monthly HoR summary: days logged, rest hours, violations.
+
+    **Action**: get_month_status
+    **Endpoint**: GET /v1/hours-of-rest/month-status
+    """
+    from datetime import date as date_type
+    today = date_type.today()
+    if month:
+        try:
+            y, m = month.split("-")
+            month_start = date_type(int(y), int(m), 1)
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail={"error": "BAD_MONTH", "message": "month must be YYYY-MM"})
+    else:
+        month_start = date_type(today.year, today.month, 1)
+
+    if month_start.month == 12:
+        month_end = date_type(month_start.year + 1, 1, 1) - timedelta(days=1)
+    else:
+        month_end = date_type(month_start.year, month_start.month + 1, 1) - timedelta(days=1)
+    month_end = min(month_end, today)
+
+    hor = _get_hor_handlers_direct(auth["tenant_key_alias"])
+    try:
+        result = await hor.get_month_status(
+            user_id=auth["user_id"],
+            yacht_id=auth["yacht_id"],
+            month_start=month_start,
+            month_end=month_end,
+        )
+        return JSONResponse(content=result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_month_status error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": "INTERNAL_SERVER_ERROR", "message": str(e)})
+
+
+@router.post("/schedule/preview")
+async def preview_schedule_compliance(
+    request: Request,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Stateless MLC compliance preview for a proposed schedule (no DB write).
+
+    Accepts up to 7 {record_date, work_periods} entries and returns
+    per-day compliance indicators plus weekly running totals.
+
+    **Action**: preview_schedule_compliance
+    **Endpoint**: POST /v1/hours-of-rest/schedule/preview
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    entries = body.get("entries", [])
+    if not entries or not isinstance(entries, list):
+        raise HTTPException(status_code=400, detail={
+            "error": "VALIDATION_ERROR",
+            "message": "entries must be a non-empty array of {record_date, work_periods} objects"
+        })
+    if len(entries) > 7:
+        raise HTTPException(status_code=400, detail={
+            "error": "VALIDATION_ERROR",
+            "message": "preview accepts at most 7 entries (one week)"
+        })
+    for entry in entries:
+        if not entry.get("record_date"):
+            raise HTTPException(status_code=400, detail={
+                "error": "VALIDATION_ERROR",
+                "message": "each entry must include record_date (YYYY-MM-DD)"
+            })
+
+    result = HoursOfRestHandlers.preview_schedule_compliance(entries, week_start=body.get("week_start"))
+    return JSONResponse(content=result)

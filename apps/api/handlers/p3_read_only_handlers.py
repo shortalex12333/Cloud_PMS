@@ -2036,7 +2036,7 @@ def get_p3_read_only_handlers(supabase_client) -> Dict[str, callable]:
         "view_linked_equipment": handlers.view_linked_equipment_execute,
 
         # communicate_status cluster
-        "export_handover": handlers.export_handover_execute,
+        # export_handover: canonical handler is handlers/handover_handlers.py
         "view_smart_summary": handlers.view_smart_summary_execute,
 
         # comply_audit cluster

@@ -24,7 +24,7 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response
 
 from handlers.db_client import get_service_db
-from handlers.ledger_utils import build_ledger_event
+from handlers.receiving_handlers import fetch_label_data, log_labels_generated
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -40,6 +40,15 @@ SIZE_MAP = {
 }
 
 
+def _resolve_dims(size: str, w: float | None, h: float | None) -> tuple[float, float]:
+    if size == "custom":
+        if not w or not h:
+            raise HTTPException(400, "w and h (in mm) are required for custom size")
+        return w * MM_TO_PT, h * MM_TO_PT
+    dims = SIZE_MAP.get(size, SIZE_MAP["A4"])
+    return dims[0] * MM_TO_PT, dims[1] * MM_TO_PT
+
+
 @router.get("/v1/receiving/{receiving_id}/labels")
 async def generate_labels(
     receiving_id: str,
@@ -51,78 +60,22 @@ async def generate_labels(
     user_id: str    = Query(None),
 ):
     db = get_service_db(yacht_id)
-
-    recv = db.table("pms_receiving").select(
-        "id, vendor_name, vendor_reference, received_date"
-    ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
-    if not recv.data:
-        raise HTTPException(404, "Receiving not found")
-
-    yacht = db.table("yacht_registry").select("name").eq(
-        "id", yacht_id
-    ).maybe_single().execute()
-    yacht_name = (yacht.data or {}).get("name") or "Vessel"
-
-    q = db.table("pms_receiving_items").select(
-        "id, description, part_id, quantity_accepted, "
-        "pms_parts(part_number, location, name)"
-    ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).gt(
-        "quantity_accepted", 0
-    )
-    if item_ids:
-        ids = [x.strip() for x in item_ids.split(",") if x.strip()]
-        if ids:
-            q = q.in_("id", ids)
-    items = q.execute().data or []
-
-    if not items:
-        raise HTTPException(400, "No accepted items to print labels for")
-
-    # Resolve page dimensions
-    if size == "custom":
-        if not w or not h:
-            raise HTTPException(400, "w and h (in mm) are required for custom size")
-        page_w_pt = w * MM_TO_PT
-        page_h_pt = h * MM_TO_PT
-    else:
-        dims = SIZE_MAP.get(size, SIZE_MAP["A4"])
-        page_w_pt = dims[0] * MM_TO_PT
-        page_h_pt = dims[1] * MM_TO_PT
-
-    is_compact = size in ("label_62", "label_36")
-
+    data = fetch_label_data(db, yacht_id, receiving_id, item_ids)
+    if "error" in data:
+        raise HTTPException(data["status_code"], data["error"])
+    pw, ph = _resolve_dims(size, w, h)
+    compact = size in ("label_62", "label_36")
     doc = fitz.open()
-    for item in items:
-        page = doc.new_page(width=page_w_pt, height=page_h_pt)
-        _load_fonts(page)
-        _draw_label(page, item, recv.data, yacht_name, is_compact, page_w_pt, page_h_pt)
-
-    pdf_bytes = doc.tobytes(garbage=4, deflate=True)
+    for item in data["items"]:
+        pg = doc.new_page(width=pw, height=ph)
+        _load_fonts(pg)
+        _draw_label(pg, item, data["recv"], data["yacht_name"], compact, pw, ph)
+    pdf = doc.tobytes(garbage=4, deflate=True)
     doc.close()
-
     if user_id:
-        try:
-            ledger_row = build_ledger_event(
-                yacht_id=yacht_id,
-                user_id=user_id,
-                event_type="export",
-                entity_type="receiving",
-                entity_id=receiving_id,
-                action="generate_labels",
-                change_summary=f"{len(items)} label(s) printed for receiving {receiving_id[:8]}",
-                metadata={"item_count": len(items), "label_size": size},
-            )
-            db.table("ledger_events").insert(ledger_row).execute()
-        except Exception as e:
-            logger.warning(f"[generate_labels] Ledger event failed (non-fatal): {e}")
-
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="labels_{receiving_id[:8]}.pdf"'
-        },
-    )
+        log_labels_generated(db, yacht_id, user_id, receiving_id, len(data["items"]), size)
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="labels_{receiving_id[:8]}.pdf"'})
 
 
 def _load_fonts(page: fitz.Page) -> None:
@@ -139,7 +92,7 @@ def _draw_label(
     w_pt: float,
     h_pt: float,
 ) -> None:
-    part = item.get("pms_parts") or {}
+    part        = item.get("pms_parts") or {}
     part_number = part.get("part_number") or "—"
     location    = part.get("location") or "Unassigned"
     description = item.get("description") or part.get("name") or "Item"

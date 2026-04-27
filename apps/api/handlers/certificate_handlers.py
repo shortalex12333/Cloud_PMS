@@ -28,6 +28,8 @@ import logging
 import json
 import uuid
 
+from fastapi import HTTPException
+
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -774,6 +776,9 @@ def _create_vessel_certificate_adapter(handlers: CertificateHandlers):
         db = handlers.db
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_role = params.get("role", "")
+        if user_role not in _VESSEL_CERT_ROLES:
+            raise HTTPException(status_code=403, detail=f"Role '{user_role}' is not authorized to create vessel certificates")
 
         payload = {
             "yacht_id": yacht_id,
@@ -857,8 +862,13 @@ def _link_document_to_certificate_adapter(handlers: CertificateHandlers):
         db = handlers.db
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
-        cert_id = params["certificate_id"]
-        document_id = params["document_id"]
+
+        document_id = params.get("document_id")
+        if not document_id:
+            raise HTTPException(status_code=400, detail="document_id is required")
+        cert_id = params.get("certificate_id")
+        if not cert_id:
+            raise HTTPException(status_code=400, detail="certificate_id is required")
 
         # Auto-detect domain from the actual cert row (don't trust client)
         domain, table_key, _cert_row = _resolve_cert_domain(db, yacht_id, cert_id)
@@ -1226,7 +1236,6 @@ def _supersede_certificate_adapter(handlers: CertificateHandlers):
         db = handlers.db
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
-        cert_id = params["certificate_id"]
         domain = (params.get("domain") or "vessel").lower()
         reason = params.get("reason")
         signature = params.get("signature")
@@ -1236,13 +1245,17 @@ def _supersede_certificate_adapter(handlers: CertificateHandlers):
             try:
                 signature = json.loads(signature)
             except json.JSONDecodeError:
-                raise ValueError("signature must be valid JSON")
+                raise HTTPException(status_code=400, detail="signature must be valid JSON")
 
-        # Validate required fields
-        if not reason:
-            raise ValueError("reason is required for supersede action")
+        # Validate signature first (signed action gate — fail before any DB call)
         if not signature or signature == {}:
-            raise ValueError("signature payload is required for supersede action (signed action)")
+            raise HTTPException(status_code=400, detail="signature payload is required for supersede action (signed action)")
+        if not reason:
+            raise HTTPException(status_code=400, detail="reason is required for supersede action")
+
+        cert_id = params.get("certificate_id")
+        if not cert_id:
+            raise HTTPException(status_code=400, detail="certificate_id is required")
 
         table = get_table("vessel_certificates" if domain == "vessel" else "crew_certificates")
 

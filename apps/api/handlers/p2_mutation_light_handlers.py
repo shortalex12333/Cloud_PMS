@@ -2165,8 +2165,7 @@ def get_p2_mutation_light_handlers(supabase_client) -> Dict[str, callable]:
         # #25 add_predictive_insight_to_handover
         "add_predictive_insight_to_handover": handlers.add_predictive_insight_to_handover_execute,
 
-        # #26 edit_handover_section
-        "edit_handover_section": handlers.edit_handover_section_execute,
+        # #26 edit_handover_section: canonical handler is handlers/handover_handlers.py
 
         # #27 regenerate_handover_summary
         "regenerate_handover_summary": handlers.regenerate_handover_summary_execute,
