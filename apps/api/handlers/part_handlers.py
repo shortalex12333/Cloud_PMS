@@ -48,6 +48,7 @@ from actions.action_response_schema import (
     ResponseBuilder,
     AvailableAction,
 )
+from action_router.registry import get_actions_for_domain, get_field_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,16 @@ def compute_suggested_order_qty(on_hand: int, min_level: int, reorder_multiple: 
         return 0
     raw_qty = max(shortage, 1)
     return round_up_to_multiple(raw_qty, reorder_multiple or 1)
+
+
+def compute_urgency(on_hand: int, min_level: int) -> str:
+    if on_hand == 0:
+        return "critical"
+    elif min_level > 0 and on_hand <= min_level * 0.5:
+        return "high"
+    elif min_level > 0 and on_hand <= min_level:
+        return "medium"
+    return "low"
 
 
 class PartHandlers:
@@ -1737,6 +1748,326 @@ class PartHandlers:
             raise HTTPException(status_code=500, detail=f"Failed to delete image: {str(e)}")
 
     # =========================================================================
+    # READ PREFILL HANDLERS (moved from part_routes.py — Phase C thinning)
+    # =========================================================================
+
+    async def get_part_suggestions(
+        self,
+        yacht_id: str,
+        user_id: str,
+        role: str,
+        part_id: str,
+    ) -> dict:
+        result = self.db.table("pms_parts").select(
+            "id, name, part_number, is_critical, category, "
+            "min_level, reorder_multiple, primary_location_id"
+        ).eq("yacht_id", yacht_id).eq("id", part_id).maybe_single().execute()
+
+        if not result.data:
+            raise ValueError(f"Part not found: {part_id}")
+
+        part = result.data
+
+        stock_result = self.db.table("pms_part_stock").select(
+            "on_hand, location"
+        ).eq("yacht_id", yacht_id).eq("part_id", part_id).maybe_single().execute()
+
+        stock = stock_result.data or {}
+        on_hand = stock.get("on_hand", 0) or 0
+        min_level = part.get("min_level", 0) or 0
+        reorder_multiple = part.get("reorder_multiple", 1) or 1
+
+        is_low_stock = min_level > 0 and on_hand <= min_level
+        is_out_of_stock = on_hand == 0
+        suggested_order_qty = compute_suggested_order_qty(on_hand, min_level, reorder_multiple)
+        urgency = compute_urgency(on_hand, min_level)
+
+        alert_suppressed = False
+        if user_id and (is_low_stock or is_out_of_stock):
+            alert_type = "out_of_stock" if is_out_of_stock else "low_stock"
+            try:
+                suppression_result = self.db.rpc("is_part_alert_suppressed", {
+                    "p_yacht_id": yacht_id,
+                    "p_user_id": user_id,
+                    "p_part_id": part_id,
+                    "p_department": part.get("category"),
+                    "p_category": part.get("category"),
+                    "p_alert_type": alert_type,
+                }).execute()
+                alert_suppressed = suppression_result.data is True
+            except Exception as e:
+                logger.warning(f"Suppression check failed: {e}")
+
+        location = stock.get("location") or part.get("primary_location_id")
+        stock_info = {
+            "on_hand": on_hand,
+            "min_level": min_level,
+            "reorder_multiple": reorder_multiple,
+            "is_low_stock": is_low_stock,
+            "is_out_of_stock": is_out_of_stock,
+            "suggested_order_qty": suggested_order_qty,
+            "location": location,
+            "alert_suppressed": alert_suppressed,
+            "urgency": urgency,
+        }
+
+        available_actions = get_actions_for_domain("parts", role)
+        suggested_actions = []
+        warnings = []
+
+        for action in available_actions:
+            action_id = action["action_id"]
+            is_primary = False
+            prefill: dict = {}
+
+            if action_id == "add_to_shopping_list" and is_low_stock:
+                is_primary = not alert_suppressed
+                prefill = {
+                    "part_id": part_id,
+                    "part_name": part.get("name"),
+                    "quantity_requested": suggested_order_qty,
+                    "urgency": urgency,
+                }
+            elif action_id == "consume_part":
+                if is_out_of_stock:
+                    continue
+                prefill = {
+                    "part_id": part_id,
+                    "part_name": part.get("name"),
+                    "available_qty": on_hand,
+                    "location": location,
+                }
+            elif action_id == "adjust_stock_quantity":
+                prefill = {
+                    "part_id": part_id,
+                    "part_name": part.get("name"),
+                    "current_quantity": on_hand,
+                    "location": location,
+                }
+            elif action_id == "receive_part":
+                prefill = {
+                    "part_id": part_id,
+                    "part_name": part.get("name"),
+                    "location": location,
+                }
+            elif action_id == "transfer_part":
+                if is_out_of_stock:
+                    continue
+                prefill = {
+                    "part_id": part_id,
+                    "part_name": part.get("name"),
+                    "from_location_id": location,
+                }
+            elif action_id == "write_off_part":
+                if is_out_of_stock:
+                    continue
+                prefill = {
+                    "part_id": part_id,
+                    "part_name": part.get("name"),
+                    "available_qty": on_hand,
+                    "location": location,
+                }
+            elif action_id == "view_part_details":
+                prefill = {"part_id": part_id}
+            elif action_id in ("generate_part_labels", "request_label_output"):
+                prefill = {"part_ids": [part_id]}
+
+            try:
+                field_meta = get_field_metadata(action_id)
+            except Exception:
+                field_meta = []
+
+            suggested_actions.append({
+                "action_id": action_id,
+                "label": action["label"],
+                "variant": action["variant"],
+                "prefill": prefill,
+                "field_metadata": field_meta,
+                "is_primary": is_primary,
+            })
+
+        if is_out_of_stock:
+            warnings.append("Part is out of stock")
+        elif is_low_stock:
+            warnings.append(f"Part is below minimum level ({on_hand}/{min_level})")
+        if part.get("is_critical"):
+            warnings.append("This is a critical part")
+        if alert_suppressed:
+            warnings.append("Low stock alerts are suppressed for this part/category")
+
+        suggested_actions.sort(key=lambda a: (not a["is_primary"], a["variant"] == "READ"))
+
+        return {
+            "part_id": part_id,
+            "part_name": part.get("name"),
+            "part_number": part.get("part_number"),
+            "stock": stock_info,
+            "suggested_actions": suggested_actions,
+            "warnings": warnings,
+        }
+
+    async def get_shopping_list_prefill(self, yacht_id: str, part_id: str) -> dict:
+        part_result = self.db.table("pms_parts").select(
+            "id, name, part_number, min_level, reorder_multiple"
+        ).eq("yacht_id", yacht_id).eq("id", part_id).maybe_single().execute()
+
+        if not part_result.data:
+            raise ValueError(f"Part not found: {part_id}")
+
+        part = part_result.data
+        stock_result = self.db.table("pms_part_stock").select(
+            "on_hand"
+        ).eq("yacht_id", yacht_id).eq("part_id", part_id).maybe_single().execute()
+
+        stock = stock_result.data or {}
+        on_hand = stock.get("on_hand", 0) or 0
+        min_level = part.get("min_level", 0) or 0
+        reorder_multiple = part.get("reorder_multiple", 1) or 1
+        suggested_qty = compute_suggested_order_qty(on_hand, min_level, reorder_multiple)
+        urgency = compute_urgency(on_hand, min_level)
+
+        return {
+            "status": "success",
+            "prefill": {
+                "part_id": part_id,
+                "part_name": part.get("name"),
+                "part_number": part.get("part_number"),
+                "current_stock": on_hand,
+                "min_level": min_level,
+                "reorder_multiple": reorder_multiple,
+                "quantity_requested": suggested_qty,
+                "urgency": urgency,
+            },
+            "field_metadata": {
+                "quantity_requested": {
+                    "classification": "BACKEND_AUTO",
+                    "suggested_value": suggested_qty,
+                    "editable": True,
+                    "description": "round_up(max(min_level - on_hand, 1), reorder_multiple)",
+                },
+                "urgency": {
+                    "classification": "BACKEND_AUTO",
+                    "options": ["low", "medium", "high", "critical"],
+                    "editable": True,
+                },
+            },
+        }
+
+    async def get_adjust_stock_prefill(self, yacht_id: str, part_id: str) -> dict:
+        part_result = self.db.table("pms_parts").select(
+            "id, name, part_number"
+        ).eq("yacht_id", yacht_id).eq("id", part_id).maybe_single().execute()
+
+        if not part_result.data:
+            raise ValueError(f"Part not found: {part_id}")
+
+        part = part_result.data
+        stock_result = self.db.table("pms_part_stock").select(
+            "on_hand, location"
+        ).eq("yacht_id", yacht_id).eq("part_id", part_id).maybe_single().execute()
+
+        stock = stock_result.data or {}
+
+        return {
+            "status": "success",
+            "prefill": {
+                "part_id": part_id,
+                "part_name": part.get("name"),
+                "part_number": part.get("part_number"),
+                "current_quantity": stock.get("on_hand", 0) or 0,
+                "location": stock.get("location"),
+                "new_quantity": None,
+                "reason": None,
+            },
+            "field_metadata": {
+                "current_quantity": {"classification": "BACKEND_AUTO", "editable": False},
+                "new_quantity": {"classification": "REQUIRED", "editable": True},
+                "reason": {
+                    "classification": "REQUIRED",
+                    "options": [
+                        "physical_count", "damaged", "expired",
+                        "found_additional", "correction", "other",
+                    ],
+                    "editable": True,
+                },
+                "signature": {
+                    "classification": "REQUIRED",
+                    "description": "PIN+TOTP payload required for SIGNED action",
+                },
+            },
+        }
+
+    async def get_low_stock(
+        self,
+        yacht_id: str,
+        department: Optional[str] = None,
+        threshold_percent: Optional[float] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        result = self.db.table("pms_parts").select(
+            "id, name, part_number, is_critical, category, department, "
+            "min_level, reorder_multiple, unit_cost"
+        ).eq("yacht_id", yacht_id).gt("min_level", 0).execute()
+
+        parts = result.data or []
+
+        stock_result = self.db.table("pms_part_stock").select(
+            "part_id, on_hand"
+        ).eq("yacht_id", yacht_id).execute()
+
+        stock_map = {s["part_id"]: s.get("on_hand", 0) or 0 for s in (stock_result.data or [])}
+
+        low_stock_items = []
+        total_value = 0.0
+
+        for part in parts:
+            on_hand = stock_map.get(part["id"], 0)
+            min_level = part.get("min_level", 0) or 0
+            reorder_multiple = part.get("reorder_multiple", 1) or 1
+
+            if threshold_percent is not None:
+                if on_hand > min_level * (threshold_percent / 100):
+                    continue
+            else:
+                if on_hand > min_level:
+                    continue
+
+            if department and part.get("department") != department:
+                continue
+
+            shortage = max(0, min_level - on_hand)
+            suggested_qty = compute_suggested_order_qty(on_hand, min_level, reorder_multiple)
+
+            unit_cost = part.get("unit_cost") or 0
+            if unit_cost and suggested_qty:
+                total_value += unit_cost * suggested_qty
+
+            low_stock_items.append({
+                "id": part["id"],
+                "name": part["name"],
+                "part_number": part.get("part_number"),
+                "is_critical": part.get("is_critical", False),
+                "on_hand": on_hand,
+                "min_level": min_level,
+                "shortage": shortage,
+                "suggested_order_qty": suggested_qty,
+                "reorder_multiple": reorder_multiple,
+                "department": part.get("department"),
+            })
+
+        low_stock_items.sort(key=lambda p: (not p["is_critical"], -p["shortage"]))
+        paginated = low_stock_items[offset:offset + limit]
+        critical_count = sum(1 for p in low_stock_items if p["is_critical"])
+
+        return {
+            "parts": paginated,
+            "total_low_stock": len(low_stock_items),
+            "critical_count": critical_count,
+            "total_suggested_order_value": round(total_value, 2) if total_value else None,
+        }
+
+    # =========================================================================
     # HELPERS
     # =========================================================================
 
@@ -1847,6 +2178,12 @@ def get_part_handlers(supabase_client) -> Dict[str, callable]:
         # READ handlers (with read-audit)
         "view_part_details": handlers.view_part_details,
         "open_document": handlers.open_document,
+
+        # READ prefill handlers (Phase C — moved from part_routes.py)
+        "get_part_suggestions": handlers.get_part_suggestions,
+        "get_shopping_list_prefill": handlers.get_shopping_list_prefill,
+        "get_adjust_stock_prefill": handlers.get_adjust_stock_prefill,
+        "get_low_stock": handlers.get_low_stock,
 
         # MUTATE handlers
         "add_to_shopping_list": handlers.add_to_shopping_list,
