@@ -505,7 +505,7 @@ class HoursOfRestHandlers:
             )
 
             # MLC crew comment requirement: non-compliant entries must include a justification
-            crew_comment = payload.get("crew_comment", "").strip()
+            crew_comment = (payload.get("crew_comment") or "").strip()
             if not is_daily_compliant and not crew_comment:
                 builder.set_error(
                     "VALIDATION_ERROR",
@@ -2367,7 +2367,7 @@ class HoursOfRestHandlers:
 
         try:
             original_record_id = payload.get("original_record_id")
-            reason = payload.get("reason", "").strip()
+            reason = (payload.get("reason") or "").strip()
             note = payload.get("note")
             corrected_rest_periods = payload.get("corrected_rest_periods")
             requested_by_user_id = payload.get("requested_by_user_id")
@@ -2605,7 +2605,7 @@ class HoursOfRestHandlers:
         try:
             signoff_id = payload.get("signoff_id")
             target_user_id = payload.get("target_user_id")
-            correction_note = payload.get("correction_note", "").strip()
+            correction_note = (payload.get("correction_note") or "").strip()
             requester_role = payload.get("role")
 
             if not signoff_id or not target_user_id or not correction_note:
