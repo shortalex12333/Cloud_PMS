@@ -547,14 +547,14 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         method="POST",
         allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
                        "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-        required_fields=["yacht_id", "equipment_id", "text"],
+        required_fields=["yacht_id", "equipment_id", "note_text"],
         domain="equipment",
         variant=ActionVariant.MUTATE,
         search_keywords=["note", "log", "record", "observation", "comment", "equipment"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("equipment_id", FieldClassification.CONTEXT, auto_populate_from="equipment", lookup_required=True),
-            FieldMetadata("text", FieldClassification.REQUIRED, auto_populate_from="query_text",
+            FieldMetadata("note_text", FieldClassification.REQUIRED, auto_populate_from="query_text",
                           description="Note content - residual text from query after entity extraction"),
             FieldMetadata("note_type", FieldClassification.OPTIONAL,
                           options=["observation", "inspection", "handover", "defect", "maintenance"],
@@ -1224,14 +1224,14 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         method="POST",
         # Canonical: crew + HOD + captain
         allowed_roles=["crew", "chief_engineer", "chief_officer", "captain"],
-        required_fields=["yacht_id", "fault_id", "text"],
+        required_fields=["yacht_id", "fault_id", "note_text"],
         domain="faults",
         variant=ActionVariant.MUTATE,
         search_keywords=["add", "note", "comment", "fault", "observation"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("fault_id", FieldClassification.REQUIRED, auto_populate_from="fault", lookup_required=True),
-            FieldMetadata("text", FieldClassification.REQUIRED),
+            FieldMetadata("note_text", FieldClassification.REQUIRED),
         ],
     ),
 
@@ -3759,17 +3759,9 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         variant=ActionVariant.SIGNED,
     ),
 
-    "delete_fault": ActionDefinition(
-        action_id="delete_fault",
-        label="Delete Fault",
-        endpoint="/v1/actions/execute",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id", "entity_id"],
-        domain="faults",
-        variant=ActionVariant.SIGNED,
-    ),
+    # delete_fault REMOVED 2026-04-26 (FAULT05 Issue 7) — deletion is not permitted.
+    # Terminal actions are: close_fault (finished work) and archive_fault (soft-delete).
+    # Hard deletion violates audit trail requirements (surveyor/insurance evidence chain).
 
     "link_parts_to_fault": ActionDefinition(
         action_id="link_parts_to_fault",
