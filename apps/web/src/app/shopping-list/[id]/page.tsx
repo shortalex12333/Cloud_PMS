@@ -20,8 +20,7 @@ interface SLItem {
   quantity_approved?: number;
   unit?: string;
   estimated_unit_price?: number;
-  source_url?: string;
-  storage_location?: string;
+  source_notes?: string;
   notes?: string;
   status: string;
   department?: string;
@@ -240,9 +239,7 @@ function ShoppingListDocContent({ listId }: { listId: string }) {
             { name: 'unit_price', label: `Unit Price (${doc.currency})`, type: 'kv-edit', placeholder: '0.00' },
             { name: 'part_number', label: 'Part Number', type: 'kv-edit', placeholder: 'MAN-12345' },
             { name: 'manufacturer', label: 'Manufacturer', type: 'kv-edit', placeholder: 'Volvo, Parker…' },
-            { name: 'source_url', label: 'Supplier URL', type: 'kv-edit', placeholder: 'https://…' },
-            { name: 'storage_location', label: 'Storage Location', type: 'kv-edit', placeholder: 'Engine room locker 3' },
-            { name: 'notes', label: 'Notes', type: 'text-area', placeholder: 'Why is this needed?' },
+            { name: 'source_notes', label: 'Notes', type: 'text-area', placeholder: 'Why is this needed?' },
           ]}
           signatureLevel={1}
           submitLabel={actionSubmitting ? 'Adding…' : 'Add Item'}
@@ -257,9 +254,7 @@ function ShoppingListDocContent({ listId }: { listId: string }) {
               unit_price: vals.unit_price ? Number(vals.unit_price) : undefined,
               part_number: vals.part_number || undefined,
               manufacturer: vals.manufacturer || undefined,
-              source_url: vals.source_url || undefined,
-              storage_location: vals.storage_location || undefined,
-              notes: vals.notes || undefined,
+              source_notes: vals.source_notes || undefined,
               source_type: 'manual_add',
             });
           }}
@@ -278,9 +273,7 @@ function ShoppingListDocContent({ listId }: { listId: string }) {
           fields={[
             { name: 'quantity_requested', label: 'Quantity', type: 'kv-edit', placeholder: String(it.quantity_requested ?? 1) },
             { name: 'unit_price', label: `Unit Price (${doc.currency})`, type: 'kv-edit', placeholder: String(it.estimated_unit_price ?? '') },
-            { name: 'source_url', label: 'Supplier URL', type: 'kv-edit', placeholder: it.source_url || '' },
-            { name: 'storage_location', label: 'Storage Location', type: 'kv-edit', placeholder: it.storage_location || '' },
-            { name: 'notes', label: 'Notes', type: 'text-area', placeholder: it.notes || '' },
+            { name: 'source_notes', label: 'Notes', type: 'text-area', placeholder: it.source_notes || it.notes || '' },
           ]}
           signatureLevel={1}
           submitLabel={actionSubmitting ? 'Saving…' : 'Save Changes'}
@@ -291,9 +284,7 @@ function ShoppingListDocContent({ listId }: { listId: string }) {
               item_id: it.id,
               quantity_requested: vals.quantity_requested ? Number(vals.quantity_requested) : undefined,
               unit_price: vals.unit_price ? Number(vals.unit_price) : undefined,
-              source_url: vals.source_url || undefined,
-              storage_location: vals.storage_location || undefined,
-              notes: vals.notes || undefined,
+              source_notes: vals.source_notes || undefined,
             });
           }}
           onClose={close}
@@ -583,8 +574,8 @@ function ShoppingListDocContent({ listId }: { listId: string }) {
                     <td style={{ padding: '9px 12px', color: isCandidate ? 'var(--amber)' : 'var(--txt1)', fontWeight: 500, maxWidth: 240 }}>
                       {isCandidate && <span title="Candidate part — not yet in catalogue" style={{ marginRight: 4 }}>⚠</span>}
                       {item.part_name}
-                      {item.notes && (
-                        <div style={{ fontSize: 10.5, color: 'var(--txt3)', fontWeight: 400, marginTop: 2 }}>{item.notes}</div>
+                      {(item.source_notes || item.notes) && (
+                        <div style={{ fontSize: 10.5, color: 'var(--txt3)', fontWeight: 400, marginTop: 2 }}>{item.source_notes || item.notes}</div>
                       )}
                     </td>
                     <td style={{ padding: '9px 12px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
