@@ -727,6 +727,54 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     await loadWeekData();
   }
 
+  // Live compliance — recomputed from all days (DB-submitted + session-submitted).
+  // Must sit before any early returns (hooks rule). data may be null on first render.
+  const comp = React.useMemo(() => {
+    if (!data) return { min_24h: 10, min_7d: 77, rolling_24h_rest: null, rolling_7day_rest: null, mlc_status: null };
+    const base = data.compliance ?? {};
+    const min24: number = base.min_24h ?? 10;
+    const min7d: number = base.min_7d ?? 77;
+    const today = new Date().toISOString().slice(0, 10);
+
+    let totalRest = 0;
+    let daysWithData = 0;
+    let todayRest: number | null = null;
+
+    for (const day of (data.days ?? [])) {
+      if (!day) continue;
+      const local = submittedDays[day.date];
+      if (!day.submitted && !local) continue;
+      const d = local || day;
+      const rp: RestPeriod[] = d.rest_periods ?? [];
+      const wp: RestPeriod[] = d.work_periods ?? [];
+      const restH: number =
+        typeof d.total_rest_hours === 'number'
+          ? d.total_rest_hours
+          : rp.length > 0
+          ? hoursFromPeriods(rp)
+          : wp.length > 0
+          ? 24 - hoursFromPeriods(wp)
+          : 0;
+      totalRest += restH;
+      daysWithData++;
+      if (day.date === today) todayRest = restH;
+    }
+
+    const rolling_7day_rest = daysWithData > 0 ? Math.round(totalRest * 10) / 10 : null;
+    const rolling_24h_rest = todayRest;
+
+    let mlc_status: string | null = null;
+    if (rolling_7day_rest !== null) {
+      if (daysWithData < 7) {
+        mlc_status = null; // incomplete week — no compliance verdict yet
+      } else {
+        mlc_status = rolling_7day_rest >= min7d ? 'COMPLIANT' : 'NON-COMPLIANT';
+      }
+    }
+
+    return { ...base, rolling_24h_rest, rolling_7day_rest, mlc_status, min_24h: min24, min_7d: min7d };
+  }, [data, submittedDays]);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -746,7 +794,6 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     );
   }
 
-  const comp = data.compliance;
   const signoff = data.pending_signoff;
   const isReadOnly = forceReadOnly || weekLocked;
   const allSubmitted = data.days.filter(Boolean).every((d: any) => d.submitted || !!submittedDays[d.date]);
@@ -1146,8 +1193,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                     <span style={{ fontSize: 12, color: 'var(--txt-ghost)', fontStyle: 'italic' }}>Not submitted</span>
                   )}
 
-                  {/* Submit day button — only when not submitted and has draft */}
-                  {!isSubmitted && (draft?.length ?? 0) > 0 && (
+                  {/* Submit day button — shown for any unsubmitted day; 0 work periods = full rest day (valid MLC entry) */}
+                  {!isSubmitted && !isReadOnly && (
                     <button
                       data-testid={`hor-submit-day-${day.date}`}
                       onClick={() => submitDay(day.date)}
@@ -1433,12 +1480,18 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, paddingTop: 'var(--space-2)', borderTop: '1px solid var(--border-faint)' }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--txt-ghost)' }}>MLC 2006 Status</span>
-            <span style={{
-              fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
-              color: comp.mlc_status === 'COMPLIANT' ? 'var(--green)' : 'var(--red)',
-            }}>
-              {comp.mlc_status}
-            </span>
+            {comp.mlc_status != null ? (
+              <span style={{
+                fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
+                color: comp.mlc_status === 'COMPLIANT' ? 'var(--green)' : 'var(--red)',
+              }}>
+                {comp.mlc_status}
+              </span>
+            ) : (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>
+                {comp.rolling_7day_rest != null ? 'Week in progress' : '—'}
+              </span>
+            )}
           </div>
         </div>
       </SectionCard>

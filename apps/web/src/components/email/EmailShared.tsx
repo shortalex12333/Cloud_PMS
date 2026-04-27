@@ -12,7 +12,6 @@ import {
   ChevronDown, Mail, Download,
 } from 'lucide-react';
 import { LinkEmailModal } from '@/components/email/LinkEmailModal';
-import { supabase } from '@/lib/supabaseClient';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import {
   useThread, useMessageContent, useThreadLinks, useMarkThreadRead, useRemoveLink,
@@ -78,15 +77,8 @@ function formatDate(dateStr: string | null): string {
 }
 
 // ============================================================================
-// ENTITY RESOLUTION
+// ENTITY ICONS
 // ============================================================================
-
-const ENTITY_TABLE_MAP: Record<string, { table: string; select: string; nameField: string; refField: string }> = {
-  work_order: { table: 'pms_work_orders', select: 'id,title,wo_number,status', nameField: 'title', refField: 'wo_number' },
-  equipment: { table: 'pms_equipment', select: 'id,name,serial_number', nameField: 'name', refField: 'serial_number' },
-  fault: { table: 'pms_faults', select: 'id,title,fault_number', nameField: 'title', refField: 'fault_number' },
-  part: { table: 'pms_parts', select: 'id,name,part_number', nameField: 'name', refField: 'part_number' },
-};
 
 const ENTITY_ICONS: Record<string, React.ReactNode> = {
   work_order: <Wrench size={12} />,
@@ -102,33 +94,8 @@ const ENTITY_ICONS: Record<string, React.ReactNode> = {
 export function LinkedObjectsSection({ links, threadId, onRefresh }: { links: ThreadLink[]; threadId: string; onRefresh: () => void }) {
   const router = useRouter();
   const removeLink = useRemoveLink();
-  const [entityNames, setEntityNames] = useState<Record<string, { name: string; ref: string }>>({});
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    if (links.length === 0) return;
-    const resolve = async () => {
-      const resolved: Record<string, { name: string; ref: string }> = {};
-      for (const link of links) {
-        const config = ENTITY_TABLE_MAP[link.object_type];
-        if (!config) { resolved[link.object_id] = { name: link.object_id.slice(0, 8), ref: link.object_type }; continue; }
-        try {
-          const { data } = await supabase.from(config.table).select(config.select).eq('id', link.object_id).maybeSingle();
-          if (data) {
-            const d = data as Record<string, any>;
-            resolved[link.object_id] = { name: d[config.nameField] || link.object_id.slice(0, 8), ref: d[config.refField] || '' };
-          } else {
-            resolved[link.object_id] = { name: link.object_id.slice(0, 8), ref: 'not found' };
-          }
-        } catch {
-          resolved[link.object_id] = { name: link.object_id.slice(0, 8), ref: '' };
-        }
-      }
-      setEntityNames(resolved);
-    };
-    resolve();
-  }, [links]);
 
   const handleRemove = async (linkId: string) => {
     try { await removeLink.mutateAsync(linkId); onRefresh(); } catch { /* handled */ }
@@ -154,16 +121,17 @@ export function LinkedObjectsSection({ links, threadId, onRefresh }: { links: Th
         {!collapsed && (
           <div style={{ paddingBottom: 12 }}>
             {links.map(link => {
-              const entity = entityNames[link.object_id];
               const icon = ENTITY_ICONS[link.object_type] || <Link2 size={12} />;
+              const name = link.object_name || link.object_id.slice(0, 8);
+              const ref = link.object_ref || '';
               return (
                 <div key={link.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', minHeight: 36 }}>
                   <div style={{ width: 24, height: 24, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'var(--teal-bg)', color: 'var(--mark)' }}>{icon}</div>
                   <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => router.push(getEntityRoute(link.object_type as any, link.object_id))}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--mark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entity?.name || '...'}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--mark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
                     <div style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'var(--font-mono)', marginTop: 1, display: 'flex', gap: 5, textTransform: 'uppercase' }}>
                       <span>{link.object_type.replace(/_/g, ' ')}</span>
-                      {entity?.ref && <span>{entity.ref}</span>}
+                      {ref && <span>{ref}</span>}
                       <span style={{ padding: '0 4px', borderRadius: 2, fontSize: 8, fontWeight: 600, background: link.confidence === 'deterministic' ? 'var(--green-bg)' : 'var(--neutral-bg)', color: link.confidence === 'deterministic' ? 'var(--green)' : 'var(--txt3)', border: `1px solid ${link.confidence === 'deterministic' ? 'var(--green-border)' : 'var(--border-sub)'}` }}>
                         {link.confidence === 'deterministic' ? 'EXACT' : link.confidence === 'user_confirmed' ? 'CONFIRMED' : 'SUGGESTED'}
                       </span>

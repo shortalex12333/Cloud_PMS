@@ -4468,6 +4468,35 @@ async def get_thread_links(
 
         links = links_result.data or []
 
+        # Resolve entity names server-side so frontend never queries Supabase directly
+        ENTITY_TABLE_MAP = {
+            'work_order': ('pms_work_orders', 'id,title,wo_number', 'title', 'wo_number'),
+            'equipment':  ('pms_equipment',   'id,name,serial_number', 'name', 'serial_number'),
+            'fault':      ('pms_faults',      'id,title,fault_number', 'title', 'fault_number'),
+            'part':       ('pms_parts',       'id,name,part_number', 'name', 'part_number'),
+        }
+        for link in links:
+            obj_type = link.get('object_type', '')
+            obj_id   = link.get('object_id', '')
+            config = ENTITY_TABLE_MAP.get(obj_type)
+            if config:
+                table, select, name_field, ref_field = config
+                try:
+                    row = supabase.table(table).select(select).eq('id', obj_id).eq('yacht_id', yacht_id).limit(1).execute()
+                    if row.data:
+                        d = row.data[0]
+                        link['object_name'] = d.get(name_field) or obj_id[:8]
+                        link['object_ref']  = d.get(ref_field) or ''
+                    else:
+                        link['object_name'] = obj_id[:8]
+                        link['object_ref']  = 'not found'
+                except Exception:
+                    link['object_name'] = obj_id[:8]
+                    link['object_ref']  = ''
+            else:
+                link['object_name'] = obj_id[:8]
+                link['object_ref']  = obj_type
+
         # Group links by object_type for easier frontend consumption
         grouped = {}
         for link in links:

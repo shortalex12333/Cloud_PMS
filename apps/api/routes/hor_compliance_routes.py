@@ -162,29 +162,41 @@ async def get_my_week(
             "week_start", week_monday.isoformat()
         ).limit(1).execute()
 
-        # Rolling 24h rest: today's record rest hours
+        # Rolling 24h rest: today's record rest hours (or null if today not in viewed week)
         rolling_24h = None
         today_rec = daily_by_date.get(today.isoformat())
         if today_rec:
             rolling_24h = today_rec.get("total_rest_hours")
 
-        # Rolling 7-day rest: last 7 calendar days ending today
-        rolling_start = today - timedelta(days=6)
-        rolling_r = supabase.table("pms_hours_of_rest").select(
-            "total_rest_hours"
-        ).eq("yacht_id", yacht_id).eq("user_id", user_id).gte(
-            "record_date", rolling_start.isoformat()
-        ).lte("record_date", today.isoformat()).execute()
-        rolling_data = rolling_r.data or []
-        rolling_7day = sum(
-            (r.get("total_rest_hours") or 0) for r in rolling_data
-        ) if rolling_data else None
+        # Weekly rest total: sum ALL submitted days in the viewed week.
+        # This replaces the old "today−6 to today" rolling query — using the
+        # week records already fetched in step 1 is both cheaper and more
+        # accurate when the user views a past week or a partially-complete week.
+        week_records = list(daily_by_date.values())
+        days_submitted_this_week = len(week_records)
+        rolling_7day = round(
+            sum((r.get("total_rest_hours") or 0) for r in week_records), 1
+        ) if week_records else None
+
+        # MLC weekly status: only definitive when all 7 days are submitted.
+        # A partial week must not be marked NON-COMPLIANT prematurely.
+        if rolling_7day is not None:
+            if days_submitted_this_week < 7:
+                mlc_status = None  # "in progress" — verdict deferred
+            elif rolling_7day >= 77.0:
+                mlc_status = "COMPLIANT"
+            else:
+                mlc_status = "NON-COMPLIANT"
+        else:
+            mlc_status = None
 
         summary_data = summary_r.data[0] if summary_r.data else None
         compliance = {
             **(summary_data if summary_data else {}),
-            "rolling_24h_rest":  rolling_24h,
-            "rolling_7day_rest": rolling_7day,
+            "rolling_24h_rest":      rolling_24h,
+            "rolling_7day_rest":     rolling_7day,
+            "mlc_status":            mlc_status,
+            "days_submitted_this_week": days_submitted_this_week,
         }
 
         # ------------------------------------------------------------------
