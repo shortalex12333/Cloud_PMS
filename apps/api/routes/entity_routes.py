@@ -1937,7 +1937,7 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
                 'id, action, change_summary, user_id, user_role, created_at'
             ).eq('entity_type', 'receiving').eq('entity_id', receiving_id).eq(
                 'yacht_id', yacht_id
-            ).order('created_at', desc=True).limit(50).execute()
+            ).neq('event_category', 'read').order('created_at', desc=True).limit(50).execute()
             audit_history = lh_r.data or []
         except Exception as e:
             logger.warning(f"audit_history lookup failed for receiving/{receiving_id}: {e}")
