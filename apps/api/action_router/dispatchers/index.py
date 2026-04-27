@@ -12,7 +12,6 @@ from handlers.universal_handlers import soft_delete_entity as _soft_delete_entit
 from handlers.stub_handlers import not_yet_implemented as _not_yet_implemented
 
 from .shared import HANDLERS as _shared
-from .equipment import HANDLERS as _equipment
 from .fault import HANDLERS as _fault
 from .work_order import HANDLERS as _work_order
 from .certificate import HANDLERS as _certificate
@@ -44,12 +43,11 @@ for _domain in (
     _shopping,
     _handover,
     _hor,
-    _equipment,  # last — wins any overlapping read-aliases (view_equipment_parts, view_linked_faults)
 ):
     _merged.update(_domain)
 
 # Actions that are not-yet-implemented (stub) rather than soft-delete
-_NOT_YET_IMPLEMENTED = {"suggest_parts", "classify_fault"}
+_NOT_YET_IMPLEMENTED = {"classify_fault"}
 
 # Replace None placeholders: stub actions → not_yet_implemented, rest → soft_delete
 INTERNAL_HANDLERS: Dict[str, Any] = {
