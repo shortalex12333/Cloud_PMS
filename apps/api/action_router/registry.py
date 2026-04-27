@@ -3753,6 +3753,24 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
+    "update_supplier_on_po": ActionDefinition(
+        action_id="update_supplier_on_po",
+        label="Change Supplier",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "purchase_order_id"],
+        domain="purchase_orders",
+        variant=ActionVariant.MUTATE,
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("purchase_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("supplier_id", FieldClassification.OPTIONAL, description="Linked supplier UUID"),
+            FieldMetadata("supplier_name", FieldClassification.OPTIONAL, description="Free-text supplier name if not in catalogue"),
+        ],
+    ),
+
     "deny_po_line_item": ActionDefinition(
         action_id="deny_po_line_item",
         label="Deny Line Item",

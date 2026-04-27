@@ -10,6 +10,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { IdentityStrip, type PillDef, type DetailLine } from '../IdentityStrip';
 import { mapActionFields, actionHasFields, getSignatureLevel } from '../mapActionFields';
 import { SplitButton, type DropdownItem } from '../SplitButton';
@@ -18,6 +19,7 @@ import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { supabase } from '@/lib/supabaseClient';
 
 // Sections
 import {
@@ -65,7 +67,7 @@ function formatCurrency(amount: number, currency?: string): string {
 
 export function PurchaseOrderContent() {
   const router = useRouter();
-  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, entityId, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
 
   // ── Extract entity fields ──
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
@@ -124,6 +126,7 @@ export function PurchaseOrderContent() {
   const receiveAction = getAction('mark_po_received');
   const addNoteAction = getAction('add_po_note');
   const uploadInvoiceAction = getAction('upload_invoice');
+  const updateSupplierAction = getAction('update_supplier_on_po');
 
   // Upload invoice file-picker state
   const [invoicePickerOpen, setInvoicePickerOpen] = React.useState(false);
@@ -243,6 +246,10 @@ export function PurchaseOrderContent() {
       disabledReason: a.disabled_reason ?? undefined,
       danger: DANGER_ACTIONS.has(a.action_id),
     }));
+
+  // PDF export — always available regardless of available_actions (read-only, no mutation)
+  const yachtParam = entity?.yacht_id ? `?yacht_id=${entity.yacht_id}` : '';
+  const pdfUrl = entityId ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/v1/purchase-order/${entityId}/pdf${yachtParam}` : null;
 
   // ── Map section data ──
 
@@ -541,6 +548,21 @@ export function PurchaseOrderContent() {
                 }
               />
             )}
+            {updateSupplierAction && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <button
+                  onClick={() => openActionPopup(updateSupplierAction as any)}
+                  style={{
+                    height: 30, padding: '0 16px', borderRadius: 4,
+                    border: '1px solid var(--mark-hover)',
+                    background: 'var(--teal-bg)', color: 'var(--mark)',
+                    fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                  }}
+                >
+                  Change Supplier
+                </button>
+              </div>
+            )}
           </div>
         );
 
@@ -620,15 +642,37 @@ export function PurchaseOrderContent() {
         details={details}
         description={description !== title ? description : undefined}
         actionSlot={
-          (primaryAction || dropdownItems.length > 0) ? (
-            <SplitButton
-              label={primaryAction ? primaryLabel : 'Actions'}
-              onClick={primaryAction ? handlePrimary : () => {}}
-              disabled={primaryAction ? primaryDisabled : false}
-              disabledReason={primaryDisabledReason ?? undefined}
-              items={dropdownItems}
-            />
-          ) : undefined
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {pdfUrl && (
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  height: 30, padding: '0 12px', borderRadius: 4,
+                  border: '1px solid var(--border-sub)',
+                  background: 'var(--surface-raised)', color: 'var(--txt-secondary)',
+                  fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  textDecoration: 'none',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Export PDF
+              </a>
+            )}
+            {(primaryAction || dropdownItems.length > 0) && (
+              <SplitButton
+                label={primaryAction ? primaryLabel : 'Actions'}
+                onClick={primaryAction ? handlePrimary : () => {}}
+                disabled={primaryAction ? primaryDisabled : false}
+                disabledReason={primaryDisabledReason ?? undefined}
+                items={dropdownItems}
+              />
+            )}
+          </div>
         }
       />
 
@@ -748,16 +792,36 @@ export function PurchaseOrderContent() {
                   if (!invoiceFile) return;
                   setInvoiceUploading(true);
                   try {
-                    const fakePath = `pending/${Date.now()}_${invoiceFile.name}`;
-                    await executeAction('upload_invoice', {
-                      storage_path: fakePath,
+                    // Upload to Supabase Storage (TENANT bucket) first, then record the attachment row.
+                    const poId = (entity?.id as string | undefined) ?? '';
+                    const yachtIdForPath = (entity?.yacht_id as string | undefined) ?? 'unknown';
+                    const storagePath = `${yachtIdForPath}/invoices/${poId}/${Date.now()}_${invoiceFile.name}`;
+                    const { error: uploadErr } = await supabase.storage
+                      .from('pms-finance-documents')
+                      .upload(storagePath, invoiceFile, {
+                        contentType: invoiceFile.type || 'application/octet-stream',
+                        upsert: false,
+                      });
+                    if (uploadErr) {
+                      toast.error('Upload failed', { description: uploadErr.message });
+                      return;
+                    }
+                    const result = await executeAction('upload_invoice', {
+                      storage_path: storagePath,
                       filename: invoiceFile.name,
                       mime_type: invoiceFile.type || 'application/octet-stream',
                       file_size: invoiceFile.size,
                       description: invoiceDesc.trim() || undefined,
                       title: invoiceTitle.trim() || undefined,
                     });
-                    setInvoicePickerOpen(false);
+                    const r = result as unknown as Record<string, unknown>;
+                    const ok = r.status === 'success' || result.success;
+                    if (ok) {
+                      toast.success('Invoice attached');
+                      setInvoicePickerOpen(false);
+                    } else {
+                      toast.error('Failed to record invoice', { description: r.message as string });
+                    }
                   } finally {
                     setInvoiceUploading(false);
                   }
@@ -782,7 +846,17 @@ export function PurchaseOrderContent() {
       {actionPopupConfig && (
         <ActionPopup mode="mutate" title={actionPopupConfig.title} fields={actionPopupConfig.fields}
           signatureLevel={actionPopupConfig.signatureLevel}
-          onSubmit={async (values) => { await executeAction(actionPopupConfig.actionId, values); setActionPopupConfig(null); }}
+          onSubmit={async (values) => {
+            const result = await executeAction(actionPopupConfig.actionId, values);
+            const r = result as unknown as Record<string, unknown>;
+            if (r.status === 'error' || result.success === false) {
+              toast.error(actionPopupConfig.title + ' failed', {
+                description: (r.message as string) || (result.error as string) || 'An error occurred.',
+              });
+            } else {
+              setActionPopupConfig(null);
+            }
+          }}
           onClose={() => setActionPopupConfig(null)} />
       )}
       <AddNoteModal
