@@ -552,6 +552,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   }
 
   // ── Apply template ──
+  // Client-side only: fetches work_periods from the template and pre-fills
+  // unsubmitted day sliders. No server-side apply RPC, no page reload.
 
   async function applyTemplate() {
     if (!selectedTemplate || !data) return;
@@ -560,52 +562,26 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
       const auth = await getAuthHeader();
       if (!auth) return;
 
-      // Fetch template work_periods before applying so we can populate draft state
-      // without calling loadWeekData() (which resets draftPeriods via setDraftPeriods({}))
       const templateResp = await fetch(
         `/api/v1/hours-of-rest/templates/${selectedTemplate}`,
         { headers: { 'Authorization': auth } },
       ).catch(() => null);
       const templateJson = templateResp?.ok ? await templateResp.json().catch(() => null) : null;
-      const templateWorkPeriods: RestPeriod[] | null =
-        templateJson?.data?.work_periods ?? templateJson?.work_periods ?? null;
+      const templateWorkPeriods: RestPeriod[] | null = templateJson?.data?.work_periods ?? null;
 
-      const resp = await fetch('/api/v1/hours-of-rest/templates/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': auth },
-        body: JSON.stringify({
-          template_id: selectedTemplate,
-          week_start_date: (data as any).week_start,
-        }),
-      });
+      if (!templateWorkPeriods?.length) return;
 
-      if (!resp.ok) {
-        const json = await resp.json().catch(() => null);
-        console.error('Template apply failed:', resp.status, json);
-        await loadWeekData();
-        return;
-      }
-
-      if (templateWorkPeriods) {
-        // Populate draft state for unsubmitted days directly — avoids full reload
-        // that would clear draftPeriods and leave slider blank
-        const newDraft: Record<string, RestPeriod[]> = {};
-        for (const day of (data as any).days ?? []) {
-          if (day && !day.submitted && !submittedDays[day.date]) {
-            newDraft[day.date] = templateWorkPeriods;
-          }
-        }
-        if (Object.keys(newDraft).length > 0) {
-          setDraftPeriods(prev => ({ ...prev, ...newDraft }));
-          return;
+      const newDraft: Record<string, RestPeriod[]> = {};
+      for (const day of (data as any).days ?? []) {
+        if (day && !day.submitted && !submittedDays[day.date]) {
+          newDraft[day.date] = templateWorkPeriods;
         }
       }
-
-      // Fallback: reload (draft state may appear blank until user interacts)
-      await loadWeekData();
+      if (Object.keys(newDraft).length > 0) {
+        setDraftPeriods(prev => ({ ...prev, ...newDraft }));
+      }
     } catch (e) {
       console.error('Template apply error:', e);
-      await loadWeekData();
     } finally {
       setApplyingTemplate(false);
     }
@@ -635,7 +611,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           schedule_name: newTemplateName.trim(),
           ...(newTemplateDesc.trim() && { description: newTemplateDesc.trim() }),
           schedule_template,
-          is_active: false,
+          is_active: true,
         }),
       });
       const json = await resp.json().catch(() => null);
@@ -646,10 +622,20 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         setCreateTemplateError(envelopeError ?? `Create failed (${resp.status})`);
         return;
       }
+      // Add new template to local state — no page reload so draft content is preserved
+      const newTemplate = json?.data?.template;
+      if (newTemplate?.id) {
+        setData((prev: any) => prev ? {
+          ...prev,
+          templates: [
+            ...(prev.templates ?? []),
+            { id: newTemplate.id, name: newTemplate.schedule_name, applies_to: newTemplate.applies_to ?? 'normal', is_default: false },
+          ],
+        } : prev);
+      }
       setCreateTemplateOpen(false);
       setNewTemplateName('');
       setNewTemplateDesc('');
-      await loadWeekData();
     } catch {
       setCreateTemplateError('Network error — could not create template');
     } finally {
