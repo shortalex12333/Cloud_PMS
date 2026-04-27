@@ -3599,24 +3599,28 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
     Required params:
         - yacht_id: UUID
     Optional:
-        - item_ids: list of specific item UUIDs (defaults to all approved)
-        - supplier_name: str
-        - notes: str
+        - shopping_list_id: UUID — primary filter; when set, scopes to this list only
+        - item_ids: list of specific item UUIDs — fallback filter when no shopping_list_id
+        - supplier_name / supplier_id: str / UUID
     """
     import uuid as uuid_lib
     supabase = get_supabase_client()
     yacht_id = params["yacht_id"]
     user_id = params.get("user_id")
+    shopping_list_id = params.get("shopping_list_id")
 
-    # Get approved items
+    # Get approved items — scope by shopping list first, then item_ids, then all approved
     query = supabase.table("pms_shopping_list_items").select(
         "id, part_name, part_number, manufacturer, quantity_requested, "
-        "quantity_approved, unit"
+        "quantity_approved, unit, part_id"
     ).eq("yacht_id", yacht_id).eq("status", "approved").is_("deleted_at", "null")
 
-    item_ids = params.get("item_ids")
-    if item_ids:
-        query = query.in_("id", item_ids)
+    if shopping_list_id:
+        query = query.eq("shopping_list_id", shopping_list_id)
+    else:
+        item_ids = params.get("item_ids")
+        if item_ids:
+            query = query.in_("id", item_ids)
 
     items_result = query.execute()
     items = items_result.data or []
@@ -3633,7 +3637,7 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
     next_num = len(existing.data or []) + 1
     po_number = f"PO-{year}-{next_num:03d}"
 
-    # Create PO
+    # Create PO — write source_shopping_list_id for traceability
     po_id = str(uuid_lib.uuid4())
     po_data = {
         "id": po_id,
@@ -3644,11 +3648,13 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
     }
+    if shopping_list_id:
+        po_data["source_shopping_list_id"] = shopping_list_id
     if params.get("supplier_id"):
         po_data["supplier_id"] = params["supplier_id"]
     supabase.table("pms_purchase_orders").insert(po_data).execute()
 
-    # Create PO line items + write back order_id/order_line_number to shopping items
+    # Create PO line items + write back shopping_list_item_id, order_id, order_line_number
     for line_number, item in enumerate(items, start=1):
         line_id = str(uuid_lib.uuid4())
         supabase.table("pms_purchase_order_items").insert({
@@ -3658,6 +3664,7 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
             "part_id": item.get("part_id"),
             "description": item["part_name"],
             "quantity_ordered": int(item.get("quantity_approved") or item["quantity_requested"]),
+            "shopping_list_item_id": item["id"],
         }).execute()
         supabase.table("pms_shopping_list_items").update({
             "status": "ordered",
@@ -3667,20 +3674,32 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
             "updated_by": user_id,
         }).eq("id", item["id"]).eq("yacht_id", yacht_id).execute()
 
-    # Data continuity: PO placed — prompt receipt + invoice when goods arrive
+    # Mark the shopping list as converted (if list-scoped)
+    if shopping_list_id:
+        try:
+            supabase.table("pms_shopping_lists").update({
+                "status": "converted_to_po",
+                "converted_to_po_id": po_id,
+                "converted_at": datetime.utcnow().isoformat(),
+            }).eq("id", shopping_list_id).eq("yacht_id", yacht_id).execute()
+        except Exception as sl_err:
+            logger.warning(f"[convert_to_po] Shopping list status update failed (non-fatal): {sl_err}")
+
+    # Data continuity: notify purser/captain that PO is ready to review
     if user_id:
         try:
             import uuid as _uuid_notif
+            list_ref = f"from SL-{shopping_list_id[:6]}" if shopping_list_id else ""
             supabase.table("pms_notifications").insert({
                 "yacht_id": yacht_id,
                 "user_id": user_id,
-                "notification_type": "purchase_order.placed_pending_receipt",
-                "title": f"{po_number} placed — mark received when goods arrive",
-                "body": f"{len(items)} item(s) ordered. Mark as received and upload the supplier invoice when goods arrive.",
-                "priority": "normal",
+                "notification_type": "purchase_order.ready_to_review",
+                "title": f"{po_number} ready to review",
+                "body": f"{len(items)} item(s) {list_ref} converted. Review lines, deny any that should not be ordered, then add tracking details to place the order.",
+                "priority": "high",
                 "entity_type": "purchase_order",
                 "entity_id": po_id,
-                "idempotency_key": f"po_placed_{po_id}_{str(_uuid_notif.uuid4())[:8]}",
+                "idempotency_key": f"po_review_{po_id}_{str(_uuid_notif.uuid4())[:8]}",
                 "is_read": False,
                 "triggered_by": user_id,
             }).execute()
@@ -3692,6 +3711,7 @@ async def _convert_to_po(params: Dict[str, Any]) -> Dict[str, Any]:
         "po_id": po_id,
         "po_number": po_number,
         "items_ordered": len(items),
+        "source_shopping_list_id": shopping_list_id,
     }
 
 

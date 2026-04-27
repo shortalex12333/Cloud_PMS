@@ -1278,6 +1278,12 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
                 "quantity_received": item.get("quantity_received", 0),
                 "unit_price": item.get("unit_price"),
                 "currency": item.get("currency") or data.get("currency", "USD"),
+                # Line-level denial (Phase 2)
+                "line_status": item.get("line_status", "accepted"),
+                "denied_at": item.get("denied_at"),
+                "denial_reason": item.get("denial_reason"),
+                # Shopping list traceability (SHOPPING05 M6)
+                "shopping_list_item_id": item.get("shopping_list_item_id"),
             }
             for item in raw_items
         ]
@@ -1367,6 +1373,8 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
 
         # Nav to parts from line items (limit 5)
         nav = []
+        if data.get("source_shopping_list_id"):
+            nav.append(_nav("shopping_list", data["source_shopping_list_id"], "Source Shopping List"))
         for it in raw_items[:5]:
             n = _nav("part", it.get("part_id"), it.get("description") or it.get("name") or "Part")
             if n:
@@ -1386,6 +1394,13 @@ async def get_purchase_order_entity(po_id: str, auth: dict = Depends(get_authent
             "received_at": data.get("received_at"),
             "approved_at": data.get("approved_at"),
             "expected_delivery": data.get("expected_delivery") or data.get("expected_delivery_date"),
+            # Tracking details (Phase 2)
+            "tracking_number": data.get("tracking_number"),
+            "carrier": data.get("carrier"),
+            "expected_delivery_start": data.get("expected_delivery_start"),
+            "expected_delivery_end": data.get("expected_delivery_end"),
+            # Shopping list traceability (SHOPPING05 M5)
+            "source_shopping_list_id": data.get("source_shopping_list_id"),
             # Money
             "total_amount": data.get("total_amount") or computed_total,
             "item_count": len(raw_items),
