@@ -16,6 +16,119 @@ from action_router.middleware import validate_state_transition, InvalidStateTran
 
 logger = logging.getLogger(__name__)
 
+# CEO-locked close_reason enum (2026-04-24)
+_VALID_CLOSE_REASONS = frozenset({
+    "fault_resolved",
+    "awaiting_parts",
+    "machinery_out_of_service",
+    "false_alarm",
+    "superseded_by_work_order",
+    "other",
+})
+
+# Reasons that require a follow-up ledger reminder (data continuity — never a closed endpoint)
+_FOLLOW_UP_CLOSE_REASONS = frozenset({"awaiting_parts", "machinery_out_of_service", "other"})
+
+_FOLLOW_UP_MESSAGES = {
+    "awaiting_parts": "Fault closed pending parts delivery — reopen and raise purchase order when parts arrive.",
+    "machinery_out_of_service": "Fault closed with machinery out of service — schedule return to service.",
+    "other": "Fault closed with reason 'other' — no standard path. Review and document findings.",
+}
+
+
+def _notify_hods(
+    db_client, yacht_id: str, actor_user_id: str,
+    notification_type: str, title: str, body: str,
+    entity_id: str, priority: str = "normal",
+) -> None:
+    """Fire-and-forget: send bell notification to all active HODs on this yacht (skip actor)."""
+    try:
+        hod_rows = (
+            db_client.table("auth_users_roles")
+            .select("user_id")
+            .eq("yacht_id", yacht_id)
+            .in_("role", ["chief_engineer", "chief_officer", "captain"])
+            .eq("is_active", True)
+            .execute()
+        )
+        notifs = []
+        for row in (hod_rows.data or []):
+            hod_uid = row["user_id"]
+            if hod_uid == actor_user_id:
+                continue
+            notifs.append({
+                "id": str(uuid_module.uuid4()),
+                "yacht_id": yacht_id,
+                "user_id": hod_uid,
+                "notification_type": notification_type,
+                "title": title,
+                "body": body,
+                "priority": priority,
+                "entity_type": "fault",
+                "entity_id": entity_id,
+                "triggered_by": actor_user_id,
+                "idempotency_key": f"{notification_type}:{entity_id}:{hod_uid}",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+        if notifs:
+            db_client.table("pms_notifications").upsert(
+                notifs, on_conflict="yacht_id,user_id,idempotency_key"
+            ).execute()
+    except Exception as e:
+        logger.warning(f"[Notify] {notification_type} HOD broadcast failed: {e}")
+
+
+def _notify_user(
+    db_client, yacht_id: str, target_user_id: str, actor_user_id: str,
+    notification_type: str, title: str, body: str,
+    entity_id: str, priority: str = "normal",
+) -> None:
+    """Fire-and-forget: notify one specific user (skip if target == actor or target is None)."""
+    if not target_user_id or target_user_id == actor_user_id:
+        return
+    try:
+        db_client.table("pms_notifications").upsert({
+            "id": str(uuid_module.uuid4()),
+            "yacht_id": yacht_id,
+            "user_id": target_user_id,
+            "notification_type": notification_type,
+            "title": title,
+            "body": body,
+            "priority": priority,
+            "entity_type": "fault",
+            "entity_id": entity_id,
+            "triggered_by": actor_user_id,
+            "idempotency_key": f"{notification_type}:{entity_id}:{target_user_id}",
+            "is_read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }, on_conflict="yacht_id,user_id,idempotency_key").execute()
+    except Exception as e:
+        logger.warning(f"[Notify] {notification_type} to {target_user_id} failed: {e}")
+
+
+def _ledger_follow_up(
+    db_client, yacht_id: str, user_id: str, user_role: str,
+    fault_id: str, entity_name: str, action: str, close_reason: str,
+) -> None:
+    """Write a follow_up_required ledger row — data continuity chase loop."""
+    try:
+        ev = build_ledger_event(
+            yacht_id=yacht_id,
+            user_id=user_id,
+            event_type="follow_up_required",
+            entity_type="fault",
+            entity_id=fault_id,
+            action=action,
+            user_role=user_role,
+            change_summary=_FOLLOW_UP_MESSAGES.get(close_reason, f"Follow up required ({close_reason})."),
+            entity_name=entity_name,
+            metadata={"close_reason": close_reason},
+        )
+        db_client.table("ledger_events").insert(ev).execute()
+    except Exception as e:
+        logger.warning(f"[Ledger] follow_up_required write failed: {e}")
+
 
 async def report_fault(
     payload: dict,
@@ -74,6 +187,14 @@ async def report_fault(
                 pass
             else:
                 logger.warning(f"[Ledger] Failed to record report_fault: {ledger_err}")
+        _notify_hods(
+            db_client, yacht_id, user_id,
+            notification_type="fault_reported",
+            title=f"New fault: {fault_title}",
+            body=f"Severity: {severity}. Acknowledgement required.",
+            entity_id=fault_id,
+            priority="high" if severity in ("critical", "high") else "normal",
+        )
         return {
             "status": "success",
             "fault_id": fault_id,
@@ -101,7 +222,7 @@ async def acknowledge_fault(
 
     check = (
         db_client.table("pms_faults")
-        .select("id, status, severity, title")
+        .select("id, status, severity, title, metadata")
         .eq("id", fault_id)
         .eq("yacht_id", yacht_id)
         .single()
@@ -173,6 +294,14 @@ async def acknowledge_fault(
             else:
                 logger.warning(f"[Ledger] Failed to record acknowledge_fault: {ledger_err}")
 
+        reported_by = (check.data.get("metadata") or {}).get("reported_by")
+        _notify_user(
+            db_client, yacht_id, reported_by, user_id,
+            notification_type="fault_acknowledged",
+            title=f"Fault acknowledged: {entity_name}",
+            body="Your fault report has been acknowledged and is under investigation.",
+            entity_id=fault_id,
+        )
         return {
             "status": "success",
             "message": "Fault acknowledged",
@@ -338,9 +467,17 @@ async def close_fault(
     if not fault_id:
         raise HTTPException(status_code=400, detail="fault_id is required")
 
+    close_reason = payload.get("close_reason", "")
+    if close_reason and close_reason not in _VALID_CLOSE_REASONS:
+        return {
+            "status": "error",
+            "error_code": "INVALID_CLOSE_REASON",
+            "message": f"Invalid close_reason '{close_reason}'. Valid: {', '.join(sorted(_VALID_CLOSE_REASONS))}",
+        }
+
     check = (
         db_client.table("pms_faults")
-        .select("id, status, title")
+        .select("id, status, title, metadata")
         .eq("id", fault_id)
         .eq("yacht_id", yacht_id)
         .single()
@@ -351,6 +488,11 @@ async def close_fault(
 
     current_status = check.data.get("status", "open")
     entity_name = check.data.get("title") or ""
+    reported_by = (check.data.get("metadata") or {}).get("reported_by")
+    updated_meta = {**(check.data.get("metadata") or {})}
+    if close_reason:
+        updated_meta["close_reason"] = close_reason
+
     try:
         validate_state_transition("fault", current_status, "close_fault")
     except InvalidStateTransitionError as e:
@@ -364,6 +506,7 @@ async def close_fault(
 
     update_data = {
         "status": "closed",
+        "metadata": updated_meta,
         # DB invariant: pms_faults check constraint requires a non-null severity on every UPDATE.
         # "medium" is the safe sentinel — this does not reflect a business-logic change.
         "severity": "medium",
@@ -379,16 +522,6 @@ async def close_fault(
         .execute()
     )
     if fault_result.data:
-        # Write close_reason to metadata if provided
-        close_reason = payload.get("close_reason", "")
-        if close_reason:
-            try:
-                current_meta = check.data.get("metadata") or {}
-                current_meta["close_reason"] = close_reason
-                db_client.table("pms_faults").update({"metadata": current_meta}).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
-            except Exception as meta_err:
-                logger.warning(f"[close_fault] Failed to write close_reason to metadata: {meta_err}")
-
         try:
             ev = build_ledger_event(
                 yacht_id=yacht_id,
@@ -398,17 +531,43 @@ async def close_fault(
                 entity_id=fault_id,
                 action="close_fault",
                 user_role=user_context.get("role"),
-                change_summary=f"Fault closed — status: {current_status} → closed",
+                change_summary=f"Fault closed — status: {current_status} → closed. Reason: {close_reason or 'not specified'}",
                 entity_name=entity_name,
                 previous_state={"status": current_status},
                 new_state={"status": "closed", "close_reason": close_reason},
             )
             db_client.table("ledger_events").insert(ev).execute()
         except Exception as ledger_err:
-            if "204" in str(ledger_err):
-                pass
-            else:
-                logger.warning(f"[Ledger] Failed: {ledger_err}")
+            if "204" not in str(ledger_err):
+                logger.warning(f"[Ledger] close_fault failed: {ledger_err}")
+
+        # Data continuity: if this close reason implies unfinished business, chase the crew
+        if close_reason in _FOLLOW_UP_CLOSE_REASONS:
+            _ledger_follow_up(
+                db_client, yacht_id, user_id, user_context.get("role"),
+                fault_id, entity_name, "close_fault", close_reason,
+            )
+
+        # Notify reporter that the fault was closed
+        _notify_user(
+            db_client, yacht_id, reported_by, user_id,
+            notification_type="fault_closed",
+            title=f"Fault closed: {entity_name}",
+            body=f"Reason: {close_reason or 'not specified'}.",
+            entity_id=fault_id,
+        )
+
+        # Machinery out of service: HODs need to know immediately
+        if close_reason == "machinery_out_of_service":
+            _notify_hods(
+                db_client, yacht_id, user_id,
+                notification_type="fault_machinery_oos",
+                title=f"Machinery out of service: {entity_name}",
+                body="Fault closed with machinery OOS. Schedule return to service.",
+                entity_id=fault_id,
+                priority="high",
+            )
+
         return {"status": "success", "message": "Fault closed"}
     return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close fault"}
 
@@ -928,6 +1087,13 @@ async def archive_fault(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record archive_fault: {ledger_err}")
+        _notify_hods(
+            db_client, yacht_id, user_id,
+            notification_type="fault_archived",
+            title=f"Fault archived: {entity_name}",
+            body=f"Reason: {reason or 'not specified'}. Review if action is still required.",
+            entity_id=fault_id,
+        )
         return {"status": "success", "fault_id": fault_id, "message": "Fault archived"}
     return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to archive fault"}
 

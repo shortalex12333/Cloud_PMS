@@ -76,6 +76,14 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("fault", "reopen_fault"):          {"fault_id": "id"},
     ("fault", "mark_fault_false_alarm"): {"fault_id": "id"},
     ("fault", "update_fault"):          {"fault_id": "id"},
+    # FIX 2026-04-26 (FAULT05 Issue 7): these entries were missing — every click 400'd
+    # because required fields (equipment_id / entity_id / fault_id) were never injected
+    # from the fault entity context. Same cohort pattern as CERT04/WORKORDER05/EQUIPMENT05.
+    ("fault", "view_fault_history"):    {"fault_id": "id", "equipment_id": "equipment_id"},
+    ("fault", "suggest_parts"):         {"fault_id": "id"},
+    ("fault", "archive_fault"):         {"entity_id": "id", "fault_id": "id"},
+    ("fault", "link_parts_to_fault"):   {"fault_id": "id"},
+    ("fault", "unlink_part_from_fault"):{"fault_id": "id"},
 
     # ── Work Order ────────────────────────────────────────────────────────────
     # FIX 2026-04-23 Issue 6: the short aliases below (add_wo_*) never matched

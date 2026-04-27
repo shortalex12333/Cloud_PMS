@@ -593,7 +593,7 @@ _FAULT_ACTIONS = frozenset({
     "reopen_fault", "create_work_order_from_fault",
     "add_fault_photo",
     "add_fault_note", "report_fault", "classify_fault",
-    "investigate_fault", "archive_fault", "delete_fault",
+    "investigate_fault", "archive_fault",
     "link_parts_to_fault", "unlink_part_from_fault",
 })
 
