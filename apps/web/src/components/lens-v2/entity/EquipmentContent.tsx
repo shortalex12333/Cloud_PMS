@@ -275,9 +275,9 @@ export function EquipmentContent() {
   const primaryDisabled = createWOAction?.disabled ?? false;
   const primaryDisabledReason = createWOAction?.disabled_reason;
 
-  const handlePrimary = React.useCallback(async () => {
-    await executeAction('create_work_order_for_equipment', { type: 'corrective', priority: 'routine' });
-  }, [executeAction]);
+  function handlePrimary() {
+    if (createWOAction) openActionPopup(createWOAction);
+  }
 
   // PR-EQ-5: File Warranty Claim is a navigation stub — CEO brief marks it
   // PARAMOUNT and wants router.push rather than invoking the backend action
