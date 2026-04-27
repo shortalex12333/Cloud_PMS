@@ -280,8 +280,8 @@ export function AppShell({ children }: AppShellProps) {
     [queryClient]
   );
 
-  // hours-of-rest has its own role-aware header — no Subbar needed
-  const SUBBAR_EXCLUDED: DomainId[] = ['surface', 'hours-of-rest'];
+  // hours-of-rest and email have their own internal headers — no Subbar needed
+  const SUBBAR_EXCLUDED: DomainId[] = ['surface', 'hours-of-rest', 'email'];
   const showSubbar = !SUBBAR_EXCLUDED.includes(activeDomain);
 
   return (
