@@ -740,7 +740,7 @@ export function FaultContent() {
           onClose={() => setUploadOpen(false)}
           entityType="fault"
           entityId={(entity?.id as string | undefined) ?? ''}
-          bucket="pms-fault-photos"
+          bucket="pms-discrepancy-photos"
           category="fault_photo"
           yachtId={user.yachtId}
           userId={user.id}
