@@ -495,6 +495,13 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to register Shopping List PDF route: {e}")
 
+try:
+    from routes.purchase_order_pdf_route import router as purchase_order_pdf_router
+    app.include_router(purchase_order_pdf_router)
+    logger.info("✅ Purchase Order PDF route registered at /v1/purchase-order/{id}/pdf")
+except Exception as e:
+    logger.error(f"❌ Failed to register Purchase Order PDF route: {e}")
+
 # ============================================================================
 # ENTITY LENS ROUTES (certificate, document, hours_of_rest, shopping_list,
 #                     warranty, handover_export, purchase_order)

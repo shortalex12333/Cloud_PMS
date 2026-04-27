@@ -400,8 +400,10 @@ async def add_item_to_purchase(
         raise HTTPException(status_code=404, detail="Purchase order not found")
     po_status = (current.data.get("status") or "").lower()
     if po_status not in ("", "draft"):
-        return {"status": "error", "error_code": "INVALID_STATE",
-                "message": f"Cannot add items to a PO with status '{po_status}'"}
+        raise HTTPException(status_code=422, detail={
+            "status": "error", "error_code": "INVALID_STATE",
+            "message": f"Cannot add items to a PO in '{po_status}' status — only draft POs can be edited.",
+        })
 
     description = (payload.get("description") or payload.get("name")
                    or payload.get("part_name") or "").strip()
@@ -715,6 +717,63 @@ async def add_tracking_details(
 
 
 # ============================================================================
+# update_supplier_on_po — change the linked supplier on a draft/approved PO
+# ============================================================================
+async def update_supplier_on_po(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    if user_context.get("role", "") not in _HOD_ROLES:
+        raise HTTPException(status_code=403, detail={
+            "status": "error", "error_code": "FORBIDDEN",
+            "message": f"Role '{user_context.get('role', '')}' cannot update supplier",
+        })
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
+    if not po_id:
+        raise HTTPException(status_code=400, detail="purchase_order_id is required")
+    supplier_id = (payload.get("supplier_id") or "").strip() or None
+    supplier_name = (payload.get("supplier_name") or "").strip() or None
+    if not supplier_id and not supplier_name:
+        raise HTTPException(status_code=400, detail="supplier_id or supplier_name is required")
+
+    po = db_client.table("pms_purchase_orders").select("id, status").eq(
+        "id", po_id).eq("yacht_id", yacht_id).is_("deleted_at", "null").maybe_single().execute()
+    if not po or not po.data:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    po_status = (po.data.get("status") or "").lower()
+    if po_status in ("received", "cancelled"):
+        raise HTTPException(status_code=422, detail={
+            "status": "error", "error_code": "INVALID_STATE",
+            "message": f"Cannot change supplier on a PO in '{po_status}' status.",
+        })
+
+    update: dict = {"updated_at": datetime.utcnow().isoformat()}
+    if supplier_id:
+        update["supplier_id"] = supplier_id
+    if supplier_name:
+        update["supplier_name"] = supplier_name
+
+    db_client.table("pms_purchase_orders").update(update).eq("id", po_id).eq("yacht_id", yacht_id).execute()
+
+    try:
+        from routes.handlers.ledger_utils import build_ledger_event
+        db_client.table("pms_ledger_events").insert(build_ledger_event(
+            yacht_id=yacht_id, user_id=user_id,
+            entity_type="purchase_order", entity_id=po_id, action="update_supplier_on_po",
+            description=f"Supplier updated to '{supplier_name or supplier_id}'",
+            metadata={"supplier_id": supplier_id, "supplier_name": supplier_name},
+        )).execute()
+    except Exception as ledger_err:
+        logger.warning(f"[Ledger] Failed to record update_supplier_on_po: {ledger_err}")
+
+    return {"status": "success", "purchase_order_id": po_id, "supplier_id": supplier_id, "supplier_name": supplier_name}
+
+
+# ============================================================================
 # upload_invoice — attach an invoice document to a PO (Issue #14, 2026-04-23)
 #
 # Frontend uploads the file to the "pms-finance-documents" bucket first
@@ -806,6 +865,7 @@ HANDLERS: dict = {
     "create_purchase_order": create_purchase_order,
     "deny_po_line_item": deny_po_line_item,
     "add_tracking_details": add_tracking_details,
+    "update_supplier_on_po": update_supplier_on_po,
     # Frontend-facing aliases (match action IDs used by PurchaseOrderContent.tsx)
     "submit_po": submit_purchase_order,
     "approve_po": approve_purchase_order,
