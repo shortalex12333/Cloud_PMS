@@ -26,6 +26,7 @@ import { LensTabBar, type LensTab } from '../LensTabBar';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
 import { useAuth } from '@/hooks/useAuth';
 import { API_BASE } from '@/lib/apiBase';
 
@@ -93,6 +94,11 @@ export function WorkOrderContent() {
   const [addNoteOpen, setAddNoteOpen] = React.useState(false);
   const [addPartOpen, setAddPartOpen] = React.useState(false);
   const [assignOpen, setAssignOpen] = React.useState(false);
+  const [checklistModalOpen, setChecklistModalOpen] = React.useState(false);
+  const [checklistCategory, setChecklistCategory] = React.useState<'general' | 'safety'>('general');
+  const [sopModalOpen, setSopModalOpen] = React.useState(false);
+  const [archiveModalOpen, setArchiveModalOpen] = React.useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
 
   // Toast feedback for generic dropdown actions
   const [actionFeedback, setActionFeedback] = React.useState<{ msg: string; ok: boolean } | null>(null);
@@ -292,6 +298,7 @@ export function WorkOrderContent() {
     add_wo_part:             () => setAddPartOpen(true),
     assign_work_order:       () => setAssignOpen(true),
     reassign_work_order:     () => setAssignOpen(true),
+    archive_work_order:      () => setArchiveModalOpen(true),
   };
   const DANGER_ACTIONS = new Set(['archive_work_order', 'cancel_work_order', 'delete_work_order']);
 
@@ -445,47 +452,20 @@ export function WorkOrderContent() {
     [executeAction]
   );
 
-  // ── PR-WO-4 Safety tab callbacks ──
-  // MVP: use native browser prompt() for title/text capture. Replace with a
-  // tokenised modal in PR-WO-4b once the pattern from AddNoteModal is
-  // extracted into a generic AddEntityModal.
-  const handleAddSafetyCheckpoint = React.useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    const title = window.prompt('New safety checkpoint (e.g. "Lock out breaker 17B")');
-    if (!title || !title.trim()) return;
-    const description = window.prompt('Optional guidance / instructions') ?? undefined;
-    await executeAction('add_checklist_item', {
-      title: title.trim(),
-      description: description || undefined,
-      category: 'safety',
-      is_required: true,
-    });
-  }, [executeAction]);
+  // ── PR-WO-4b Safety tab callbacks ──
+  const handleAddSafetyCheckpoint = React.useCallback(() => {
+    setChecklistCategory('safety');
+    setChecklistModalOpen(true);
+  }, []);
 
-  const handleAddGeneralCheckpoint = React.useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    const title = window.prompt('New checklist item');
-    if (!title || !title.trim()) return;
-    const description = window.prompt('Optional guidance') ?? undefined;
-    await executeAction('add_checklist_item', {
-      title: title.trim(),
-      description: description || undefined,
-      category: 'general',
-      is_required: true,
-    });
-  }, [executeAction]);
+  const handleAddGeneralCheckpoint = React.useCallback(() => {
+    setChecklistCategory('general');
+    setChecklistModalOpen(true);
+  }, []);
 
-  const handleEditSOP = React.useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    const current = sopText ?? '';
-    const next = window.prompt(
-      'Standard Operating Procedure (free text). Leave blank to keep existing.',
-      current,
-    );
-    // prompt() returns null on cancel; empty string means user cleared — honour it.
-    if (next === null) return;
-    await executeAction('upsert_sop', { sop_text: next });
-  }, [executeAction, sopText]);
+  const handleEditSOP = React.useCallback(() => {
+    setSopModalOpen(true);
+  }, []);
 
   const handleAddNote = React.useCallback(
     () => setAddNoteOpen(true),
@@ -580,7 +560,7 @@ export function WorkOrderContent() {
         return (
           <AttachmentsSection
             attachments={attachmentItems}
-            onAddFile={() => {/* wired in PR-WO-4 with the photo+comment flow */}}
+            onAddFile={() => setUploadModalOpen(true)}
             canAddFile
           />
         );
@@ -687,6 +667,52 @@ export function WorkOrderContent() {
           setAssignOpen(false);
         }}
       />
+      <AddChecklistItemModal
+        open={checklistModalOpen}
+        category={checklistCategory}
+        onClose={() => setChecklistModalOpen(false)}
+        onSubmit={async (itemTitle, itemDescription) => {
+          await runAction('add_checklist_item', {
+            title: itemTitle,
+            description: itemDescription || undefined,
+            category: checklistCategory,
+            is_required: true,
+          });
+          setChecklistModalOpen(false);
+        }}
+      />
+      <EditSOPModal
+        open={sopModalOpen}
+        current={sopText ?? ''}
+        onClose={() => setSopModalOpen(false)}
+        onSubmit={async (text) => {
+          await runAction('upsert_sop', { sop_text: text });
+          setSopModalOpen(false);
+        }}
+      />
+      <ArchiveWorkOrderModal
+        open={archiveModalOpen}
+        onClose={() => setArchiveModalOpen(false)}
+        onSubmit={async (reason, signature) => {
+          await runAction('archive_work_order', { deletion_reason: reason, signature });
+          setArchiveModalOpen(false);
+        }}
+      />
+      {wo_id && yacht_id && session?.user?.id && (
+        <AttachmentUploadModal
+          open={uploadModalOpen}
+          onClose={() => setUploadModalOpen(false)}
+          onComplete={() => setUploadModalOpen(false)}
+          title="Upload Photo / Document"
+          description="Attach a file to this work order."
+          entityType="work_order"
+          entityId={wo_id}
+          bucket="pms-work-order-photos"
+          category="photo"
+          yachtId={yacht_id}
+          userId={session.user.id}
+        />
+      )}
     </>
   );
 }
@@ -1351,6 +1377,281 @@ function AssignModal({
             }}
           >
             {submitting ? 'Assigning…' : 'Assign'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── AddChecklistItemModal ───────────────────────────────────────────────────
+
+function AddChecklistItemModal({
+  open,
+  category,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  category: 'general' | 'safety';
+  onClose: () => void;
+  onSubmit: (title: string, description: string) => Promise<void>;
+}) {
+  const [itemTitle, setItemTitle] = React.useState('');
+  const [itemDesc, setItemDesc] = React.useState('');
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) { setItemTitle(''); setItemDesc(''); setSubmitting(false); }
+  }, [open]);
+
+  if (!open) return null;
+
+  const isSafety = category === 'safety';
+  const placeholder = isSafety ? 'e.g. Lock out breaker 17B' : 'e.g. Inspect filter housing';
+
+  const handleSubmit = async () => {
+    if (!itemTitle.trim() || submitting) return;
+    setSubmitting(true);
+    try { await onSubmit(itemTitle.trim(), itemDesc.trim()); }
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 300, display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      background: 'var(--overlay-heavy)',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 420, background: 'var(--surface)',
+        border: '1px solid var(--border-faint)', borderRadius: 10,
+        padding: 24, boxShadow: 'var(--shadow-card)',
+      }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--txt)', marginBottom: 16 }}>
+          {isSafety ? 'Add Safety Checkpoint' : 'Add Checklist Item'}
+        </div>
+        <label style={{ fontSize: 13, color: 'var(--txt2)', display: 'block', marginBottom: 4 }}>
+          Title <span style={{ color: 'var(--red)' }}>*</span>
+        </label>
+        <input
+          value={itemTitle}
+          onChange={(e) => setItemTitle(e.target.value)}
+          placeholder={placeholder}
+          autoFocus
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6,
+            border: '1px solid var(--border-sub)', background: 'var(--bg)',
+            color: 'var(--txt)', fontSize: 13, marginBottom: 14,
+            fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
+          }}
+        />
+        <label style={{ fontSize: 13, color: 'var(--txt2)', display: 'block', marginBottom: 4 }}>
+          Guidance / Instructions <span style={{ color: 'var(--txt3)', fontWeight: 400 }}>(optional)</span>
+        </label>
+        <textarea
+          value={itemDesc}
+          onChange={(e) => setItemDesc(e.target.value)}
+          placeholder={isSafety ? 'Isolation steps, test-for-dead procedure…' : 'Additional guidance…'}
+          rows={3}
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6,
+            border: '1px solid var(--border-sub)', background: 'var(--bg)',
+            color: 'var(--txt)', fontSize: 13, marginBottom: 16, resize: 'vertical',
+            fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
+          }}
+        />
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={{
+            padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-sub)',
+            background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+          }}>Cancel</button>
+          <button type="button" onClick={handleSubmit} disabled={!itemTitle.trim() || submitting} style={{
+            padding: '8px 14px', borderRadius: 6, border: 'none',
+            background: itemTitle.trim() ? 'var(--mark)' : 'var(--border-faint)',
+            color: itemTitle.trim() ? 'var(--surface)' : 'var(--txt3)',
+            fontSize: 13, cursor: itemTitle.trim() ? 'pointer' : 'not-allowed',
+            fontFamily: 'var(--font-sans)', fontWeight: 500,
+          }}>
+            {submitting ? 'Adding…' : 'Add Item'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── EditSOPModal ────────────────────────────────────────────────────────────
+
+function EditSOPModal({
+  open,
+  current,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  current: string;
+  onClose: () => void;
+  onSubmit: (text: string) => Promise<void>;
+}) {
+  const [text, setText] = React.useState(current);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) { setText(current); setSubmitting(false); }
+  }, [open, current]);
+
+  if (!open) return null;
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try { await onSubmit(text); }
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 300, display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      background: 'var(--overlay-heavy)',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 520, background: 'var(--surface)',
+        border: '1px solid var(--border-faint)', borderRadius: 10,
+        padding: 24, boxShadow: 'var(--shadow-card)',
+      }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--txt)', marginBottom: 8 }}>
+          Standard Operating Procedure
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--txt3)', marginBottom: 14 }}>
+          Describe the step-by-step procedure. Leave blank to clear.
+        </div>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="1. Isolate system&#10;2. Verify de-energised&#10;3. ..."
+          rows={8}
+          autoFocus
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: 6,
+            border: '1px solid var(--border-sub)', background: 'var(--bg)',
+            color: 'var(--txt)', fontSize: 13, marginBottom: 16, resize: 'vertical',
+            fontFamily: 'var(--font-mono)', lineHeight: 1.6, boxSizing: 'border-box',
+          }}
+        />
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={{
+            padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-sub)',
+            background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+          }}>Cancel</button>
+          <button type="button" onClick={handleSubmit} disabled={submitting} style={{
+            padding: '8px 14px', borderRadius: 6, border: 'none',
+            background: 'var(--mark)', color: 'var(--surface)',
+            fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 500,
+          }}>
+            {submitting ? 'Saving…' : 'Save SOP'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ArchiveWorkOrderModal ───────────────────────────────────────────────────
+
+function ArchiveWorkOrderModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (reason: string, signature: string) => Promise<void>;
+}) {
+  const [reason, setReason] = React.useState('');
+  const [signature, setSignature] = React.useState('');
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) { setReason(''); setSignature(''); setSubmitting(false); }
+  }, [open]);
+
+  if (!open) return null;
+
+  const canSubmit = reason.trim().length > 3 && signature.trim().length > 2 && !submitting;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    try { await onSubmit(reason.trim(), signature.trim()); }
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 300, display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      background: 'var(--overlay-heavy)',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 420, background: 'var(--surface)',
+        border: '1px solid var(--red-border, var(--border-faint))', borderRadius: 10,
+        padding: 24, boxShadow: 'var(--shadow-card)',
+      }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--red)', marginBottom: 8 }}>
+          Archive Work Order
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--txt3)', marginBottom: 16 }}>
+          This action is permanent. The work order will be soft-deleted and removed
+          from active views. Type your full name to confirm.
+        </div>
+        <label style={{ fontSize: 13, color: 'var(--txt2)', display: 'block', marginBottom: 4 }}>
+          Reason for archiving <span style={{ color: 'var(--red)' }}>*</span>
+        </label>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Duplicate entry created in error"
+          rows={3}
+          autoFocus
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6,
+            border: '1px solid var(--border-sub)', background: 'var(--bg)',
+            color: 'var(--txt)', fontSize: 13, marginBottom: 14, resize: 'vertical',
+            fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
+          }}
+        />
+        <label style={{ fontSize: 13, color: 'var(--txt2)', display: 'block', marginBottom: 4 }}>
+          Your full name (signature) <span style={{ color: 'var(--red)' }}>*</span>
+        </label>
+        <input
+          value={signature}
+          onChange={(e) => setSignature(e.target.value)}
+          placeholder="Type your full name to confirm"
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6,
+            border: '1px solid var(--border-sub)', background: 'var(--bg)',
+            color: 'var(--txt)', fontSize: 13, marginBottom: 16,
+            fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
+          }}
+        />
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={{
+            padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-sub)',
+            background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+          }}>Cancel</button>
+          <button type="button" onClick={handleSubmit} disabled={!canSubmit} style={{
+            padding: '8px 14px', borderRadius: 6, border: 'none',
+            background: canSubmit ? 'var(--red)' : 'var(--border-faint)',
+            color: canSubmit ? 'white' : 'var(--txt3)',
+            fontSize: 13, cursor: canSubmit ? 'pointer' : 'not-allowed',
+            fontFamily: 'var(--font-sans)', fontWeight: 500,
+          }}>
+            {submitting ? 'Archiving…' : 'Archive'}
           </button>
         </div>
       </div>

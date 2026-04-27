@@ -1539,7 +1539,8 @@ async def get_work_order_entity(work_order_id: str, auth: dict = Depends(get_aut
         user_id = auth['user_id']
         user_role = auth.get('role', 'crew')
 
-        supabase = get_supabase_client()
+        tenant_key = auth['tenant_key_alias']
+        supabase = get_tenant_client(tenant_key)
         if not supabase:
             raise HTTPException(status_code=500, detail="Database connection unavailable")
 
