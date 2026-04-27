@@ -138,8 +138,8 @@ export function EquipmentContent() {
   );
 
   // ── Attachment upload modal (PR-EQ-4) ──
-  // FIXME: migrate to pms-equipment-photos once CEO creates that bucket.
-  // pms-work-order-photos is RLS-correct for polymorphic attachments today.
+  
+  
   const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
 
   // ── Threaded-comment state (PR-EQ-4) ──
@@ -275,9 +275,55 @@ export function EquipmentContent() {
   const primaryDisabled = createWOAction?.disabled ?? false;
   const primaryDisabledReason = createWOAction?.disabled_reason;
 
-  const handlePrimary = React.useCallback(async () => {
-    await executeAction('create_work_order_for_equipment', { type: 'corrective', priority: 'routine' });
-  }, [executeAction]);
+  const handlePrimary = React.useCallback(() => {
+    setActionPopupConfig({
+      actionId: 'create_work_order_for_equipment',
+      title: 'Create Work Order',
+      subtitle: name || undefined,
+      fields: [
+        {
+          name: 'title',
+          label: 'Title',
+          type: 'kv-edit',
+          placeholder: 'Work order title...',
+          value: name ? `${name} — ` : '',
+        },
+        {
+          name: 'type',
+          label: 'Type',
+          type: 'select',
+          options: [
+            { value: 'corrective', label: 'Corrective' },
+            { value: 'preventive', label: 'Preventive' },
+            { value: 'predictive', label: 'Predictive' },
+            { value: 'emergency', label: 'Emergency' },
+            { value: 'project', label: 'Project' },
+          ],
+          value: 'corrective',
+        },
+        {
+          name: 'priority',
+          label: 'Priority',
+          type: 'select',
+          options: [
+            { value: 'low', label: 'Low' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'high', label: 'High' },
+            { value: 'critical', label: 'Critical' },
+          ],
+          value: 'medium',
+        },
+        {
+          name: 'description',
+          label: 'Description (optional)',
+          type: 'text-area',
+          placeholder: 'Describe the work required...',
+          value: '',
+        },
+      ],
+      signatureLevel: 0,
+    });
+  }, [name]);
 
   // PR-EQ-5: File Warranty Claim is a navigation stub — CEO brief marks it
   // PARAMOUNT and wants router.push rather than invoking the backend action
@@ -777,9 +823,9 @@ export function EquipmentContent() {
         onClose={() => setUploadModalOpen(false)}
         entityType="equipment"
         entityId={entityId}
-        // FIXME: migrate to pms-equipment-photos once CEO creates that bucket.
-        // pms-work-order-photos is RLS-correct for polymorphic attachments today.
-        bucket="pms-work-order-photos"
+        
+        
+        bucket="pms-equipment-photos"
         category="equipment_photo"
         yachtId={(entity?.yacht_id as string) ?? user?.yachtId ?? ''}
         userId={user?.id ?? ''}

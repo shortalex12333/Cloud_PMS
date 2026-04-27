@@ -4483,7 +4483,6 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "add_checklist_photo": _p2_add_checklist_photo,
     "upsert_sop": _p2_upsert_sop,
     "add_document_to_handover": _p2_add_document_to_handover,
-    "add_equipment_note": _p2_add_equipment_note,
     "add_item_to_purchase": _p2_add_item_to_purchase,
     "add_predictive_insight_to_handover": _p2_add_predictive_insight_to_handover,
     "add_work_order_note": _p2_add_work_order_note,
@@ -4545,7 +4544,7 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "view_equipment_manual": _eq_view_equipment_manual,
 
     # MUTATION handlers (existing)
-    "set_equipment_status": _eq_update_equipment_status,
+    "update_equipment_status": _eq_update_equipment_status,
     "add_equipment_note": _eq_add_equipment_note,
     "attach_file_to_equipment": _eq_attach_file_to_equipment,
     "create_work_order_for_equipment": _eq_create_work_order_for_equipment,

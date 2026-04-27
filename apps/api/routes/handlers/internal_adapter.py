@@ -60,6 +60,9 @@ def _make_adapter(action_id: str) -> Callable:
             "yacht_id": yacht_id,
             "user_id": user_id,
             "user_context": user_context,
+            # role as top-level key so handlers can do params.get("role") — e.g. _cert_mutation_gate.
+            # Without this every cert mutation 400s with "Role '' cannot modify certificates".
+            "role": user_context.get("role", ""),
             **context,
             **payload,
         }
