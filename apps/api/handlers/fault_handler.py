@@ -18,7 +18,7 @@ import uuid as uuid_module
 import logging
 from fastapi import HTTPException
 from supabase import Client
-from routes.handlers.ledger_utils import build_ledger_event
+from handlers.ledger_utils import build_ledger_event
 from action_router.middleware import validate_state_transition, InvalidStateTransitionError
 
 logger = logging.getLogger(__name__)
