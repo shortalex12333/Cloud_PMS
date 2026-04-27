@@ -43,7 +43,7 @@ Compliance Warnings:
 All routes require JWT authentication and yacht isolation validation.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
@@ -636,8 +636,8 @@ async def list_crew_templates_route(
 @router.get("/templates/{template_id}")
 async def get_crew_template_route(
     template_id: str,
-    yacht_id: str,
-    auth: dict = Depends(get_authenticated_user)
+    auth: dict = Depends(get_authenticated_user),
+    yacht_id: Optional[str] = Query(None),
 ):
     """
     Get single schedule template by ID.
