@@ -164,15 +164,14 @@ export function ReceivingLinkedPO({
   currency,
 }: ReceivingLinkedPOProps) {
   const router = useRouter();
-
-  // No PO linked → don't render the section at all (per philosophy: every
-  // element earns its place — empty state would be noise).
-  if (!poId || !poNumber || poItems.length === 0) return null;
-
   const { rows, orderTotal, receivedTotal, outstanding } = React.useMemo(
     () => reconcile(poItems, receivingItems),
     [poItems, receivingItems],
   );
+
+  // No PO linked → don't render the section at all (per philosophy: every
+  // element earns its place — empty state would be noise).
+  if (!poId || !poNumber || poItems.length === 0) return null;
 
   const visitPO = () => {
     router.push(getEntityRoute('purchase-orders' as Parameters<typeof getEntityRoute>[0], poId));
