@@ -1,38 +1,16 @@
-import { supabase } from '@/lib/supabaseClient';
-import type { FetchParams, FetchResponse } from '@/features/entity-list/types';
+import { API_BASE } from '@/lib/apiBase';
 import type { Part } from './types';
 
-export async function fetchParts(params: FetchParams): Promise<FetchResponse<Part>> {
-  const { offset, limit } = params;
-
-  const { data, count, error } = await supabase
-    .from('pms_parts')
-    .select(
-      'id, name, part_number, description, category, manufacturer, quantity_on_hand, minimum_quantity, unit, location, is_critical, created_at, updated_at',
-      { count: 'exact' },
-    )
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error) {
-    throw new Error(`Failed to fetch parts: ${error.message}`);
-  }
-
-  return { data: (data ?? []) as Part[], total: count ?? 0 };
-}
-
-export async function fetchPart(id: string, _token: string): Promise<Part> {
-  const { data, error } = await supabase
-    .from('pms_parts')
-    .select(
-      'id, name, part_number, description, category, manufacturer, quantity_on_hand, minimum_quantity, unit, location, is_critical, created_at, updated_at',
-    )
-    .eq('id', id)
-    .single();
-
-  if (error || !data) {
-    throw new Error(`Part ${id} not found`);
-  }
-
-  return data as Part;
+export async function fetchPart(id: string, token: string): Promise<Part> {
+  const res = await fetch(`${API_BASE}/v1/entity/part/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Part ${id} not found`);
+  const raw = await res.json();
+  return {
+    ...raw,
+    quantity_on_hand: raw.stock_quantity ?? raw.quantity_on_hand ?? 0,
+    minimum_quantity: raw.min_stock_level ?? raw.minimum_quantity ?? null,
+    unit_of_measure: raw.unit_of_measure ?? raw.unit ?? null,
+  } as Part;
 }
