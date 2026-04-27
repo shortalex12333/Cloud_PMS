@@ -17,6 +17,17 @@
  *   which surfaces loudly in dev instead of silently 404ing.
  *   If you have a `handover_item` row and want its URL, read
  *   `handover_items.entity_url` directly; don't call this helper for it.
+ *
+ * Shopping list entity type map (2026-04-27, SHOPPING05):
+ *   Three distinct entity types for the shopping domain:
+ *   - `shopping_list`      → pms_shopping_lists (V2 list documents) — routes to /shopping-list/{id} ✓
+ *   - `shopping_item`      → pms_shopping_list_items (old pre-V2 items via part_handlers, entity_type='shopping_item')
+ *                            Routes to /shopping-list/{item_id} which gracefully 404s on the V2 doc page
+ *                            (shows "Not found" + "← Back to lists"). These items are orphaned by the V2
+ *                            architecture change and have no standalone page.
+ *   - `shopping_list_item` → pms_shopping_list_items (new V2 line items via shopping_list_handlers)
+ *                            Same graceful 404 behaviour. The correct URL requires the parent list ID,
+ *                            which is not available here without a DB join.
  */
 
 export type EntityRouteType =
@@ -26,6 +37,8 @@ export type EntityRouteType =
   | 'part'
   | 'email'
   | 'shopping_list'
+  | 'shopping_item'
+  | 'shopping_list_item'
   | 'receiving'
   | 'document'
   | 'certificate'
@@ -34,7 +47,6 @@ export type EntityRouteType =
   | 'hours_of_rest'
   | 'hours_of_rest_signoff'
   | 'manual'
-  | 'shopping_item'
   | 'inventory'
   | 'handover_item'   // intentionally has NO routeMap entry — see header
   | 'handover_export';
@@ -65,6 +77,7 @@ export function getEntityRoute(
     hours_of_rest_signoff: '/hours-of-rest/signoffs',
     manual: '/documents',
     shopping_item: '/shopping-list',
+    shopping_list_item: '/shopping-list',
     inventory: '/inventory',
     // handover_item intentionally absent — see file header comment.
     handover_export: '/handover-export',
