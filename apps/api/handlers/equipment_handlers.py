@@ -797,7 +797,7 @@ def _add_equipment_note_adapter(handlers: EquipmentHandlers):
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         equipment_id = params["equipment_id"]
-        text = params["text"]
+        text = params.get("note_text") or params.get("text")
         note_type = params.get("note_type", "observation")
         requires_ack = params.get("requires_ack", False)
 

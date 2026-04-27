@@ -115,6 +115,17 @@ _EQUIPMENT_HIDDEN_ACTIONS = {
     "view_equipment_history",
     "view_equipment",
     "view_maintenance_history",
+    # Read-only data fetches — tabs already show this data; result was never rendered.
+    "get_open_faults_for_equipment",
+    "get_related_entities_for_equipment",
+    # Create action belongs on the list page, not an existing entity lens.
+    "create_equipment",
+    # Redundant — no downstream consequence; use a fault or WO instead.
+    "flag_equipment_attention",
+    # Dead action — Photos tab handles upload+comment via its own flow.
+    "attach_image_with_comment",
+    # Generic linker — no clear equipment-specific use case.
+    "add_entity_link",
 }
 
 
@@ -435,5 +446,16 @@ def _apply_state_gate(
             return True, f"Certificate is {status} — no further mutations allowed"
         if status == "suspended" and action_id in _CERT_SUSPENDED_DISABLED:
             return True, "Certificate is already suspended"
+
+    elif entity_type == "equipment":
+        if status == "archived" and action_id in {
+            "archive_equipment", "decommission_equipment",
+            "update_equipment_status", "record_equipment_hours",
+        }:
+            return True, "Equipment is archived — restore it before making changes"
+        if status == "decommissioned" and action_id != "restore_archived_equipment":
+            return True, "Equipment is decommissioned"
+        if status != "archived" and action_id == "restore_archived_equipment":
+            return True, "Equipment is not archived"
 
     return False, None
