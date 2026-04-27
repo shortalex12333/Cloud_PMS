@@ -500,12 +500,13 @@ async def list_exports(
 
         select_cols = (
             "id, draft_id, yacht_id, export_type, exported_at, exported_by_user_id, "
-            "document_hash, export_status, file_name, "
+            "document_hash, export_status, file_name, file_size_bytes, "
             "department, shift_date, "
             "outgoing_user_id, outgoing_role, outgoing_signed_at, "
             "incoming_user_id, incoming_role, incoming_signed_at, "
             "hod_signature, hod_signed_at, "
             "user_signed_at, review_status, signoff_complete, "
+            "edited_content, "
             "original_storage_url, signed_storage_url"
         )
 
@@ -549,19 +550,42 @@ async def list_exports(
             except Exception as perr:
                 logger.warning("list_exports: failed to resolve user names: %s", perr)
 
+        # Resolve vessel name from yacht_registry (single lookup, all rows share yacht_id).
+        vessel_name: str | None = None
+        try:
+            vessel_row = db.table("yacht_registry").select("name").eq(
+                "id", yacht_id
+            ).maybe_single().execute()
+            if vessel_row.data:
+                vessel_name = vessel_row.data.get("name")
+        except Exception as verr:
+            logger.warning("list_exports: failed to resolve vessel name: %s", verr)
+
         exports = []
         for r in rows:
+            # Compute item count from edited_content JSONB without a second DB round-trip.
+            item_count: int | None = None
+            try:
+                ec = r.get("edited_content") or {}
+                sections = ec.get("sections") if isinstance(ec, dict) else []
+                if isinstance(sections, list):
+                    item_count = sum(len(s.get("items") or []) for s in sections if isinstance(s, dict))
+            except Exception:
+                pass
             exports.append({
                 "id": r.get("id"),
                 "draft_id": r.get("draft_id"),
                 "yacht_id": r.get("yacht_id"),
+                "vessel_name": vessel_name,
                 "exported_at": r.get("exported_at"),
                 "department": r.get("department"),
                 "shift_date": r.get("shift_date"),
                 "export_type": r.get("export_type"),
                 "export_status": r.get("export_status"),
                 "file_name": r.get("file_name"),
+                "file_size_bytes": r.get("file_size_bytes"),
                 "document_hash": r.get("document_hash"),
+                "item_count": item_count,
                 "outgoing_user_id": r.get("outgoing_user_id"),
                 "outgoing_user_name": name_map.get(r.get("outgoing_user_id") or "", None),
                 "outgoing_role": r.get("outgoing_role"),
