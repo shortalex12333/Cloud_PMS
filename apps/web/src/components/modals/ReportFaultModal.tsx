@@ -16,7 +16,7 @@
 
 import * as React from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useActiveVessel } from '@/hooks/useActiveVessel';
+import { useActiveVessel } from '@/contexts/VesselContext';
 import { API_BASE } from '@/lib/apiBase';
 import {
   AlertTriangle, X, Camera, Paperclip, ChevronDown,
