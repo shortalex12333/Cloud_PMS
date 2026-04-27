@@ -26,9 +26,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from middleware.auth import get_authenticated_user
 from integrations.supabase import get_tenant_client
-from handlers.hours_of_rest_handlers import _filter_qualifying_periods, _compute_max_gap_hours, _complement, _period_hours
+from handlers.hours_of_rest_handlers import filter_qualifying_periods, compute_max_gap_hours, complement, period_hours
 
 logger = logging.getLogger(__name__)
+
+MLC_WEEKLY_MIN_REST_HOURS = 77.0  # MLC 2006 Art. VIII Std. A2.3 para 5(b)
 
 router = APIRouter(prefix="/v1/hours-of-rest", tags=["hor-compliance"])
 
@@ -183,7 +185,7 @@ async def get_my_week(
         if rolling_7day is not None:
             if days_submitted_this_week < 7:
                 mlc_status = None  # "in progress" — verdict deferred
-            elif rolling_7day >= 77.0:
+            elif rolling_7day >= MLC_WEEKLY_MIN_REST_HOURS:
                 mlc_status = "COMPLIANT"
             else:
                 mlc_status = "NON-COMPLIANT"
@@ -281,7 +283,7 @@ async def get_my_week(
             compliant_days = sum(1 for r in week_recs if r.get("is_daily_compliant") is True)
             is_compliant = (
                 compliant_days == days_filed and days_filed > 0
-                and total_rest >= 77  # MLC 2006: 77h/week minimum
+                and total_rest >= MLC_WEEKLY_MIN_REST_HOURS
             ) if days_filed > 0 else None
 
             # Build human label: "Apr 7 – Apr 13"
@@ -1032,20 +1034,20 @@ async def preview_schedule_compliance(
             })
 
         # Derive rest periods as 24h complement of work periods
-        rest_periods = _complement(work_periods_raw)
+        rest_periods = complement(work_periods_raw)
 
         # Filter sub-1h periods per MLC 1-hour threshold
-        qualifying_rest = _filter_qualifying_periods(rest_periods)
+        qualifying_rest = filter_qualifying_periods(rest_periods)
 
         # Compute totals from qualifying periods only
-        total_rest = sum(_period_hours(p) for p in qualifying_rest)
-        total_work = sum(_period_hours(p) for p in work_periods_raw) if work_periods_raw else 24.0
+        total_rest = sum(period_hours(p) for p in qualifying_rest)
+        total_work = sum(period_hours(p) for p in work_periods_raw) if work_periods_raw else 24.0
         total_rest = min(total_rest, 24.0)
 
         # Compliance flags
         rest_period_count = len(qualifying_rest)
-        longest_rest = max((_period_hours(p) for p in qualifying_rest), default=0.0)
-        max_gap = _compute_max_gap_hours(qualifying_rest)
+        longest_rest = max((period_hours(p) for p in qualifying_rest), default=0.0)
+        max_gap = compute_max_gap_hours(qualifying_rest)
 
         is_daily_compliant = (
             total_rest >= 10.0
@@ -1089,7 +1091,7 @@ async def preview_schedule_compliance(
         "days":         days_out,
         "weekly_summary": {
             "total_rest_hours":   round(total_week_rest, 2),
-            "is_weekly_compliant": total_week_rest >= 77.0,
+            "is_weekly_compliant": total_week_rest >= MLC_WEEKLY_MIN_REST_HOURS,
             "days_compliant":     days_compliant,
             "days_submitted":     len(days_out),
         },

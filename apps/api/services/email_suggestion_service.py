@@ -14,6 +14,7 @@ import re
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+from services.email_graph_helpers import utcnow
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -438,7 +439,7 @@ class EmailSuggestionService:
             'object_id': suggestion.object_id,
             'confidence': suggestion.confidence,
             'suggested_reason': suggestion.reason,
-            'suggested_at': datetime.utcnow().isoformat(),
+            'suggested_at': utcnow(),
             'is_active': True,
         }).execute()
 

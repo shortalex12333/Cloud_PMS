@@ -124,7 +124,6 @@ async def open_document(params: Dict[str, Any]) -> Dict[str, Any]:
 
 HANDLERS: Dict[str, Any] = {
     "add_note": add_note,
-    "add_certificate_note": add_note,
     "add_document_note": add_note,
     "add_part_note": add_note,
     "add_po_note": add_note,

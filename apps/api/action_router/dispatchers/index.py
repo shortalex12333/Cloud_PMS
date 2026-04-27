@@ -17,7 +17,6 @@ from .document import HANDLERS as _document
 from .warranty import HANDLERS as _warranty
 from .parts import HANDLERS as _parts
 from .receiving import HANDLERS as _receiving
-from .shopping import HANDLERS as _shopping
 from .p3 import HANDLERS as _p3
 from .p1_p2 import HANDLERS as _p1_p2
 
@@ -33,7 +32,6 @@ for _domain in (
     _warranty,
     _parts,
     _receiving,
-    _shopping,
     _equipment,  # last — wins any overlapping read-aliases (view_equipment_parts, view_linked_faults)
 ):
     _merged.update(_domain)

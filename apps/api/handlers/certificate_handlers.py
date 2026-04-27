@@ -745,35 +745,7 @@ class CertificateHandlers:
         return actions
 
 
-def get_certificate_handlers(supabase_client) -> Dict[str, callable]:
-    """Get certificate handler functions for registration."""
-    handlers = CertificateHandlers(supabase_client)
-
-    _suspend = _change_certificate_status_adapter("suspended")(handlers)
-    _revoke = _change_certificate_status_adapter("revoked")(handlers)
-
-    return {
-        # READ handlers
-        "list_vessel_certificates": handlers.list_vessel_certificates,
-        "list_crew_certificates": handlers.list_crew_certificates,
-        "get_certificate_details": handlers.get_certificate_details,
-        "view_certificate_history": handlers.view_certificate_history,
-        "find_expiring_certificates": handlers.find_expiring_certificates,
-
-        # MUTATION handlers
-        "create_vessel_certificate": _create_vessel_certificate_adapter(handlers),
-        "create_crew_certificate": _create_crew_certificate_adapter(handlers),
-        "update_certificate": _update_certificate_adapter(handlers),
-        "link_document_to_certificate": _link_document_to_certificate_adapter(handlers),
-        "supersede_certificate": _supersede_certificate_adapter(handlers),
-        "renew_certificate": _renew_certificate_adapter(handlers),
-        "suspend_certificate": _suspend,
-        "revoke_certificate": _revoke,
-        "archive_certificate": _archive_certificate_adapter(handlers),
-        "assign_certificate": _assign_certificate_adapter(handlers),
-        "link_equipment_to_certificate": _link_equipment_to_certificate_adapter(handlers),
-        "unlink_equipment_from_certificate": _unlink_equipment_from_certificate_adapter(handlers),
-    }
+# get_certificate_handlers() removed — all callers now use CERT_HANDLERS directly.
 
 
 # =============================================================================

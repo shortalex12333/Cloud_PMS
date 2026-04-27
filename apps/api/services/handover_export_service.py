@@ -861,7 +861,7 @@ def create_export_ready_ledger_event(
 
     # 2. Ledger event (user notification) — uses build_ledger_event for proof_hash
     try:
-        from routes.handlers.ledger_utils import build_ledger_event
+        from handlers.ledger_utils import build_ledger_event
         ledger_event = build_ledger_event(
             yacht_id=yacht_id,
             user_id=user_id,

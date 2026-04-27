@@ -12,13 +12,13 @@ from handlers.handover_handlers import HANDLERS as HAND_HANDLERS
 from handlers.purchase_order_phase4 import HANDLERS as PO_HANDLERS
 from handlers.receiving_handlers import HANDLERS as RECV_HANDLERS
 from handlers.certificate_handlers import CERT_HANDLERS
-from .document_handler import HANDLERS as DOC_HANDLERS
+from handlers.document_handler import HANDLERS as DOC_HANDLERS
 from handlers.shopping_list_handlers import HANDLERS as SHOP_HANDLERS
-from .pm_handler import HANDLERS as PM_HANDLERS
+from handlers.pm_handler import HANDLERS as PM_HANDLERS
 from handlers.fault_handler import HANDLERS as FAULT_HANDLERS
-from .equipment_handler import HANDLERS as EQUIP_HANDLERS
-from .parts_handler_p5 import HANDLERS as PARTS_P5_HANDLERS
-from .compliance_handler import HANDLERS as COMPLIANCE_HANDLERS
+from handlers.equipment_handler import HANDLERS as EQUIP_HANDLERS
+from handlers.parts_handler_p5 import HANDLERS as PARTS_P5_HANDLERS
+from handlers.compliance_handler import HANDLERS as COMPLIANCE_HANDLERS
 from .internal_adapter import HANDLERS as ADAPTER_HANDLERS
 
 HANDLERS: dict = {

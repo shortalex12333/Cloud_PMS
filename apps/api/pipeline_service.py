@@ -290,17 +290,6 @@ except Exception as e:
     logger.error(f"❌ Failed to register Decision Engine routes: {e}")
     logger.error("Decision Engine endpoints will not be available")
 
-# ============================================================================
-# CERTIFICATE ROUTES (Certificate Lens v2)
-# ============================================================================
-
-try:
-    from routes.certificate_routes import router as certificate_router
-    app.include_router(certificate_router, prefix="/api/v1/certificates", tags=["certificates"])
-    logger.info("✅ Certificate routes registered at /api/v1/certificates/*")
-except Exception as e:
-    logger.error(f"❌ Failed to register Certificate routes: {e}")
-    logger.error("Certificate endpoints will not be available")
 
 # ============================================================================
 # PART LENS ROUTES (Part Lens v2)

@@ -24,7 +24,7 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response
 
 from handlers.db_client import get_service_db
-from routes.handlers.ledger_utils import build_ledger_event
+from handlers.ledger_utils import build_ledger_event
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

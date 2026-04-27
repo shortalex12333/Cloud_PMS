@@ -97,11 +97,6 @@ def is_prepare_mode(params: Dict) -> bool:
     return params.get("mode") == "prepare"
 
 
-def is_execute_mode(params: Dict) -> bool:
-    """Check if action is in execute mode."""
-    return params.get("mode") == "execute"
-
-
 def generate_confirmation_token(action: str, entity_id: str) -> str:
     """Generate confirmation token for prepare/execute flow."""
     return f"tok_{action}_{entity_id}_{uuid.uuid4().hex[:12]}"
@@ -131,26 +126,21 @@ def _write_audit_log(db, payload: Dict):
     db.table("pms_audit_log").insert(audit_payload).execute()
 
 
-# ============================================================================
-# HANDLERS CLASS
-# ============================================================================
-
-class ReceivingHandlers:
-    """
-    Receiving Lens v1 handlers.
-
-    All methods return Dict in standardized action response format.
-    """
-
-    def __init__(self, supabase_client):
-        self.db = supabase_client
+def _get_db(yacht_id: str):
+    """Get service DB client. Returns (db, None) or (None, error_dict)."""
+    try:
+        from handlers.db_client import get_service_db
+        return get_service_db(yacht_id), None
+    except Exception as e:
+        logger.error(f"Failed to create database client: {e}")
+        return None, {"status": "error", "error_code": "DB_CLIENT_ERROR", "message": "Failed to create database client"}
 
 
 # ============================================================================
 # ACTION 1: create_receiving (MUTATE)
 # ============================================================================
 
-def _create_receiving_adapter(handlers: ReceivingHandlers):
+def _create_receiving_adapter():
     """
     Create new receiving record.
 
@@ -179,19 +169,9 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
                 "message": "user_id is required"
             }
 
-        # Create database client for RPC call
-        # RPC function uses SECURITY DEFINER and checks permissions internally
-        # so we use service role client (RPC does its own authorization)
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
 
         # Optional fields
         vendor_name = params.get("vendor_name")
@@ -284,7 +264,7 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
 # ACTION 2: attach_receiving_image_with_comment (MUTATE)
 # ============================================================================
 
-def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
+def _attach_receiving_image_with_comment_adapter():
     """
     Attach image or document to receiving record.
 
@@ -322,19 +302,9 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
                 "message": "document_id is required"
             }
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
         doc_type = params.get("doc_type")  # 'invoice', 'packing_slip', 'photo'
         comment = params.get("comment")
         request_context = params.get("request_context")
@@ -425,7 +395,7 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
 # ACTION 3: extract_receiving_candidates (PREPARE only - advisory)
 # ============================================================================
 
-def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
+def _extract_receiving_candidates_adapter():
     """
     Extract candidates from image/document (PREPARE only - advisory).
 
@@ -461,19 +431,9 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
         source_document_id = params.get("source_document_id")
         request_context = params.get("request_context")
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
 
         # Verify receiving exists
         try:
@@ -574,7 +534,7 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
 # ACTION 4: update_receiving_fields (MUTATE)
 # ============================================================================
 
-def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
+def _update_receiving_fields_adapter():
     """
     Update receiving header fields.
 
@@ -611,19 +571,9 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
         notes = params.get("notes")
         request_context = params.get("request_context")
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
 
         # Get current receiving
         try:
@@ -732,7 +682,7 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
 # ACTION 5: add_receiving_item (MUTATE)
 # ============================================================================
 
-def _add_receiving_item_adapter(handlers: ReceivingHandlers):
+def _add_receiving_item_adapter():
     """
     Add line item to receiving record.
 
@@ -778,19 +728,9 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
                 "message": "Either part_id or description is required"
             }
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
 
         # Verify receiving exists
         try:
@@ -892,7 +832,7 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
 # ACTION 6: adjust_receiving_item (MUTATE)
 # ============================================================================
 
-def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
+def _adjust_receiving_item_adapter():
     """
     Adjust existing receiving line item.
 
@@ -934,19 +874,9 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
                 "message": "receiving_item_id is required"
             }
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
 
         # Optional update fields
         quantity_received = params.get("quantity_received")
@@ -1052,9 +982,10 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
 
         # Q4: if a downward clamp happened, write ledger + notify HOD so the
         # override is visible and requires follow-up — not silently swallowed.
+        _hod_ledger_written = False
         if hod_override_clamp:
             try:
-                from routes.handlers.ledger_utils import build_ledger_event
+                from handlers.ledger_utils import build_ledger_event
                 ledger_row = build_ledger_event(
                     yacht_id=yacht_id,
                     user_id=user_id or "system",
@@ -1072,6 +1003,7 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
                     new_state={"requires_followup": True},
                 )
                 db.table("ledger_events").insert(ledger_row).execute()
+                _hod_ledger_written = True
             except Exception as e:
                 logger.warning(f"hod_quantity_override ledger write failed: {e}")
 
@@ -1131,6 +1063,7 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
 
         return {
             "status": "success",
+            "_ledger_written": _hod_ledger_written,
             "receiving_id": receiving_id,
             "item_id": receiving_item_id,
             "updated_fields": list(update_payload.keys()),
@@ -1143,7 +1076,7 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
 # ACTION 7: link_invoice_document (MUTATE)
 # ============================================================================
 
-def _link_invoice_document_adapter(handlers: ReceivingHandlers):
+def _link_invoice_document_adapter():
     """
     Link PDF invoice document to receiving record.
 
@@ -1186,19 +1119,9 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
         comment = params.get("comment")
         request_context = params.get("request_context")
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
 
         # Verify receiving exists
         try:
@@ -1321,7 +1244,7 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
 # ACTION 8: accept_receiving (SIGNED - prepare/execute)
 # ============================================================================
 
-def _accept_receiving_adapter(handlers: ReceivingHandlers):
+def _accept_receiving_adapter():
     """
     Accept receiving record (SIGNED action - prepare/execute).
 
@@ -1352,19 +1275,9 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
                 "message": "receiving_id is required"
             }
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
         signature = params.get("signature")
         request_context = params.get("request_context")
 
@@ -1514,7 +1427,7 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
 # ACTION 9: reject_receiving (MUTATE)
 # ============================================================================
 
-def _reject_receiving_adapter(handlers: ReceivingHandlers):
+def _reject_receiving_adapter():
     """
     Reject receiving record.
 
@@ -1543,19 +1456,9 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
                 "message": "receiving_id is required"
             }
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
         request_context = params.get("request_context")
 
         if not reason:
@@ -1632,7 +1535,7 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
 # ACTION 10: view_receiving_history (READ)
 # ============================================================================
 
-def _view_receiving_history_adapter(handlers: ReceivingHandlers):
+def _view_receiving_history_adapter():
     """
     View receiving history and details (READ).
 
@@ -1661,19 +1564,9 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
                 "message": "receiving_id is required"
             }
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {
-                "status": "error",
-                "error_code": "DB_CLIENT_ERROR",
-                "message": "Failed to create database client"
-            }
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
 
         # Get receiving record - explicitly filter by yacht_id for clarity
         # RLS also enforces yacht_id, but explicit filter reduces edge cases
@@ -1751,30 +1644,10 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
 
 
 # ============================================================================
-# EXPORTS
-# ============================================================================
-
-__all__ = [
-    "ReceivingHandlers",
-    "_create_receiving_adapter",
-    "_attach_receiving_image_with_comment_adapter",
-    "_extract_receiving_candidates_adapter",
-    "_update_receiving_fields_adapter",
-    "_add_receiving_item_adapter",
-    "_adjust_receiving_item_adapter",
-    "_link_invoice_document_adapter",
-    "_accept_receiving_adapter",
-    "_reject_receiving_adapter",
-    "_view_receiving_history_adapter",
-    "_flag_discrepancy_adapter",
-]
-
-
-# ============================================================================
 # FLAG DISCREPANCY (Receiving Lens - structured issue logging)
 # ============================================================================
 
-def _flag_discrepancy_adapter(handlers: ReceivingHandlers):
+def _flag_discrepancy_adapter():
     """
     Flag a shipment discrepancy — missing parts, breakage, partial delivery.
 
@@ -1802,12 +1675,9 @@ def _flag_discrepancy_adapter(handlers: ReceivingHandlers):
         if not description:
             return {"status": "error", "error_code": "MISSING_REQUIRED_FIELD", "message": "description is required"}
 
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return {"status": "error", "error_code": "DB_CLIENT_ERROR", "message": "Failed to create database client"}
+        db, _db_err = _get_db(yacht_id)
+        if _db_err:
+            return _db_err
 
         # Verify receiving exists + yacht isolation
         recv_check = db.table("pms_receiving").select("id, status").eq(
@@ -1825,7 +1695,7 @@ def _flag_discrepancy_adapter(handlers: ReceivingHandlers):
         # receiving_id / event_type / event_data / created_by that do NOT exist
         # on that table — every call returned PostgREST 400. See
         # docs/ongoing_work/receiving/RECEIVING_BUGFIX_LOG.md.)
-        from routes.handlers.ledger_utils import build_ledger_event
+        from handlers.ledger_utils import build_ledger_event
         event_id = str(uuid.uuid4())
 
         try:
@@ -1870,11 +1740,52 @@ def _flag_discrepancy_adapter(handlers: ReceivingHandlers):
 
         return {
             "status": "success",
+            "_ledger_written": True,
             "event_id": event_id,
             "receiving_id": receiving_id,
             "discrepancy_type": discrepancy_type,
-            "created_at": now,
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "message": f"Discrepancy ({discrepancy_type}) flagged on receiving {receiving_id}",
         }
 
     return _fn
+
+
+# ============================================================================
+# PHASE 4 DISPATCH TABLE
+# ============================================================================
+# Called by p0_actions_routes.py via routes/handlers/__init__.py.
+# Convention: handler(payload, context, yacht_id, user_id, user_context, db_client) -> dict
+# db_client not forwarded — each adapter calls get_service_db(yacht_id) directly.
+
+from handlers.receiving_email_handlers import _draft_supplier_email_adapter as _email_adapter_factory
+
+
+def _make_phase4(fn):
+    async def _wrapper(payload, context, yacht_id, user_id, user_context, db_client):
+        params = {
+            "yacht_id": yacht_id,
+            "user_id": user_id,
+            "role": user_context.get("role", ""),
+            **context,
+            **payload,
+        }
+        return await fn(**params)
+    return _wrapper
+
+
+HANDLERS: dict = {
+    "create_receiving":                    _make_phase4(_create_receiving_adapter()),
+    "attach_receiving_image_with_comment": _make_phase4(_attach_receiving_image_with_comment_adapter()),
+    "extract_receiving_candidates":        _make_phase4(_extract_receiving_candidates_adapter()),
+    "update_receiving_fields":             _make_phase4(_update_receiving_fields_adapter()),
+    "add_receiving_item":                  _make_phase4(_add_receiving_item_adapter()),
+    "adjust_receiving_item":               _make_phase4(_adjust_receiving_item_adapter()),
+    "link_invoice_document":               _make_phase4(_link_invoice_document_adapter()),
+    "accept_receiving":                    _make_phase4(_accept_receiving_adapter()),
+    "confirm_receiving":                   _make_phase4(_accept_receiving_adapter()),
+    "reject_receiving":                    _make_phase4(_reject_receiving_adapter()),
+    "view_receiving_history":              _make_phase4(_view_receiving_history_adapter()),
+    "flag_discrepancy":                    _make_phase4(_flag_discrepancy_adapter()),
+    "draft_supplier_email":                _make_phase4(_email_adapter_factory()),
+}

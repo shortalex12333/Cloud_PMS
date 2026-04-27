@@ -36,16 +36,24 @@ from actions.action_response_schema import (
     ResponseBuilder,
     AvailableAction,
 )
-from routes.handlers.ledger_utils import build_ledger_event
+from handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
+
+# MLC 2006 Article A2.3 compliance thresholds
+MLC_DAILY_MIN_REST_HOURS  = 10.0  # para 5(a): ≥ 10h rest per 24h
+MLC_WEEKLY_MIN_REST_HOURS = 77.0  # para 5(b): ≥ 77h rest per 7-day period
+
+# Role sets for compliance endpoint access control (imported by routes)
+_HOD_ROLES     = frozenset({"chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"})
+_CAPTAIN_ROLES = frozenset({"captain", "manager"})
 
 
 # =============================================================================
 # HELPERS: MLC 2006 Article A2.3 Compliance Math (module-level for unit-testing)
 # =============================================================================
 
-def _period_hours(p: dict) -> float:
+def period_hours(p: dict) -> float:
     """Return duration of a period in hours. Handles overnight periods."""
     if "hours" in p:
         try:
@@ -64,16 +72,16 @@ def _period_hours(p: dict) -> float:
         return 0.0
 
 
-def _filter_qualifying_periods(periods: list) -> list:
+def filter_qualifying_periods(periods: list) -> list:
     """MLC 2006 A2.3: rest periods under one hour do NOT count toward the total."""
     qualifying = []
     for p in periods or []:
-        if _period_hours(p) >= 1.0:
+        if period_hours(p) >= 1.0:
             qualifying.append(p)
     return qualifying
 
 
-def _compute_max_gap_hours(sorted_rest_periods: list) -> float:
+def compute_max_gap_hours(sorted_rest_periods: list) -> float:
     """
     Return the longest intra-day gap (hours) BETWEEN consecutive rest periods.
 
@@ -106,7 +114,7 @@ def _compute_max_gap_hours(sorted_rest_periods: list) -> float:
     return max_gap
 
 
-def _complement(periods: list) -> list:
+def complement(periods: list) -> list:
     """Return gaps between 00:00 and 24:00 not covered by periods."""
     if not periods:
         return [{"start": "00:00", "end": "24:00", "hours": 24.0}]
@@ -116,11 +124,11 @@ def _complement(periods: list) -> list:
         wp_start = wp.get("start", "")
         if wp_start > prev_end:
             gap = {"start": prev_end, "end": wp_start}
-            rest.append(dict(gap, hours=_period_hours(gap)))
+            rest.append(dict(gap, hours=period_hours(gap)))
         prev_end = wp.get("end", "")
     if prev_end < "24:00":
         gap = {"start": prev_end, "end": "24:00"}
-        rest.append(dict(gap, hours=_period_hours(gap)))
+        rest.append(dict(gap, hours=period_hours(gap)))
     return rest
 
 
@@ -179,7 +187,7 @@ def _check_rolling_24h_compliance(db, yacht_id: str, user_id: str, record_date: 
     timeline = [False] * (48 * 60)
 
     def _paint(day_offset_mins: int, periods):
-        for p in _filter_qualifying_periods(periods or []):
+        for p in filter_qualifying_periods(periods or []):
             try:
                 s = _hhmm_to_mins(p.get("start", "00:00"))
                 e = _hhmm_to_mins(p.get("end", "00:00"))
@@ -467,20 +475,20 @@ class HoursOfRestHandlers:
                     builder.set_error("VALIDATION_ERROR", "Work periods must not overlap")
                     return builder.build()
 
-            # Inject hours into work_periods (uses module-level _period_hours)
-            work_periods = [dict(p, hours=_period_hours(p)) for p in sorted_work]
+            # Inject hours into work_periods
+            work_periods = [dict(p, hours=period_hours(p)) for p in sorted_work]
 
             # Derive rest_periods as 24h complement of work_periods
-            rest_periods = _complement(work_periods)
+            rest_periods = complement(work_periods)
 
             total_work_hours = sum(p["hours"] for p in work_periods)
 
             # MLC 2006 A2.3: sub-1h rest periods do NOT count toward the total.
-            qualifying_rest = _filter_qualifying_periods(rest_periods)
-            total_rest_hours = round(sum(_period_hours(p) for p in qualifying_rest), 2)
+            qualifying_rest = filter_qualifying_periods(rest_periods)
+            total_rest_hours = round(sum(period_hours(p) for p in qualifying_rest), 2)
 
             # MLC 2006 A2.3: interval between consecutive rest periods must not exceed 14h.
-            max_gap_hours = _compute_max_gap_hours(rest_periods)
+            max_gap_hours = compute_max_gap_hours(rest_periods)
             violates_14h_rule = max_gap_hours > 14.0
 
             # MLC 2006 A2.3: rolling 24h window >= 10h (reads adjacent day).
@@ -490,7 +498,7 @@ class HoursOfRestHandlers:
 
             # MLC 2006 compliance checks (daily window)
             rest_period_count = len(rest_periods)
-            longest_rest_period = max((_period_hours(p) for p in rest_periods), default=0.0)
+            longest_rest_period = max((period_hours(p) for p in rest_periods), default=0.0)
 
             has_valid_rest_periods = (
                 rest_period_count <= 2 and
@@ -930,6 +938,11 @@ class HoursOfRestHandlers:
         builder = ResponseBuilder("create_monthly_signoff", entity_id, "monthly_signoff", yacht_id)
 
         try:
+            # Fleet manager is read-only for HoR across all entry points.
+            if (payload.get("user_role") or "") == "manager":
+                builder.set_error("FORBIDDEN", "Fleet manager has read-only access to hours of rest. Cannot create sign-offs.", status_code=403)
+                return builder.build()
+
             month = payload.get("month")
             department = payload.get("department")
             period_type = payload.get("period_type", "monthly")
@@ -2413,29 +2426,14 @@ class HoursOfRestHandlers:
                     )
                     return builder.build()
 
-                # Compute new totals (handle overnight periods crossing midnight)
-                def _period_hours(p: dict) -> float:
-                    if "hours" in p:
-                        return float(p["hours"])
-                    try:
-                        sh, sm = map(int, str(p["start"]).split(":"))
-                        eh, em = map(int, str(p["end"]).split(":"))
-                        start_mins = sh * 60 + sm
-                        end_mins   = eh * 60 + em
-                        if end_mins <= start_mins:
-                            end_mins += 24 * 60
-                        return round((end_mins - start_mins) / 60, 2)
-                    except Exception:
-                        return 0.0
-
                 # Inject hours into corrected periods for DB trigger
                 corrected_rest_periods = [
-                    dict(p, hours=_period_hours(p)) for p in corrected_rest_periods
+                    dict(p, hours=period_hours(p)) for p in corrected_rest_periods
                 ]
                 total_rest_hours = sum(p["hours"] for p in corrected_rest_periods)
                 total_work_hours = 24 - total_rest_hours
                 is_daily_compliant = total_rest_hours >= 10
-                longest = max((_period_hours(p) for p in corrected_rest_periods), default=0.0)
+                longest = max((period_hours(p) for p in corrected_rest_periods), default=0.0)
                 has_valid_periods = len(corrected_rest_periods) <= 2 and longest >= 6
 
                 # Insert corrected HoR row
@@ -2917,3 +2915,4 @@ class HoursOfRestHandlers:
             logger.error(f"Error fetching HoR sign chain: {e}")
             builder.set_error("DATABASE_ERROR", str(e))
             return builder.build()
+

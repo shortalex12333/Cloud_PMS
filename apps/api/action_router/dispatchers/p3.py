@@ -169,13 +169,6 @@ async def _view_compliance_status(params: Dict[str, Any]) -> Dict[str, Any]:
     return await _get_p3_handlers().view_compliance_status_execute(yacht_id=params["yacht_id"])
 
 
-async def _track_delivery(params: Dict[str, Any]) -> Dict[str, Any]:
-    return await _get_p3_handlers().track_delivery_execute(
-        purchase_order_id=params.get("purchase_order_id") or params.get("order_id") or params.get("entity_id", ""),
-        yacht_id=params["yacht_id"],
-    )
-
-
 HANDLERS: Dict[str, Any] = {
     "view_document": _view_document,
     "view_related_documents": _view_related_documents,
@@ -199,6 +192,4 @@ HANDLERS: Dict[str, Any] = {
     "export_handover": _export_handover,
     "view_smart_summary": _view_smart_summary,
     "view_compliance_status": _view_compliance_status,
-    "track_delivery": _track_delivery,
-    "track_po_delivery": _track_delivery,  # alias
 }

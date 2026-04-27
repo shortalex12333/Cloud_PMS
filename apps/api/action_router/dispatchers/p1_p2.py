@@ -4,14 +4,10 @@ from typing import Dict, Any
 import logging
 from integrations.supabase import get_supabase_client
 from handlers.p1_compliance_handlers import P1ComplianceHandlers
-from handlers.p1_purchasing_handlers import P1PurchasingHandlers
 from handlers.p2_mutation_light_handlers import P2MutationLightHandlers
-from handlers.stub_handlers import not_yet_implemented as _not_yet_implemented
-
 logger = logging.getLogger(__name__)
 
 _p1_compliance_handlers = None
-_p1_purchasing_handlers = None
 _p2_handlers = None
 
 
@@ -20,13 +16,6 @@ def _get_p1_compliance():
     if _p1_compliance_handlers is None:
         _p1_compliance_handlers = P1ComplianceHandlers(get_supabase_client())
     return _p1_compliance_handlers
-
-
-def _get_p1_purchasing():
-    global _p1_purchasing_handlers
-    if _p1_purchasing_handlers is None:
-        _p1_purchasing_handlers = P1PurchasingHandlers(get_supabase_client())
-    return _p1_purchasing_handlers
 
 
 def _get_p2():
@@ -47,44 +36,6 @@ async def _log_delivery_received(params: Dict[str, Any]) -> Dict[str, Any]:
         received_by=params.get("received_by") or params.get("user_id"),
         received_items=params.get("received_items"),
         notes=params.get("notes"),
-    )
-
-
-# ============================================================================
-# P1 Purchasing
-# ============================================================================
-
-async def _create_purchase_request(params: Dict[str, Any]) -> Dict[str, Any]:
-    return await _get_p1_purchasing().create_purchase_request_execute(
-        yacht_id=params["yacht_id"],
-        user_id=params.get("user_id"),
-        items=params.get("items", []),
-        supplier_id=params.get("supplier_id"),
-        notes=params.get("notes"),
-        priority=params.get("priority", "normal"),
-    )
-
-
-async def _order_part(params: Dict[str, Any]) -> Dict[str, Any]:
-    purchase_order_id = params.get("purchase_order_id")
-    if not purchase_order_id:
-        return await _not_yet_implemented(params)
-    return await _get_p1_purchasing().order_part_execute(
-        purchase_order_id=purchase_order_id,
-        part_id=params.get("part_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        user_id=params.get("user_id"),
-        quantity=params.get("quantity", 1),
-        notes=params.get("notes"),
-    )
-
-
-async def _approve_purchase(params: Dict[str, Any]) -> Dict[str, Any]:
-    return await _get_p1_purchasing().approve_purchase_execute(
-        purchase_order_id=params.get("purchase_order_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        user_id=params.get("user_id"),
-        approval_notes=params.get("approval_notes"),
     )
 
 
@@ -146,26 +97,6 @@ async def _p2_add_document_to_handover(params: Dict[str, Any]) -> Dict[str, Any]
     )
 
 
-async def _p2_add_equipment_note(params: Dict[str, Any]) -> Dict[str, Any]:
-    return await _get_p2().add_equipment_note_execute(
-        equipment_id=params.get("equipment_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        user_id=params.get("user_id"),
-        note_text=params.get("note_text") or params.get("note"),
-    )
-
-
-async def _p2_add_item_to_purchase(params: Dict[str, Any]) -> Dict[str, Any]:
-    return await _get_p2().add_item_to_purchase_execute(
-        purchase_order_id=params.get("purchase_order_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        user_id=params.get("user_id"),
-        part_id=params.get("part_id"),
-        quantity=params.get("quantity", 1),
-        unit_price=params.get("unit_price"),
-    )
-
-
 async def _p2_add_predictive_insight_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     return await _get_p2().add_predictive_insight_to_handover_execute(
         handover_id=params.get("handover_id") or params.get("entity_id"),
@@ -222,32 +153,12 @@ async def _p2_tag_for_survey(params: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-async def _p2_update_purchase_status(params: Dict[str, Any]) -> Dict[str, Any]:
-    return await _get_p2().update_purchase_status_execute(
-        purchase_order_id=params.get("purchase_order_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        user_id=params.get("user_id"),
-        new_status=params.get("new_status") or params.get("status"),
-    )
-
-
 async def _p2_update_worklist_progress(params: Dict[str, Any]) -> Dict[str, Any]:
     return await _get_p2().update_worklist_progress_execute(
         task_id=params.get("task_id") or params.get("entity_id"),
         yacht_id=params["yacht_id"],
         user_id=params.get("user_id"),
         progress_percent=params.get("progress_percent") or params.get("progress"),
-    )
-
-
-async def _p2_upload_invoice(params: Dict[str, Any]) -> Dict[str, Any]:
-    return await _get_p2().upload_invoice_execute(
-        purchase_order_id=params.get("purchase_order_id") or params.get("entity_id"),
-        yacht_id=params["yacht_id"],
-        user_id=params.get("user_id"),
-        invoice_url=params.get("invoice_url"),
-        invoice_number=params.get("invoice_number"),
-        amount=params.get("amount"),
     )
 
 
@@ -266,27 +177,18 @@ async def _p2_upload_photo(params: Dict[str, Any]) -> Dict[str, Any]:
 HANDLERS: Dict[str, Any] = {
     # P1 Compliance
     "log_delivery_received": _log_delivery_received,
-    # P1 Purchasing
-    "create_purchase_request": _create_purchase_request,
-    "order_part": _order_part,
-    "approve_purchase": _approve_purchase,
     # P2 Mutation Light
     "add_checklist_item": _p2_add_checklist_item,
     "add_checklist_note": _p2_add_checklist_note,
     "add_checklist_photo": _p2_add_checklist_photo,
     "upsert_sop": _p2_upsert_sop,
     "add_document_to_handover": _p2_add_document_to_handover,
-    "add_item_to_purchase": _p2_add_item_to_purchase,
     "add_predictive_insight_to_handover": _p2_add_predictive_insight_to_handover,
     "add_work_order_note": _p2_add_work_order_note,
     "mark_checklist_item_complete": _p2_mark_checklist_item_complete,
     "record_voice_note": _p2_record_voice_note,
     "regenerate_handover_summary": _p2_regenerate_handover_summary,
     "tag_for_survey": _p2_tag_for_survey,
-    "update_purchase_status": _p2_update_purchase_status,
     "update_worklist_progress": _p2_update_worklist_progress,
-    "upload_invoice": _p2_upload_invoice,
     "upload_photo": _p2_upload_photo,
-    "cancel_po": None,  # soft_delete — resolved in index.py
-    "delete_po": None,  # soft_delete — resolved in index.py
 }

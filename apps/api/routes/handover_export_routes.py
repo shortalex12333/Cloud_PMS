@@ -1466,7 +1466,7 @@ def _write_handover_event(
     target user. Both writes are wrapped in try/except — never raises.
     """
     from datetime import timezone
-    from routes.handlers.ledger_utils import build_ledger_event
+    from handlers.ledger_utils import build_ledger_event
 
     now_iso = datetime.now(timezone.utc).isoformat()
 

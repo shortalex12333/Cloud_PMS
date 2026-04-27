@@ -1,4 +1,4 @@
-from routes.handlers.equipment_handler import HANDLERS
+from handlers.equipment_handler import HANDLERS
 
 
 def test_all_actions_registered():
