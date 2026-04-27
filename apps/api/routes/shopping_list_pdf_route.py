@@ -24,7 +24,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 import io
 
-from db import get_supabase_client
+from integrations.supabase import get_supabase_client
 
 logger = logging.getLogger(__name__)
 

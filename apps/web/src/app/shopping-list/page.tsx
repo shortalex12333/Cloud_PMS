@@ -285,7 +285,7 @@ function CreateListModal({
           { value: 'USD', label: 'USD — US Dollar' },
           { value: 'GBP', label: 'GBP — British Pound' },
           { value: 'AED', label: 'AED — UAE Dirham' },
-          { value: 'MED', label: 'USD — Med Charter' },
+          { value: 'CHF', label: 'CHF — Swiss Franc' },
         ]},
         { name: 'notes', label: 'Notes (optional)', type: 'text-area', placeholder: 'Context for this shopping run...' },
       ]}

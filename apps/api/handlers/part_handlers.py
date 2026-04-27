@@ -376,22 +376,30 @@ class PartHandlers:
         user_id: str,
         part_id: str,
         quantity_requested: int,
-        urgency: str = "medium",
+        urgency: str = "normal",
         notes: str = None,
+        shopping_list_id: str = None,
     ) -> Dict:
-        """Add part to shopping list with computed quantity."""
+        """Add part to shopping list item. If shopping_list_id provided, attaches to that V2 list document."""
         now = datetime.now(timezone.utc).isoformat()
         item_id = str(uuid_lib.uuid4())
 
-        # Verify part exists via pms_part_stock
-        part_result = self.db.table("pms_part_stock").select("part_id, part_name").eq(
-            "part_id", part_id
+        # Verify part exists — try pms_parts first, fall back to pms_part_stock
+        part_name = None
+        part_number = None
+        part_r = self.db.table("pms_parts").select("id, name, part_number").eq(
+            "id", part_id
         ).eq("yacht_id", yacht_id).limit(1).execute()
-
-        if not part_result.data or len(part_result.data) == 0:
-            raise ValueError(f"Part {part_id} not found or access denied")
-
-        part_name = part_result.data[0].get("part_name")
+        if part_r.data:
+            part_name = part_r.data[0].get("name")
+            part_number = part_r.data[0].get("part_number")
+        else:
+            stock_r = self.db.table("pms_part_stock").select("part_id, part_name").eq(
+                "part_id", part_id
+            ).eq("yacht_id", yacht_id).limit(1).execute()
+            if not stock_r.data:
+                raise ValueError(f"Part {part_id} not found or access denied")
+            part_name = stock_r.data[0].get("part_name")
 
         # Insert shopping list item
         item_data = {
@@ -400,13 +408,18 @@ class PartHandlers:
             "source_type": "manual_add",
             "part_id": part_id,
             "part_name": part_name,
+            "part_number": part_number,
             "quantity_requested": quantity_requested,
             "urgency": urgency,
-            "status": "requested",
+            "status": "candidate",
+            "is_candidate_part": False,
             "notes": notes,
             "requested_by": user_id,
-            "requested_at": now,
+            "created_by": user_id,
+            "shopping_list_id": shopping_list_id,
             "created_at": now,
+            "updated_at": now,
+            "is_seed": False,
         }
 
         # Insert and handle PostgREST 204 (no-content) gracefully

@@ -509,6 +509,24 @@ except Exception as e:
     logger.error("Entity lens endpoints will not be available")
 
 # ============================================================================
+# PDF EXPORT ROUTES (shopping list + purchase order)
+# ============================================================================
+
+try:
+    from routes.shopping_list_pdf_route import router as shopping_list_pdf_router
+    app.include_router(shopping_list_pdf_router)
+    logger.info("✅ Shopping List PDF routes registered at /v1/shopping-list/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Shopping List PDF routes: {e}")
+
+try:
+    from routes.purchase_order_pdf_route import router as purchase_order_pdf_router
+    app.include_router(purchase_order_pdf_router)
+    logger.info("✅ Purchase Order PDF routes registered at /v1/purchase-order/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Purchase Order PDF routes: {e}")
+
+# ============================================================================
 # VESSEL SURFACE + DOMAIN LIST + TIER 3 INLINE SEARCH ROUTES
 # ============================================================================
 
