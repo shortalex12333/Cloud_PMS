@@ -66,7 +66,6 @@ export function ReceivingLabelPrint({
   apiBase,
 }: ReceivingLabelPrintProps) {
   const acceptedItems = items.filter((i) => i.quantityAccepted > 0);
-  if (acceptedItems.length === 0) return null;
 
   const [selectedSize, setSelectedSize] = React.useState<SizeKey>(() => {
     if (typeof window !== 'undefined') {
@@ -81,6 +80,8 @@ export function ReceivingLabelPrint({
   );
   const [loading, setLoading] = React.useState(false);
   const [toast, setToast] = React.useState<string | null>(null);
+
+  if (acceptedItems.length === 0) return null;
 
   function persistSize(s: SizeKey) {
     setSelectedSize(s);
