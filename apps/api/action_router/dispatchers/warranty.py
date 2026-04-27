@@ -74,6 +74,14 @@ async def _compose_warranty_email(params: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+async def _view_warranty_claim(params: Dict[str, Any]) -> Dict[str, Any]:
+    return await _get_handlers().view_warranty_claim(
+        warranty_id=params.get("warranty_id") or params.get("claim_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        user_id=params.get("user_id"),
+    )
+
+
 async def _add_warranty_note_handler(params: Dict[str, Any]) -> Dict[str, Any]:
     return await _get_handlers().add_warranty_note(
         warranty_id=params.get("warranty_id") or params.get("entity_id"),
@@ -86,6 +94,7 @@ async def _add_warranty_note_handler(params: Dict[str, Any]) -> Dict[str, Any]:
 HANDLERS: Dict[str, Any] = {
     "draft_warranty_claim": _draft_warranty_claim,
     "file_warranty_claim": _draft_warranty_claim,
+    "view_warranty_claim": _view_warranty_claim,
     "submit_warranty_claim": _submit_warranty_claim,
     "approve_warranty_claim": _approve_warranty_claim,
     "reject_warranty_claim": _reject_warranty_claim,

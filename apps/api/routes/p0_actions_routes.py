@@ -316,6 +316,9 @@ _HANDOVER_ACTIONS = frozenset({
 
 _WARRANTY_ACTIONS = frozenset({
     "file_warranty_claim", "draft_warranty_claim",
+    "submit_warranty_claim", "approve_warranty_claim",
+    "reject_warranty_claim", "close_warranty_claim",
+    "compose_warranty_email", "view_warranty_claim",
     "archive_warranty", "void_warranty",
     "add_warranty_note",
 })

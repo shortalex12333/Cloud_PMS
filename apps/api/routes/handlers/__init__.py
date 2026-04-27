@@ -49,7 +49,7 @@ HANDLERS: dict = {
        and k not in PM_HANDLERS
        and k not in FAULT_HANDLERS
        and k not in EQUIP_HANDLERS
-       and k not in PARTS_P5_HANDLERS
+       and k not in PARTS_HANDLERS
        and k not in MEDIA_HANDLERS
        and k not in COMPLIANCE_HANDLERS
        and k not in PO_HANDLERS},

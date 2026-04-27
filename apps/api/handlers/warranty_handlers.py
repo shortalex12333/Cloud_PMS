@@ -62,7 +62,8 @@ class WarrantyHandlers:
 
     def _notify(self, yacht_id: str, user_ids: List[str], triggered_by: Optional[str],
                 notification_type: str, title: str, body: str,
-                entity_id: str, priority: str = "normal") -> None:
+                entity_id: str, priority: str = "normal",
+                extra_key: str = "") -> None:
         if not user_ids:
             return
         notifs = [{
@@ -76,7 +77,11 @@ class WarrantyHandlers:
             "entity_type": "warranty",
             "entity_id": entity_id,
             "triggered_by": triggered_by,
-            "idempotency_key": f"{notification_type}:{entity_id}:{uid}",
+            "idempotency_key": (
+                f"{notification_type}:{entity_id}:{uid}:{extra_key}"
+                if extra_key else
+                f"{notification_type}:{entity_id}:{uid}"
+            ),
             "is_read": False,
             "created_at": _utcnow(),
         } for uid in user_ids]
@@ -144,6 +149,7 @@ class WarrantyHandlers:
             claim_data["metadata"] = {"manufacturer_email": manufacturer_email}
 
         self.supabase.table("pms_warranty_claims").insert(claim_data).execute()
+        self._write_audit(yacht_id, claim_id, "drafted", user_id, {"status": "draft", "claim_number": claim_number})
         return {"status": "success", "claim_id": claim_id, "claim_number": claim_number}
 
     async def submit_warranty_claim(
@@ -315,8 +321,19 @@ class WarrantyHandlers:
             "email_draft": email_draft,
             "updated_at": _utcnow(),
         }).eq("id", warranty_id).eq("yacht_id", yacht_id).execute()
-
+        self._write_audit(yacht_id, warranty_id, "email_composed", user_id, {"email_draft": True})
         return {"status": "success", "email_draft": email_draft}
+
+    async def view_warranty_claim(
+        self,
+        warranty_id: str,
+        yacht_id: str,
+        user_id: Optional[str],
+    ) -> Dict[str, Any]:
+        claim = self._fetch_claim(warranty_id, yacht_id)
+        if not claim:
+            raise ValueError("Warranty claim not found")
+        return {"status": "success", "claim": claim}
 
     async def add_warranty_note(
         self,
@@ -340,24 +357,25 @@ class WarrantyHandlers:
             "created_at": now,
             "updated_at": now,
         }).execute()
+        self._write_audit(yacht_id, warranty_id, "note_added", user_id, {"note_id": note_id})
         result = {"status": "success", "note_id": note_id, "created_at": now}
-        if result.get("status") == "success":
-            claim_r = self.supabase.table("pms_warranty_claims").select(
-                "drafted_by, submitted_by, approved_by, claim_number"
-            ).eq("id", warranty_id).eq("yacht_id", yacht_id).limit(1).execute()
-            claim = claim_r.data[0] if claim_r.data else {}
-            recipients = list(
-                {claim.get("drafted_by"), claim.get("submitted_by"), claim.get("approved_by")}
-                - {None, user_id}
-            )
-            self._notify(
-                yacht_id=yacht_id,
-                user_ids=recipients,
-                triggered_by=user_id,
-                notification_type="warranty_note_added",
-                title="Note Added to Warranty Claim",
-                body=f"A new note was added to claim {claim.get('claim_number', '')}.",
-                entity_id=warranty_id,
-                priority="low",
-            )
+        claim_r = self.supabase.table("pms_warranty_claims").select(
+            "drafted_by, submitted_by, approved_by, claim_number"
+        ).eq("id", warranty_id).eq("yacht_id", yacht_id).limit(1).execute()
+        claim = claim_r.data[0] if claim_r.data else {}
+        recipients = list(
+            {claim.get("drafted_by"), claim.get("submitted_by"), claim.get("approved_by")}
+            - {None, user_id}
+        )
+        self._notify(
+            yacht_id=yacht_id,
+            user_ids=recipients,
+            triggered_by=user_id,
+            notification_type="warranty_note_added",
+            title="Note Added to Warranty Claim",
+            body=f"A new note was added to claim {claim.get('claim_number', '')}.",
+            entity_id=warranty_id,
+            priority="low",
+            extra_key=note_id,
+        )
         return result

@@ -79,6 +79,7 @@ _ACTIONS_TO_ADAPT = [
     "add_part_note",
     "archive_part",
     "delete_part",
+    "suggest_parts",
     "reorder_part",
     "update_part_details",
     # Warranty domain (served by WarrantyHandlers via dispatchers/warranty.py)
@@ -91,6 +92,7 @@ _ACTIONS_TO_ADAPT = [
     "file_warranty_claim",
     "reject_warranty_claim",
     "submit_warranty_claim",
+    "view_warranty_claim",
     "void_warranty",
 ]
 
