@@ -414,6 +414,13 @@ except Exception as e:
     logger.error(f"❌ Failed to register Receiving Upload Proxy: {e}")
     logger.error("Receiving image upload endpoints will not be available")
 
+try:
+    from routes.receiving_label_routes import router as receiving_label_router
+    app.include_router(receiving_label_router)
+    logger.info("✅ Receiving Label PDF registered at /v1/receiving/{id}/labels")
+except Exception as e:
+    logger.error(f"❌ Failed to register Receiving Label routes: {e}")
+
 # ============================================================================
 # RAG ANSWER ENDPOINT
 # ============================================================================

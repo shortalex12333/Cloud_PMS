@@ -30,6 +30,7 @@ import { ReceivingPackingList, type PackingItem } from '../sections/ReceivingPac
 import { ReceivingOfficialDocuments, type OfficialDoc, type DocKind } from '../sections/ReceivingOfficialDocuments';
 import { ReceivingLinkedPO, type POItem, type ReceivingLineSummary } from '../sections/ReceivingLinkedPO';
 import { ReceivingDiscrepancies, type Discrepancy, type LineDiscrepancy, type FlagDiscrepancy, type DiscrepancyKind } from '../sections/ReceivingDiscrepancies';
+import { ReceivingLabelPrint, type LabelItem } from '../sections/ReceivingLabelPrint';
 
 // Sections
 import {
@@ -51,12 +52,16 @@ import {
 
 function statusToPillVariant(status: string): PillDef['variant'] {
   switch (status) {
-    case 'discrepancy':
-      return 'red';
-    case 'in_progress':
-      return 'amber';
-    case 'completed':
+    case 'complete':
+    case 'accepted':
       return 'green';
+    case 'in_progress':
+    case 'partial':
+      return 'amber';
+    case 'issue':
+    case 'rejected':
+      return 'red';
+    case 'awaiting':
     default:
       return 'neutral';
   }
@@ -80,7 +85,7 @@ export function ReceivingContent() {
   //   context  = clickable PO link (no supplier echo)
   // entity_routes.py:get_receiving_entity already resolves received_by UUID -> name.
   const payload = (entity?.payload as Record<string, unknown>) ?? {};
-  const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'draft';
+  const status = ((entity?.status ?? payload.status) as string | undefined) ?? 'awaiting';
   const po_number = (entity?.po_number ?? payload.po_number) as string | undefined;
   const po_id = (entity?.po_id ?? payload.po_id) as string | undefined;
   const vendor_name = (entity?.vendor_name ?? payload.vendor_name ?? entity?.supplier ?? payload.supplier) as string | undefined;
@@ -91,7 +96,10 @@ export function ReceivingContent() {
   const total = (entity?.total ?? payload.total) as number | undefined;
   const currency = (entity?.currency ?? payload.currency) as string | undefined;
   const total_items = (entity?.total_items ?? payload.total_items) as number | undefined;
-  const title = vendor_name ?? 'Draft Receiving';
+  const shipment_number = (entity?.shipment_number ?? payload.shipment_number) as number | undefined;
+  const total_shipments = (entity?.total_shipments ?? payload.total_shipments) as number | undefined;
+  const supplier_email = (entity?.supplier_email ?? payload.supplier_email) as string | undefined;
+  const title = vendor_name ?? 'Awaiting Delivery';
 
   // Section data
   const items = ((entity?.items ?? payload.items) as Array<Record<string, unknown>> | undefined) ?? [];
@@ -178,8 +186,8 @@ export function ReceivingContent() {
   const acceptAction = getAction('accept_receiving');
   const flagAction = getAction('flag_discrepancy');
 
-  // pms_receiving.status enum = draft|in_review|accepted|rejected
-  const isAcceptable = ['draft', 'in_review'].includes(status);
+  // pms_receiving.status enum = awaiting|in_progress|complete|partial|issue|accepted|rejected
+  const isAcceptable = ['awaiting', 'in_progress', 'partial'].includes(status);
 
   // BACKEND_AUTO moved to mapActionFields.ts
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
@@ -220,6 +228,9 @@ export function ReceivingContent() {
   if (yacht_name) {
     details.push({ label: 'Vessel', value: yacht_name });
   }
+  if (typeof shipment_number === 'number' && typeof total_shipments === 'number' && total_shipments > 1) {
+    details.push({ label: 'Shipment', value: `${shipment_number} of ${total_shipments}`, mono: true });
+  }
 
   // Context line — show only the PO link (no supplier echo; supplier IS the title above)
   const contextNode = po_number ? (
@@ -247,6 +258,26 @@ export function ReceivingContent() {
     // safeExecute (parent EntityLensPage) raises PIN modal for SIGNED actions
     await executeAction('accept_receiving', {});
   }, [executeAction]);
+
+  // Draft email to supplier handler
+  const handleDraftEmail = React.useCallback(async () => {
+    await executeAction('draft_supplier_email', {
+      receiving_id: entity?.id as string,
+    });
+  }, [executeAction, entity?.id]);
+
+  // Label items — only items with quantity_accepted > 0
+  const labelItems: LabelItem[] = items
+    .filter((it) => Number(it.quantity_accepted ?? 0) > 0)
+    .map((it, i) => ({
+      id: (it.id as string) ?? `item-${i}`,
+      description: (it.description as string | null | undefined) ?? null,
+      quantityAccepted: Number(it.quantity_accepted ?? 0),
+      location: (it.location as string | null | undefined) ?? null,
+      partId: (it.part_id as string | null | undefined) ?? null,
+    }));
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {};
   // reject_receiving = terminal status change. flag_discrepancy = structured
@@ -431,10 +462,27 @@ export function ReceivingContent() {
       )}
 
       {/* Discrepancies — aggregated from line dispositions + flag_discrepancy events.
-          Hidden when there's nothing to show (per philosophy). */}
+          Hidden when there's nothing to show (per philosophy). Email button visible
+          when entries exist — crew drafts discrepancy email to supplier via Outlook. */}
       <ScrollReveal>
-        <ReceivingDiscrepancies entries={discrepancyEntries} />
+        <ReceivingDiscrepancies
+          entries={discrepancyEntries}
+          onDraftEmail={discrepancyEntries.length > 0 ? handleDraftEmail : undefined}
+        />
       </ScrollReveal>
+
+      {/* Label Print — utility PDF for accepted items. Only shown when accepted qty > 0. */}
+      {labelItems.length > 0 && (
+        <ScrollReveal>
+          <ReceivingLabelPrint
+            receivingId={(entity?.id as string) ?? ''}
+            yachtId={(entity?.yacht_id ?? payload.yacht_id) as string ?? ''}
+            userId={undefined}
+            items={labelItems}
+            apiBase={apiBase}
+          />
+        </ScrollReveal>
+      )}
 
       {/* Linked PO — side-by-side reconciliation. Hidden when no PO is linked. */}
       <ScrollReveal>

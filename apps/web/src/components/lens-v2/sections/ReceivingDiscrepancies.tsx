@@ -49,6 +49,7 @@ export type Discrepancy = LineDiscrepancy | FlagDiscrepancy;
 
 export interface ReceivingDiscrepanciesProps {
   entries: Discrepancy[];
+  onDraftEmail?: () => void;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -123,7 +124,7 @@ const SECTION_ICON = (
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function ReceivingDiscrepancies({ entries }: ReceivingDiscrepanciesProps) {
+export function ReceivingDiscrepancies({ entries, onDraftEmail }: ReceivingDiscrepanciesProps) {
   // Per philosophy: empty discrepancies = hide the section entirely.
   if (entries.length === 0) return null;
 
@@ -133,6 +134,7 @@ export function ReceivingDiscrepancies({ entries }: ReceivingDiscrepanciesProps)
       title="Discrepancies"
       count={entries.length}
       icon={SECTION_ICON}
+      action={onDraftEmail ? { label: 'Draft Email to Supplier', onClick: onDraftEmail, testid: 'draft-supplier-email' } : undefined}
     >
       <div role="list" aria-label="Discrepancy entries" style={{ display: 'grid', rowGap: 8 }}>
         {entries.map((entry, idx) => {
