@@ -178,6 +178,17 @@ async def report_fault(
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to create fault record"}
 
     fault_id = result.data[0]["id"]
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "report_fault", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": None,
+            "new_values": {"title": fault_title, "status": "open", "severity": severity},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] report_fault: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
@@ -296,6 +307,17 @@ async def resolve_fault(
     new_state = {"status": "resolved", "resolved_by": user_id}
     if resolution_notes:
         new_state["resolution_notes"] = resolution_notes
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "resolve_fault", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": {"status": prev_status},
+            "new_values": new_state,
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] resolve_fault: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
@@ -340,6 +362,17 @@ async def diagnose_fault(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to add diagnosis"}
 
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "diagnose_fault", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": None,
+            "new_values": {"diagnosis": metadata.get("diagnosis"), "diagnosed_by": user_id},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] diagnose_fault: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
@@ -397,6 +430,17 @@ async def close_fault(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close fault"}
 
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "close_fault", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": {"status": current_status},
+            "new_values": {"status": "closed", "close_reason": close_reason},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] close_fault: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
@@ -467,6 +511,17 @@ async def update_fault(
         for f in diff_fields
         if f in update_data and update_data[f] != fault.get(f)
     ]
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "update_fault", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": {f: fault.get(f) for f in diff_fields},
+            "new_values": {f: update_data.get(f, fault.get(f)) for f in diff_fields},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] update_fault: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
@@ -514,6 +569,17 @@ async def reopen_fault(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to reopen fault"}
 
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "reopen_fault", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": {"status": current_status},
+            "new_values": {"status": "open"},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] reopen_fault: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
@@ -560,6 +626,17 @@ async def mark_fault_false_alarm(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to mark as false alarm"}
 
+    try:
+        db_client.table("pms_audit_log").insert({
+            "id": str(uuid_module.uuid4()), "yacht_id": yacht_id,
+            "action": "mark_fault_false_alarm", "entity_type": "fault", "entity_id": fault_id,
+            "user_id": user_id,
+            "old_values": {"status": prev_status},
+            "new_values": {"status": "false_alarm", "false_alarm": True},
+            "signature": {},
+        }).execute()
+    except Exception as e:
+        logger.warning(f"[Audit] mark_fault_false_alarm: {e}")
     _write_ledger(
         db_client,
         yacht_id=yacht_id, user_id=user_id,
