@@ -78,6 +78,7 @@ from handlers.receiving_handlers import (
     _view_receiving_history_adapter,
     _flag_discrepancy_adapter,
 )
+from handlers.receiving_email_handlers import _draft_supplier_email_adapter
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from handlers.stub_handlers import not_yet_implemented as _not_yet_implemented
 from handlers.universal_handlers import soft_delete_entity as _soft_delete_entity
@@ -162,6 +163,7 @@ def _get_receiving_handlers():
             "reject_receiving": _reject_receiving_adapter(handlers_instance),
             "view_receiving_history": _view_receiving_history_adapter(handlers_instance),
             "flag_discrepancy": _flag_discrepancy_adapter(handlers_instance),
+            "draft_supplier_email": _draft_supplier_email_adapter(),
         }
     return _receiving_handlers
 
@@ -3376,6 +3378,15 @@ async def _recv_flag_discrepancy(params: Dict[str, Any]) -> Dict[str, Any]:
     return await fn(**params)
 
 
+async def _recv_draft_supplier_email(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for draft_supplier_email handler."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("draft_supplier_email")
+    if not fn:
+        raise ValueError("draft_supplier_email handler not registered")
+    return await fn(**params)
+
+
 # ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
@@ -4543,6 +4554,7 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     # Task 6: Flag Discrepancy (Receiving)
     # =========================================================================
     "flag_discrepancy": _recv_flag_discrepancy,
+    "draft_supplier_email": _recv_draft_supplier_email,
 }
 
 

@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from supabase import Client
 
 from routes.handlers.ledger_utils import build_ledger_event
+from handlers.receiving_spawn import spawn_receiving_from_po
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +121,11 @@ async def approve_purchase_order(
         except Exception as ledger_err:
             if "204" not in str(ledger_err):
                 logger.warning(f"[Ledger] Failed to record approve_purchase_order: {ledger_err}")
+        # Auto-create receiving record pre-populated from PO line items
+        try:
+            spawn_receiving_from_po(db_client, po_id, yacht_id, user_id)
+        except Exception as spawn_err:
+            logger.warning(f"[approve_purchase_order] Receiving spawn failed (non-fatal): {spawn_err}")
         return {"status": "success", "message": "Purchase order approved and ordered"}
     else:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to approve purchase order"}

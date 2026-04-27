@@ -1864,28 +1864,31 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
         except Exception as e:
             logger.warning(f"yacht_name lookup failed for {yacht_id}: {e}")
 
-        # Nav links: items' part_id -> Part, po_number -> Purchase Order.
-        # Surface po_id at top level so the "PO Reference" link in the lens
-        # header (ReceivingContent.tsx:154-162) can navigate.
+        # Nav links: items' part_id -> Part, po_id FK -> Purchase Order.
         nav = []
         for it in raw_items[:5]:
             n = _nav("part", it.get("part_id"), it.get("description") or "Part")
             if n:
                 nav.append(n)
+
         po_num = data.get("po_number")
-        po_id = None
-        # Linked PO items — pulled when the receiving has a known PO. Lets the
-        # lens render a side-by-side reconciliation: ordered vs received per
-        # part. Match key on the frontend = part_id; description is fallback.
+        po_id = data.get("po_id")  # FK column — authoritative
+        supplier_email = None
         linked_po_items = []
-        if po_num:
+
+        # Resolve PO data via FK (fast, no text-match guesswork)
+        if po_id:
             try:
-                po_r = supabase.table("pms_purchase_orders").select("id").eq(
-                    "po_number", po_num
-                ).eq("yacht_id", yacht_id).maybe_single().execute()
+                po_r = supabase.table("pms_purchase_orders").select(
+                    "id, po_number, supplier_id, pms_suppliers(email)"
+                ).eq("id", po_id).eq("yacht_id", yacht_id).maybe_single().execute()
                 if po_r and po_r.data:
-                    po_id = po_r.data["id"]
-                    n = _nav("purchase_order", po_id, f"PO {po_num}")
+                    po_data = po_r.data
+                    po_num = po_num or po_data.get("po_number")
+                    sup = po_data.get("pms_suppliers") or {}
+                    supplier_email = sup.get("email")
+                    nav_label = f"PO {po_num}" if po_num else "Purchase Order"
+                    n = _nav("purchase_order", po_id, nav_label)
                     if n:
                         nav.append(n)
                     try:
@@ -1895,6 +1898,19 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
                         linked_po_items = po_items_r.data or []
                     except Exception as e:
                         logger.warning(f"linked_po_items fetch failed for po {po_id}: {e}")
+            except Exception as e:
+                logger.warning(f"PO FK lookup failed for receiving {receiving_id}: {e}")
+        elif po_num:
+            # Legacy fallback: receiving created before Migration A (po_id FK)
+            try:
+                po_r = supabase.table("pms_purchase_orders").select("id").eq(
+                    "po_number", po_num
+                ).eq("yacht_id", yacht_id).maybe_single().execute()
+                if po_r and po_r.data:
+                    po_id = po_r.data["id"]
+                    n = _nav("purchase_order", po_id, f"PO {po_num}")
+                    if n:
+                        nav.append(n)
             except Exception:
                 pass
 
@@ -1916,16 +1932,19 @@ async def get_receiving_entity(receiving_id: str, auth: dict = Depends(get_authe
             "vendor_reference": data.get('vendor_reference'),
             "po_number": po_num,
             "po_id": po_id,
+            "supplier_email": supplier_email,
             "received_date": data.get('received_date'),
-            "status": data.get('status', 'draft'),
+            "status": data.get('status', 'awaiting'),
+            "shipment_number": data.get('shipment_number', 1),
+            "total_shipments": data.get('total_shipments', 1),
             "total": data.get('total'),
             "currency": data.get('currency'),
             "notes": data.get('notes'),
-            # received_by exposes the human-readable name; UUID stays server-side
             "received_by": received_by_name,
             "yacht_name": yacht_name,
             "items": raw_items,
             "total_items": len(raw_items),
+            "linked_po_items": linked_po_items,
             "created_at": data.get('created_at'),
             "updated_at": data.get('updated_at'),
             "invoice_images": invoice_images,

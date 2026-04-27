@@ -1542,6 +1542,25 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
+    "draft_supplier_email": ActionDefinition(
+        action_id="draft_supplier_email",
+        label="Draft Email to Supplier",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "engineer", "eto", "purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["receiving_id"],
+        domain="receiving",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["email", "supplier", "discrepancy", "draft", "outlook"],
+        field_metadata=[
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+            FieldMetadata("custom_note", FieldClassification.OPTIONAL, description="Additional note to include in the email"),
+            FieldMetadata("cc_emails", FieldClassification.OPTIONAL, description="Additional CC recipients"),
+            FieldMetadata("force", FieldClassification.OPTIONAL, description="Create new draft even if one was created in last 24h"),
+        ],
+    ),
+
     # ========================================================================
     # CERTIFICATE ACTIONS
     # ========================================================================

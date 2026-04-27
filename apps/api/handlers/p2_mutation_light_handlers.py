@@ -955,6 +955,14 @@ class P2MutationLightHandlers:
                 }
             )
 
+            # Auto-create receiving when PO moves to ordered
+            if new_status == "ordered":
+                try:
+                    from handlers.receiving_spawn import spawn_receiving_from_po
+                    spawn_receiving_from_po(self.db, purchase_order_id, yacht_id, user_id)
+                except Exception as spawn_err:
+                    logger.warning(f"[update_purchase_status] Receiving spawn failed (non-fatal): {spawn_err}")
+
             return {
                 "status": "success",
                 "action": "update_purchase_status",
