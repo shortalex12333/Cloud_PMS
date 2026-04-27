@@ -2158,41 +2158,91 @@ async def create_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create a new work order.
 
-    Required params:
-        - yacht_id: UUID
-        - title: str
-        - user_id: UUID (from JWT)
+    Required (registry): yacht_id, title, work_order_type, priority
+    Optional: description, status (draft|open|planned), equipment_id, fault_id,
+              assigned_to, due_date, severity, frequency,
+              estimated_duration_minutes, system_id, system_name,
+              running_hours_required, running_hours_current,
+              running_hours_checkpoint, note_text (pre-create note)
     """
     import uuid as uuid_lib
     supabase = get_supabase_client()
 
+    # Accept both `type` and `work_order_type` from frontend
+    wo_type = params.get("work_order_type") or params.get("type") or "corrective"
+
+    # Draft status allowed; anything unexpected falls back to open
+    raw_status = params.get("status", "open")
+    status = raw_status if raw_status in ("draft", "open", "planned") else "open"
+
     wo_id = str(uuid_lib.uuid4())
-    wo_data = {
+    wo_data: Dict[str, Any] = {
         "id": wo_id,
         "yacht_id": params["yacht_id"],
         "title": params["title"],
-        "description": params.get("description", ""),
-        "priority": params.get("priority", "medium"),
-        "equipment_id": params.get("equipment_id"),
-        "status": "open",
+        "description": params.get("description") or "",
+        "work_order_type": wo_type,
+        "priority": params.get("priority") or "routine",
+        "status": status,
         "created_by": params["user_id"],
         "created_at": datetime.utcnow().isoformat(),
     }
 
-    result = supabase.table("pms_work_orders").insert(wo_data).execute()
+    # FK / relation fields — only set if non-empty (avoid FK violations on blank strings)
+    for fk in ("equipment_id", "fault_id", "assigned_to", "system_id"):
+        val = params.get(fk)
+        if val and str(val).strip():
+            wo_data[fk] = val
 
+    # Scalar optional fields
+    for scalar in ("due_date", "severity", "frequency", "system_name"):
+        val = params.get(scalar)
+        if val is not None:
+            wo_data[scalar] = val
+
+    # Numeric fields (PR-WO-7 running hours schema)
+    if params.get("estimated_duration_minutes") is not None:
+        try:
+            wo_data["estimated_duration_minutes"] = int(params["estimated_duration_minutes"])
+        except (ValueError, TypeError):
+            pass
+    if params.get("running_hours_required") is not None:
+        wo_data["running_hours_required"] = bool(params["running_hours_required"])
+    for rh_field in ("running_hours_current", "running_hours_checkpoint"):
+        if params.get(rh_field) is not None:
+            try:
+                wo_data[rh_field] = float(params[rh_field])
+            except (ValueError, TypeError):
+                pass
+
+    result = supabase.table("pms_work_orders").insert(wo_data).execute()
     if not result.data:
         raise Exception("Failed to create work order")
 
-    # Data-continuity: notify creator if no engineer assigned yet.
-    # They created the WO but left it unassigned — nudge them to assign.
-    if not params.get("assigned_to"):
+    # Pre-create note: caller can supply an initial note alongside the WO
+    note_text = params.get("note_text")
+    if note_text and str(note_text).strip():
+        try:
+            supabase.table("pms_work_order_notes").insert({
+                "id": str(uuid_lib.uuid4()),
+                "work_order_id": wo_id,
+                "yacht_id": params["yacht_id"],
+                "note_text": str(note_text).strip(),
+                "note_type": "general",
+                "created_by": params["user_id"],
+                "created_at": datetime.utcnow().isoformat(),
+            }).execute()
+        except Exception:
+            pass  # note failure never blocks WO creation
+
+    # Data-continuity: nudge creator to assign (only for open WOs, not drafts)
+    if status != "draft" and not params.get("assigned_to"):
         _emit_wo_notification(
             supabase,
             yacht_id=params["yacht_id"],
             user_id=params["user_id"],
             notification_type="wo_unassigned",
-            title=f"WO unassigned — assign an engineer",
+            title="WO unassigned — assign an engineer",
             body=f"Work order '{params['title']}' has no assigned engineer. Open it and tap Assign.",
             entity_id=wo_id,
             priority="normal",
@@ -2200,7 +2250,7 @@ async def create_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "work_order_id": wo_id,
-        "status": "open",
+        "status": status,
         "created_at": wo_data["created_at"],
     }
 
