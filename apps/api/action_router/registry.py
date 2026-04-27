@@ -3645,6 +3645,44 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
+    "deny_po_line_item": ActionDefinition(
+        action_id="deny_po_line_item",
+        label="Deny Line Item",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "purchase_order_id", "po_item_id", "denial_reason"],
+        domain="purchase_orders",
+        variant=ActionVariant.MUTATE,
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("purchase_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("po_item_id", FieldClassification.REQUIRED),
+            FieldMetadata("denial_reason", FieldClassification.REQUIRED),
+        ],
+    ),
+
+    "add_tracking_details": ActionDefinition(
+        action_id="add_tracking_details",
+        label="Add Tracking Details",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["purser", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "purchase_order_id"],
+        domain="purchase_orders",
+        variant=ActionVariant.MUTATE,
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("purchase_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("tracking_number", FieldClassification.OPTIONAL),
+            FieldMetadata("carrier", FieldClassification.OPTIONAL),
+            FieldMetadata("expected_delivery_start", FieldClassification.OPTIONAL),
+            FieldMetadata("expected_delivery_end", FieldClassification.OPTIONAL),
+        ],
+    ),
+
     "upload_photo": ActionDefinition(
         action_id="upload_photo",
         label="Upload Photo",

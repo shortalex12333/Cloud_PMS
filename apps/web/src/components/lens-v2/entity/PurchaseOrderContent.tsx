@@ -94,6 +94,15 @@ export function PurchaseOrderContent() {
   const description = (entity?.description ?? entity?.notes ?? payload.description ?? payload.notes) as string | undefined;
   const shipping_cost = (entity?.shipping_cost ?? payload.shipping_cost) as number | undefined;
 
+  // Tracking details (Phase 2 — add_tracking_details handler)
+  const tracking_number = (entity?.tracking_number ?? payload.tracking_number) as string | undefined;
+  const carrier = (entity?.carrier ?? payload.carrier) as string | undefined;
+  const expected_delivery_start = (entity?.expected_delivery_start ?? payload.expected_delivery_start) as string | undefined;
+  const expected_delivery_end = (entity?.expected_delivery_end ?? payload.expected_delivery_end) as string | undefined;
+
+  // Shopping list traceability (SHOPPING05 M5)
+  const source_shopping_list_id = (entity?.source_shopping_list_id ?? payload.source_shopping_list_id) as string | undefined;
+
   // Supplier block — entity_routes.py:get_purchase_order_entity resolves this
   type SupplierBlock = { id?: string | null; name?: string | null; contact_name?: string | null; email?: string | null; phone?: string | null; address?: string | null } | null | undefined;
   const supplierBlock = (entity?.supplier as SupplierBlock) ?? null;
@@ -237,22 +246,37 @@ export function PurchaseOrderContent() {
 
   // ── Map section data ──
 
-  const lineItemRows: PartItem[] = line_items.map((item, i) => {
+  const acceptedLineItemRows: PartItem[] = [];
+  const deniedLineItems: Array<{ id: string; name: string; partNumber?: string; denial_reason?: string }> = [];
+
+  line_items.forEach((item, i) => {
     const qty = (item.quantity as number | undefined) ?? 1;
     const unitPrice = (item.unit_price ?? item.price) as number | undefined;
     const partNumber = (item.part_number ?? item.sku ?? item.part_id) as string | undefined;
     const itemName = (item.description ?? item.name ?? item.part_name) as string ?? `Item ${i + 1}`;
-    return {
-      id: (item.id as string) ?? `line-${i}`,
-      name: itemName,
-      partNumber: partNumber,
-      quantity: `× ${qty}`,
-      stock: unitPrice !== undefined ? `${formatCurrency(unitPrice, currency)} ea` : undefined,
-      onNavigate: item.part_id
-        ? () => router.push(getEntityRoute('inventory', item.part_id as string))
-        : undefined,
-    };
+    const lineStatus = (item.line_status as string | undefined) ?? 'accepted';
+
+    if (lineStatus === 'denied') {
+      deniedLineItems.push({
+        id: (item.id as string) ?? `line-${i}`,
+        name: itemName,
+        partNumber: partNumber,
+        denial_reason: item.denial_reason as string | undefined,
+      });
+    } else {
+      acceptedLineItemRows.push({
+        id: (item.id as string) ?? `line-${i}`,
+        name: itemName,
+        partNumber: partNumber,
+        quantity: `× ${qty}`,
+        stock: unitPrice !== undefined ? `${formatCurrency(unitPrice, currency)} ea` : undefined,
+        onNavigate: item.part_id
+          ? () => router.push(getEntityRoute('inventory', item.part_id as string))
+          : undefined,
+      });
+    }
   });
+
 
   const relatedPartRows: PartItem[] = related_parts.map((p, i) => ({
     id: (p.id as string) ?? `rp-${i}`,
@@ -302,14 +326,21 @@ export function PurchaseOrderContent() {
   }
 
   const deliveryItems: KVItem[] = [];
+  // Phase 2 tracking fields take precedence; fall back to legacy delivery block
+  const resolvedCarrier = carrier ?? (delivery ? (delivery.carrier ?? delivery.shipping_carrier) as string | undefined : undefined);
+  const resolvedTracking = tracking_number ?? (delivery ? (delivery.tracking ?? delivery.tracking_number) as string | undefined : undefined);
+  if (expected_delivery_start && expected_delivery_end) {
+    deliveryItems.push({ label: 'Delivery Window', value: `${fmtDate(expected_delivery_start)} – ${fmtDate(expected_delivery_end)}`, mono: true });
+  } else if (expected_delivery_start) {
+    deliveryItems.push({ label: 'Expected From', value: fmtDate(expected_delivery_start)!, mono: true });
+  } else if (expected_delivery) {
+    deliveryItems.push({ label: 'Expected', value: fmtDate(expected_delivery)!, mono: true });
+  }
+  if (resolvedCarrier) deliveryItems.push({ label: 'Carrier', value: resolvedCarrier });
+  if (resolvedTracking) deliveryItems.push({ label: 'Tracking', value: resolvedTracking, mono: true });
   if (delivery) {
-    const carrier = (delivery.carrier ?? delivery.shipping_carrier) as string | undefined;
-    const tracking = (delivery.tracking ?? delivery.tracking_number) as string | undefined;
     const deliverTo = (delivery.deliver_to ?? delivery.delivery_address) as string | undefined;
     const contact = (delivery.contact ?? delivery.contact_name) as string | undefined;
-    if (expected_delivery) deliveryItems.push({ label: 'Expected', value: expected_delivery, mono: true });
-    if (carrier) deliveryItems.push({ label: 'Carrier', value: carrier });
-    if (tracking) deliveryItems.push({ label: 'Tracking', value: tracking, mono: true });
     if (deliverTo) deliveryItems.push({ label: 'Deliver To', value: deliverTo });
     if (contact) deliveryItems.push({ label: 'Contact', value: contact });
   }
@@ -382,7 +413,52 @@ export function PurchaseOrderContent() {
       case 'items':
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '0 4px' }}>
-            <PartsSection parts={lineItemRows} defaultCollapsed={false} />
+            {source_shopping_list_id && (
+              <div
+                onClick={() => router.push(getEntityRoute('shopping_list', source_shopping_list_id))}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px',
+                  borderRadius: 5, border: '1px solid var(--mark-hover)', cursor: 'pointer',
+                  background: 'var(--teal-bg)', color: 'var(--mark)', fontSize: 11, fontWeight: 500,
+                  alignSelf: 'flex-start',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
+                </svg>
+                View Source Shopping List
+              </div>
+            )}
+            <PartsSection parts={acceptedLineItemRows} defaultCollapsed={false} />
+            {deniedLineItems.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0 2px' }}>
+                  Denied ({deniedLineItems.length})
+                </div>
+                {deniedLineItems.map((d) => (
+                  <div key={d.id} style={{
+                    display: 'flex', flexDirection: 'column', gap: 2,
+                    padding: '8px 10px', borderRadius: 6,
+                    background: 'var(--danger-bg, rgba(220,38,38,0.06))',
+                    border: '1px solid var(--danger-border, rgba(220,38,38,0.18))',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: 'var(--txt-primary)', fontWeight: 500, flex: 1 }}>{d.name}</span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3,
+                        background: 'var(--danger-bg, rgba(220,38,38,0.12))',
+                        color: 'var(--danger, #dc2626)', letterSpacing: '0.04em',
+                      }}>DENIED</span>
+                    </div>
+                    {d.denial_reason && (
+                      <div style={{ fontSize: 11, color: 'var(--txt-secondary)', fontStyle: 'italic' }}>
+                        {d.denial_reason}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             {budgetItems.length > 0 && (
               <KVSection title="Budget" items={budgetItems}
                 icon={
@@ -517,7 +593,7 @@ export function PurchaseOrderContent() {
         return null;
     }
   }, [
-    lineItemRows, budgetItems, deliveryItems,
+    acceptedLineItemRows, deniedLineItems, source_shopping_list_id, budgetItems, deliveryItems,
     invoiceAttachments, uploadInvoiceAction,
     supplierItems, approvalItems,
     relatedPartRows, docAttachments,

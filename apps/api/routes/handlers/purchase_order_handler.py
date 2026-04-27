@@ -318,7 +318,7 @@ async def add_po_note(
 # ============================================================================
 _ALLOWED_PO_STATUSES = {
     "draft", "submitted", "approved", "ordered",
-    "partially_received", "received", "cancelled",
+    "partially_received", "received", "cancelled", "delayed",
 }
 
 
@@ -557,6 +557,158 @@ async def create_purchase_order(
 
 
 # ============================================================================
+# deny_po_line_item — reject a single line from a PO, with mandatory reason
+# ============================================================================
+async def deny_po_line_item(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    if user_context.get("role", "") not in _HOD_ROLES:
+        raise HTTPException(status_code=403, detail={
+            "status": "error", "error_code": "FORBIDDEN",
+            "message": f"Role '{user_context.get('role', '')}' cannot deny PO line items",
+            "required_roles": _HOD_ROLES,
+        })
+    po_item_id = payload.get("po_item_id") or payload.get("line_item_id")
+    if not po_item_id:
+        raise HTTPException(status_code=400, detail="po_item_id is required")
+    denial_reason = (payload.get("denial_reason") or payload.get("reason") or "").strip()
+    if not denial_reason:
+        raise HTTPException(status_code=400, detail="denial_reason is required")
+
+    # Confirm item belongs to this yacht
+    check = db_client.table("pms_purchase_order_items").select(
+        "id, purchase_order_id"
+    ).eq("id", po_item_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not check or not check.data:
+        raise HTTPException(status_code=404, detail="Line item not found")
+    po_id = check.data["purchase_order_id"]
+
+    now = datetime.now(timezone.utc).isoformat()
+    db_client.table("pms_purchase_order_items").update({
+        "line_status": "denied",
+        "denied_at": now,
+        "denial_reason": denial_reason,
+    }).eq("id", po_item_id).eq("yacht_id", yacht_id).execute()
+
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id, user_id=user_id, event_type="status_change",
+            entity_type="purchase_order", entity_id=po_id, action="deny_po_line_item",
+            user_role=user_context.get("role"),
+            change_summary=f"Line item denied: {denial_reason}",
+        )
+        db_client.table("ledger_events").insert(ledger_event).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[Ledger] Failed to record deny_po_line_item: {ledger_err}")
+
+    return {"status": "success", "po_item_id": po_item_id, "line_status": "denied"}
+
+
+# ============================================================================
+# add_tracking_details — record carrier/tracking/delivery window, auto-advance
+# approved → ordered when tracking_number OR delivery window is provided
+# ============================================================================
+async def add_tracking_details(
+    payload: dict,
+    context: dict,
+    yacht_id: str,
+    user_id: str,
+    user_context: dict,
+    db_client: Client,
+) -> dict:
+    if user_context.get("role", "") not in _HOD_ROLES:
+        raise HTTPException(status_code=403, detail={
+            "status": "error", "error_code": "FORBIDDEN",
+            "message": f"Role '{user_context.get('role', '')}' cannot add tracking details",
+            "required_roles": _HOD_ROLES,
+        })
+    po_id = payload.get("purchase_order_id") or context.get("purchase_order_id")
+    if not po_id:
+        raise HTTPException(status_code=400, detail="purchase_order_id is required")
+
+    tracking_number = (payload.get("tracking_number") or "").strip() or None
+    carrier = (payload.get("carrier") or "").strip() or None
+    delivery_start = (payload.get("expected_delivery_start") or "").strip() or None
+    delivery_end = (payload.get("expected_delivery_end") or "").strip() or None
+
+    if not any([tracking_number, delivery_start, delivery_end]):
+        raise HTTPException(status_code=400, detail="Provide tracking_number or expected_delivery_start/end")
+
+    # Fetch current PO
+    po_row = db_client.table("pms_purchase_orders").select(
+        "status, po_number"
+    ).eq("id", po_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not po_row or not po_row.data:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    current_status = po_row.data.get("status", "")
+    po_number = po_row.data.get("po_number", "PO")
+
+    # Auto-advance approved → ordered when logistics info is provided
+    now = datetime.now(timezone.utc).isoformat()
+    update_payload: dict = {"updated_at": now}
+    if tracking_number:
+        update_payload["tracking_number"] = tracking_number
+    if carrier:
+        update_payload["carrier"] = carrier
+    if delivery_start:
+        update_payload["expected_delivery_start"] = delivery_start
+    if delivery_end:
+        update_payload["expected_delivery_end"] = delivery_end
+    if current_status == "approved":
+        update_payload["status"] = "ordered"
+        update_payload["ordered_at"] = now
+
+    db_client.table("pms_purchase_orders").update(update_payload).eq(
+        "id", po_id
+    ).eq("yacht_id", yacht_id).execute()
+
+    advanced = current_status == "approved"
+
+    try:
+        ledger_event = build_ledger_event(
+            yacht_id=yacht_id, user_id=user_id,
+            event_type="status_change" if advanced else "annotation",
+            entity_type="purchase_order", entity_id=po_id, action="add_tracking_details",
+            user_role=user_context.get("role"),
+            change_summary=f"Tracking added{' — status → ordered' if advanced else ''}. "
+                           f"{'Tracking: ' + tracking_number + '. ' if tracking_number else ''}"
+                           f"{'Expected: ' + (delivery_start or '') + (' – ' + delivery_end if delivery_end else '') if delivery_start else ''}",
+        )
+        db_client.table("ledger_events").insert(ledger_event).execute()
+    except Exception as ledger_err:
+        if "204" not in str(ledger_err):
+            logger.warning(f"[Ledger] Failed to record add_tracking_details: {ledger_err}")
+
+    if advanced:
+        # Notify that order is placed and goods are expected
+        window = ""
+        if delivery_start and delivery_end:
+            window = f" Expected between {delivery_start} and {delivery_end}."
+        elif delivery_start:
+            window = f" Expected from {delivery_start}."
+        _push_po_notification(
+            db_client=db_client, yacht_id=yacht_id, user_id=user_id,
+            notification_type="purchase_order.ordered",
+            title=f"{po_number} ordered",
+            body=f"Order placed.{window} Open Receiving when goods arrive.",
+            entity_id=po_id,
+        )
+
+    return {
+        "status": "success",
+        "purchase_order_id": po_id,
+        "advanced_to_ordered": advanced,
+        "tracking_number": tracking_number,
+    }
+
+
+# ============================================================================
 # upload_invoice — attach an invoice document to a PO (Issue #14, 2026-04-23)
 #
 # Frontend uploads the file to the "pms-finance-documents" bucket first
@@ -646,6 +798,8 @@ HANDLERS: dict = {
     "add_item_to_purchase": add_item_to_purchase,
     "upload_invoice": upload_invoice,
     "create_purchase_order": create_purchase_order,
+    "deny_po_line_item": deny_po_line_item,
+    "add_tracking_details": add_tracking_details,
     # Frontend-facing aliases (match action IDs used by PurchaseOrderContent.tsx)
     "submit_po": submit_purchase_order,
     "approve_po": approve_purchase_order,
