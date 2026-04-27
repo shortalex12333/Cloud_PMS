@@ -993,7 +993,8 @@ class P2MutationLightHandlers:
         checklist_item_id: str,
         yacht_id: str,
         user_id: str,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
+        actual_value: Optional[str] = None,
     ) -> Dict:
         """
         Mark a checklist item as completed.
@@ -1034,6 +1035,8 @@ class P2MutationLightHandlers:
                     item["completed_at"] = datetime.now(timezone.utc).isoformat()
                     if notes:
                         item["completion_notes"] = notes
+                    if actual_value is not None:
+                        item["actual_value"] = actual_value
                     item_found = True
                     item_title = item.get("title")
                     break
@@ -1107,6 +1110,9 @@ class P2MutationLightHandlers:
         requires_signature: bool = False,
         category: str = "general",
         sequence: Optional[int] = None,
+        item_type: str = "tick",
+        unit: Optional[str] = None,
+        measurement_label: Optional[str] = None,
     ) -> Dict:
         """
         Append a user-generated checkpoint to a work order's metadata.checklist[].
@@ -1166,10 +1172,14 @@ class P2MutationLightHandlers:
                 "is_required": bool(is_required),
                 "requires_photo": bool(requires_photo),
                 "requires_signature": bool(requires_signature),
+                "item_type": item_type if item_type in ("tick", "measurement") else "tick",
+                "unit": unit or None,
+                "measurement_label": measurement_label or None,
                 "is_completed": False,
                 "completed_by": None,
                 "completed_at": None,
                 "completion_notes": None,
+                "actual_value": None,
                 "photo_url": None,
                 "created_at": now,
                 "created_by": user_id,

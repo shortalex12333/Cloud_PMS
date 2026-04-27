@@ -2761,6 +2761,9 @@ async def _p2_add_checklist_item(params: Dict[str, Any]) -> Dict[str, Any]:
         requires_signature=bool(params.get("requires_signature", False)),
         category=params.get("category") or "general",
         sequence=params.get("sequence"),
+        item_type=params.get("item_type") or "tick",
+        unit=params.get("unit"),
+        measurement_label=params.get("measurement_label"),
     )
 
 
@@ -2861,9 +2864,11 @@ async def _p2_mark_checklist_item_complete(params: Dict[str, Any]) -> Dict[str, 
     handlers = _get_p2_handlers()
     return await handlers.mark_checklist_item_complete_execute(
         checklist_item_id=params.get("checklist_item_id") or params.get("item_id") or params.get("entity_id"),
+        work_order_id=params.get("work_order_id") or params.get("entity_id"),
         yacht_id=params["yacht_id"],
         user_id=params.get("user_id"),
-        notes=params.get("notes")
+        notes=params.get("notes"),
+        actual_value=params.get("actual_value"),
     )
 
 

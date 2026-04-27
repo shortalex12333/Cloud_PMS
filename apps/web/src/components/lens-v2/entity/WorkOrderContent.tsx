@@ -430,11 +430,14 @@ export function WorkOrderContent() {
 
   const checklistItems: ChecklistItem[] = checklist.map((c, i) => ({
     id: (c.id as string) ?? `check-${i}`,
-    step: (c.step ?? c.order ?? i + 1) as number | undefined,
+    step: (c.sequence ?? c.step ?? c.order ?? i + 1) as number | undefined,
     description: (c.description ?? c.text ?? c.title) as string ?? '',
     completed: (c.completed ?? c.is_completed ?? c.done) as boolean ?? false,
     completedBy: (c.completed_by ?? c.completed_by_name) as string | undefined,
     completedAt: (c.completed_at) as string | undefined,
+    item_type: ((c.item_type as string) === 'measurement' ? 'measurement' : 'tick') as 'tick' | 'measurement',
+    unit: (c.unit as string | undefined) ?? undefined,
+    actual_value: (c.actual_value as string | null | undefined) ?? null,
   }));
 
   const docItems: DocRowItem[] = documents.map((d, i) => ({
@@ -446,9 +449,15 @@ export function WorkOrderContent() {
     onClick: d.document_id ? () => router.push(getEntityRoute('documents' as Parameters<typeof getEntityRoute>[0], d.document_id as string)) : undefined,
   }));
 
-  // ── Handle checklist toggle ──
+  // ── Handle checklist completion ──
   const handleChecklistToggle = React.useCallback(
     (itemId: string) => executeAction('mark_checklist_item_complete', { checklist_item_id: itemId }),
+    [executeAction]
+  );
+
+  const handleMeasurement = React.useCallback(
+    (itemId: string, value: string) =>
+      executeAction('mark_checklist_item_complete', { checklist_item_id: itemId, actual_value: value }),
     [executeAction]
   );
 
@@ -521,8 +530,12 @@ export function WorkOrderContent() {
       case 'checklist':
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <ChecklistSection items={checklistItems} onToggle={handleChecklistToggle} />
-            <AddCheckpointButton onClick={handleAddGeneralCheckpoint} label="+ Add Checklist Item" />
+            <ChecklistSection
+              items={checklistItems}
+              onToggle={handleChecklistToggle}
+              onMeasurement={handleMeasurement}
+            />
+            <AddCheckpointButton onClick={handleAddGeneralCheckpoint} label="+ Add Checklist Steps" />
           </div>
         );
       case 'documents':
@@ -667,17 +680,20 @@ export function WorkOrderContent() {
           setAssignOpen(false);
         }}
       />
-      <AddChecklistItemModal
+      <AddChecklistModal
         open={checklistModalOpen}
         category={checklistCategory}
         onClose={() => setChecklistModalOpen(false)}
-        onSubmit={async (itemTitle, itemDescription) => {
-          await runAction('add_checklist_item', {
-            title: itemTitle,
-            description: itemDescription || undefined,
-            category: checklistCategory,
-            is_required: true,
-          });
+        onSubmit={async (steps) => {
+          for (const step of steps) {
+            await runAction('add_checklist_item', {
+              title: step.text,
+              item_type: step.item_type,
+              unit: step.unit || undefined,
+              category: checklistCategory,
+              is_required: true,
+            });
+          }
           setChecklistModalOpen(false);
         }}
       />
@@ -1384,9 +1400,22 @@ function AssignModal({
   );
 }
 
-// ── AddChecklistItemModal ───────────────────────────────────────────────────
+// ── AddChecklistModal — step builder ───────────────────────────────────────
 
-function AddChecklistItemModal({
+interface BuildStep {
+  id: string;
+  text: string;
+  item_type: 'tick' | 'measurement';
+  unit: string;
+}
+
+const COMMON_UNITS = ['Ω', 'V', 'A', '°C', '°F', '%', 'psi', 'bar', 'L', 'mL', 'mm', 'rpm', 'kW', 'kg'];
+
+function newStep(): BuildStep {
+  return { id: Math.random().toString(36).slice(2), text: '', item_type: 'tick', unit: '' };
+}
+
+function AddChecklistModal({
   open,
   category,
   onClose,
@@ -1395,87 +1424,250 @@ function AddChecklistItemModal({
   open: boolean;
   category: 'general' | 'safety';
   onClose: () => void;
-  onSubmit: (title: string, description: string) => Promise<void>;
+  onSubmit: (steps: BuildStep[]) => Promise<void>;
 }) {
-  const [itemTitle, setItemTitle] = React.useState('');
-  const [itemDesc, setItemDesc] = React.useState('');
+  const [steps, setSteps] = React.useState<BuildStep[]>([newStep()]);
   const [submitting, setSubmitting] = React.useState(false);
+  const inputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
   React.useEffect(() => {
-    if (open) { setItemTitle(''); setItemDesc(''); setSubmitting(false); }
+    if (open) {
+      setSteps([newStep()]);
+      setSubmitting(false);
+    }
   }, [open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
 
   if (!open) return null;
 
   const isSafety = category === 'safety';
-  const placeholder = isSafety ? 'e.g. Lock out breaker 17B' : 'e.g. Inspect filter housing';
+  const validSteps = steps.filter((s) => s.text.trim());
+
+  const addStep = () => {
+    const step = newStep();
+    setSteps((prev) => [...prev, step]);
+    setTimeout(() => inputRefs.current[step.id]?.focus(), 50);
+  };
+
+  const removeStep = (id: string) =>
+    setSteps((prev) => prev.length > 1 ? prev.filter((s) => s.id !== id) : prev);
+
+  const updateStep = (id: string, patch: Partial<BuildStep>) =>
+    setSteps((prev) => prev.map((s) => s.id === id ? { ...s, ...patch } : s));
+
+  const handleKeyDown = (e: React.KeyboardEvent, stepId: string) => {
+    if (e.key === 'Enter') { e.preventDefault(); addStep(); }
+    if (e.key === 'Backspace' && steps.find(s => s.id === stepId)?.text === '' && steps.length > 1) {
+      removeStep(stepId);
+    }
+  };
 
   const handleSubmit = async () => {
-    if (!itemTitle.trim() || submitting) return;
+    if (!validSteps.length || submitting) return;
     setSubmitting(true);
-    try { await onSubmit(itemTitle.trim(), itemDesc.trim()); }
+    try { await onSubmit(validSteps); }
     finally { setSubmitting(false); }
   };
 
+  const inp: React.CSSProperties = {
+    padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border-sub)',
+    background: 'var(--bg)', color: 'var(--txt)', fontSize: 13,
+    fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
+  };
+
   return (
-    <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, zIndex: 300, display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-      background: 'var(--overlay-heavy)',
-    }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        width: '100%', maxWidth: 420, background: 'var(--surface)',
-        border: '1px solid var(--border-faint)', borderRadius: 10,
-        padding: 24, boxShadow: 'var(--shadow-card)',
-      }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--txt)', marginBottom: 16 }}>
-          {isSafety ? 'Add Safety Checkpoint' : 'Add Checklist Item'}
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300, display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'var(--overlay-heavy)',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 640,
+          maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+          background: 'var(--surface)', border: '1px solid var(--border-faint)',
+          borderRadius: 12, boxShadow: 'var(--shadow-card)', overflow: 'hidden',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '18px 22px 14px', borderBottom: '1px solid var(--border-faint)', flexShrink: 0,
+        }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--txt)' }}>
+            {isSafety ? 'Build Safety Checklist' : 'Build Checklist'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--txt3)', marginTop: 4 }}>
+            Add steps line by line. Toggle <strong style={{ color: 'var(--txt2)' }}>✓</strong> for done/not-done
+            or <strong style={{ color: 'var(--mark)' }}>#</strong> to require a logged value (resistance, temp, level…).
+            Press Enter to jump to the next step.
+          </div>
         </div>
-        <label style={{ fontSize: 13, color: 'var(--txt2)', display: 'block', marginBottom: 4 }}>
-          Title <span style={{ color: 'var(--red)' }}>*</span>
-        </label>
-        <input
-          value={itemTitle}
-          onChange={(e) => setItemTitle(e.target.value)}
-          placeholder={placeholder}
-          autoFocus
-          style={{
-            width: '100%', padding: '8px 10px', borderRadius: 6,
-            border: '1px solid var(--border-sub)', background: 'var(--bg)',
-            color: 'var(--txt)', fontSize: 13, marginBottom: 14,
-            fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
-          }}
-        />
-        <label style={{ fontSize: 13, color: 'var(--txt2)', display: 'block', marginBottom: 4 }}>
-          Guidance / Instructions <span style={{ color: 'var(--txt3)', fontWeight: 400 }}>(optional)</span>
-        </label>
-        <textarea
-          value={itemDesc}
-          onChange={(e) => setItemDesc(e.target.value)}
-          placeholder={isSafety ? 'Isolation steps, test-for-dead procedure…' : 'Additional guidance…'}
-          rows={3}
-          style={{
-            width: '100%', padding: '8px 10px', borderRadius: 6,
-            border: '1px solid var(--border-sub)', background: 'var(--bg)',
-            color: 'var(--txt)', fontSize: 13, marginBottom: 16, resize: 'vertical',
-            fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
-          }}
-        />
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} style={{
-            padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-sub)',
-            background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
-            fontFamily: 'var(--font-sans)',
-          }}>Cancel</button>
-          <button type="button" onClick={handleSubmit} disabled={!itemTitle.trim() || submitting} style={{
-            padding: '8px 14px', borderRadius: 6, border: 'none',
-            background: itemTitle.trim() ? 'var(--mark)' : 'var(--border-faint)',
-            color: itemTitle.trim() ? 'var(--surface)' : 'var(--txt3)',
-            fontSize: 13, cursor: itemTitle.trim() ? 'pointer' : 'not-allowed',
-            fontFamily: 'var(--font-sans)', fontWeight: 500,
-          }}>
-            {submitting ? 'Adding…' : 'Add Item'}
+
+        {/* Steps list */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 22px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {steps.map((step, idx) => (
+            <div key={step.id}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: step.item_type === 'measurement' ? 6 : 10 }}>
+                {/* Step number */}
+                <span style={{
+                  width: 22, flexShrink: 0, textAlign: 'right',
+                  fontSize: 12, color: 'var(--txt3)', fontFamily: 'var(--font-mono)',
+                  userSelect: 'none',
+                }}>
+                  {idx + 1}.
+                </span>
+
+                {/* Text input */}
+                <input
+                  ref={(el) => { inputRefs.current[step.id] = el; }}
+                  value={step.text}
+                  onChange={(e) => updateStep(step.id, { text: e.target.value })}
+                  onKeyDown={(e) => handleKeyDown(e, step.id)}
+                  placeholder={
+                    isSafety
+                      ? idx === 0 ? 'e.g. Locate AC unit behind master wardrobe, stbd side' : 'Next safety step…'
+                      : idx === 0 ? 'e.g. Remove all covers from fan unit' : 'Next step…'
+                  }
+                  autoFocus={idx === 0}
+                  style={{ ...inp, flex: 1 }}
+                />
+
+                {/* Type toggle */}
+                <div style={{ display: 'flex', borderRadius: 6, border: '1px solid var(--border-sub)', overflow: 'hidden', flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    title="Tick — done / not done"
+                    onClick={() => updateStep(step.id, { item_type: 'tick', unit: '' })}
+                    style={{
+                      padding: '5px 10px', border: 'none', cursor: 'pointer',
+                      background: step.item_type === 'tick' ? 'var(--mark)' : 'transparent',
+                      color: step.item_type === 'tick' ? 'var(--surface)' : 'var(--txt3)',
+                      fontSize: 13, fontWeight: 700, lineHeight: 1,
+                    }}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
+                    title="Measurement — log a value"
+                    onClick={() => updateStep(step.id, { item_type: 'measurement' })}
+                    style={{
+                      padding: '5px 10px', border: 'none', cursor: 'pointer',
+                      background: step.item_type === 'measurement' ? 'var(--mark)' : 'transparent',
+                      color: step.item_type === 'measurement' ? 'var(--surface)' : 'var(--txt3)',
+                      fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', lineHeight: 1,
+                    }}
+                  >
+                    #
+                  </button>
+                </div>
+
+                {/* Delete */}
+                <button
+                  type="button"
+                  onClick={() => removeStep(step.id)}
+                  disabled={steps.length === 1}
+                  style={{
+                    appearance: 'none', WebkitAppearance: 'none',
+                    background: 'transparent', border: 'none', cursor: steps.length > 1 ? 'pointer' : 'default',
+                    color: steps.length > 1 ? 'var(--txt3)' : 'transparent',
+                    fontSize: 14, padding: '2px 4px', flexShrink: 0,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Unit row — only for measurement items */}
+              {step.item_type === 'measurement' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingLeft: 30 }}>
+                  <span style={{ fontSize: 11, color: 'var(--txt3)', whiteSpace: 'nowrap' }}>Unit:</span>
+                  <input
+                    value={step.unit}
+                    onChange={(e) => updateStep(step.id, { unit: e.target.value })}
+                    placeholder="e.g. Ω, V, °C, %, L"
+                    style={{ ...inp, width: 120, fontSize: 12, fontFamily: 'var(--font-mono)' }}
+                  />
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {COMMON_UNITS.map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => updateStep(step.id, { unit: u })}
+                        style={{
+                          padding: '2px 7px', borderRadius: 4, border: '1px solid var(--border-sub)',
+                          background: step.unit === u ? 'var(--teal-bg)' : 'transparent',
+                          color: step.unit === u ? 'var(--mark)' : 'var(--txt3)',
+                          fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-mono)',
+                        }}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Add step */}
+          <button
+            type="button"
+            onClick={addStep}
+            style={{
+              appearance: 'none', WebkitAppearance: 'none',
+              background: 'transparent', border: '1px dashed var(--border-sub)',
+              borderRadius: 6, padding: '8px 14px', cursor: 'pointer',
+              color: 'var(--txt3)', fontSize: 12, fontWeight: 500,
+              marginTop: 4, textAlign: 'left', fontFamily: 'var(--font-sans)',
+            }}
+          >
+            + Add Step
           </button>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '14px 22px', borderTop: '1px solid var(--border-faint)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 12, color: 'var(--txt3)' }}>
+            {validSteps.length} step{validSteps.length !== 1 ? 's' : ''} ready to save
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" onClick={onClose} style={{
+              padding: '8px 16px', borderRadius: 6, border: '1px solid var(--border-sub)',
+              background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
+            }}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!validSteps.length || submitting}
+              style={{
+                padding: '8px 18px', borderRadius: 6, border: 'none',
+                background: validSteps.length ? 'var(--mark)' : 'var(--border-faint)',
+                color: validSteps.length ? 'var(--surface)' : 'var(--txt3)',
+                fontSize: 13, fontWeight: 600,
+                cursor: validSteps.length ? 'pointer' : 'not-allowed',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              {submitting ? 'Saving…' : `Save ${validSteps.length} Step${validSteps.length !== 1 ? 's' : ''}`}
+            </button>
+          </div>
         </div>
       </div>
     </div>
