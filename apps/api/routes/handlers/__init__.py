@@ -33,7 +33,13 @@ from .internal_adapter import HANDLERS as ADAPTER_HANDLERS
 
 HANDLERS: dict = {
     # Domain-native Phase 4 handlers (take priority over adapters)
-    **WO_HANDLERS, **PO_HANDLERS, **REC_HANDLERS,
+    # PO_HANDLERS comes after COMPLIANCE_HANDLERS so that the native PO handler
+    # wins for shared action IDs (add_item_to_purchase, upload_invoice,
+    # update_purchase_status). COMPLIANCE_HANDLERS operates on the
+    # purchase_requests table; PO_HANDLERS operates on purchase_orders. They
+    # share action IDs but target different DB tables — PO must win for
+    # purchase_order entity cards.
+    **WO_HANDLERS, **REC_HANDLERS,
     **CREW_HANDLERS, **HOR_HANDLERS,
     **CERT_HANDLERS, **DOC_HANDLERS, **HAND_HANDLERS,
     **SHOP_HANDLERS, **PM_HANDLERS,
@@ -43,6 +49,7 @@ HANDLERS: dict = {
     **PARTS_P5_HANDLERS,
     **CHECKLIST_HANDLERS,
     **COMPLIANCE_HANDLERS,
+    **PO_HANDLERS,  # must come last among domain handlers — overrides compliance for PO actions
     # Adapted legacy handlers (migration shim — remove as handlers go native)
     **{k: v for k, v in ADAPTER_HANDLERS.items()
        if k not in WO_HANDLERS and k not in PO_HANDLERS and k not in REC_HANDLERS
@@ -51,5 +58,6 @@ HANDLERS: dict = {
        and k not in SHOP_HANDLERS and k not in PM_HANDLERS
        and k not in WO_COMP_HANDLERS and k not in FAULT_HANDLERS
        and k not in EQUIP_HANDLERS and k not in PARTS_P5_HANDLERS
-       and k not in CHECKLIST_HANDLERS and k not in COMPLIANCE_HANDLERS},
+       and k not in CHECKLIST_HANDLERS and k not in COMPLIANCE_HANDLERS
+       and k not in PO_HANDLERS},
 }
