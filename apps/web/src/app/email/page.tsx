@@ -66,12 +66,12 @@ function EmailSplitContent() {
       {/* Topbar — matches elegant.html */}
       <header style={{
         height: 40, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 8,
-        borderBottom: '1px solid var(--border-faint)', background: 'rgba(12,11,10,0.70)',
+        borderBottom: '1px solid var(--border-faint)', background: 'var(--topbar-bg)',
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
       }}>
-        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4A9EC0' }}>Celeste</div>
+        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--mark)' }}>Celeste</div>
         <div style={{ width: 1, height: 12, background: 'var(--border-sub)', margin: '0 4px' }} />
-        <div style={{ fontSize: 11, color: 'var(--txt3)' }}><em style={{ fontStyle: 'normal', color: 'rgba(74,158,192,0.80)' }}>{user?.yachtName || 'SY Vessel'}</em></div>
+        <div style={{ fontSize: 11, color: 'var(--txt3)' }}><em style={{ fontStyle: 'normal', color: 'var(--mark-strong)' }}>{user?.yachtName || 'SY Vessel'}</em></div>
         <div style={{ flex: 1 }} />
         <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--txt-ghost)', background: 'var(--surface-el)', border: '1px solid var(--border-sub)', borderRadius: 3, padding: '2px 7px' }}>{user?.role || 'Crew'}</div>
       </header>

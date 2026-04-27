@@ -220,7 +220,7 @@ export function AttachmentsSection({ messages }: { messages: EmailMessage[] }) {
           >
             <div style={{
               width: 36, height: 36, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              background: isPdf ? 'rgba(192,80,58,0.1)' : 'var(--neutral-bg)',
+              background: isPdf ? 'var(--red-bg)' : 'var(--neutral-bg)',
             }}>
               <FileText size={16} style={{ color: isPdf ? 'var(--red)' : 'var(--txt3)' }} />
             </div>
@@ -391,7 +391,7 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
           <a href={thread.messages[0].web_link} target="_blank" rel="noopener noreferrer" style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 6,
             fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-            background: 'var(--teal-bg)', color: 'var(--mark)', border: '1px solid rgba(90,171,204,0.2)',
+            background: 'var(--teal-bg)', color: 'var(--mark)', border: '1px solid var(--mark-border)',
             textDecoration: 'none',
           }}>
             <ExternalLink size={12} /> Open in Outlook
@@ -416,7 +416,7 @@ export function ThreadRow({ thread, isSelected, onClick }: { thread: any; isSele
       style={{
         display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', minHeight: 44,
         cursor: 'pointer', transition: 'background 60ms',
-        borderTop: '1px solid rgba(255,255,255,0.04)',
+        borderTop: '1px solid var(--border-faint)',
         background: isSelected ? 'var(--teal-bg)' : 'transparent',
         position: 'relative',
       }}
