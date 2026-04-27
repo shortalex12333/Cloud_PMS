@@ -322,7 +322,7 @@ ACTION_VALIDATION_SCHEMAS = {
 
     # Fault Actions
     "report_fault": {
-        "equipment_id": lambda v: validate_uuid(v, "equipment_id"),
+        # equipment_id is OPTIONAL — fault can be reported without linking equipment
         "description": lambda v: validate_required_string(v, "description"),
     },
     "diagnose_fault": {
@@ -361,11 +361,11 @@ ACTION_VALIDATION_SCHEMAS = {
     },
 
     # Purchase Actions
-    "approve_purchase": {
-        "purchase_request_id": lambda v: validate_uuid(v, "purchase_request_id"),
-    },
+    # approve_purchase: purchase_request_id comes from compliance domain (purchase_requests
+    # table). No payload validation — purchase_order_id is injected via resolve_entity_context.
     "update_purchase_status": {
-        "purchase_request_id": lambda v: validate_uuid(v, "purchase_request_id"),
+        # purchase_order_id is injected into context by resolve_entity_context, not payload.
+        # Only validate the status enum that the user actually selects in the form.
         "status": lambda v: validate_enum(v, VALID_PURCHASE_STATUS, "status"),
     },
 }
