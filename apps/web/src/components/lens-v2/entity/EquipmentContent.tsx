@@ -222,6 +222,7 @@ export function EquipmentContent() {
   const [actionPopupConfig, setActionPopupConfig] = React.useState<{
     actionId: string; title: string; subtitle?: string;
     fields: ActionPopupField[]; signatureLevel: 0|1|2|3|4|5;
+    extraParams?: Record<string, unknown>;
   } | null>(null);
 
   function openActionPopup(action: { action_id: string; label: string; required_fields: string[]; prefill: Record<string, unknown>; requires_signature: boolean }) {
@@ -325,18 +326,68 @@ export function EquipmentContent() {
     });
   }, [name]);
 
-  // PR-EQ-5: File Warranty Claim is a navigation stub — CEO brief marks it
-  // PARAMOUNT and wants router.push rather than invoking the backend action
-  // (which would open the warranty modal with partial prefill). Routed to
-  // /warranties?equipment_id=<id> because no dedicated /warranties/new page
-  // exists yet (folder is `warranties` plural, and only list + [id] routes
-  // are present). A follow-up PR can either add a /warranties/new page that
-  // reads ?equipment_id= to prefill a create form, or replace this handler
-  // with a modal — the stub keeps the user-visible contract stable.
   const SPECIAL_HANDLERS: Record<string, () => void> = {
+    report_fault: () => {
+      setActionPopupConfig({
+        actionId: 'report_fault',
+        title: 'Report Fault',
+        subtitle: name || undefined,
+        fields: [
+          { name: 'title', label: 'Fault Title', type: 'kv-edit', placeholder: 'Brief description of the fault...', value: name ? `${name} — ` : '' },
+          { name: 'description', label: 'Description', type: 'text-area', placeholder: 'What went wrong? When was it first noticed?', value: '' },
+          { name: 'severity', label: 'Severity', type: 'select', options: [
+            { value: 'cosmetic', label: 'Cosmetic' },
+            { value: 'minor', label: 'Minor' },
+            { value: 'major', label: 'Major' },
+            { value: 'critical', label: 'Critical' },
+            { value: 'safety', label: 'Safety' },
+          ], value: 'minor' },
+        ],
+        signatureLevel: 0,
+        extraParams: { equipment_id: entityId },
+      });
+    },
     file_warranty_claim: () => {
-      const qs = entityId ? `?equipment_id=${encodeURIComponent(entityId)}` : '';
-      router.push(`/warranties${qs}`);
+      setActionPopupConfig({
+        actionId: 'file_warranty_claim',
+        title: 'File Warranty Claim',
+        subtitle: name || undefined,
+        fields: [
+          { name: 'title', label: 'Claim Title', type: 'kv-edit', placeholder: 'e.g. Compressor failure under warranty', value: name ? `${name} — ` : '' },
+          { name: 'vendor_name', label: 'Vendor / Manufacturer', type: 'kv-edit', placeholder: 'Vendor or manufacturer name...', value: manufacturer ?? '' },
+          { name: 'description', label: 'Description', type: 'text-area', placeholder: 'Describe the warranty issue...', value: '' },
+          { name: 'claim_type', label: 'Claim Type', type: 'select', options: [
+            { value: 'manufacturer_defect', label: 'Manufacturer Defect' },
+            { value: 'premature_failure', label: 'Premature Failure' },
+            { value: 'incorrect_part', label: 'Incorrect Part' },
+            { value: 'damage_in_transit', label: 'Damage in Transit' },
+            { value: 'other', label: 'Other' },
+          ], value: '' },
+          { name: 'serial_number', label: 'Serial Number', type: 'kv-edit', placeholder: 'Serial number...', value: serial_number ?? '' },
+        ],
+        signatureLevel: 0,
+        extraParams: { equipment_id: entityId },
+      });
+    },
+    add_to_handover: () => {
+      setActionPopupConfig({
+        actionId: 'add_to_handover',
+        title: 'Add to Handover',
+        subtitle: name || undefined,
+        fields: [
+          { name: 'summary', label: 'Summary', type: 'text-area', placeholder: 'What the incoming shift needs to know about this equipment...', value: '' },
+          { name: 'section', label: 'Section', type: 'select', options: [
+            { value: 'Engineering', label: 'Engineering' },
+            { value: 'Deck', label: 'Deck' },
+            { value: 'Interior', label: 'Interior' },
+            { value: 'Command', label: 'Command' },
+            { value: 'Bridge', label: 'Bridge' },
+          ], value: 'Engineering' },
+          { name: 'notes', label: 'Additional Notes (optional)', type: 'text-area', placeholder: 'Any extra context for the incoming watch...', value: '' },
+        ],
+        signatureLevel: 0,
+        extraParams: { entity_id: entityId, entity_type: 'equipment', title: name },
+      });
     },
   };
   const DANGER_ACTIONS = new Set(['decommission_equipment', 'archive_equipment']);
@@ -806,7 +857,7 @@ export function EquipmentContent() {
           fields={actionPopupConfig.fields}
           signatureLevel={actionPopupConfig.signatureLevel}
           onSubmit={async (values) => {
-            await executeAction(actionPopupConfig.actionId, values);
+            await executeAction(actionPopupConfig.actionId, { ...actionPopupConfig.extraParams, ...values });
             setActionPopupConfig(null);
           }}
           onClose={() => setActionPopupConfig(null)}
