@@ -147,6 +147,9 @@ const HIDDEN_FROM_DROPDOWN = new Set([
   'create_crew_certificate',
   'supersede_certificate',
   'link_document_to_certificate',
+  // add_certificate_note has no field_metadata → actionHasFields returns false → dropdown click
+  // fires with empty note_text → 400. The NotesSection AddNoteModal is the correct entry point.
+  'add_certificate_note',
 ]);
 
 const DANGER_ACTIONS = new Set([
