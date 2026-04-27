@@ -5,19 +5,13 @@
 #
 # handlers/ is the single source of truth for all domain logic.
 # This file only imports and merges their HANDLERS dicts.
-#
-# Migration state (2026-04-27):
-#   WO domain  -> fully in handlers/work_order_phase4.py
-#   Media      -> fully in handlers/media_phase4.py
-#   Handover   -> fully in handlers/handover_handlers.py
-#   All others -> still in routes/handlers/{domain}_handler.py
 
 from handlers.work_order_phase4 import HANDLERS as WO_HANDLERS
 from handlers.media_phase4 import HANDLERS as MEDIA_HANDLERS
 from handlers.handover_handlers import HANDLERS as HAND_HANDLERS
 from handlers.purchase_order_phase4 import HANDLERS as PO_HANDLERS
-from .receiving_handler import HANDLERS as REC_HANDLERS
-from .certificate_phase4_handler import HANDLERS as CERT_HANDLERS
+from handlers.receiving_handlers import HANDLERS as RECV_HANDLERS
+from handlers.certificate_handlers import CERT_HANDLERS
 from .document_handler import HANDLERS as DOC_HANDLERS
 from .shopping_handler import HANDLERS as SHOP_HANDLERS
 from .pm_handler import HANDLERS as PM_HANDLERS
@@ -29,7 +23,7 @@ from .internal_adapter import HANDLERS as ADAPTER_HANDLERS
 
 HANDLERS: dict = {
     **WO_HANDLERS,
-    **REC_HANDLERS,
+    **RECV_HANDLERS,
     **CERT_HANDLERS,
     **DOC_HANDLERS,
     **HAND_HANDLERS,
@@ -44,7 +38,7 @@ HANDLERS: dict = {
     **{k: v for k, v in ADAPTER_HANDLERS.items()
        if k not in WO_HANDLERS
        and k not in PO_HANDLERS
-       and k not in REC_HANDLERS
+       and k not in RECV_HANDLERS
        and k not in CERT_HANDLERS
        and k not in DOC_HANDLERS
        and k not in HAND_HANDLERS

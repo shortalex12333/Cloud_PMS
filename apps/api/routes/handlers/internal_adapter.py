@@ -9,28 +9,19 @@ here should be removed and replaced with direct handlers in their domain files.
 from typing import Any, Dict, Callable
 
 # IMPORTANT: Do NOT import INTERNAL_HANDLERS at module level.
-# It causes a circular import: internal_dispatcher → handlers → routes/handlers/__init__ → this file.
+# It causes a circular import: index → handlers → routes/handlers/__init__ → this file.
 # Instead, import lazily inside each adapter call.
 
 # Soft-delete actions require entity_type in params (for universal_handlers.soft_delete_entity).
 # The adapter must inject it since resolve_entity_context only maps entity_id → domain key.
 _SOFT_DELETE_ENTITY_TYPES: Dict[str, str] = {
-    "archive_fault": "fault",
-    "delete_fault": "fault",
-    "cancel_po": "purchase_order",
-    "delete_po": "purchase_order",
     "archive_part": "part",
     "delete_part": "part",
-    "archive_certificate": "certificate",
-    "suspend_certificate": "certificate",
-    "revoke_certificate": "certificate",
     "archive_document": "document",
     "archive_warranty": "warranty",
     "void_warranty": "warranty",
     "archive_list": "shopping_list",
     "delete_list": "shopping_list",
-    "archive_handover": "handover",
-    "delete_handover": "handover",
     "delete_work_order": "work_order",
     "archive_equipment": "equipment",
 }
@@ -52,7 +43,7 @@ def _make_adapter(action_id: str) -> Callable:
         db_client: Any,
     ) -> dict:
         # Lazy import to avoid circular dependency
-        from action_router.dispatchers.internal_dispatcher import INTERNAL_HANDLERS
+        from action_router.dispatchers.index import INTERNAL_HANDLERS
         handler_fn = INTERNAL_HANDLERS[action_id]
         # Merge into flat params dict expected by legacy handlers
         # Context contains resolved entity keys (e.g. entity_id → receiving_id)
@@ -60,8 +51,6 @@ def _make_adapter(action_id: str) -> Callable:
             "yacht_id": yacht_id,
             "user_id": user_id,
             "user_context": user_context,
-            # role as top-level key so handlers can do params.get("role") — e.g. _cert_mutation_gate.
-            # Without this every cert mutation 400s with "Role '' cannot modify certificates".
             "role": user_context.get("role", ""),
             **context,
             **payload,
@@ -76,36 +65,23 @@ def _make_adapter(action_id: str) -> Callable:
     return _adapted
 
 
-# SYNC INVARIANT: Every action_id in this list MUST exist as a key in
-# INTERNAL_HANDLERS (internal_dispatcher.py). If you add to one, add to both.
-# Missing from _ACTIONS_TO_ADAPT → action unreachable from /v1/actions/execute.
-# Missing from INTERNAL_HANDLERS → KeyError at dispatch time.
-
 # All actions that exist in INTERNAL_HANDLERS but NOT in Phase 4 routes/handlers/
 _ACTIONS_TO_ADAPT = [
     "accept_receiving",
-    "add_certificate_note",
-    "assign_certificate",
-    "renew_certificate",
     "add_document_comment",
     "add_document_note",
     "add_entity_link",
     "add_list_item",
     "add_note",
     "add_part_note",
-    "add_po_note",
-    "add_receiving_item",
     "add_warranty_note",
     "add_wo_photo",
     "approve_warranty_claim",
     "adjust_receiving_item",
     "apply_template",
     "approve_list",
-    "archive_certificate",
     "archive_document",
     "archive_equipment",
-    "archive_fault",
-    "archive_handover",
     "archive_list",
     "archive_part",
     "archive_warranty",
@@ -113,8 +89,6 @@ _ACTIONS_TO_ADAPT = [
     "attach_file_to_equipment",
     "attach_image_with_comment",
     "attach_receiving_image_with_comment",
-    "cancel_po",
-    "classify_fault",
     "close_warranty_claim",
     "compose_warranty_email",
     "confirm_receiving",
@@ -125,24 +99,18 @@ _ACTIONS_TO_ADAPT = [
     "draft_warranty_claim",
     "decommission_equipment",
     "delete_document_comment",
-    "delete_fault",
     "delete_list",
     "delete_part",
-    "delete_po",
     "delete_work_order",
-    "edit_handover_section",
     "extract_receiving_candidates",
     "file_warranty_claim",
     "flag_discrepancy",
     "flag_equipment_attention",
     "get_open_faults_for_equipment",
     "get_related_entities_for_equipment",
-    "investigate_fault",
     "link_document_to_equipment",
-    "link_equipment_to_certificate",
     "link_invoice_document",
     "link_part_to_equipment",
-    "unlink_equipment_from_certificate",
     "list_document_comments",
     "open_document",
     "record_equipment_hours",
@@ -150,18 +118,9 @@ _ACTIONS_TO_ADAPT = [
     "reject_warranty_claim",
     "reorder_part",
     "restore_archived_equipment",
-    "revoke_certificate",
     "set_equipment_status",
-    "sign_handover",
     "submit_list",
     "submit_warranty_claim",
-    "suspend_certificate",
-    "track_po_delivery",
-    "order_part",
-    "approve_purchase",
-    "add_item_to_purchase",
-    "update_purchase_status",
-    "upload_invoice",
     "update_document_comment",
     "update_part_details",
     "update_receiving_fields",

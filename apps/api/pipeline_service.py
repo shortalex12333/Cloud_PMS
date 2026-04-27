@@ -327,16 +327,6 @@ except Exception as e:
     logger.error("Inventory endpoints will not be available")
 
 # ============================================================================
-# FAULT LENS V1 ROUTES (Phase 7-8)
-# ============================================================================
-
-try:
-    from routes.fault_routes import router as fault_routes_router
-    app.include_router(fault_routes_router, prefix="/v1/faults", tags=["faults"])
-    logger.info("✅ Fault Lens v1 routes registered at /v1/faults/*")
-except Exception as e:
-    logger.error(f"❌ Failed to register Fault Lens routes: {e}")
-    logger.error("Fault Lens endpoints will not be available")
 
 # ============================================================================
 # EQUIPMENT ROUTES (Equipment Lens v1)

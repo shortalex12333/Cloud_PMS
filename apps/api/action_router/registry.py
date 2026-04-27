@@ -1235,7 +1235,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         ],
     ),
 
-    # view_fault_detail REMOVED 2026-04-25 (FAULT05 Issue 7) — stale, fault detail served by fault_routes.py GET endpoint.
+    # view_fault_detail REMOVED — fault detail served via entity_routes.py
 
     "view_fault_history": ActionDefinition(
         action_id="view_fault_history",
@@ -3892,18 +3892,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
         required_fields=["yacht_id", "item_id"],
         domain="shopping_list",
-        variant=ActionVariant.MUTATE,
-    ),
-
-    "classify_fault": ActionDefinition(
-        action_id="classify_fault",
-        label="Classify Fault",
-        endpoint="/v1/actions/execute",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "captain"],
-        required_fields=["yacht_id", "fault_id"],
-        domain="faults",
         variant=ActionVariant.MUTATE,
     ),
 
