@@ -1183,6 +1183,9 @@ HANDLERS: dict = {
     "get_work_order":                   view_work_order_detail,
     "view_work_order_checklist":        view_work_order_checklist,
     "view_work_order_history":          view_work_order_history,
+    # Aliases — frontend suppresses these; kept so action doesn't 404
+    "add_wo_photo":                     add_work_order_photo,
+    "delete_work_order":                archive_work_order,
     # Worklist
     "view_worklist":                    view_worklist,
     "add_worklist_task":                add_worklist_task,

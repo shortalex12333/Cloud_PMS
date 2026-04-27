@@ -35,14 +35,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Import centralized Supabase client factory
 from integrations.supabase import get_supabase_client, get_tenant_client
 
-from handlers.work_order_mutation_handlers import WorkOrderMutationHandlers
 from handlers.inventory_handlers import InventoryHandlers
 from handlers.handover_handlers import HandoverHandlers
 from handlers.handover_workflow_handlers import HandoverWorkflowHandlers
 from handlers.manual_handlers import ManualHandlers
 from handlers.part_handlers import PartHandlers
 from handlers.shopping_list_handlers import ShoppingListHandlers
-from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from action_router.validators import validate_payload_entities
 from action_router.middleware import validate_action_payload, InputValidationError, validate_state_transition, InvalidStateTransitionError
 from action_router.registry import get_action
@@ -85,8 +83,6 @@ _ACTION_ENTITY_MAP = {
     "reject_shopping_list_item":   ("shopping_list_item", "item_id"),
     "mark_shopping_list_ordered":  ("shopping_list_item", "item_id"),
     "promote_candidate_to_part":   ("shopping_list_item", "item_id"),
-    "edit_receiving":              ("receiving", "receiving_id"),
-    "submit_receiving_for_review": ("receiving", "receiving_id"),
     "accept_receiving":            ("receiving", "receiving_id"),
     "reject_receiving":            ("receiving", "receiving_id"),
     "submit_purchase_order":       ("purchase_order", "purchase_order_id"),
@@ -184,14 +180,12 @@ def get_handlers_for_tenant(tenant_key_alias: str):
         if supabase:
             try:
                 _handlers_cache[tenant_key_alias] = {
-                    "wo_handlers": WorkOrderMutationHandlers(supabase),
                     "inventory_handlers": InventoryHandlers(supabase),
                     "handover_handlers": HandoverHandlers(supabase),
                     "handover_workflow_handlers": HandoverWorkflowHandlers(supabase),
                     "manual_handlers": ManualHandlers(supabase),
                     "part_handlers": PartHandlers(supabase),
                     "shopping_list_handlers": ShoppingListHandlers(supabase),
-                    "hor_handlers": HoursOfRestHandlers(supabase),
                 }
                 logger.info(f"✅ All P0 action handlers initialized for {tenant_key_alias}")
             except Exception as e:
@@ -208,33 +202,27 @@ def get_handlers_for_tenant(tenant_key_alias: str):
 supabase = get_supabase_client()
 if supabase:
     try:
-        wo_handlers = WorkOrderMutationHandlers(supabase)
         inventory_handlers = InventoryHandlers(supabase)
         handover_handlers = HandoverHandlers(supabase)
         handover_workflow_handlers = HandoverWorkflowHandlers(supabase)
         manual_handlers = ManualHandlers(supabase)
         part_handlers = PartHandlers(supabase)
         shopping_list_handlers = ShoppingListHandlers(supabase)
-        hor_handlers = HoursOfRestHandlers(supabase)
         logger.info("✅ All P0 action handlers initialized (default tenant fallback)")
     except Exception as e:
         logger.error(f"Failed to initialize handlers: {e}")
-        wo_handlers = None
         inventory_handlers = None
         handover_handlers = None
         manual_handlers = None
         part_handlers = None
         shopping_list_handlers = None
-        hor_handlers = None
 else:
     logger.warning("⚠️ P0 handlers not initialized - no database connection")
-    wo_handlers = None
     inventory_handlers = None
     handover_handlers = None
     manual_handlers = None
     part_handlers = None
     shopping_list_handlers = None
-    hor_handlers = None
 
 
 # ============================================================================
@@ -260,314 +248,6 @@ class ActionExecuteRequest(BaseModel):
     action: str = Field(..., description="Action name")
     context: Dict[str, Any] = Field(..., description="Yacht ID, user ID, role")
     payload: Dict[str, Any] = Field(..., description="Action-specific parameters")
-
-
-# ============================================================================
-# PREFILL ENDPOINTS
-# ============================================================================
-
-@router.get("/create_work_order_from_fault/prefill")
-async def create_work_order_from_fault_prefill(
-    fault_id: str,
-    auth: dict = Depends(get_authenticated_user)
-):
-    """
-    Pre-fill work order form from fault data.
-
-    Returns:
-    - Pre-filled form data (title, equipment, location, description, priority)
-    - Duplicate check (existing WO for this fault)
-    """
-    yacht_id = auth["yacht_id"]
-    user_id = auth["user_id"]
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.create_work_order_from_fault_prefill(fault_id, yacht_id, user_id)
-
-    if result["status"] == "error":
-        raise HTTPException(
-            status_code=400 if result["error_code"] == "FAULT_NOT_FOUND" else 500,
-            detail=result["message"]
-        )
-
-    return result
-
-
-@router.get("/add_note_to_work_order/prefill")
-async def add_note_to_work_order_prefill(
-    work_order_id: str,
-    auth: dict = Depends(get_authenticated_user)
-):
-    """Pre-fill data for add note to work order."""
-    yacht_id = auth["yacht_id"]
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.add_note_to_work_order_prefill(work_order_id, yacht_id)
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.get("/add_part_to_work_order/prefill")
-async def add_part_to_work_order_prefill(
-    work_order_id: str,
-    part_id: str,
-    auth: dict = Depends(get_authenticated_user)
-):
-    """Pre-fill data for add part to work order."""
-    yacht_id = auth["yacht_id"]
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.add_part_to_work_order_prefill(work_order_id, part_id, yacht_id)
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.get("/mark_work_order_complete/prefill")
-async def mark_work_order_complete_prefill(
-    work_order_id: str,
-    auth: dict = Depends(get_authenticated_user)
-):
-    """Pre-fill data for mark work order complete."""
-    yacht_id = auth["yacht_id"]
-    user_id = auth["user_id"]
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.mark_work_order_complete_prefill(work_order_id, yacht_id, user_id)
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.post("/work_order/create/prepare")
-async def prepare_create_work_order(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """
-    Phase 1: Generate mutation preview for work order creation.
-
-    This endpoint returns a mutation preview with pre-filled fields based on NLP
-    entity extraction and planning document specifications.
-
-    Returns:
-    - mutation_preview: Pre-filled payload based on extracted entities
-    - missing_required: List of required fields not auto-populated
-    - warnings: List of ambiguities (equipment not found, etc.)
-    - validation_status: "ready" | "incomplete"
-    """
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-
-    # Get handlers for tenant
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    wo_handlers = handlers.get("wo_handlers")
-    if not wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    # Call the prepare handler
-    result = await wo_handlers.prepare_create_work_order(
-        query_text=request.payload.get("query_text", ""),
-        extracted_entities=request.payload.get("extracted_entities", {}),
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result.get("status") == "error":
-        status_code = 400
-        if result.get("error_code") == "INTERNAL_ERROR":
-            status_code = 500
-        raise HTTPException(status_code=status_code, detail=result.get("message"))
-
-    return result
-
-
-@router.post("/work_order/create/commit")
-async def commit_create_work_order(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """
-    Phase 2: Execute work order creation after user confirms preview.
-
-    The user has reviewed and possibly edited the mutation_preview.
-    This endpoint:
-    1. Re-validates all required fields
-    2. Validates foreign key constraints (equipment_id, assigned_to)
-    3. Executes INSERT with RLS
-    4. Writes audit log entry (signature NOT NULL, uses {} for non-signed)
-    5. Returns entity ID for frontend to refresh
-
-    Required fields: title, priority, type
-    Optional fields: equipment_id, description, assigned_to, due_date
-    """
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-
-    # Get handlers for tenant
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    wo_handlers = handlers.get("wo_handlers")
-    if not wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    # Extract payload and signature
-    payload = request.payload
-    signature = payload.get("signature")  # Optional for non-signed actions
-
-    # Call the commit handler
-    result = await wo_handlers.commit_create_work_order(
-        payload=payload,
-        signature=signature,
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result.get("status") == "error":
-        # Map error codes to HTTP status codes
-        error_code = result.get("error_code")
-        status_code_map = {
-            "MISSING_REQUIRED_FIELDS": 400,
-            "INVALID_UUID": 400,
-            "EQUIPMENT_NOT_FOUND": 404,
-            "USER_NOT_FOUND": 404,
-            "INSERT_FAILED": 500,
-            "INTERNAL_ERROR": 500,
-        }
-        status_code = status_code_map.get(error_code, 400)
-        raise HTTPException(status_code=status_code, detail=result.get("message"))
-
-    return result
-
-
-# ============================================================================
-# PREVIEW ENDPOINTS
-# ============================================================================
-
-@router.post("/mark_work_order_complete/preview")
-async def mark_work_order_complete_preview(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """Preview work order completion."""
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-    payload = request.payload
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.mark_work_order_complete_preview(
-        work_order_id=payload["work_order_id"],
-        completion_notes=payload["completion_notes"],
-        parts_used=payload.get("parts_used", []),
-        signature=payload["signature"],
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.post("/add_part_to_work_order/preview")
-async def add_part_to_work_order_preview(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """Preview adding part to work order."""
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-    payload = request.payload
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.add_part_to_work_order_preview(
-        work_order_id=payload["work_order_id"],
-        part_id=payload["part_id"],
-        quantity=payload["quantity"],
-        notes=payload.get("notes"),
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.post("/create_work_order_from_fault/preview")
-async def create_work_order_from_fault_preview(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """
-    Preview work order creation.
-
-    Shows:
-    - What will be created
-    - All side effects
-    - Warnings (if any)
-    """
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-    payload = request.payload
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.create_work_order_from_fault_preview(
-        fault_id=payload["fault_id"],
-        title=payload["title"],
-        equipment_id=payload.get("equipment_id"),
-        location=payload.get("location"),
-        description=payload.get("description"),
-        priority=payload["priority"],
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -628,12 +308,11 @@ _PO_ACTIONS = frozenset({
 })
 
 _RECEIVING_ACTIONS = frozenset({
-    "submit_receiving_for_review", "edit_receiving",
     "confirm_receiving", "accept_receiving", "reject_receiving",
     "flag_discrepancy", "create_receiving",
     "attach_receiving_image_with_comment", "extract_receiving_candidates",
     "update_receiving_fields", "add_receiving_item", "adjust_receiving_item",
-    "link_invoice_document", "view_receiving_history",
+    "link_invoice_document", "view_receiving_history", "draft_supplier_email",
 })
 
 _SHOPPING_LIST_ACTIONS = frozenset({
