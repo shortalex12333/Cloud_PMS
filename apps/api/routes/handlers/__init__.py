@@ -3,61 +3,57 @@
 # Phase 4 dispatch table — action name → handler function.
 # Imported by p0_actions_routes.py as _ACTION_HANDLERS.
 #
-# NOT the same as apps/api/handlers/ (domain business logic classes).
-# This directory: thin dispatch functions registered by action name.
-# apps/api/handlers/: stateful handler classes instantiated per request.
+# handlers/ is the single source of truth for all domain logic.
+# This file only imports and merges their HANDLERS dicts.
 #
-# Activation pattern: uncomment an import to activate its domain cluster.
-# The uncomment IS the deployment gate — a bad handler file fails at
-# import time (loud failure, safe to roll back).
-#
-# Current state: All Phase 4 domains active (92 actions registered).
+# Migration state (2026-04-27):
+#   WO domain  -> fully in handlers/work_order_phase4.py
+#   Media      -> fully in handlers/media_phase4.py
+#   Handover   -> fully in handlers/handover_handlers.py
+#   All others -> still in routes/handlers/{domain}_handler.py
 
-from .work_order_handler import HANDLERS as WO_HANDLERS
-from .purchase_order_handler import HANDLERS as PO_HANDLERS
+from handlers.work_order_phase4 import HANDLERS as WO_HANDLERS
+from handlers.media_phase4 import HANDLERS as MEDIA_HANDLERS
+from handlers.handover_handlers import HANDLERS as HAND_HANDLERS
+from handlers.purchase_order_phase4 import HANDLERS as PO_HANDLERS
 from .receiving_handler import HANDLERS as REC_HANDLERS
-from .crew_handler import HANDLERS as CREW_HANDLERS
-from .hours_of_rest_handler import HANDLERS as HOR_HANDLERS
 from .certificate_phase4_handler import HANDLERS as CERT_HANDLERS
 from .document_handler import HANDLERS as DOC_HANDLERS
-from .handover_handler import HANDLERS as HAND_HANDLERS
 from .shopping_handler import HANDLERS as SHOP_HANDLERS
 from .pm_handler import HANDLERS as PM_HANDLERS
-from .wo_completion_handler import HANDLERS as WO_COMP_HANDLERS
 from .fault_handler import HANDLERS as FAULT_HANDLERS
 from .equipment_handler import HANDLERS as EQUIP_HANDLERS
 from .parts_handler_p5 import HANDLERS as PARTS_P5_HANDLERS
-from .checklist_handler import HANDLERS as CHECKLIST_HANDLERS
 from .compliance_handler import HANDLERS as COMPLIANCE_HANDLERS
 from .internal_adapter import HANDLERS as ADAPTER_HANDLERS
 
 HANDLERS: dict = {
-    # Domain-native Phase 4 handlers (take priority over adapters)
-    # PO_HANDLERS comes after COMPLIANCE_HANDLERS so that the native PO handler
-    # wins for shared action IDs (add_item_to_purchase, upload_invoice,
-    # update_purchase_status). COMPLIANCE_HANDLERS operates on the
-    # purchase_requests table; PO_HANDLERS operates on purchase_orders. They
-    # share action IDs but target different DB tables — PO must win for
-    # purchase_order entity cards.
-    **WO_HANDLERS, **REC_HANDLERS,
-    **CREW_HANDLERS, **HOR_HANDLERS,
-    **CERT_HANDLERS, **DOC_HANDLERS, **HAND_HANDLERS,
-    **SHOP_HANDLERS, **PM_HANDLERS,
-    **WO_COMP_HANDLERS,
+    **WO_HANDLERS,
+    **REC_HANDLERS,
+    **CERT_HANDLERS,
+    **DOC_HANDLERS,
+    **HAND_HANDLERS,
+    **SHOP_HANDLERS,
+    **PM_HANDLERS,
     **FAULT_HANDLERS,
     **EQUIP_HANDLERS,
     **PARTS_P5_HANDLERS,
-    **CHECKLIST_HANDLERS,
+    **MEDIA_HANDLERS,
     **COMPLIANCE_HANDLERS,
-    **PO_HANDLERS,  # must come last among domain handlers — overrides compliance for PO actions
-    # Adapted legacy handlers (migration shim — remove as handlers go native)
+    **PO_HANDLERS,
     **{k: v for k, v in ADAPTER_HANDLERS.items()
-       if k not in WO_HANDLERS and k not in PO_HANDLERS and k not in REC_HANDLERS
-       and k not in CREW_HANDLERS and k not in HOR_HANDLERS
-       and k not in CERT_HANDLERS and k not in DOC_HANDLERS and k not in HAND_HANDLERS
-       and k not in SHOP_HANDLERS and k not in PM_HANDLERS
-       and k not in WO_COMP_HANDLERS and k not in FAULT_HANDLERS
-       and k not in EQUIP_HANDLERS and k not in PARTS_P5_HANDLERS
-       and k not in CHECKLIST_HANDLERS and k not in COMPLIANCE_HANDLERS
+       if k not in WO_HANDLERS
+       and k not in PO_HANDLERS
+       and k not in REC_HANDLERS
+       and k not in CERT_HANDLERS
+       and k not in DOC_HANDLERS
+       and k not in HAND_HANDLERS
+       and k not in SHOP_HANDLERS
+       and k not in PM_HANDLERS
+       and k not in FAULT_HANDLERS
+       and k not in EQUIP_HANDLERS
+       and k not in PARTS_P5_HANDLERS
+       and k not in MEDIA_HANDLERS
+       and k not in COMPLIANCE_HANDLERS
        and k not in PO_HANDLERS},
 }
