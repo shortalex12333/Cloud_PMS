@@ -833,6 +833,8 @@ export type ThreadLink = {
   accepted_by: string | null;
   is_active: boolean;
   score: number;
+  object_name?: string;
+  object_ref?: string;
 };
 
 export type ThreadLinksResponse = {

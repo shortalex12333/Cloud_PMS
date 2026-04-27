@@ -6,7 +6,6 @@ import { useActiveVessel } from '@/contexts/VesselContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { API_BASE } from '@/lib/apiBase';
-import { ActionPopup } from '@/components/lens-v2/ActionPopup';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -82,7 +81,6 @@ function ShoppingListPageContent() {
   const [rows, setRows] = React.useState<ShoppingListDoc[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [showCreate, setShowCreate] = React.useState(false);
 
   const fetchLists = React.useCallback(async () => {
     if (!yachtId) return;
@@ -106,38 +104,8 @@ function ShoppingListPageContent() {
 
   React.useEffect(() => { fetchLists(); }, [fetchLists]);
 
-  const handleCreated = React.useCallback(() => {
-    setShowCreate(false);
-    fetchLists();
-  }, [fetchLists]);
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--surface-base)', minHeight: 0 }}>
-
-      {/* Subbar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 20px', height: 44, borderBottom: '1px solid var(--border-sub)',
-        flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt1)', fontFamily: 'var(--font-sans)' }}>
-          Shopping Lists
-        </span>
-        <button
-          onClick={() => setShowCreate(true)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 14px', background: 'var(--mark)', color: '#fff',
-            border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600,
-            fontFamily: 'var(--font-sans)', cursor: 'pointer',
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-          </svg>
-          New List
-        </button>
-      </div>
 
       {/* Table */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
@@ -205,99 +173,11 @@ function ShoppingListPageContent() {
         )}
       </div>
 
-      {/* Create modal */}
-      {showCreate && (
-        <CreateListModal
-          yachtId={yachtId}
-          onClose={() => setShowCreate(false)}
-          onSuccess={handleCreated}
-        />
-      )}
-
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
-// ── Create list modal ─────────────────────────────────────────────────────
-
-function CreateListModal({
-  yachtId,
-  onClose,
-  onSuccess,
-}: {
-  yachtId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [submitting, setSubmitting] = React.useState(false);
-  const [err, setErr] = React.useState<string | null>(null);
-
-  const handleSubmit = React.useCallback(async (values: Record<string, unknown>) => {
-    if (!yachtId) { setErr('No vessel selected'); return; }
-    setSubmitting(true);
-    setErr(null);
-    try {
-      const { data: sess } = await supabase.auth.getSession();
-      const token = sess.session?.access_token;
-      if (!token) { setErr('Not authenticated'); return; }
-      const res = await fetch('/api/v1/actions/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          action: 'create_shopping_list',
-          context: { yacht_id: yachtId },
-          payload: {
-            name: values.name,
-            department: values.department || 'general',
-            currency: values.currency || 'EUR',
-            notes: values.notes || undefined,
-          },
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || json.status === 'error') { setErr(json.message || 'Failed'); return; }
-      onSuccess();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Network error');
-    } finally {
-      setSubmitting(false);
-    }
-  }, [yachtId, onSuccess]);
-
-  return (
-    <ActionPopup
-      mode="mutate"
-      title="New Shopping List"
-      subtitle="Create a named requisition document. Add items after creation."
-      fields={[
-        { name: 'name', label: 'List Name', type: 'kv-edit', placeholder: 'e.g. Engine Stores Run — May 2026', required: true },
-        { name: 'department', label: 'Department', type: 'select', options: [
-          { value: 'general', label: 'General' },
-          { value: 'engine', label: 'Engine' },
-          { value: 'deck', label: 'Deck' },
-          { value: 'galley', label: 'Galley' },
-          { value: 'interior', label: 'Interior' },
-          { value: 'bridge', label: 'Bridge' },
-        ]},
-        { name: 'currency', label: 'Currency', type: 'select', options: [
-          { value: 'EUR', label: 'EUR — Euro' },
-          { value: 'USD', label: 'USD — US Dollar' },
-          { value: 'GBP', label: 'GBP — British Pound' },
-          { value: 'AED', label: 'AED — UAE Dirham' },
-          { value: 'CHF', label: 'CHF — Swiss Franc' },
-        ]},
-        { name: 'notes', label: 'Notes (optional)', type: 'text-area', placeholder: 'Context for this shopping run...' },
-      ]}
-      signatureLevel={1}
-      submitLabel={submitting ? 'Creating…' : 'Create List'}
-      submitDisabled={submitting}
-      previewRows={err ? [{ key: 'Error', value: err }] : undefined}
-      onSubmit={handleSubmit}
-      onClose={onClose}
-    />
-  );
-}
 
 export default function ShoppingListPage() {
   return (

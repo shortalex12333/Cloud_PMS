@@ -523,14 +523,14 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id", "equipment_id", "status"],
+        required_fields=["yacht_id", "equipment_id", "new_status"],
         domain="equipment",
         variant=ActionVariant.MUTATE,
         search_keywords=["status", "update", "mark", "failed", "operational", "equipment", "broken", "working"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("equipment_id", FieldClassification.CONTEXT, auto_populate_from="equipment", lookup_required=True),
-            FieldMetadata("status", FieldClassification.REQUIRED,
+            FieldMetadata("new_status", FieldClassification.REQUIRED,
                           options=["operational", "degraded", "failed", "maintenance"],
                           description="Target status (decommissioned requires signed action)"),
             FieldMetadata("attention_reason", FieldClassification.OPTIONAL, auto_populate_from="query_text",
@@ -2511,7 +2511,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             FieldMetadata("reason", FieldClassification.REQUIRED, options=[
                 "physical_count", "damaged", "expired", "found_additional", "correction", "other"
             ]),
-            FieldMetadata("location_id", FieldClassification.OPTIONAL, lookup_required=True),
+            FieldMetadata("location", FieldClassification.OPTIONAL, lookup_required=True),
             FieldMetadata("signature", FieldClassification.REQUIRED, description="PIN+TOTP payload"),
         ],
         prefill_endpoint="/v1/parts/adjust-stock/prefill",
@@ -2535,7 +2535,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             FieldMetadata("idempotency_key", FieldClassification.REQUIRED, description="(yacht_id, idempotency_key) unique; 409 on duplicate"),
             FieldMetadata("supplier_id", FieldClassification.OPTIONAL, lookup_required=True),
             FieldMetadata("invoice_number", FieldClassification.OPTIONAL),
-            FieldMetadata("location_id", FieldClassification.OPTIONAL, auto_populate_from="part"),
+            FieldMetadata("to_location_id", FieldClassification.OPTIONAL, auto_populate_from="part"),
             FieldMetadata("notes", FieldClassification.OPTIONAL),
             FieldMetadata("photo_storage_path", FieldClassification.OPTIONAL, description="Path in pms-receiving-images bucket"),
         ],
@@ -2582,7 +2582,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             FieldMetadata("reason", FieldClassification.REQUIRED, options=[
                 "damaged", "expired", "obsolete", "lost", "contaminated", "other"
             ]),
-            FieldMetadata("location_id", FieldClassification.OPTIONAL, auto_populate_from="part", lookup_required=True),
+            FieldMetadata("location", FieldClassification.OPTIONAL, auto_populate_from="part"),
             FieldMetadata("signature", FieldClassification.REQUIRED, description="PIN+TOTP payload"),
         ],
     ),
@@ -2651,16 +2651,16 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],  # HOD+ only
-        required_fields=["yacht_id", "document_id", "output"],
+        required_fields=["yacht_id", "label_request_id", "output_format"],
         domain="parts",
         variant=ActionVariant.MUTATE,
         search_keywords=["print", "email", "download", "label", "output", "send"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
-            FieldMetadata("document_id", FieldClassification.REQUIRED, description="From generate_part_labels"),
-            FieldMetadata("output", FieldClassification.REQUIRED, options=["print", "email", "download"]),
-            FieldMetadata("email_address", FieldClassification.OPTIONAL, description="Required if output=email"),
-            FieldMetadata("printer_id", FieldClassification.OPTIONAL, description="Required if output=print"),
+            FieldMetadata("label_request_id", FieldClassification.REQUIRED, description="From generate_part_labels"),
+            FieldMetadata("output_format", FieldClassification.REQUIRED, options=["print", "email", "download"]),
+            FieldMetadata("email_address", FieldClassification.OPTIONAL, description="Required if output_format=email"),
+            FieldMetadata("printer_id", FieldClassification.OPTIONAL, description="Required if output_format=print"),
         ],
     ),
 
@@ -3235,6 +3235,12 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "fault_id"],
         domain="faults",
         variant=ActionVariant.MUTATE,
+        search_keywords=["resolve", "fix", "complete", "done", "fault", "close"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("fault_id", FieldClassification.CONTEXT, auto_populate_from="entity_id"),
+            FieldMetadata("resolution_notes", FieldClassification.OPTIONAL, description="Notes about how the fault was resolved"),
+        ],
     ),
 
 
@@ -3920,7 +3926,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id", "title", "type", "priority"],
+        required_fields=["yacht_id", "title", "work_order_type", "priority"],
         domain="work_orders",
         variant=ActionVariant.MUTATE,
         search_keywords=["create", "new", "work order", "wo", "task", "job", "maintenance"],
@@ -3928,7 +3934,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("title", FieldClassification.REQUIRED, description="Work order title"),
             FieldMetadata("description", FieldClassification.OPTIONAL, description="Detailed description of the work required"),
-            FieldMetadata("type", FieldClassification.REQUIRED,
+            FieldMetadata("work_order_type", FieldClassification.REQUIRED,
                           options=["scheduled", "corrective", "unplanned", "preventive"],
                           description="Work order type"),
             FieldMetadata("priority", FieldClassification.REQUIRED,
@@ -3947,7 +3953,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
                           lookup_required=True,
                           description="Linked fault (if created from a fault)"),
             FieldMetadata("severity", FieldClassification.OPTIONAL, description="Severity assessment"),
-            FieldMetadata("work_order_type", FieldClassification.OPTIONAL, description="Sub-type classification"),
             # PR-WO-7 schema additions. UX sheet /Users/celeste7/Desktop/
             # lens_card_upgrades.md:354-356. Parent-system denormalised for
             # frontend ergonomics; running-hours present on every WO with

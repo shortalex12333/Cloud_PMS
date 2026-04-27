@@ -1,8 +1,8 @@
 # Shopping List V2 — Status
 
-**Shipped:** PR #737 + PR #739 (pending merge) · 2026-04-27  
+**Shipped:** PR #737 + PR #739 (merged 2026-04-27T13:10Z) · Frontend fixes in working branch  
 **DB migrations:** M0–M6 applied to TENANT — do not re-run  
-**Render deploy:** `dep-d7nltf1f9bms738jnqg0` in progress
+**Render deploy:** `dep-d7nltf1f9bms738jnqg0` — import fix live
 
 ---
 
@@ -23,7 +23,7 @@
 
 ---
 
-## Bugs fixed (this session)
+## Bugs fixed (PR #739 + post-merge cleanup)
 
 **1. `/v1/shopping-list` returned 404**  
 `apps/api/routes/shopping_list_pdf_route.py:27`  
@@ -54,7 +54,22 @@ CreateListModal offered `{ value: 'MED', label: 'USD — Med Charter' }`.
 **6. No "Add to Shopping List" entry point from inventory**  
 `apps/web/src/app/inventory/page.tsx`  
 PartDetail overlay was read-only — no action button.  
-→ Fixed: added "Add to Shopping List" CTA + `AddToListModal` (fetches draft lists, picker UI, quantity + urgency, empty-state deep-link to `/shopping-list`)
+→ Fixed: added "Add to Shopping List" CTA + `AddToListModal`
+
+**7. `notes` field silently dropped on add/edit item**  
+`apps/web/src/app/shopping-list/[id]/page.tsx` (popup) vs `shopping_list_v2_handlers.py`  
+Frontend sent `notes`, handler read `source_notes` — mismatch, never saved.  
+→ Fixed: renamed popup field from `notes` → `source_notes`. Handler reads `source_notes` correctly.
+
+**8. `source_url` / `storage_location` in popup but never saved**  
+`apps/web/src/app/shopping-list/[id]/page.tsx`  
+Fields shown in add/edit item popup but `shopping_list_v2_handlers.py` never inserts them.  
+DB column existence unconfirmed. Removed from popup to avoid silent data loss.
+
+**9. `shopping_list_item` entity type missing from entityRoutes**  
+`apps/web/src/lib/entityRoutes.ts`  
+New-style V2 line items emit `entity_type='shopping_list_item'` in ledger. This type was not in  
+`EntityRouteType` union, so ledger navigation would fall through to `/` (root). Added to union and routeMap.
 
 ---
 
@@ -76,3 +91,7 @@ No registry entry, handler, or UI exists.
 
 **`add_item_to_purchase` silent rejection** (no toast)  
 If a PO is not in `draft` status the action silently fails with no user-facing feedback.
+
+**`source_url` / `storage_location` on items** (deferred)  
+Were included in UI but removed (2026-04-27) as DB columns unconfirmed. Confirm schema, add columns if  
+needed via migration, add to handler insert/update, add back to popup.

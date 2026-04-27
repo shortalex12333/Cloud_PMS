@@ -15,8 +15,6 @@ import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
 import { getActionDisplay } from '@/types/actions';
 import { ActionPopup } from '@/components/lens-v2/ActionPopup';
 import type { ActionPopupField } from '@/components/lens-v2/ActionPopup';
-import { useEntityLedger } from '@/hooks/useEntityLedger';
-import { LedgerHistorySection } from '@/components/lens-v2/sections/LedgerHistorySection';
 
 // Fields handled automatically — never require user input in the form
 const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
@@ -86,46 +84,6 @@ function NotFoundState({ entityType, onBack }: { entityType: EntityType; onBack:
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
-/**
- * Lenses whose own Content component renders a domain-specific AuditTrailSection
- * from `pms_audit_log` (not `ledger_events`) MUST be in this set — the generic
- * read-only `LedgerHistory` below is suppressed for them. Otherwise users see
- * two "History"-titled sections, one of which is a log of READ events only
- * (view_<entity>) which holds no value — per CEO directive 2026-04-24.
- *
- * - 'certificate' — CertificateContent renders AuditTrailSection sourced from
- *   entity_routes.py::get_certificate_entity, populated from pms_audit_log
- *   with actor_name/actor_role enrichment. Adding it here rather than
- *   negating the one case keeps the intent explicit and extensible.
- */
-const SUPPRESS_LEDGER_HISTORY: ReadonlySet<string> = new Set<string>([
-  // CertificateContent renders its own AuditTrailSection from pms_audit_log
-  // with actor_name/actor_role enrichment. Merged alongside this directive,
-  // FAULT05/WORKORDER05 removed the ledger for work_order (audit + history
-  // tabs already cover it, CEO directive 2026-04-24). Add here when a new
-  // lens gains its own in-tab audit surface.
-  'certificate',
-  'work_order',
-  // FaultContent renders HistorySection (prior iterations) + AuditTrailSection
-  // (mutation ledger from audit_trail field) inline. The appended read-action
-  // receipt was wasteful and conflated with the real History above
-  // (CEO directive 2026-04-24, list_of_faults.md Issue 7).
-  'fault',
-  // DocumentContent.tsx:509 renders RenewalHistorySection (prior
-  // iterations — the legitimate 'history' semantic) + line 551
-  // renders AuditTrailSection from the enriched /v1/entity/document/{id}
-  // (pms_audit_log with actor_name+actor_role+deleted flag). Appending
-  // the generic LedgerHistory produced a stray section of read-only
-  // view_document receipts — zero value, duplicates both surfaces.
-  // CEO directive 2026-04-24.
-  'document',
-]);
-
-function LedgerHistory({ entityType, entityId }: { entityType: string; entityId: string }) {
-  const { data: ledgerHistory = [] } = useEntityLedger(entityType, entityId);
-  if (ledgerHistory.length === 0) return null;
-  return <LedgerHistorySection history={ledgerHistory} />;
-}
 
 export interface EntityLensPageProps {
   entityType: EntityType;
@@ -248,15 +206,6 @@ export function EntityLensPage({
     bodyContent = (
       <EntityLensProvider value={contextValue}>
         <Content />
-        {/* Entity types in SUPPRESS_LEDGER_HISTORY render their own
-            domain-specific AuditTrailSection from pms_audit_log (or the
-            equivalent inside a tab system). The generic read-only ledger
-            appended here duplicates that surface and leaks view_<entity>
-            events — wasteful, confusing, forbidden per CEO directive
-            2026-04-24. See the set declaration above for per-lens reasoning. */}
-        {!SUPPRESS_LEDGER_HISTORY.has(entityType) && (
-          <LedgerHistory entityType={entityType} entityId={entityId} />
-        )}
       </EntityLensProvider>
     );
   }

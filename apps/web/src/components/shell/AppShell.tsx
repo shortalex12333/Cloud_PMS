@@ -211,6 +211,9 @@ export function AppShell({ children }: AppShellProps) {
       case 'purchasing':
         setCreatePOOpen(true);
         break;
+      case 'shopping-list':
+        router.push('/shopping-list/new');
+        break;
       default:
         // Domains without a create modal — navigate to domain (already there, but no-op is fine)
         break;

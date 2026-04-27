@@ -164,13 +164,13 @@ export function ReceivingLinkedPO({
   currency,
 }: ReceivingLinkedPOProps) {
   const router = useRouter();
-
   const { rows, orderTotal, receivedTotal, outstanding } = React.useMemo(
     () => reconcile(poItems, receivingItems),
     [poItems, receivingItems],
   );
 
-  // No PO linked → don't render the section at all
+  // No PO linked → don't render the section at all (per philosophy: every
+  // element earns its place — empty state would be noise).
   if (!poId || !poNumber || poItems.length === 0) return null;
 
   const visitPO = () => {
