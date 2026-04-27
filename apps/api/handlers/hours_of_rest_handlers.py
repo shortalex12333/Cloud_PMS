@@ -948,15 +948,21 @@ class HoursOfRestHandlers:
                 builder.set_error("VALIDATION_ERROR", "month and department are required")
                 return builder.build()
 
-            # Check if sign-off already exists for target user
+            # Check if sign-off already exists for target user.
+            # Must scope by period_type: a weekly sign-off for week 2026-04-21 must not
+            # conflict with a monthly sign-off for 2026-04 (same month, different record).
             # NOTE: .maybe_single() throws APIError(204) in supabase-py 2.12.0 when 0 rows found.
             # Use .execute() list mode instead and check len(data).
-            existing_result = self.db.table("pms_hor_monthly_signoffs").select("id").eq(
+            dup_query = self.db.table("pms_hor_monthly_signoffs").select("id").eq(
                 "yacht_id", yacht_id
-            ).eq("user_id", target_user_id).eq("month", month).execute()
+            ).eq("user_id", target_user_id).eq("month", month).eq("period_type", period_type)
+            if period_type == "weekly" and week_start:
+                dup_query = dup_query.eq("week_start", week_start)
+            existing_result = dup_query.execute()
 
             if existing_result.data:
-                builder.set_error("DUPLICATE_ERROR", f"Sign-off already exists for {month}", status_code=409)
+                label = f"week of {week_start}" if period_type == "weekly" else month
+                builder.set_error("DUPLICATE_ERROR", f"Sign-off already exists for {label}", status_code=409)
                 return builder.build()
 
             # Calculate month summary via RPC (may not exist in DB — graceful fallback)
