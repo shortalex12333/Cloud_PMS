@@ -13,7 +13,6 @@ from handlers.stub_handlers import not_yet_implemented as _not_yet_implemented
 
 from .shared import HANDLERS as _shared
 from .equipment import HANDLERS as _equipment
-from .work_order import HANDLERS as _work_order
 from .document import HANDLERS as _document
 from .warranty import HANDLERS as _warranty
 from .parts import HANDLERS as _parts
@@ -30,7 +29,6 @@ for _domain in (
     _shared,
     _p3,
     _p1_p2,
-    _work_order,
     _document,
     _warranty,
     _parts,
