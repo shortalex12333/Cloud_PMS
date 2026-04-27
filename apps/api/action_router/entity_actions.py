@@ -126,6 +126,12 @@ _EQUIPMENT_HIDDEN_ACTIONS = {
     "attach_image_with_comment",
     # Generic linker — no clear equipment-specific use case.
     "add_entity_link",
+    # Dead duplicate — renamed to update_equipment_status in the dispatcher.
+    "set_equipment_status",
+    # Compliance survey tag — belongs on a compliance/survey checklist, not per-equipment card.
+    "tag_for_survey",
+    # Generic add_note — duplicate of add_equipment_note (which is kept).
+    "add_note",
 }
 
 
