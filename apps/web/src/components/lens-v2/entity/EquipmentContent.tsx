@@ -58,6 +58,8 @@ import {
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
 import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
 import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
+import { FileWarrantyClaimModal } from '@/components/lens-v2/actions/FileWarrantyClaimModal';
 
 // ── Threaded-comment shape (from list_attachment_comments) ──
 // Kept local to this file — the cohort LensImageViewer is single-caption MVP and
@@ -102,6 +104,7 @@ export function EquipmentContent() {
   const criticality = (entity?.criticality ?? payload.criticality) as string | undefined;
   const running_hours = (entity?.running_hours ?? payload.running_hours) as number | string | undefined;
   const hierarchy = (entity?.hierarchy ?? payload.hierarchy) as string | undefined;
+  const status = (entity?.status ?? payload.status ?? entity?.operational_status ?? payload.operational_status) as string | undefined;
 
   // Specifications (custom key-value data)
   const specifications = ((entity?.specifications ?? payload.specifications) as Array<Record<string, unknown>> | undefined) ?? [];
@@ -141,6 +144,8 @@ export function EquipmentContent() {
   
   
   const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
+  const [reportFaultOpen, setReportFaultOpen] = React.useState(false);
+  const [warrantyClaimOpen, setWarrantyClaimOpen] = React.useState(false);
 
   // ── Threaded-comment state (PR-EQ-4) ──
   // Key = attachment_id; value = root comment tree (with nested `replies`).
@@ -232,8 +237,17 @@ export function EquipmentContent() {
   }
 
   // ── Derived display ──
-  // Owner correction: DO NOT render status indicators (low fidelity, misleading)
-  const pills: PillDef[] = [];
+  const STATUS_PILL_MAP: Record<string, PillDef['variant']> = {
+    operational: 'green',
+    degraded: 'amber',
+    failed: 'red',
+    maintenance: 'blue',
+    decommissioned: 'neutral',
+    archived: 'neutral',
+  };
+  const pills: PillDef[] = status
+    ? [{ label: status.replace(/_/g, ' '), variant: STATUS_PILL_MAP[status] ?? 'blue' }]
+    : [];
 
   const details: DetailLine[] = [];
   if (manufacturer) {
@@ -327,48 +341,12 @@ export function EquipmentContent() {
   }, [name]);
 
   const SPECIAL_HANDLERS: Record<string, () => void> = {
-    report_fault: () => {
-      setActionPopupConfig({
-        actionId: 'report_fault',
-        title: 'Report Fault',
-        subtitle: name || undefined,
-        fields: [
-          { name: 'title', label: 'Fault Title', type: 'kv-edit', placeholder: 'Brief description of the fault...', value: name ? `${name} — ` : '' },
-          { name: 'description', label: 'Description', type: 'text-area', placeholder: 'What went wrong? When was it first noticed?', value: '' },
-          { name: 'severity', label: 'Severity', type: 'select', options: [
-            { value: 'cosmetic', label: 'Cosmetic' },
-            { value: 'minor', label: 'Minor' },
-            { value: 'major', label: 'Major' },
-            { value: 'critical', label: 'Critical' },
-            { value: 'safety', label: 'Safety' },
-          ], value: 'minor' },
-        ],
-        signatureLevel: 0,
-        extraParams: { equipment_id: entityId },
-      });
-    },
-    file_warranty_claim: () => {
-      setActionPopupConfig({
-        actionId: 'file_warranty_claim',
-        title: 'File Warranty Claim',
-        subtitle: name || undefined,
-        fields: [
-          { name: 'title', label: 'Claim Title', type: 'kv-edit', placeholder: 'e.g. Compressor failure under warranty', value: name ? `${name} — ` : '' },
-          { name: 'vendor_name', label: 'Vendor / Manufacturer', type: 'kv-edit', placeholder: 'Vendor or manufacturer name...', value: manufacturer ?? '' },
-          { name: 'description', label: 'Description', type: 'text-area', placeholder: 'Describe the warranty issue...', value: '' },
-          { name: 'claim_type', label: 'Claim Type', type: 'select', options: [
-            { value: 'manufacturer_defect', label: 'Manufacturer Defect' },
-            { value: 'premature_failure', label: 'Premature Failure' },
-            { value: 'incorrect_part', label: 'Incorrect Part' },
-            { value: 'damage_in_transit', label: 'Damage in Transit' },
-            { value: 'other', label: 'Other' },
-          ], value: '' },
-          { name: 'serial_number', label: 'Serial Number', type: 'kv-edit', placeholder: 'Serial number...', value: serial_number ?? '' },
-        ],
-        signatureLevel: 0,
-        extraParams: { equipment_id: entityId },
-      });
-    },
+    // Full-page modals — too complex for a popup
+    report_fault: () => setReportFaultOpen(true),
+    file_warranty_claim: () => setWarrantyClaimOpen(true),
+    // Direct upload — no description prompt, just pick a file
+    attach_file_to_equipment: () => setUploadModalOpen(true),
+    // Handover still uses ActionPopup (single summary field — appropriate scope)
     add_to_handover: () => {
       setActionPopupConfig({
         actionId: 'add_to_handover',
@@ -874,8 +852,6 @@ export function EquipmentContent() {
         onClose={() => setUploadModalOpen(false)}
         entityType="equipment"
         entityId={entityId}
-        
-        
         bucket="pms-equipment-photos"
         category="equipment_photo"
         yachtId={(entity?.yacht_id as string) ?? user?.yachtId ?? ''}
@@ -883,6 +859,23 @@ export function EquipmentContent() {
         title="Upload Equipment Photo"
         description="Attach a photo, schematic, or document to this equipment."
         onComplete={() => { refetch(); }}
+      />
+      <ReportFaultModal
+        open={reportFaultOpen}
+        onOpenChange={setReportFaultOpen}
+        context={{ equipment_id: entityId }}
+        onSuccess={refetch}
+      />
+      <FileWarrantyClaimModal
+        open={warrantyClaimOpen}
+        onOpenChange={setWarrantyClaimOpen}
+        context={{
+          equipment_id: entityId,
+          equipment_name: name,
+          manufacturer: manufacturer,
+          serial_number: serial_number,
+        }}
+        onSuccess={refetch}
       />
     </div>
   );
