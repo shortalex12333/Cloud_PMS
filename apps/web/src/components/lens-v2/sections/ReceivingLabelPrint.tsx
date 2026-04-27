@@ -139,7 +139,7 @@ export function ReceivingLabelPrint({
       title="Print Labels"
       count={acceptedItems.length}
       icon={SECTION_ICON}
-      defaultOpen={false}
+      defaultCollapsed={false}
     >
       {/* Size selector */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
