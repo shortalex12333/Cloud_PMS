@@ -2933,8 +2933,9 @@ async def _part_add_to_shopping_list(params: Dict[str, Any]) -> Dict[str, Any]:
         user_id=params["user_id"],
         part_id=part_id,
         quantity_requested=params.get("quantity_requested") or params.get("quantity", 1),
-        urgency=params.get("urgency", "medium"),
+        urgency=params.get("urgency", "normal"),
         notes=params.get("reason") or params.get("notes"),
+        shopping_list_id=params.get("shopping_list_id"),
     )
 
 
