@@ -367,6 +367,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('[AuthContext] Auth event:', event, '| Session:', !!eventSession);
 
           if (event === 'SIGNED_OUT') {
+            bootstrapDone.current = false;
+            bootstrapInFlight.current = false;
             setUser(null);
             setSession(null);
             setError(null);
@@ -489,10 +491,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (bootstrapRetryRef.current) {
       clearTimeout(bootstrapRetryRef.current);
     }
-    await supabase.auth.signOut();
+    bootstrapDone.current = false;
+    bootstrapInFlight.current = false;
     setUser(null);
     setSession(null);
-    // Redirect to login — clear any stale state
+    setLoading(false);
+    setBootstrapping(false);
+    await supabase.auth.signOut();
     window.location.href = '/login';
   }, []);
 
