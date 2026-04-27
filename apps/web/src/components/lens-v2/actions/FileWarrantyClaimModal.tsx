@@ -25,6 +25,13 @@ import { useQueryClient } from '@tanstack/react-query';
 export interface FileWarrantyClaimModalProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  context?: {
+    equipment_id?: string;
+    equipment_name?: string;
+    manufacturer?: string;
+    serial_number?: string;
+  };
+  onSuccess?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,7 +63,7 @@ const labelStyle: React.CSSProperties = {
 // Component
 // ---------------------------------------------------------------------------
 
-export function FileWarrantyClaimModal({ open, onOpenChange }: FileWarrantyClaimModalProps) {
+export function FileWarrantyClaimModal({ open, onOpenChange, context = {}, onSuccess }: FileWarrantyClaimModalProps) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
 
@@ -73,15 +80,15 @@ export function FileWarrantyClaimModal({ open, onOpenChange }: FileWarrantyClaim
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Reset on open
+  // Reset on open — pre-populate from equipment context when provided
   React.useEffect(() => {
     if (open) {
-      setTitle('');
+      setTitle(context.equipment_name ? `${context.equipment_name} — ` : '');
       setDescription('');
       setVendor('');
-      setManufacturer('');
+      setManufacturer(context.manufacturer ?? '');
       setContactEmail('');
-      setEquipmentRef('');
+      setEquipmentRef(context.equipment_id ?? '');
       setWorkOrderRef('');
       setWarrantyExpiry('');
       setClaimedAmount('');
@@ -89,6 +96,7 @@ export function FileWarrantyClaimModal({ open, onOpenChange }: FileWarrantyClaim
       setLoading(false);
       setError(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Dismiss on Escape
@@ -146,6 +154,7 @@ export function FileWarrantyClaimModal({ open, onOpenChange }: FileWarrantyClaim
         return;
       }
       queryClient.invalidateQueries({ queryKey: ['warranties'] });
+      onSuccess?.();
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Request failed');
@@ -275,22 +284,24 @@ export function FileWarrantyClaimModal({ open, onOpenChange }: FileWarrantyClaim
               />
             </div>
 
-            {/* Row 5: Equipment Ref + Linked Work Order (2-col) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label htmlFor="fwc-equipment-ref" style={labelStyle}>
-                  Equipment Ref
-                </label>
-                <input
-                  id="fwc-equipment-ref"
-                  type="text"
-                  value={equipmentRef}
-                  onChange={e => setEquipmentRef(e.target.value)}
-                  placeholder="Equipment UUID or reference"
-                  disabled={loading}
-                  style={inputStyle}
-                />
-              </div>
+            {/* Row 5: Equipment Ref (hidden when locked by context) + Linked Work Order */}
+            <div style={{ display: 'grid', gridTemplateColumns: context.equipment_id ? '1fr' : '1fr 1fr', gap: '12px' }}>
+              {!context.equipment_id && (
+                <div>
+                  <label htmlFor="fwc-equipment-ref" style={labelStyle}>
+                    Equipment Ref
+                  </label>
+                  <input
+                    id="fwc-equipment-ref"
+                    type="text"
+                    value={equipmentRef}
+                    onChange={e => setEquipmentRef(e.target.value)}
+                    placeholder="Equipment UUID or reference"
+                    disabled={loading}
+                    style={inputStyle}
+                  />
+                </div>
+              )}
               <div>
                 <label htmlFor="fwc-work-order-ref" style={labelStyle}>
                   Linked Work Order
