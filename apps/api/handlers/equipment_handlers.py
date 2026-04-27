@@ -13,7 +13,7 @@ Group 2: Flat async action handlers — dispatcher signature:
           Registered in HANDLERS dict at the bottom.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, List
 import logging
 
@@ -1821,18 +1821,125 @@ async def suggest_parts(payload, context, yacht_id, user_id, user_context, db_cl
     return {"status": "error", "message": "Not yet implemented", "action": "suggest_parts"}
 
 
+async def view_equipment_details(payload, context, yacht_id, user_id, user_context, db_client):
+    equipment_id = context.get("equipment_id") or payload.get("equipment_id")
+    include_specifications = payload.get("include_specifications", True)
+
+    try:
+        eq_result = db_client.table("pms_equipment").select(
+            "id, name, model, manufacturer, serial_number, code, "
+            "location, criticality, system_type, installed_date, description, "
+            "metadata, created_at, updated_at"
+        ).eq("id", equipment_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+        if not eq_result.data:
+            return {
+                "status": "error",
+                "error_code": "EQUIPMENT_NOT_FOUND",
+                "message": f"Equipment not found: {equipment_id}",
+            }
+
+        equipment = eq_result.data[0]
+
+        fault_count = db_client.table("pms_faults").select(
+            "id", count="exact"
+        ).eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).in_(
+            "status", ["open", "investigating", "in_progress"]
+        ).execute()
+
+        wo_count = db_client.table("pms_work_orders").select(
+            "id", count="exact"
+        ).eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).in_(
+            "status", ["planned", "in_progress"]
+        ).execute()
+
+        result = {
+            "equipment": equipment,
+            "stats": {
+                "active_faults": fault_count.count if fault_count else 0,
+                "pending_work_orders": wo_count.count if wo_count else 0,
+            },
+        }
+
+        if include_specifications and equipment.get("specifications"):
+            result["specifications"] = equipment["specifications"]
+
+        return {
+            "status": "success",
+            "action": "view_equipment_details",
+            "result": result,
+            "message": f"Equipment details for {equipment.get('name')}",
+        }
+
+    except Exception as e:
+        logger.error(f"view_equipment_details failed: {e}", exc_info=True)
+        return {"status": "error", "error_code": "INTERNAL_ERROR", "message": str(e)}
+
+
+async def view_equipment_history(payload, context, yacht_id, user_id, user_context, db_client):
+    equipment_id = context.get("equipment_id") or payload.get("equipment_id")
+    time_range_days = int(payload.get("time_range_days", 365))
+    include_faults = payload.get("include_faults", True)
+    include_work_orders = payload.get("include_work_orders", True)
+
+    try:
+        eq_result = db_client.table("pms_equipment").select(
+            "id, name, model"
+        ).eq("id", equipment_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+        if not eq_result.data:
+            return {
+                "status": "error",
+                "error_code": "EQUIPMENT_NOT_FOUND",
+                "message": f"Equipment not found: {equipment_id}",
+            }
+
+        equipment = eq_result.data[0]
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=time_range_days)).isoformat()
+        result: Dict[str, Any] = {"equipment": equipment}
+
+        if include_faults:
+            faults_result = db_client.table("pms_faults").select(
+                "id, fault_code, title, severity, status, detected_at, resolved_at"
+            ).eq("equipment_id", equipment_id).gte(
+                "detected_at", cutoff
+            ).order("detected_at", desc=True).execute()
+            result["faults"] = faults_result.data if faults_result.data else []
+
+        if include_work_orders:
+            wo_result = db_client.table("pms_work_orders").select(
+                "id, wo_number, title, type, priority, status, created_at, completed_at"
+            ).eq("equipment_id", equipment_id).gte(
+                "created_at", cutoff
+            ).order("created_at", desc=True).execute()
+            result["work_orders"] = wo_result.data if wo_result.data else []
+
+        return {
+            "status": "success",
+            "action": "view_equipment_history",
+            "result": result,
+            "message": f"Equipment history for {equipment.get('name')} ({time_range_days} days)",
+        }
+
+    except Exception as e:
+        logger.error(f"view_equipment_history failed: {e}", exc_info=True)
+        return {"status": "error", "error_code": "INTERNAL_ERROR", "message": str(e)}
+
+
 # =============================================================================
 # HANDLER REGISTRY
 # =============================================================================
 
 HANDLERS: Dict[str, Any] = {
-    # READ — EquipmentHandlers wrappers
+    # READ
     "view_equipment": view_equipment,
+    "view_equipment_details": view_equipment_details,
+    "view_equipment_history": view_equipment_history,
     "view_maintenance_history": view_maintenance_history,
     "view_equipment_parts": view_equipment_parts,
     "view_linked_faults": view_linked_faults,
     "view_equipment_manual": view_equipment_manual,
-    # MUTATION — flat handlers
+    # MUTATION
     "update_equipment_status": update_equipment_status,
     "set_equipment_status": update_equipment_status,  # alias
     "add_equipment_note": add_equipment_note,
