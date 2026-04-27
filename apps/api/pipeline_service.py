@@ -478,6 +478,17 @@ except Exception as e:
     logger.error("Handover Export endpoints will not be available")
 
 # ============================================================================
+# SHOPPING LIST PDF EXPORT
+# ============================================================================
+
+try:
+    from routes.shopping_list_pdf_route import router as shopping_list_pdf_router
+    app.include_router(shopping_list_pdf_router)
+    logger.info("✅ Shopping List PDF route registered at /v1/shopping-list/{id}/pdf")
+except Exception as e:
+    logger.error(f"❌ Failed to register Shopping List PDF route: {e}")
+
+# ============================================================================
 # ENTITY LENS ROUTES (certificate, document, hours_of_rest, shopping_list,
 #                     warranty, handover_export, purchase_order)
 # ============================================================================

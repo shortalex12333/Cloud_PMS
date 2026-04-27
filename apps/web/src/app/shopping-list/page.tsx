@@ -1,234 +1,311 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 import { useActiveVessel } from '@/contexts/VesselContext';
-import { FilterPanel } from '@/features/entity-list/components/FilterPanel';
-import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { useFilteredEntityList } from '@/features/entity-list/hooks/useFilteredEntityList';
-import type { ActiveFilters } from '@/features/entity-list/types/filter-config';
-import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
-import { ShoppingListContent } from '@/components/lens-v2/entity/ShoppingListContent';
-import { ActionPopup } from '@/components/lens-v2/ActionPopup';
-import lensStyles from '@/components/lens-v2/lens.module.css';
-import ShoppingListTableList from '@/components/shopping-list/ShoppingListTableList';
-import { shoppingListToListResult } from '@/features/shopping-list/adapter';
-import { SHOPPING_LIST_FILTERS } from '@/features/entity-list/types/filter-config';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
-import type { ShoppingListItem } from '@/features/shopping-list/types';
+import { API_BASE } from '@/lib/apiBase';
+import { ActionPopup } from '@/components/lens-v2/ActionPopup';
 
-function LensContent() {
-  return <div className={lensStyles.root}><ShoppingListContent /></div>;
+// ── Types ─────────────────────────────────────────────────────────────────
+
+interface ShoppingListDoc {
+  id: string;
+  list_number: string;
+  name: string;
+  department: string;
+  status: string;
+  currency: string;
+  estimated_total: number | null;
+  item_count: number;
+  created_at: string;
+  submitted_at: string | null;
+  approved_at: string | null;
+  converted_at: string | null;
 }
 
-function CreateItemModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const { session } = useAuth();
-  const { vesselId: activeVesselId } = useActiveVessel();
-  const { user } = useAuth();
-  const yachtId = activeVesselId || user?.yachtId || '';
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+// ── Status config ─────────────────────────────────────────────────────────
 
-  const handleSubmit = React.useCallback(async (values: Record<string, unknown>) => {
-    if (!yachtId) { setError('No vessel selected'); return; }
-    setIsSubmitting(true);
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft',
+  submitted: 'Pending Review',
+  hod_approved: 'HOD Approved',
+  converted_to_po: 'Converted to PO',
+};
+
+const STATUS_COLORS: Record<string, { fg: string; bg: string; bd: string }> = {
+  draft:          { fg: 'var(--txt2)',   bg: 'var(--surface-hover)', bd: 'var(--border-sub)' },
+  submitted:      { fg: 'var(--amber)',  bg: 'var(--amber-bg, #2a2000)', bd: 'var(--amber-border, #6b4e00)' },
+  hod_approved:   { fg: 'var(--green)',  bg: 'var(--green-bg, #001a0d)', bd: 'var(--green-border, #004d1a)' },
+  converted_to_po:{ fg: 'var(--mark)',   bg: 'var(--teal-bg, #001f26)',  bd: 'var(--mark-hover, #1a5c70)' },
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  try { return new Date(iso).toISOString().slice(0, 10); } catch { return '—'; }
+}
+
+function fmtTotal(val: number | null | undefined, currency: string): string {
+  if (val == null || val === 0) return '—';
+  return `${currency} ${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function fmtDept(dept: string): string {
+  return dept ? dept.charAt(0).toUpperCase() + dept.slice(1) : '—';
+}
+
+function StatusPill({ status }: { status: string }) {
+  const c = STATUS_COLORS[status] ?? STATUS_COLORS.draft;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', height: 18,
+      padding: '0 7px', borderRadius: 3, fontSize: 9.5, fontWeight: 600,
+      letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+      color: c.fg, background: c.bg, border: `1px solid ${c.bd}`,
+    }}>
+      {STATUS_LABELS[status] ?? status}
+    </span>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────
+
+function ShoppingListPageContent() {
+  const router = useRouter();
+  const { vesselId } = useActiveVessel();
+  const { user } = useAuth();
+  const yachtId = vesselId || user?.yachtId || '';
+
+  const [rows, setRows] = React.useState<ShoppingListDoc[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [showCreate, setShowCreate] = React.useState(false);
+
+  const fetchLists = React.useCallback(async () => {
+    if (!yachtId) return;
+    setLoading(true);
     setError(null);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) { setError('Not authenticated'); return; }
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      const res = await fetch(`${API_BASE}/v1/shopping-list?yacht_id=${yachtId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail || 'Failed to load');
+      setRows(json.data || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Network error');
+    } finally {
+      setLoading(false);
+    }
+  }, [yachtId]);
 
+  React.useEffect(() => { fetchLists(); }, [fetchLists]);
+
+  const handleCreated = React.useCallback(() => {
+    setShowCreate(false);
+    fetchLists();
+  }, [fetchLists]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--surface-base)', minHeight: 0 }}>
+
+      {/* Subbar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 20px', height: 44, borderBottom: '1px solid var(--border-sub)',
+        flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt1)', fontFamily: 'var(--font-sans)' }}>
+          Shopping Lists
+        </span>
+        <button
+          onClick={() => setShowCreate(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 14px', background: 'var(--mark)', color: '#fff',
+            border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600,
+            fontFamily: 'var(--font-sans)', cursor: 'pointer',
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          New List
+        </button>
+      </div>
+
+      {/* Table */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {loading && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120 }}>
+            <div style={{ width: 24, height: 24, border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          </div>
+        )}
+        {!loading && error && (
+          <div style={{ padding: 24, color: 'var(--red)', fontSize: 13, fontFamily: 'var(--font-sans)' }}>{error}</div>
+        )}
+        {!loading && !error && rows.length === 0 && (
+          <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--txt3)', fontSize: 13, fontFamily: 'var(--font-sans)' }}>
+            No shopping lists yet. Create the first one.
+          </div>
+        )}
+        {!loading && !error && rows.length > 0 && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-sans)', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-sub)' }}>
+                {['List #', 'Name', 'Dept', 'Status', 'Items', 'Est. Total', 'Created'].map(h => (
+                  <th key={h} style={{
+                    padding: '8px 12px', textAlign: 'left', fontSize: 10.5,
+                    fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+                    color: 'var(--txt3)', fontFamily: 'var(--font-mono)',
+                    whiteSpace: 'nowrap',
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(row => (
+                <tr
+                  key={row.id}
+                  onClick={() => router.push(`/shopping-list/${row.id}`)}
+                  style={{ borderBottom: '1px solid var(--border-faint)', cursor: 'pointer', transition: 'background 0.1s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-hover)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--txt2)', whiteSpace: 'nowrap' }}>
+                    {row.list_number}
+                  </td>
+                  <td style={{ padding: '10px 12px', color: 'var(--txt1)', fontWeight: 500, maxWidth: 280 }}>
+                    {row.name}
+                  </td>
+                  <td style={{ padding: '10px 12px', color: 'var(--txt3)', fontSize: 12 }}>
+                    {fmtDept(row.department)}
+                  </td>
+                  <td style={{ padding: '10px 12px' }}>
+                    <StatusPill status={row.status} />
+                  </td>
+                  <td style={{ padding: '10px 12px', color: 'var(--txt2)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                    {row.item_count}
+                  </td>
+                  <td style={{ padding: '10px 12px', color: 'var(--txt2)', fontFamily: 'var(--font-mono)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    {fmtTotal(row.estimated_total, row.currency)}
+                  </td>
+                  <td style={{ padding: '10px 12px', color: 'var(--txt3)', fontFamily: 'var(--font-mono)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    {fmtDate(row.created_at)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Create modal */}
+      {showCreate && (
+        <CreateListModal
+          yachtId={yachtId}
+          onClose={() => setShowCreate(false)}
+          onSuccess={handleCreated}
+        />
+      )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+// ── Create list modal ─────────────────────────────────────────────────────
+
+function CreateListModal({
+  yachtId,
+  onClose,
+  onSuccess,
+}: {
+  yachtId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [submitting, setSubmitting] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+
+  const handleSubmit = React.useCallback(async (values: Record<string, unknown>) => {
+    if (!yachtId) { setErr('No vessel selected'); return; }
+    setSubmitting(true);
+    setErr(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) { setErr('Not authenticated'); return; }
       const res = await fetch('/api/v1/actions/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          action: 'create_shopping_list_item',
+          action: 'create_shopping_list',
           context: { yacht_id: yachtId },
           payload: {
-            part_name: values.part_name,
-            quantity_requested: Number(values.quantity_requested) || 1,
-            source_type: 'manual_add',
-            urgency: values.urgency || 'normal',
-            source_notes: values.source_notes || undefined,
-            estimated_unit_price: values.estimated_unit_price ? Number(values.estimated_unit_price) : undefined,
-            required_by_date: values.required_by_date || undefined,
-            source_work_order_id: values.source_work_order_id || undefined,
+            name: values.name,
+            department: values.department || 'general',
+            currency: values.currency || 'EUR',
+            notes: values.notes || undefined,
           },
         }),
       });
-
-      const result = await res.json();
-      if (!res.ok || result.status === 'error') {
-        setError(result.message || 'Failed to create item');
-        return;
-      }
+      const json = await res.json();
+      if (!res.ok || json.status === 'error') { setErr(json.message || 'Failed'); return; }
       onSuccess();
-      onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Network error');
+      setErr(e instanceof Error ? e.message : 'Network error');
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
-  }, [yachtId, onClose, onSuccess]);
+  }, [yachtId, onSuccess]);
 
   return (
     <ActionPopup
       mode="mutate"
-      title="Add to Shopping List"
-      subtitle="All crew can add items. HoD approves before ordering."
+      title="New Shopping List"
+      subtitle="Create a named requisition document. Add items after creation."
       fields={[
-        { name: 'part_name', label: 'Item / Part Name', type: 'kv-edit', placeholder: 'e.g. Fuel filter, Safety harness', required: true },
-        { name: 'quantity_requested', label: 'Quantity', type: 'kv-edit', placeholder: '1', required: true },
-        { name: 'urgency', label: 'Urgency', type: 'select', options: [
-          { value: 'low', label: 'Low' },
-          { value: 'normal', label: 'Normal' },
-          { value: 'high', label: 'High' },
-          { value: 'critical', label: 'Critical' },
+        { name: 'name', label: 'List Name', type: 'kv-edit', placeholder: 'e.g. Engine Stores Run — May 2026', required: true },
+        { name: 'department', label: 'Department', type: 'select', options: [
+          { value: 'general', label: 'General' },
+          { value: 'engine', label: 'Engine' },
+          { value: 'deck', label: 'Deck' },
+          { value: 'galley', label: 'Galley' },
+          { value: 'interior', label: 'Interior' },
+          { value: 'bridge', label: 'Bridge' },
         ]},
-        { name: 'estimated_unit_price', label: 'Estimated Price (per unit)', type: 'kv-edit', placeholder: '0.00' },
-        { name: 'source_notes', label: 'Reason / Notes', type: 'text-area', placeholder: 'Why is this item needed?' },
-        { name: 'required_by_date', label: 'Required By', type: 'date-pick' },
-        { name: 'source_work_order_id', label: 'Link to Work Order (optional)', type: 'entity-search', search_domain: 'work_orders', placeholder: 'Search work orders...' },
+        { name: 'currency', label: 'Currency', type: 'select', options: [
+          { value: 'EUR', label: 'EUR — Euro' },
+          { value: 'USD', label: 'USD — US Dollar' },
+          { value: 'GBP', label: 'GBP — British Pound' },
+          { value: 'AED', label: 'AED — UAE Dirham' },
+          { value: 'MED', label: 'USD — Med Charter' },
+        ]},
+        { name: 'notes', label: 'Notes (optional)', type: 'text-area', placeholder: 'Context for this shopping run...' },
       ]}
       signatureLevel={1}
-      submitLabel={isSubmitting ? 'Adding...' : 'Add Item'}
-      submitDisabled={isSubmitting}
-      previewRows={error ? [{ key: 'Error', value: error }] : undefined}
+      submitLabel={submitting ? 'Creating…' : 'Create List'}
+      submitDisabled={submitting}
+      previewRows={err ? [{ key: 'Error', value: err }] : undefined}
       onSubmit={handleSubmit}
       onClose={onClose}
     />
   );
 }
 
-function ShoppingListPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
-  const selectedId = searchParams.get('id');
-  const [showCreate, setShowCreate] = React.useState(false);
-  const [activeFilters, setActiveFilters] = React.useState<ActiveFilters>({});
-
-  // Fetch rows via the shared hook — backend applies all SHOPPING_LIST_FILTERS
-  // keys as URL params (vessel_surface_routes.py get_domain_records
-  // shopping_list branch). Client side just renders.
-  const { items, isLoading } = useFilteredEntityList<ShoppingListItem>({
-    queryKey: ['shopping-list'],
-    table: 'pms_shopping_list_items',
-    columns: '*',
-    adapter: shoppingListToListResult,
-    filters: activeFilters,
-    sortBy: 'created_at',
-    sortDir: 'desc',
-  });
-
-  const handleSelect = React.useCallback(
-    (id: string, yachtId?: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('id', id);
-      if (yachtId) params.set('yacht_id', yachtId);
-      router.push(`/shopping-list?${params.toString()}`, { scroll: false });
-    },
-    [router, searchParams]
-  );
-
-  const handleCloseDetail = React.useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('id');
-    const qs = params.toString();
-    router.push(`/shopping-list${qs ? `?${qs}` : ''}`, { scroll: false });
-  }, [router, searchParams]);
-
-  const handleCreated = React.useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
-  }, [queryClient]);
-
-  return (
-    <div className="h-full bg-surface-base" style={{ position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-        {/* Shared FilterPanel — same component used by documents/certificates/
-            receiving/purchasing. Reads SHOPPING_LIST_FILTERS from filter-config.ts.
-            Each filter key maps 1:1 to a Query param on the backend route. */}
-        <FilterPanel
-          filters={SHOPPING_LIST_FILTERS}
-          activeFilters={activeFilters}
-          onChange={setActiveFilters}
-          activeDomain="shopping-list"
-          totalCount={items.length}
-        />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {/* Tabulated, sortable list — shared EntityTableList wrapped with
-              SHOPPING_LIST_COLUMNS. Replaces the previous card-style list
-              (EntityRecordRow/SpotlightResultRow) per CEO 2026-04-23 directive. */}
-          <ShoppingListTableList
-            rows={items}
-            onSelect={handleSelect}
-            selectedId={selectedId}
-            isLoading={isLoading}
-          />
-        </div>
-      </div>
-
-      {/* Add Item button — fixed bottom-right */}
-      <button
-        onClick={() => setShowCreate(true)}
-        aria-label="Add item to shopping list"
-        style={{
-          position: 'fixed',
-          bottom: 32,
-          right: 32,
-          zIndex: 50,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '10px 18px',
-          background: 'var(--mark)',
-          color: 'var(--surface-base)',
-          border: 'none',
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 600,
-          fontFamily: 'var(--font-sans)',
-          cursor: 'pointer',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-        Add Item
-      </button>
-
-      <EntityDetailOverlay isOpen={!!selectedId} onClose={handleCloseDetail}>
-        {selectedId && (
-          <EntityLensPage
-            entityType="shopping_list"
-            entityId={selectedId}
-            content={LensContent}
-          />
-        )}
-      </EntityDetailOverlay>
-
-      {showCreate && (
-        <CreateItemModal
-          onClose={() => setShowCreate(false)}
-          onSuccess={handleCreated}
-        />
-      )}
-    </div>
-  );
-}
-
 export default function ShoppingListPage() {
   return (
-    <React.Suspense
-      fallback={
-        <div className="h-full flex items-center justify-center bg-surface-base">
-          <div style={{ width: '32px', height: '32px', border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%' }} className="animate-spin" />
-        </div>
-      }
-    >
+    <React.Suspense fallback={
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'var(--surface-base)' }}>
+        <div style={{ width: 28, height: 28, border: '2px solid var(--border-sub)', borderTopColor: 'var(--mark)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      </div>
+    }>
       <ShoppingListPageContent />
     </React.Suspense>
   );
