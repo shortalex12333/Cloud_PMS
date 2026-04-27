@@ -357,6 +357,23 @@ async def execute_action(
             "role": user_context["role"],
         }
 
+        # ── entity_id aliasing ───────────────────────────────────────────────
+        # Frontend always sends context.entity_id (the lens entity UUID).
+        # Action handlers and required_fields use domain-specific names like
+        # equipment_id, fault_id, work_order_id, etc.
+        # If a required field is one of these and is missing, alias entity_id
+        # so handlers don't KeyError and validation doesn't 400.
+        _ENTITY_ID_ALIASES = {
+            "equipment_id", "fault_id", "work_order_id", "part_id",
+            "certificate_id", "document_id", "purchase_order_id",
+            "receiving_id", "warranty_id", "shopping_list_id",
+        }
+        entity_id_val = params.get("entity_id")
+        if entity_id_val:
+            for _field in action_def.required_fields:
+                if _field in _ENTITY_ID_ALIASES and not params.get(_field):
+                    params[_field] = entity_id_val
+
         # ====================================================================
         # STEP 6: Validate required fields
         # ====================================================================
