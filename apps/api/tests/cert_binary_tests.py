@@ -284,18 +284,20 @@ except Exception as e:
 
 
 # ─── TEST 6: add_certificate_note ───────────────────────────────────────────
-# Handler: internal_dispatcher.py:175 → add_note (shared handler)
-# Wire: internal_dispatcher.py:4178 → "add_certificate_note": add_note
+# Handler: handlers/certificate_handlers.py → _cert_p4_add_certificate_note
+# Wire: CERT_HANDLERS["add_certificate_note"] → Phase 4 native handler
 print("\nT6: add_certificate_note")
 cert_id = make_vessel_cert()
 try:
-    from action_router.dispatchers.internal_dispatcher import add_note
-    asyncio.run(add_note({
-        "yacht_id": YACHT_ID,
-        "user_id": USER_ID,
-        "certificate_id": cert_id,
-        "note_text": "Binary verification test note",
-    }))
+    from handlers.certificate_handlers import _cert_p4_add_certificate_note
+    asyncio.run(_cert_p4_add_certificate_note(
+        payload={"note_text": "Binary verification test note"},
+        context={"certificate_id": cert_id},
+        yacht_id=YACHT_ID,
+        user_id=USER_ID,
+        user_context={"role": "captain"},
+        db_client=db,
+    ))
     notes = get_notes_for_cert(cert_id)
     record("T6a: note row exists with certificate_id FK set",
            len(notes) == 1 and notes[0]["certificate_id"] == cert_id,

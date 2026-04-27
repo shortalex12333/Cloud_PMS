@@ -1436,85 +1436,6 @@ class P3ReadOnlyHandlers:
             }
 
     # =========================================================================
-    # P3 #59: track_delivery
-    # =========================================================================
-
-    async def track_delivery_execute(
-        self,
-        purchase_order_id: str,
-        yacht_id: str
-    ) -> Dict:
-        """
-        Track delivery status for a purchase order.
-        """
-        try:
-            # Get PO details
-            po_result = self.db.table("pms_purchase_orders").select(
-                "id, po_number, status, ordered_at, metadata"
-            ).eq("id", purchase_order_id).eq("yacht_id", yacht_id).limit(1).execute()
-
-            if not po_result.data:
-                return {
-                    "status": "error",
-                    "error_code": "PO_NOT_FOUND",
-                    "message": f"Purchase order not found: {purchase_order_id}"
-                }
-
-            po = po_result.data[0]
-
-            # Get line items
-            items_result = self.db.table("pms_purchase_order_items").select(
-                "id, part_id, quantity_ordered, quantity_received, "
-                "pms_parts(name, part_number)"
-            ).eq("purchase_order_id", purchase_order_id).execute()
-
-            items = items_result.data if items_result.data else []
-
-            # Calculate delivery progress
-            total_ordered = sum(i.get("quantity_ordered", 0) for i in items)
-            total_received = sum(i.get("quantity_received", 0) for i in items)
-
-            # Get receiving events
-            receiving_result = self.db.table("pms_receiving_events").select(
-                "id, receiving_number, received_at, received_by, location, "
-                "delivery_method, tracking_number, status"
-            ).eq("order_id", purchase_order_id).eq("yacht_id", yacht_id).order(
-                "received_at", desc=True
-            ).execute()
-
-            receiving_events = receiving_result.data if receiving_result.data else []
-
-            return {
-                "status": "success",
-                "action": "track_delivery",
-                "result": {
-                    "purchase_order": {
-                        "id": purchase_order_id,
-                        "po_number": po.get("po_number"),
-                        "status": po.get("status"),
-                        "ordered_at": po.get("ordered_at")
-                    },
-                    "items": items,
-                    "receiving_events": receiving_events,
-                    "delivery_progress": {
-                        "total_items": len(items),
-                        "total_ordered": total_ordered,
-                        "total_received": total_received,
-                        "percent_complete": round(total_received / total_ordered * 100, 1) if total_ordered > 0 else 0
-                    }
-                },
-                "message": f"Delivery tracking for {po.get('po_number')}"
-            }
-
-        except Exception as e:
-            logger.error(f"track_delivery_execute failed: {e}", exc_info=True)
-            return {
-                "status": "error",
-                "error_code": "INTERNAL_ERROR",
-                "message": str(e)
-            }
-
-    # =========================================================================
     # P3 #60: view_checklist
     # =========================================================================
 
@@ -2121,6 +2042,4 @@ def get_p3_read_only_handlers(supabase_client) -> Dict[str, callable]:
         # comply_audit cluster
         "view_compliance_status": handlers.view_compliance_status_execute,
 
-        # procure_suppliers cluster
-        "track_delivery": handlers.track_delivery_execute,
     }

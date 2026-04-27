@@ -530,6 +530,7 @@ async def create_monthly_signoff_route(
                 "period_type": request.period_type or "monthly",
                 "week_start": request.week_start,
                 "target_user_id": request.target_user_id,
+                "user_role": auth.get("role", ""),
             }
         )
         # Propagate the semantic HTTP status from the handler's error envelope

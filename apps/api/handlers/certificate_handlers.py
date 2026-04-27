@@ -745,35 +745,7 @@ class CertificateHandlers:
         return actions
 
 
-def get_certificate_handlers(supabase_client) -> Dict[str, callable]:
-    """Get certificate handler functions for registration."""
-    handlers = CertificateHandlers(supabase_client)
-
-    _suspend = _change_certificate_status_adapter("suspended")(handlers)
-    _revoke = _change_certificate_status_adapter("revoked")(handlers)
-
-    return {
-        # READ handlers
-        "list_vessel_certificates": handlers.list_vessel_certificates,
-        "list_crew_certificates": handlers.list_crew_certificates,
-        "get_certificate_details": handlers.get_certificate_details,
-        "view_certificate_history": handlers.view_certificate_history,
-        "find_expiring_certificates": handlers.find_expiring_certificates,
-
-        # MUTATION handlers
-        "create_vessel_certificate": _create_vessel_certificate_adapter(handlers),
-        "create_crew_certificate": _create_crew_certificate_adapter(handlers),
-        "update_certificate": _update_certificate_adapter(handlers),
-        "link_document_to_certificate": _link_document_to_certificate_adapter(handlers),
-        "supersede_certificate": _supersede_certificate_adapter(handlers),
-        "renew_certificate": _renew_certificate_adapter(handlers),
-        "suspend_certificate": _suspend,
-        "revoke_certificate": _revoke,
-        "archive_certificate": _archive_certificate_adapter(handlers),
-        "assign_certificate": _assign_certificate_adapter(handlers),
-        "link_equipment_to_certificate": _link_equipment_to_certificate_adapter(handlers),
-        "unlink_equipment_from_certificate": _unlink_equipment_from_certificate_adapter(handlers),
-    }
+# get_certificate_handlers() removed — all callers now use CERT_HANDLERS directly.
 
 
 # =============================================================================
@@ -1790,3 +1762,129 @@ def _notify_cert_stakeholders(db, yacht_id: str, cert_id: str, cert_name: str,
         return len(notifs)
     except Exception:
         return 0
+
+
+# ============================================================================
+# PHASE 4 CERT_HANDLERS — single execution path: execute_action → handler
+# Source of truth for all 18 certificate actions (13 mutations + 5 reads).
+# Imported by routes/handlers/__init__.py.
+# Uses db_client (tenant-scoped) on every action.
+# ============================================================================
+
+# Direct factory map: avoids allocating all 16 closures on every request.
+# Each value is the adapter factory for that action (takes CertificateHandlers,
+# returns an async fn(**params)).
+_CERT_MUTATION_FACTORIES = {
+    "create_vessel_certificate":        _create_vessel_certificate_adapter,
+    "create_crew_certificate":          _create_crew_certificate_adapter,
+    "update_certificate":               _update_certificate_adapter,
+    "link_document_to_certificate":     _link_document_to_certificate_adapter,
+    "supersede_certificate":            _supersede_certificate_adapter,
+    "renew_certificate":                _renew_certificate_adapter,
+    "suspend_certificate":              _change_certificate_status_adapter("suspended"),
+    "revoke_certificate":               _change_certificate_status_adapter("revoked"),
+    "archive_certificate":              _archive_certificate_adapter,
+    "assign_certificate":               _assign_certificate_adapter,
+    "link_equipment_to_certificate":    _link_equipment_to_certificate_adapter,
+    "unlink_equipment_from_certificate": _unlink_equipment_from_certificate_adapter,
+}
+
+
+def _make_cert_p4_handler(action_name: str):
+    """Factory: Phase 4 calling convention → one mutation adapter fn (3 hops)."""
+    _factory = _CERT_MUTATION_FACTORIES[action_name]
+    async def _handler(payload, context, yacht_id, user_id, user_context, db_client):
+        fn = _factory(CertificateHandlers(db_client))
+        params = {
+            "yacht_id": yacht_id,
+            "user_id": user_id,
+            "role": user_context.get("role", ""),
+            **(context or {}),
+            **(payload or {}),
+        }
+        return await fn(**params)
+    _handler.__name__ = f"cert_p4_{action_name}"
+    return _handler
+
+
+# ── note handler ──────────────────────────────────────────────────────────────
+
+async def _cert_p4_add_certificate_note(payload, context, yacht_id, user_id, user_context, db_client):
+    """add_certificate_note — native Phase 4 handler using tenant db_client."""
+    note_text = payload.get("note_text") or payload.get("text")
+    if not note_text:
+        raise ValueError("note_text is required")
+    certificate_id = (context or {}).get("certificate_id") or payload.get("certificate_id")
+    now = datetime.now(timezone.utc).isoformat()
+    note_id = str(uuid.uuid4())
+    db_client.table("pms_notes").insert({
+        "id": note_id,
+        "yacht_id": yacht_id,
+        "certificate_id": certificate_id,
+        "text": note_text,
+        "note_type": payload.get("note_type", "observation"),
+        "created_by": user_id,
+        "created_by_role": user_context.get("role", ""),
+        "created_at": now,
+        "updated_at": now,
+    }).execute()
+    return {
+        "note_id": note_id,
+        "certificate_id": certificate_id,
+        "created_at": now,
+        "message": "Note added successfully",
+    }
+
+
+# ── read handlers (Phase 4 wrappers for CertificateHandlers class methods) ───
+
+async def _cert_p4_list_vessel_certificates(payload, context, yacht_id, user_id, user_context, db_client):
+    handlers = CertificateHandlers(db_client)
+    entity_id = (context or {}).get("certificate_id") or (payload or {}).get("certificate_id") or yacht_id
+    params = {"user_id": user_id, "user_role": user_context.get("role", ""), **(payload or {})}
+    return await handlers.list_vessel_certificates(entity_id=entity_id, yacht_id=yacht_id, params=params)
+
+
+async def _cert_p4_list_crew_certificates(payload, context, yacht_id, user_id, user_context, db_client):
+    handlers = CertificateHandlers(db_client)
+    entity_id = (context or {}).get("certificate_id") or (payload or {}).get("certificate_id") or yacht_id
+    params = {"user_id": user_id, "user_role": user_context.get("role", ""), **(payload or {})}
+    return await handlers.list_crew_certificates(entity_id=entity_id, yacht_id=yacht_id, params=params)
+
+
+async def _cert_p4_get_certificate_details(payload, context, yacht_id, user_id, user_context, db_client):
+    handlers = CertificateHandlers(db_client)
+    entity_id = (context or {}).get("certificate_id") or (payload or {}).get("certificate_id")
+    if not entity_id:
+        raise ValueError("certificate_id is required")
+    params = {"user_id": user_id, "user_role": user_context.get("role", ""), **(payload or {})}
+    return await handlers.get_certificate_details(entity_id=entity_id, yacht_id=yacht_id, params=params)
+
+
+async def _cert_p4_view_certificate_history(payload, context, yacht_id, user_id, user_context, db_client):
+    handlers = CertificateHandlers(db_client)
+    entity_id = (context or {}).get("certificate_id") or (payload or {}).get("certificate_id")
+    if not entity_id:
+        raise ValueError("certificate_id is required")
+    params = {"user_id": user_id, "user_role": user_context.get("role", ""), **(payload or {})}
+    return await handlers.view_certificate_history(entity_id=entity_id, yacht_id=yacht_id, params=params)
+
+
+async def _cert_p4_find_expiring_certificates(payload, context, yacht_id, user_id, user_context, db_client):
+    handlers = CertificateHandlers(db_client)
+    entity_id = (context or {}).get("certificate_id") or (payload or {}).get("certificate_id") or yacht_id
+    params = {"user_id": user_id, "user_role": user_context.get("role", ""), **(payload or {})}
+    return await handlers.find_expiring_certificates(entity_id=entity_id, yacht_id=yacht_id, params=params)
+
+
+# ── dispatch table ────────────────────────────────────────────────────────────
+
+CERT_HANDLERS: dict = {
+    action: _make_cert_p4_handler(action) for action in _CERT_MUTATION_FACTORIES
+}
+CERT_HANDLERS["add_certificate_note"]         = _cert_p4_add_certificate_note
+CERT_HANDLERS["list_vessel_certificates"]     = _cert_p4_list_vessel_certificates
+CERT_HANDLERS["list_crew_certificates"]       = _cert_p4_list_crew_certificates
+CERT_HANDLERS["get_certificate_details"]      = _cert_p4_get_certificate_details
+CERT_HANDLERS["view_certificate_history"]     = _cert_p4_view_certificate_history
+CERT_HANDLERS["find_expiring_certificates"]   = _cert_p4_find_expiring_certificates

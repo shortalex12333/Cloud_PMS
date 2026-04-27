@@ -1,4 +1,4 @@
-from routes.handlers.compliance_handler import HANDLERS
+from handlers.compliance_handler import HANDLERS
 
 
 def test_all_actions_registered():

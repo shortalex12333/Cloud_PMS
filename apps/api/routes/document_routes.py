@@ -29,7 +29,7 @@ from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
 from supabase import create_client
 from utils.filenames import sanitize_storage_filename
-from routes.handlers.ledger_utils import build_ledger_event
+from handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 

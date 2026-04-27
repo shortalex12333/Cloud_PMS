@@ -38,7 +38,7 @@ from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from handlers.handover_workflow_handlers import HandoverWorkflowHandlers
+from handlers.handover_handlers import HandoverWorkflowHandlers
 
 YACHT_ID = "85fe1119-b04c-41ac-80f1-829d23322598"
 USER_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"

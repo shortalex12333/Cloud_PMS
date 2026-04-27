@@ -2,20 +2,18 @@
 Unit tests for remaining Phase 4 handlers:
   - certificate_handler.py
   - document_handler.py
-  - handover_handler.py
-  - shopping_handler.py
+  - handlers/handover_handlers.py (consolidated)
+  - handlers/shopping_list_handlers.py
   - pm_handler.py
-
-Tests import from routes.handlers.* which must exist for tests to pass.
 """
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from routes.handlers.certificate_phase4_handler import HANDLERS as CERT_HANDLERS
-from routes.handlers.document_handler import HANDLERS as DOC_HANDLERS
-from routes.handlers.handover_handler import HANDLERS as HAND_HANDLERS
-from routes.handlers.shopping_handler import HANDLERS as SHOP_HANDLERS
-from routes.handlers.pm_handler import HANDLERS as PM_HANDLERS
+from handlers.certificate_handlers import CERT_HANDLERS
+from handlers.document_handler import HANDLERS as DOC_HANDLERS
+from handlers.handover_handlers import HANDLERS as HAND_HANDLERS
+from handlers.shopping_list_handlers import HANDLERS as SHOP_HANDLERS
+from handlers.pm_handler import HANDLERS as PM_HANDLERS
 
 
 # ============================================================================
@@ -73,58 +71,19 @@ def base_uc(role="captain"):
 class TestCertificateRegistry:
     def test_all_certificate_actions_registered(self):
         expected = [
-            "add_certificate", "renew_certificate", "add_service_contract", "record_contract_claim",
+            # mutations
             "create_vessel_certificate", "create_crew_certificate", "update_certificate",
-            "link_document_to_certificate", "supersede_certificate",
+            "link_document_to_certificate", "supersede_certificate", "renew_certificate",
+            "archive_certificate", "suspend_certificate", "revoke_certificate",
+            "assign_certificate", "link_equipment_to_certificate",
+            "unlink_equipment_from_certificate", "add_certificate_note",
+            # reads
+            "list_vessel_certificates", "list_crew_certificates",
+            "get_certificate_details", "view_certificate_history",
+            "find_expiring_certificates",
         ]
         for name in expected:
             assert name in CERT_HANDLERS, f"Action '{name}' not in CERT_HANDLERS"
-
-
-# ============================================================================
-# CERTIFICATE HANDLER — BLOCKED ACTIONS
-# ============================================================================
-
-class TestCertificateBlocked:
-    @pytest.mark.asyncio
-    async def test_add_certificate_blocked(self):
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException) as exc:
-            await CERT_HANDLERS["add_certificate"](
-                payload={}, context=base_ctx(), yacht_id="y-1", user_id="u-1",
-                user_context=base_uc(), db_client=make_db(),
-            )
-        assert exc.value.status_code == 501
-
-    @pytest.mark.asyncio
-    async def test_renew_certificate_blocked(self):
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException) as exc:
-            await CERT_HANDLERS["renew_certificate"](
-                payload={}, context=base_ctx(), yacht_id="y-1", user_id="u-1",
-                user_context=base_uc(), db_client=make_db(),
-            )
-        assert exc.value.status_code == 501
-
-    @pytest.mark.asyncio
-    async def test_add_service_contract_blocked(self):
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException) as exc:
-            await CERT_HANDLERS["add_service_contract"](
-                payload={}, context=base_ctx(), yacht_id="y-1", user_id="u-1",
-                user_context=base_uc(), db_client=make_db(),
-            )
-        assert exc.value.status_code == 501
-
-    @pytest.mark.asyncio
-    async def test_record_contract_claim_blocked(self):
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException) as exc:
-            await CERT_HANDLERS["record_contract_claim"](
-                payload={}, context=base_ctx(), yacht_id="y-1", user_id="u-1",
-                user_context=base_uc(), db_client=make_db(),
-            )
-        assert exc.value.status_code == 501
 
 
 # ============================================================================

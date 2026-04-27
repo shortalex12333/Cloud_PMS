@@ -13,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 
 from supabase import Client
 from handlers.db_client import get_service_db
-from routes.handlers.ledger_utils import build_ledger_event
+from handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 

@@ -35,14 +35,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Import centralized Supabase client factory
 from integrations.supabase import get_supabase_client, get_tenant_client
 
-from handlers.work_order_mutation_handlers import WorkOrderMutationHandlers
 from handlers.inventory_handlers import InventoryHandlers
-from handlers.handover_handlers import HandoverHandlers
-from handlers.handover_workflow_handlers import HandoverWorkflowHandlers
+from handlers.handover_handlers import HandoverHandlers, HandoverWorkflowHandlers
 from handlers.manual_handlers import ManualHandlers
 from handlers.part_handlers import PartHandlers
-from handlers.shopping_list_handlers import ShoppingListHandlers
-from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from action_router.validators import validate_payload_entities
 from action_router.middleware import validate_action_payload, InputValidationError, validate_state_transition, InvalidStateTransitionError
 from action_router.registry import get_action
@@ -51,10 +47,7 @@ from middleware.vessel_access import resolve_yacht_id
 
 logger = logging.getLogger(__name__)
 
-# ============================================================================
-# LEDGER HELPER (moved to handlers/ledger_utils.py — imported here for backward compat)
-# ============================================================================
-from routes.handlers.ledger_utils import build_ledger_event
+from handlers.ledger_utils import build_ledger_event
 from routes.handlers import HANDLERS as _ACTION_HANDLERS
 
 
@@ -85,8 +78,6 @@ _ACTION_ENTITY_MAP = {
     "reject_shopping_list_item":   ("shopping_list_item", "item_id"),
     "mark_shopping_list_ordered":  ("shopping_list_item", "item_id"),
     "promote_candidate_to_part":   ("shopping_list_item", "item_id"),
-    "edit_receiving":              ("receiving", "receiving_id"),
-    "submit_receiving_for_review": ("receiving", "receiving_id"),
     "accept_receiving":            ("receiving", "receiving_id"),
     "reject_receiving":            ("receiving", "receiving_id"),
     "submit_purchase_order":       ("purchase_order", "purchase_order_id"),
@@ -184,14 +175,11 @@ def get_handlers_for_tenant(tenant_key_alias: str):
         if supabase:
             try:
                 _handlers_cache[tenant_key_alias] = {
-                    "wo_handlers": WorkOrderMutationHandlers(supabase),
                     "inventory_handlers": InventoryHandlers(supabase),
                     "handover_handlers": HandoverHandlers(supabase),
                     "handover_workflow_handlers": HandoverWorkflowHandlers(supabase),
                     "manual_handlers": ManualHandlers(supabase),
                     "part_handlers": PartHandlers(supabase),
-                    "shopping_list_handlers": ShoppingListHandlers(supabase),
-                    "hor_handlers": HoursOfRestHandlers(supabase),
                 }
                 logger.info(f"✅ All P0 action handlers initialized for {tenant_key_alias}")
             except Exception as e:
@@ -208,33 +196,24 @@ def get_handlers_for_tenant(tenant_key_alias: str):
 supabase = get_supabase_client()
 if supabase:
     try:
-        wo_handlers = WorkOrderMutationHandlers(supabase)
         inventory_handlers = InventoryHandlers(supabase)
         handover_handlers = HandoverHandlers(supabase)
         handover_workflow_handlers = HandoverWorkflowHandlers(supabase)
         manual_handlers = ManualHandlers(supabase)
         part_handlers = PartHandlers(supabase)
-        shopping_list_handlers = ShoppingListHandlers(supabase)
-        hor_handlers = HoursOfRestHandlers(supabase)
         logger.info("✅ All P0 action handlers initialized (default tenant fallback)")
     except Exception as e:
         logger.error(f"Failed to initialize handlers: {e}")
-        wo_handlers = None
         inventory_handlers = None
         handover_handlers = None
         manual_handlers = None
         part_handlers = None
-        shopping_list_handlers = None
-        hor_handlers = None
 else:
     logger.warning("⚠️ P0 handlers not initialized - no database connection")
-    wo_handlers = None
     inventory_handlers = None
     handover_handlers = None
     manual_handlers = None
     part_handlers = None
-    shopping_list_handlers = None
-    hor_handlers = None
 
 
 # ============================================================================
@@ -260,314 +239,6 @@ class ActionExecuteRequest(BaseModel):
     action: str = Field(..., description="Action name")
     context: Dict[str, Any] = Field(..., description="Yacht ID, user ID, role")
     payload: Dict[str, Any] = Field(..., description="Action-specific parameters")
-
-
-# ============================================================================
-# PREFILL ENDPOINTS
-# ============================================================================
-
-@router.get("/create_work_order_from_fault/prefill")
-async def create_work_order_from_fault_prefill(
-    fault_id: str,
-    auth: dict = Depends(get_authenticated_user)
-):
-    """
-    Pre-fill work order form from fault data.
-
-    Returns:
-    - Pre-filled form data (title, equipment, location, description, priority)
-    - Duplicate check (existing WO for this fault)
-    """
-    yacht_id = auth["yacht_id"]
-    user_id = auth["user_id"]
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.create_work_order_from_fault_prefill(fault_id, yacht_id, user_id)
-
-    if result["status"] == "error":
-        raise HTTPException(
-            status_code=400 if result["error_code"] == "FAULT_NOT_FOUND" else 500,
-            detail=result["message"]
-        )
-
-    return result
-
-
-@router.get("/add_note_to_work_order/prefill")
-async def add_note_to_work_order_prefill(
-    work_order_id: str,
-    auth: dict = Depends(get_authenticated_user)
-):
-    """Pre-fill data for add note to work order."""
-    yacht_id = auth["yacht_id"]
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.add_note_to_work_order_prefill(work_order_id, yacht_id)
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.get("/add_part_to_work_order/prefill")
-async def add_part_to_work_order_prefill(
-    work_order_id: str,
-    part_id: str,
-    auth: dict = Depends(get_authenticated_user)
-):
-    """Pre-fill data for add part to work order."""
-    yacht_id = auth["yacht_id"]
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.add_part_to_work_order_prefill(work_order_id, part_id, yacht_id)
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.get("/mark_work_order_complete/prefill")
-async def mark_work_order_complete_prefill(
-    work_order_id: str,
-    auth: dict = Depends(get_authenticated_user)
-):
-    """Pre-fill data for mark work order complete."""
-    yacht_id = auth["yacht_id"]
-    user_id = auth["user_id"]
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.mark_work_order_complete_prefill(work_order_id, yacht_id, user_id)
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.post("/work_order/create/prepare")
-async def prepare_create_work_order(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """
-    Phase 1: Generate mutation preview for work order creation.
-
-    This endpoint returns a mutation preview with pre-filled fields based on NLP
-    entity extraction and planning document specifications.
-
-    Returns:
-    - mutation_preview: Pre-filled payload based on extracted entities
-    - missing_required: List of required fields not auto-populated
-    - warnings: List of ambiguities (equipment not found, etc.)
-    - validation_status: "ready" | "incomplete"
-    """
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-
-    # Get handlers for tenant
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    wo_handlers = handlers.get("wo_handlers")
-    if not wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    # Call the prepare handler
-    result = await wo_handlers.prepare_create_work_order(
-        query_text=request.payload.get("query_text", ""),
-        extracted_entities=request.payload.get("extracted_entities", {}),
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result.get("status") == "error":
-        status_code = 400
-        if result.get("error_code") == "INTERNAL_ERROR":
-            status_code = 500
-        raise HTTPException(status_code=status_code, detail=result.get("message"))
-
-    return result
-
-
-@router.post("/work_order/create/commit")
-async def commit_create_work_order(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """
-    Phase 2: Execute work order creation after user confirms preview.
-
-    The user has reviewed and possibly edited the mutation_preview.
-    This endpoint:
-    1. Re-validates all required fields
-    2. Validates foreign key constraints (equipment_id, assigned_to)
-    3. Executes INSERT with RLS
-    4. Writes audit log entry (signature NOT NULL, uses {} for non-signed)
-    5. Returns entity ID for frontend to refresh
-
-    Required fields: title, priority, type
-    Optional fields: equipment_id, description, assigned_to, due_date
-    """
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-
-    # Get handlers for tenant
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    wo_handlers = handlers.get("wo_handlers")
-    if not wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    # Extract payload and signature
-    payload = request.payload
-    signature = payload.get("signature")  # Optional for non-signed actions
-
-    # Call the commit handler
-    result = await wo_handlers.commit_create_work_order(
-        payload=payload,
-        signature=signature,
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result.get("status") == "error":
-        # Map error codes to HTTP status codes
-        error_code = result.get("error_code")
-        status_code_map = {
-            "MISSING_REQUIRED_FIELDS": 400,
-            "INVALID_UUID": 400,
-            "EQUIPMENT_NOT_FOUND": 404,
-            "USER_NOT_FOUND": 404,
-            "INSERT_FAILED": 500,
-            "INTERNAL_ERROR": 500,
-        }
-        status_code = status_code_map.get(error_code, 400)
-        raise HTTPException(status_code=status_code, detail=result.get("message"))
-
-    return result
-
-
-# ============================================================================
-# PREVIEW ENDPOINTS
-# ============================================================================
-
-@router.post("/mark_work_order_complete/preview")
-async def mark_work_order_complete_preview(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """Preview work order completion."""
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-    payload = request.payload
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.mark_work_order_complete_preview(
-        work_order_id=payload["work_order_id"],
-        completion_notes=payload["completion_notes"],
-        parts_used=payload.get("parts_used", []),
-        signature=payload["signature"],
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.post("/add_part_to_work_order/preview")
-async def add_part_to_work_order_preview(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """Preview adding part to work order."""
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-    payload = request.payload
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.add_part_to_work_order_preview(
-        work_order_id=payload["work_order_id"],
-        part_id=payload["part_id"],
-        quantity=payload["quantity"],
-        notes=payload.get("notes"),
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
-
-
-@router.post("/create_work_order_from_fault/preview")
-async def create_work_order_from_fault_preview(
-    request: PreviewRequest,
-    auth: dict = Depends(get_authenticated_user),
-):
-    """
-    Preview work order creation.
-
-    Shows:
-    - What will be created
-    - All side effects
-    - Warnings (if any)
-    """
-    request.context["yacht_id"] = resolve_yacht_id(auth, request.context.get("yacht_id"))
-    yacht_id = request.context["yacht_id"]
-    user_id = auth["user_id"]
-    payload = request.payload
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _wo_handlers = handlers.get("wo_handlers")
-    if not _wo_handlers:
-        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-
-    result = await _wo_handlers.create_work_order_from_fault_preview(
-        fault_id=payload["fault_id"],
-        title=payload["title"],
-        equipment_id=payload.get("equipment_id"),
-        location=payload.get("location"),
-        description=payload.get("description"),
-        priority=payload["priority"],
-        yacht_id=yacht_id,
-        user_id=user_id
-    )
-
-    if result["status"] == "error":
-        raise HTTPException(status_code=400, detail=result["message"])
-
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -628,12 +299,11 @@ _PO_ACTIONS = frozenset({
 })
 
 _RECEIVING_ACTIONS = frozenset({
-    "submit_receiving_for_review", "edit_receiving",
     "confirm_receiving", "accept_receiving", "reject_receiving",
     "flag_discrepancy", "create_receiving",
     "attach_receiving_image_with_comment", "extract_receiving_candidates",
     "update_receiving_fields", "add_receiving_item", "adjust_receiving_item",
-    "link_invoice_document", "view_receiving_history",
+    "link_invoice_document", "view_receiving_history", "draft_supplier_email",
 })
 
 _SHOPPING_LIST_ACTIONS = frozenset({
@@ -664,6 +334,10 @@ _CERT_ACTIONS = frozenset({
     "assign_certificate",
     "link_equipment_to_certificate",
     "unlink_equipment_from_certificate",
+    # reads — entity_id → certificate_id resolution
+    "list_vessel_certificates", "list_crew_certificates",
+    "get_certificate_details", "view_certificate_history",
+    "find_expiring_certificates",
 })
 
 
@@ -835,147 +509,10 @@ async def execute_action(
         logger.debug(f"[RLS] Could not validate entities for action '{action}': {e}")
 
     # ========================================================================
-    # ROLE VALIDATION - Security fix for Fault Lens v1
-    # ========================================================================
-    # Define allowed roles for each action (Fault Lens v1 - Phase 7)
-    FAULT_LENS_ROLES = {
-        "report_fault": ["crew", "chief_engineer", "chief_officer", "captain"],
-        "add_fault_photo": ["crew", "chief_engineer", "chief_officer", "captain"],
-        "add_fault_note": ["crew", "chief_engineer", "chief_officer", "captain"],
-        "view_fault_detail": ["crew", "chief_engineer", "chief_officer", "captain", "manager", "purser"],
-        "view_fault_history": ["crew", "chief_engineer", "chief_officer", "captain", "manager", "purser"],
-        "acknowledge_fault": ["chief_engineer", "chief_officer", "captain"],
-        "close_fault": ["chief_engineer", "chief_officer", "captain"],
-        "update_fault": ["chief_engineer", "chief_officer", "captain"],
-        "diagnose_fault": ["chief_engineer", "chief_officer", "captain"],
-        "reopen_fault": ["chief_engineer", "chief_officer", "captain"],
-        "mark_fault_false_alarm": ["chief_engineer", "chief_officer", "captain"],
-        "create_work_order_from_fault": ["chief_engineer", "chief_officer", "captain", "manager"],
-    }
-
-    # PART LENS SIGNED ACTIONS - STRICT role enforcement (captain/manager only)
-    PART_LENS_SIGNED_ROLES = {
-        "adjust_stock_quantity": ["chief_engineer", "captain", "manager"],
-        # NOTE: write_off_part role check is at handler level (checks role_at_signing + is_manager RPC)
-    }
-
-
-    # WORK ORDER LENS ACTIONS - Role enforcement (Security Fix 2026-02-08)
-    # Centralized RBAC for all work order actions
-    # READ actions: all authenticated roles
-    # MUTATE actions: chief_engineer and above
-    # SIGNED actions: subset requiring signatures (captain/manager for create/archive)
-    WORK_ORDER_LENS_ROLES = {
-        # READ actions - all roles can view
-        "view_work_order": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-        "view_work_order_detail": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-        "view_work_order_checklist": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-        "view_work_order_history": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-        "view_my_work_orders": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-        "list_work_orders": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-
-        # MUTATE actions - management only (HOD and above)
-        "update_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "assign_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "start_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "cancel_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "add_note_to_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "add_part_to_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "add_work_order_photo": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "close_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
-
-        # SIGNED actions - require signatures
-        # create_work_order: crew allowed with department-level RBAC (enforced in handler)
-        "create_work_order": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
-        "create_work_order_from_fault": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "mark_work_order_complete": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "reassign_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
-        "archive_work_order": ["captain", "manager"],
-    }
-
-    if action in FAULT_LENS_ROLES:
-        user_role = user_context.get("role")
-        allowed_roles = FAULT_LENS_ROLES[action]
-
-        if not user_role:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "status": "error",
-                    "error_code": "RLS_DENIED",
-                    "message": "User role not found"
-                }
-            )
-
-        if user_role not in allowed_roles:
-            logger.warning(f"[SECURITY] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "status": "error",
-                    "error_code": "INSUFFICIENT_PERMISSIONS",
-                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'"
-                }
-            )
-
-    # PART LENS SIGNED ACTIONS - Role validation (canon-critical for Part Lens v2)
-    if action in PART_LENS_SIGNED_ROLES:
-        user_role = user_context.get("role")
-        allowed_roles = PART_LENS_SIGNED_ROLES[action]
-
-        if not user_role:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "status": "error",
-                    "error_code": "RLS_DENIED",
-                    "message": "User role not found for signed action"
-                }
-            )
-
-        if user_role not in allowed_roles:
-            logger.warning(f"[SECURITY] Role '{user_role}' denied for SIGNED action '{action}'. Allowed: {allowed_roles}")
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "status": "error",
-                    "error_code": "INSUFFICIENT_PERMISSIONS",
-                    "message": f"Role '{user_role}' forbidden: not authorized to perform signed action '{action}'"
-                }
-            )
-
-    # WORK ORDER LENS ACTIONS - Role validation (Security Fix 2026-02-08)
-    # Enforce RBAC BEFORE signature checks and handler execution
-    if action in WORK_ORDER_LENS_ROLES:
-        user_role = user_context.get("role")
-        allowed_roles = WORK_ORDER_LENS_ROLES[action]
-
-        if not user_role:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": "User role not found",
-                    "status_code": 403,
-                    "path": request.url.path if hasattr(request, "url") else "/v1/actions/execute"
-                }
-            )
-
-        if user_role not in allowed_roles:
-            logger.warning(f"[SECURITY] Role '{user_role}' denied for work order action '{action}'. Allowed: {allowed_roles}")
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": f"Role '{user_role}' is not authorized to perform action '{action}'",
-                    "status_code": 403,
-                    "path": request.url.path if hasattr(request, "url") else "/v1/actions/execute"
-                }
-            )
-
-    # ========================================================================
     # ENTITY CONTEXT NORMALISATION + HANDLER DISPATCH (Phase 4)
     # resolve_entity_context maps entity_id → domain key once for all handlers.
-    # Registered handlers return here. Unregistered actions fall through to the
-    # legacy try/elif chain below. Delete the chain only after all actions migrated.
+    # Role validation is handled by the registry check above (lines 419-455).
+    # All actions not in _ACTION_HANDLERS receive a 400 after this block.
     # ========================================================================
     resolved_context = resolve_entity_context(action, request.context)
 
@@ -1006,7 +543,7 @@ async def execute_action(
                 meta = ACTION_METADATA.get(action)
                 if meta:
                     try:
-                        from routes.handlers.ledger_utils import build_ledger_event
+                        from handlers.ledger_utils import build_ledger_event
                         _ACTION_SUMMARY = {
                             "add_note": "Note added",
                             "upload_document": "Document uploaded",
@@ -1080,310 +617,18 @@ async def execute_action(
                 }
             )
 
-    # Legacy elif chain — handles all actions not yet migrated to HANDLERS
-    try:
-        # ===== WORK ORDER ACTIONS (P0 Actions 2-5) =====
-        if action == "create_work_order_from_fault":
-            # STRICT SIGNATURE VALIDATION (canon-critical for Fault Lens v1)
-            signature = payload.get("signature")
 
-            # 1. Check signature is present → 400 signature_required
-            if not signature:
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "status": "error",
-                        "error_code": "signature_required",
-                        "message": "Signature payload required for SIGNED action"
-                    }
-                )
-
-            # 2. Validate signature structure → 400 invalid_signature
-            required_sig_keys = {"signed_at", "user_id", "role_at_signing", "signature_type"}
-            if not isinstance(signature, dict):
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "status": "error",
-                        "error_code": "invalid_signature",
-                        "message": "Signature must be an object"
-                    }
-                )
-
-            missing_keys = required_sig_keys - set(signature.keys())
-            if missing_keys:
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "status": "error",
-                        "error_code": "invalid_signature",
-                        "message": f"Invalid signature: missing keys {sorted(missing_keys)}"
-                    }
-                )
-
-            # 3. Validate signer role → 403 invalid_signer_role
-            # Only captain and manager can sign create_work_order_from_fault
-            role_at_signing = signature.get("role_at_signing")
-            allowed_signer_roles = ["captain", "manager"]
-            if role_at_signing not in allowed_signer_roles:
-                raise HTTPException(
-                    status_code=403,
-                    detail={
-                        "status": "error",
-                        "error_code": "invalid_signer_role",
-                        "message": f"Role '{role_at_signing}' cannot sign this action",
-                        "required_roles": allowed_signer_roles
-                    }
-                )
-
-            # Use tenant client directly (wo_handlers may not be available)
-            from datetime import datetime, timezone
-            import uuid
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-            fault_id = payload.get("fault_id")
-
-            # Get fault info
-            fault = db_client.table("pms_faults").select("*").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-            if not fault.data:
-                raise HTTPException(status_code=404, detail="Fault not found")
-
-            # Check for duplicate WO
-            existing = db_client.table("pms_work_orders").select("id").eq("fault_id", fault_id).execute()
-            if existing.data and not payload.get("override_duplicate", False):
-                result = {
-                    "status": "error",
-                    "error_code": "DUPLICATE_WO_EXISTS",
-                    "message": f"Work order already exists for this fault"
-                }
-            else:
-                # Create work order
-                # Map priority: "normal" -> "routine" for enum compatibility
-                raw_priority = payload.get("priority", "routine")
-                priority_map = {"normal": "routine", "low": "routine", "medium": "routine", "high": "critical"}
-                priority = priority_map.get(raw_priority, raw_priority if raw_priority in ("routine", "emergency", "critical") else "routine")
-                wo_data = {
-                    "yacht_id": yacht_id,
-                    "fault_id": fault_id,
-                    "equipment_id": payload.get("equipment_id") or fault.data.get("equipment_id"),
-                    "title": payload.get("title", fault.data.get("title", "Work order from fault")),
-                    "description": payload.get("description", fault.data.get("description", "")),
-                    "priority": priority,
-                    "status": "planned",
-                    "created_by": user_id,
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                }
-                wo_result = db_client.table("pms_work_orders").insert(wo_data).execute()
-                if wo_result.data:
-                    wo_id = wo_result.data[0]["id"]
-                    # Link WO to fault
-                    db_client.table("pms_faults").update({
-                        "work_order_id": wo_id,
-                        "updated_by": user_id,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
-
-                    # Create audit log entry (Fault Lens v1 - signature NOT NULL)
-                    audit_data = {
-                        "yacht_id": yacht_id,
-                        "action": "create_work_order_from_fault",
-                        "entity_type": "work_order",
-                        "entity_id": wo_id,
-                        "user_id": user_id,
-                        "signature": signature,  # Canonical signature with all required keys
-                        "new_values": wo_result.data[0],
-                        "created_at": datetime.now(timezone.utc).isoformat()
-                    }
-                    db_client.table("pms_audit_log").insert(audit_data).execute()
-
-                    result = {
-                        "status": "success",
-                        "work_order_id": wo_id,
-                        "message": "Work order created from fault"
-                    }
-                    try:
-                        ledger_event = build_ledger_event(
-                            yacht_id=yacht_id,
-                            user_id=user_id,
-                            event_type="create",
-                            entity_type="work_order",
-                            entity_id=wo_id,
-                            action="create_work_order_from_fault",
-                            user_role=user_context.get("role"),
-                            change_summary="Work order created from fault",
-                        )
-                        db_client.table("ledger_events").insert(ledger_event).execute()
-                    except Exception as ledger_err:
-                        if "204" in str(ledger_err):
-                            pass
-                        else:
-                            logger.warning(f"[Ledger] Failed to record {action}: {ledger_err}")
-                else:
-                    result = {
-                        "status": "error",
-                        "error_code": "INSERT_FAILED",
-                        "message": "Failed to create work order"
-                    }
-
-        else:
-            # Unknown action — all known actions are in _ACTION_HANDLERS (Phase 4)
-            logger.warning(f"[ROUTING] Unknown action requested: {action}")
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "status": "error",
-                    "error_code": "INVALID_ACTION",
-                    "message": f"Action '{action}' is not recognized or not implemented"
-                }
-            )
-
-    except HTTPException:
-        # Let HTTPExceptions propagate with their original status code
-        raise
-    except PermissionError as e:
-        # Permission errors from handlers should return 403
-        logger.warning(f"Permission denied: {e}")
-        raise HTTPException(status_code=403, detail=str(e))
-    except ValueError as e:
-        # Validation errors from handlers should return 400
-        logger.warning(f"Action validation failed: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        # Check if it's a SignatureRequiredError (custom exception from part_handlers)
-        if e.__class__.__name__ == "SignatureRequiredError":
-            logger.warning(f"Signature validation failed: {e}")
-            raise HTTPException(status_code=400, detail=str(e))
-        # Check if it's a ConflictError (custom exception from part_handlers)
-        elif e.__class__.__name__ == "ConflictError":
-            logger.warning(f"Conflict detected: {e}")
-            raise HTTPException(status_code=409, detail=str(e))
-        error_str = str(e).lower()
-
-        # Handle 204 No Content - postgrest-py throws but operation succeeded
-        if "204" in error_str and "missing response" in error_str:
-            logger.info(f"Action completed with 204 No Content (success): {action}")
-            return JSONResponse(content={
-                "status": "success",
-                "success": True,
-                "message": f"Action {action} completed successfully"
-            })
-
-        logger.error(f"Action execution failed: {e}", exc_info=True)
-
-        # Parse database errors to return appropriate status codes (Phase 8)
-        # 404 - Resource not found
-        if "pgrst116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str or "not found" in error_str:
-            raise HTTPException(status_code=404, detail=str(e))
-        # 400 - Foreign key violations (invalid reference)
-        elif "foreign key" in error_str or "violates foreign key constraint" in error_str or "fk_" in error_str:
-            raise HTTPException(status_code=400, detail=f"Invalid reference: {str(e)}")
-        # 409 - Duplicate entries
-        elif "unique constraint" in error_str or "duplicate key" in error_str or "already exists" in error_str:
-            raise HTTPException(status_code=409, detail="Resource already exists")
-        # 400 - Check constraint violations (data validation)
-        elif "check constraint" in error_str or "violates check constraint" in error_str:
-            raise HTTPException(status_code=400, detail=f"Validation failed: {str(e)}")
-        # 400 - Invalid signature
-        elif "signature" in error_str and ("invalid" in error_str or "missing" in error_str or "required" in error_str):
-            raise HTTPException(status_code=400, detail=str(e))
-        # 403 - RLS/permission denied
-        elif "policy" in error_str or "permission denied" in error_str:
-            raise HTTPException(status_code=403, detail=f"Access denied: {str(e)}")
-        # 500 - Real server errors (connection issues, server misconfiguration)
-        else:
-            raise HTTPException(status_code=500, detail=str(e))
-
-    # Handle errors from handler (support both old and new formats)
-    # New format (ActionResponseEnvelope): has "success" field
-    # Old format: has "status" field
-    if "success" in result:
-        # New ActionResponseEnvelope format
-        if not result["success"] and result.get("error"):
-            error = result["error"]
-            error_code = error.get("error_code", "UNKNOWN_ERROR")
-            status_code = error.get("status_code", 500)
-            # Preserve full error structure - use JSONResponse to avoid wrapping in {detail: {}}
-            return JSONResponse(status_code=status_code, content=error)
-    elif "status" in result and result["status"] == "error":
-        # Old format - preserve full error structure including error_code
-        error_code = result.get("error_code", "UNKNOWN_ERROR")
-
-        # Map error codes to HTTP status codes
-        if error_code in ("FAULT_NOT_FOUND", "WO_NOT_FOUND", "EQUIPMENT_NOT_FOUND", "PART_NOT_FOUND",
-                          "NOT_FOUND", "RECEIVING_NOT_FOUND", "DOCUMENT_NOT_FOUND"):
-            status_code = 404
-        elif error_code == "SIGNATURE_REQUIRED":
-            status_code = 400  # Client error - user forgot to sign (not a permission issue)
-        elif error_code in ("RLS_DENIED", "INSUFFICIENT_PERMISSIONS"):
-            status_code = 403
-        elif error_code in ("CONFLICT", "DUPLICATE_RECORD", "DUPLICATE_WO_EXISTS"):
-            status_code = 409
-        elif error_code in ("INVALID_SIGNATURE", "INVALID_STORAGE_PATH", "INVALID_MODE",
-                            "MISSING_REQUIRED_FIELD", "EXTRACT_PREPARE_ONLY",
-                            "INVALID_STATUS_TRANSITION", "ALREADY_ACCEPTED",
-                            "INVALID_CONFIRMATION_TOKEN", "AT_LEAST_ONE_ITEM_REQUIRED",
-                            "WO_CLOSED", "INSUFFICIENT_STOCK", "NO_ITEMS", "MISSING_REASON",
-                            "INVALID_QUANTITY", "NO_FIELDS_TO_UPDATE", "INSERT_FAILED"):
-            status_code = 400
-        else:
-            status_code = 400  # Default to 400 for unknown error codes
-
-        # Return error structure directly at top level (not wrapped in detail)
-        error_response = {
+    # All known actions are registered in _ACTION_HANDLERS (Phase 4).
+    # Anything that reaches here was not registered — return 400.
+    logger.warning(f"[ROUTING] Unknown action requested: {action}")
+    raise HTTPException(
+        status_code=400,
+        detail={
             "status": "error",
-            "error_code": error_code,
-            "message": result.get("message", "Unknown error")
+            "error_code": "INVALID_ACTION",
+            "message": f"Action '{action}' is not recognized or not implemented"
         }
-        if "hint" in result:
-            error_response["hint"] = result["hint"]
-
-        return JSONResponse(status_code=status_code, content=error_response)
-
-    # ── Centralised ledger write (non-fatal) ─────────────────────────────────
-    # Captures every successful mutation automatically. Failures are logged only.
-    try:
-        _resp_dict = result if isinstance(result, dict) else {}
-        if _resp_dict.get("status") == "success" or _resp_dict.get("success") is True:
-            _entity_type, _entity_key = _ACTION_ENTITY_MAP.get(action, ("unknown", None))
-            _entity_id = str(payload.get(_entity_key, "")) if _entity_key else ""
-
-            if any(w in action for w in ("create", "report", "add", "log")):
-                _ev_type = "create"
-            elif any(w in action for w in ("approve", "accept")):
-                _ev_type = "approval"
-            elif any(w in action for w in ("reject", "cancel", "close", "write_off")):
-                _ev_type = "rejection"
-            elif any(w in action for w in ("complete", "start", "submit")):
-                _ev_type = "status_change"
-            else:
-                _ev_type = "update"
-
-            _ledger_ev = build_ledger_event(
-                yacht_id=str(yacht_id),
-                user_id=str(user_id),
-                event_type=_ev_type,
-                entity_type=_entity_type,
-                entity_id=_entity_id or "00000000-0000-0000-0000-000000000000",
-                action=action,
-                user_role=user_role or "",
-                change_summary=_resp_dict.get("message", action.replace("_", " ").title()),
-                actor_name=user_context.get("email", ""),
-                department=user_context.get("department", ""),
-                event_category="write",
-            )
-            _ledger_tenant_alias = user_context.get("tenant_key_alias", "")
-            if _ledger_tenant_alias:
-                _ledger_db = get_tenant_supabase_client(_ledger_tenant_alias)
-                _ledger_db.table("ledger_events").insert(_ledger_ev).execute()
-    except Exception as _le:
-        logger.warning(f"[Ledger] Non-fatal post-action write failed for '{action}': {_le}")
-    # ─────────────────────────────────────────────────────────────────────────
-
-    # Add execution_id to response for E2E test tracing
-    import uuid
-    result["execution_id"] = str(uuid.uuid4())
-    result["action"] = request.action
-    return result
+    )
 
 
 # ============================================================================
@@ -1652,35 +897,18 @@ async def get_handover_items(
     category: Optional[str] = None,
     auth: dict = Depends(get_authenticated_user),
 ):
-    """
-    Get handover draft items for the requesting user (not yet exported).
-
-    Returns full row data scoped to:
-    - yacht_id from JWT
-    - added_by = requesting user
-    - deleted_at IS NULL
-    - export_status != 'exported'
-    """
+    """Get handover draft items for the requesting user (not yet exported)."""
     yacht_id = auth["yacht_id"]
     user_id = auth["user_id"]
     db_client = get_tenant_supabase_client(auth["tenant_key_alias"])
-
+    handler = HandoverHandlers(db_client)
     try:
-        query = db_client.table("handover_items").select("*") \
-            .eq("yacht_id", yacht_id) \
-            .eq("added_by", user_id) \
-            .is_("deleted_at", None) \
-            .neq("export_status", "exported") \
-            .order("created_at", desc=True) \
-            .limit(limit)
-
-        if category:
-            query = query.eq("category", category)
-
-        result = query.execute()
-        items = result.data or []
-        return {"status": "success", "items": items, "count": len(items)}
-
+        return await handler.get_handover_items(
+            yacht_id=yacht_id,
+            user_id=user_id,
+            limit=limit,
+            category=category,
+        )
     except Exception as e:
         logger.error(f"Failed to fetch handover items: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch handover items: {str(e)}")
@@ -1846,26 +1074,13 @@ async def suggest_actions_endpoint(
 @router.get("/health")
 async def health_check():
     """Health check for P0 actions routes."""
-    handlers_count = sum([
-        1 if wo_handlers else 0,
-        1 if inventory_handlers else 0,
-        1 if handover_handlers else 0,
-        1 if manual_handlers else 0
-    ])
-
+    actions_count = len(_ACTION_HANDLERS)
     return {
-        "status": "healthy" if handlers_count == 4 else "degraded",
+        "status": "healthy" if actions_count > 0 else "degraded",
         "service": "p0_actions",
-        "handlers_loaded": handlers_count,
-        "total_handlers": 4,
-        "handlers": {
-            "work_order": wo_handlers is not None,
-            "inventory": inventory_handlers is not None,
-            "handover": handover_handlers is not None,
-            "manual": manual_handlers is not None
-        },
-        "p0_actions_implemented": 8,
-        "version": "1.0.0"
+        "dispatch": "phase4",
+        "registered_actions": actions_count,
+        "version": "2.0.0"
     }
 
 
@@ -2039,63 +1254,6 @@ async def export_handover_route(
     return result
 
 
-@router.post("/handover/{export_id}/sign/outgoing")
-async def sign_outgoing_route(
-    export_id: str,
-    note: Optional[str] = None,
-    method: str = "typed",
-    auth: dict = Depends(get_authenticated_user)
-):
-    """[DEPRECATED — T4 consolidation] Outgoing user signs the export.
-
-    Canonical path is ``POST /v1/handover/export/{id}/submit`` (richer: signed
-    HTML regen, review_status transition, full signature JSONB, ledger
-    cascade). This route is kept for one release to drain any lingering
-    callers; no frontend code path targets it. Fires a WARN log on every call
-    to flag migration.
-    """
-    logger.warning(
-        "DEPRECATED route hit: POST /v1/actions/handover/%s/sign/outgoing "
-        "(caller user=%s role=%s). Migrate to "
-        "POST /v1/handover/export/{id}/submit. Scheduled for removal once "
-        "traffic drains (T4 consolidation, PR #642 follow-up).",
-        export_id, auth.get("user_id"), auth.get("role"),
-    )
-
-    yacht_id = auth["yacht_id"]
-    user_id = auth["user_id"]
-    user_role = auth.get("role")
-
-    # Require officer+ role
-    officer_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
-    if user_role not in officer_roles:
-        raise HTTPException(status_code=403, detail=f"Requires officer+ role. Your role: {user_role}")
-
-    handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
-    _handover_wf = handlers.get("handover_workflow_handlers")
-    if not _handover_wf:
-        raise HTTPException(status_code=500, detail="Handover workflow handlers not initialized")
-
-    result = await _handover_wf.sign_outgoing(
-        export_id=export_id,
-        yacht_id=yacht_id,
-        user_id=user_id,
-        user_role=user_role,
-        note=note,
-        method=method
-    )
-
-    if result.get("status") == "error":
-        status_code = 400
-        if result.get("error_code") == "EXPORT_NOT_FOUND":
-            status_code = 404
-        elif result.get("error_code") == "INVALID_STATUS":
-            status_code = 409
-        raise HTTPException(status_code=status_code, detail=result.get("message"))
-
-    return result
-
-
 @router.post("/handover/{export_id}/sign/incoming")
 async def sign_incoming_route(
     export_id: str,
@@ -2186,108 +1344,9 @@ async def get_handover_queue(
     """
     yacht_id = resolve_yacht_id(auth, yacht_id_param)
     db_client = get_tenant_supabase_client(auth["tenant_key_alias"])
-
-    # Determine which sections to return
-    all_sections = {"faults", "work_orders", "parts", "orders", "queued"}
-    requested = set(include) if include else all_sections
-
-    open_faults = []
-    overdue_work_orders = []
-    low_stock_parts = []
-    pending_orders = []
-    already_queued = []
-
-    # ── open faults ──────────────────────────────────────────────────────────
-    if "faults" in requested:
-        try:
-            result = db_client.table("pms_faults").select(
-                "id, title, severity, equipment_name, created_at"
-            ).eq("yacht_id", yacht_id).neq(
-                "status", "resolved"
-            ).order("created_at", desc=True).limit(20).execute()
-            open_faults = result.data or []
-        except Exception as e:
-            logger.warning(f"[handover/queue] faults query failed: {e}")
-
-    # ── overdue work orders ───────────────────────────────────────────────────
-    if "work_orders" in requested:
-        try:
-            now_iso = datetime.now(timezone.utc).isoformat()
-            result = db_client.table("pms_work_orders").select(
-                "id, title, priority, due_at, assigned_to"
-            ).eq("yacht_id", yacht_id).not_.in_(
-                "status", ["completed", "cancelled", "closed"]
-            ).lt("due_at", now_iso).order("due_at").limit(20).execute()
-            overdue_work_orders = result.data or []
-        except Exception as e:
-            logger.warning(f"[handover/queue] work_orders query failed: {e}")
-
-    # ── low stock parts ───────────────────────────────────────────────────────
-    if "parts" in requested:
-        try:
-            result = db_client.table("pms_parts").select(
-                "id, name, quantity_on_hand, minimum_quantity"
-            ).eq("yacht_id", yacht_id).execute()
-            raw = result.data or []
-            low_stock_parts = [
-                {
-                    "id": p["id"],
-                    "name": p.get("name", ""),
-                    "current_qty": p.get("quantity_on_hand", 0),
-                    "reorder_threshold": p.get("minimum_quantity", 0),
-                }
-                for p in raw
-                if (p.get("quantity_on_hand") or 0) <= (p.get("minimum_quantity") or 0)
-            ][:20]
-        except Exception as e:
-            logger.warning(f"[handover/queue] parts query failed: {e}")
-
-    # ── pending purchase orders ───────────────────────────────────────────────
-    if "orders" in requested:
-        try:
-            result = db_client.table("pms_purchase_orders").select(
-                "id, po_number, status, created_at"
-            ).eq("yacht_id", yacht_id).in_(
-                "status", ["draft", "pending", "submitted", "pending_approval"]
-            ).order("created_at", desc=True).limit(20).execute()
-            pending_orders = [
-                {
-                    "id": p["id"],
-                    "title": p.get("po_number") or f"PO {p['id'][:8]}",
-                    "status": p.get("status", ""),
-                    "created_at": p.get("created_at", ""),
-                }
-                for p in (result.data or [])
-            ]
-        except Exception as e:
-            logger.warning(f"[handover/queue] orders query failed: {e}")
-
-    # ── already queued handover items ─────────────────────────────────────────
-    if "queued" in requested:
-        try:
-            result = db_client.table("handover_items").select(
-                "id, entity_type, entity_id, summary, priority"
-            ).eq("yacht_id", yacht_id).eq(
-                "status", "pending"
-            ).order("priority", desc=True).limit(50).execute()
-            already_queued = result.data or []
-        except Exception as e:
-            logger.warning(f"[handover/queue] handover_items query failed: {e}")
-
-    return {
-        "open_faults": open_faults,
-        "overdue_work_orders": overdue_work_orders,
-        "low_stock_parts": low_stock_parts,
-        "pending_orders": pending_orders,
-        "already_queued": already_queued,
-        "counts": {
-            "faults": len(open_faults),
-            "work_orders": len(overdue_work_orders),
-            "parts": len(low_stock_parts),
-            "orders": len(pending_orders),
-            "already_queued": len(already_queued),
-        },
-    }
+    handler = HandoverHandlers(db_client)
+    requested = set(include) if include else None
+    return await handler.get_handover_queue(yacht_id=yacht_id, sections=requested)
 
 
 @router.get("/handover/{export_id}/verify")

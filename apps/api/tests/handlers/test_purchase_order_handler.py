@@ -1,12 +1,10 @@
 """
-Unit tests for purchase_order_handler.py — migrated from p0_actions_routes.py elif blocks.
-Tests import from routes.handlers.purchase_order_handler which must exist for tests to pass.
+Unit tests for PO handler — purchase_order_phase4.py (canonical single source of truth).
 """
 import pytest
 from unittest.mock import MagicMock
 
-# Will fail until handler file exists
-from routes.handlers.purchase_order_handler import HANDLERS
+from handlers.purchase_order_phase4 import HANDLERS
 
 
 def make_db(rows=None):

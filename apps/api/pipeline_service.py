@@ -290,17 +290,6 @@ except Exception as e:
     logger.error(f"❌ Failed to register Decision Engine routes: {e}")
     logger.error("Decision Engine endpoints will not be available")
 
-# ============================================================================
-# CERTIFICATE ROUTES (Certificate Lens v2)
-# ============================================================================
-
-try:
-    from routes.certificate_routes import router as certificate_router
-    app.include_router(certificate_router, prefix="/api/v1/certificates", tags=["certificates"])
-    logger.info("✅ Certificate routes registered at /api/v1/certificates/*")
-except Exception as e:
-    logger.error(f"❌ Failed to register Certificate routes: {e}")
-    logger.error("Certificate endpoints will not be available")
 
 # ============================================================================
 # PART LENS ROUTES (Part Lens v2)
@@ -327,16 +316,6 @@ except Exception as e:
     logger.error("Inventory endpoints will not be available")
 
 # ============================================================================
-# FAULT LENS V1 ROUTES (Phase 7-8)
-# ============================================================================
-
-try:
-    from routes.fault_routes import router as fault_routes_router
-    app.include_router(fault_routes_router, prefix="/v1/faults", tags=["faults"])
-    logger.info("✅ Fault Lens v1 routes registered at /v1/faults/*")
-except Exception as e:
-    logger.error(f"❌ Failed to register Fault Lens routes: {e}")
-    logger.error("Fault Lens endpoints will not be available")
 
 # ============================================================================
 # EQUIPMENT ROUTES (Equipment Lens v1)

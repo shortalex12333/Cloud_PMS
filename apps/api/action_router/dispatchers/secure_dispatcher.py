@@ -46,16 +46,11 @@ class HandlerNotFoundError(Exception):
 
 
 def _get_handler_mapping() -> Dict[str, Callable]:
-    """
-    Get mapping of action_id -> handler function.
-
-    Returns handlers from internal_dispatcher.HANDLERS.
-    """
+    """Get mapping of action_id -> handler function from INTERNAL_HANDLERS."""
     try:
-        from action_router.dispatchers.internal_dispatcher import HANDLERS
-        return HANDLERS
+        from action_router.dispatchers.index import INTERNAL_HANDLERS
+        return INTERNAL_HANDLERS
     except ImportError:
-        # Fallback for testing
         return {}
 
 

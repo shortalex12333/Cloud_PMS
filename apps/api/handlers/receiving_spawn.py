@@ -12,7 +12,7 @@ import logging
 from datetime import datetime, timezone
 
 from supabase import Client
-from routes.handlers.ledger_utils import build_ledger_event
+from handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
 
