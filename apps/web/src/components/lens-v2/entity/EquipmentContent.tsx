@@ -367,6 +367,19 @@ export function EquipmentContent() {
         extraParams: { entity_id: entityId, entity_type: 'equipment', title: name },
       });
     },
+    link_part_to_equipment: () => {
+      setActionPopupConfig({
+        actionId: 'link_part_to_equipment',
+        title: 'Link Part to Equipment',
+        subtitle: name || undefined,
+        fields: [
+          { name: 'part_id', label: 'Part', type: 'entity-search', search_domain: 'parts', placeholder: 'Search by part name, number, or description...', value: '' },
+          { name: 'quantity_required', label: 'Quantity Required (optional)', type: 'kv-edit', placeholder: '1', value: '' },
+          { name: 'notes', label: 'Notes (optional)', type: 'text-area', placeholder: 'BOM notes...', value: '' },
+        ],
+        signatureLevel: 0,
+      });
+    },
     update_equipment_status: () => {
       setActionPopupConfig({
         actionId: 'update_equipment_status',
