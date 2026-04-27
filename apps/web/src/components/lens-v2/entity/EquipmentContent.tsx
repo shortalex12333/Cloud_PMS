@@ -367,6 +367,35 @@ export function EquipmentContent() {
         extraParams: { entity_id: entityId, entity_type: 'equipment', title: name },
       });
     },
+    update_equipment_status: () => {
+      setActionPopupConfig({
+        actionId: 'update_equipment_status',
+        title: 'Update Equipment Status',
+        subtitle: name || undefined,
+        fields: [
+          { name: 'new_status', label: 'New Status', type: 'select', options: [
+            { value: 'operational', label: 'Operational' },
+            { value: 'degraded', label: 'Degraded' },
+            { value: 'failed', label: 'Failed' },
+            { value: 'maintenance', label: 'Under Maintenance' },
+          ], value: status ?? 'operational' },
+          { name: 'attention_reason', label: 'Reason (optional)', type: 'text-area', placeholder: 'Why is the status changing?', value: '' },
+        ],
+        signatureLevel: 0,
+      });
+    },
+    record_equipment_hours: () => {
+      setActionPopupConfig({
+        actionId: 'record_equipment_hours',
+        title: 'Record Running Hours',
+        subtitle: name || undefined,
+        fields: [
+          { name: 'hours_reading', label: 'Current Meter Reading (hours)', type: 'kv-edit', placeholder: 'e.g. 2450', value: running_hours !== undefined ? String(running_hours) : '' },
+          { name: 'notes', label: 'Notes (optional)', type: 'text-area', placeholder: 'Any notes about this reading...', value: '' },
+        ],
+        signatureLevel: 0,
+      });
+    },
   };
   const DANGER_ACTIONS = new Set(['decommission_equipment', 'archive_equipment']);
   const primaryActionId = 'create_work_order_for_equipment';
