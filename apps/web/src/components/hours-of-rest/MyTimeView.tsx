@@ -747,9 +747,11 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
       const d = local || day;
       const rp: RestPeriod[] = d.rest_periods ?? [];
       const wp: RestPeriod[] = d.work_periods ?? [];
+      // PostgREST returns numeric columns as strings ("23.00") — use Number() not typeof.
+      const storedRest = Number(d.total_rest_hours);
       const restH: number =
-        typeof d.total_rest_hours === 'number'
-          ? d.total_rest_hours
+        !isNaN(storedRest) && d.total_rest_hours != null
+          ? storedRest
           : rp.length > 0
           ? hoursFromPeriods(rp)
           : wp.length > 0
