@@ -439,7 +439,7 @@ function FieldEntitySearch({
           const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
           const domain = field.search_domain || 'equipment';
           const resp = await fetch(
-            `${apiBase}/api/vessel/${yachtId}/domain/${domain}/records?search=${encodeURIComponent(q)}&limit=15`,
+            `${apiBase}/api/vessel/${yachtId}/domain/${domain}/records?q=${encodeURIComponent(q)}&limit=15`,
             {
               method: 'GET',
               headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
