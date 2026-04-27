@@ -662,6 +662,8 @@ _CERT_ACTIONS = frozenset({
     "suspend_certificate", "revoke_certificate",
     "archive_certificate", "add_certificate_note",
     "assign_certificate",
+    "link_equipment_to_certificate",
+    "unlink_equipment_from_certificate",
 })
 
 

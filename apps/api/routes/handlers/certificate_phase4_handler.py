@@ -59,8 +59,9 @@ async def _delegate(action_name: str, db_client: Client, payload: dict,
     fn = handlers.get(action_name)
     if not fn:
         raise HTTPException(501, detail=f"'{action_name}' not registered in certificate_handlers")
-    # Merge context (contains entity_id/certificate_id) + payload into params
-    merged = {"yacht_id": yacht_id, "user_id": user_id, **(context or {}), **payload}
+    # Merge context (contains entity_id/certificate_id) + payload into params.
+    # role must be a top-level key so _cert_mutation_gate can read it via params.get("role").
+    merged = {"yacht_id": yacht_id, "user_id": user_id, "role": user_context.get("role", ""), **(context or {}), **payload}
     return await fn(**merged)
 
 
