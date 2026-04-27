@@ -60,6 +60,7 @@ from handlers.p2_mutation_light_handlers import P2MutationLightHandlers
 from handlers.certificate_handlers import get_certificate_handlers as _get_certificate_handlers
 from handlers.equipment_handlers import get_equipment_handlers as _get_equipment_handlers_raw
 from handlers.shopping_list_handlers import get_shopping_list_handlers as _get_shopping_list_handlers_raw
+from handlers.shopping_list_v2_handlers import get_shopping_list_v2_handlers as _get_shopping_list_v2_handlers_raw
 from handlers.document_handlers import get_document_handlers as _get_document_handlers_raw
 from handlers.document_comment_handlers import get_document_comment_handlers as _get_document_comment_handlers_raw
 from handlers.attachment_comment_handlers import get_attachment_comment_handlers as _get_attachment_comment_handlers_raw
@@ -92,6 +93,7 @@ _hours_of_rest_handlers = None
 _part_handlers = None
 _receiving_handlers = None
 _shopping_list_handlers = None
+_shopping_list_v2_handlers = None
 _document_handlers = None
 _document_comment_handlers = None
 _attachment_comment_handlers = None
@@ -172,6 +174,14 @@ def _get_shopping_list_handlers():
     if _shopping_list_handlers is None:
         _shopping_list_handlers = _get_shopping_list_handlers_raw(get_supabase_client())
     return _shopping_list_handlers
+
+
+def _get_sl_v2_handlers():
+    """Get lazy-initialized Shopping List V2 (document-level) handlers."""
+    global _shopping_list_v2_handlers
+    if _shopping_list_v2_handlers is None:
+        _shopping_list_v2_handlers = _get_shopping_list_v2_handlers_raw(get_supabase_client())
+    return _shopping_list_v2_handlers
 
 
 def _get_document_handlers():
@@ -3431,6 +3441,58 @@ async def _sl_view_history(params: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+# ============================================================================
+# SHOPPING LIST LENS V2 WRAPPERS (from shopping_list_v2_handlers.py)
+# Document-level operations: pms_shopping_lists header + pms_shopping_list_items
+# ============================================================================
+
+async def _sl2_create_shopping_list(params: Dict[str, Any]) -> Dict[str, Any]:
+    return await _get_sl_v2_handlers().create_shopping_list(params)
+
+async def _sl2_add_item_to_list(params: Dict[str, Any]) -> Dict[str, Any]:
+    return await _get_sl_v2_handlers().add_item_to_list(params)
+
+async def _sl2_update_list_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    return await _get_sl_v2_handlers().update_list_item(params)
+
+async def _sl2_delete_list_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    return await _get_sl_v2_handlers().delete_list_item(params)
+
+async def _sl2_submit_shopping_list(params: Dict[str, Any]) -> Dict[str, Any]:
+    return await _get_sl_v2_handlers().submit_shopping_list(params)
+
+async def _sl2_hod_review_list_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    return await _get_sl_v2_handlers().hod_review_list_item(params)
+
+async def _sl2_approve_shopping_list(params: Dict[str, Any]) -> Dict[str, Any]:
+    return await _get_sl_v2_handlers().approve_shopping_list(params)
+
+async def _sl2_add_photo(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Insert pms_attachments row for shopping list item photo."""
+    supabase = get_supabase_client()
+    try:
+        import uuid as _uuid
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        row = supabase.table("pms_attachments").insert({
+            "id": str(_uuid.uuid4()),
+            "yacht_id": params["yacht_id"],
+            "entity_type": "shopping_list",
+            "entity_id": params["item_id"],
+            "uploaded_by": params.get("user_id"),
+            "storage_path": params["storage_path"],
+            "storage_bucket": "pms-shopping-list-photos",
+            "file_name": params.get("file_name", "photo"),
+            "file_type": params.get("file_type", "image"),
+            "created_at": now,
+        }).execute()
+        return {"status": "success", "action": "add_shopping_list_photo",
+                "result": row.data[0] if row.data else {}}
+    except Exception as exc:
+        logger.error(f"[sl_v2] add_photo failed: {exc}", exc_info=True)
+        return {"status": "error", "error_code": "INTERNAL_ERROR", "message": str(exc)}
+
+
 # =============================================================================
 # Hours of Rest Handlers (Crew Lens v3) - Maritime Compliance
 # =============================================================================
@@ -4486,6 +4548,18 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "reject_shopping_list_item": _sl_reject_item,
     "promote_candidate_to_part": _sl_promote_candidate,
     "view_shopping_list_history": _sl_view_history,
+
+    # =========================================================================
+    # Shopping List Lens v2 Handlers (from shopping_list_v2_handlers.py)
+    # =========================================================================
+    "create_shopping_list": _sl2_create_shopping_list,
+    "add_item_to_list":     _sl2_add_item_to_list,
+    "update_list_item":     _sl2_update_list_item,
+    "delete_list_item":     _sl2_delete_list_item,
+    "submit_shopping_list": _sl2_submit_shopping_list,
+    "hod_review_list_item": _sl2_hod_review_list_item,
+    "approve_shopping_list": _sl2_approve_shopping_list,
+    "add_shopping_list_photo": _sl2_add_photo,
 
     # =========================================================================
     # Hours of Rest Handlers (Crew Lens v3) - MLC 2006 & STCW Compliance

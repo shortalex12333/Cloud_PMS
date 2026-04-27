@@ -215,7 +215,14 @@ CONTEXT_PREFILL_MAP: Dict[Tuple[str, str], Dict[str, str]] = {
     ("shopping_list", "view_shopping_list_history"): {"item_id": "id"},
     ("shopping_list", "delete_shopping_item"):       {"item_id": "id"},
     ("shopping_list", "mark_shopping_list_ordered"): {"item_id": "id"},
+    # V2 document-level actions — item_id from entity.id for per-item actions
+    ("shopping_list", "update_list_item"):           {"item_id": "id"},
+    ("shopping_list", "delete_list_item"):           {"item_id": "id"},
+    ("shopping_list", "hod_review_list_item"):       {"item_id": "id"},
     ("shopping_list", "add_shopping_list_photo"):    {"item_id": "id"},
+    # V2 list-level actions — shopping_list_id from entity.id
+    ("shopping_list_doc", "submit_shopping_list"):   {"shopping_list_id": "id"},
+    ("shopping_list_doc", "approve_shopping_list"):  {"shopping_list_id": "id"},
     # ── Hours of Rest ─────────────────────────────────────────────────────────
     # hours_of_rest prefill intentionally empty for Phase 2 — add as needed
 
