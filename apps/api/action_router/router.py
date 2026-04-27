@@ -30,7 +30,8 @@ from .validators import (
     validate_required_fields,
     validate_schema,
 )
-from .dispatchers import internal_dispatcher, n8n_dispatcher
+from .dispatchers import n8n_dispatcher
+from .dispatchers.index import dispatch as _internal_dispatch
 from .logger import log_action
 
 # Feature flags for Fault Lens v1 (fail-closed)
@@ -433,7 +434,7 @@ async def execute_action(
         # ====================================================================
         try:
             if action_def.handler_type == HandlerType.INTERNAL:
-                result = await internal_dispatcher.dispatch(action_id, params)
+                result = await _internal_dispatch(action_id, params)
             elif action_def.handler_type == HandlerType.N8N:
                 result = await n8n_dispatcher.dispatch(action_id, params)
             else:

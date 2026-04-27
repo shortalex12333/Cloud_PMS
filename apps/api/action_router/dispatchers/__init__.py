@@ -1,9 +1,10 @@
 """Action Router Dispatchers"""
 
-from . import internal_dispatcher  # legacy — kept for router.py backwards compat
-from . import index                 # new domain-split dispatcher
+from . import n8n_dispatcher
+from .index import dispatch, INTERNAL_HANDLERS
 
 __all__ = [
-    "internal_dispatcher",
-    "index",
+    "n8n_dispatcher",
+    "dispatch",
+    "INTERNAL_HANDLERS",
 ]
