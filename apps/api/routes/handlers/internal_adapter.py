@@ -166,6 +166,15 @@ _ACTIONS_TO_ADAPT = [
     "view_maintenance_history",
     "view_receiving_history",
     "void_warranty",
+    # Shopping List V2 (header + line-item actions)
+    "create_shopping_list",
+    "add_item_to_list",
+    "update_list_item",
+    "delete_list_item",
+    "submit_shopping_list",
+    "hod_review_list_item",
+    "approve_shopping_list",
+    "add_shopping_list_photo",
 ]
 
 HANDLERS: Dict[str, Callable] = {
