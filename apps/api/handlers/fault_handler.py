@@ -6,9 +6,12 @@
 # DB tables: pms_faults, pms_fault_parts, pms_notifications,
 #            pms_audit_log, ledger_events
 #
-# Bug fix applied: severity sentinel was hardcoded to "medium" on every UPDATE,
-# silently wiping the existing severity. All mutating handlers now read current
-# severity first and preserve it unless the caller explicitly changes it.
+# Bug fixes applied:
+#   - severity sentinel: all UPDATE ops read current severity (never hardcode "medium")
+#   - resolve_fault: resolution_notes now persisted in metadata
+#   - mark_fault_false_alarm: status set to "false_alarm" (was incorrectly "closed")
+#   - link_parts_to_fault: entity_name now uses fault title, not raw UUID
+#   - list_faults: filter key is "severity" (was "priority")
 
 from datetime import datetime, timezone
 import uuid as uuid_module
@@ -37,8 +40,32 @@ _FOLLOW_UP_MESSAGES = {
     "other": "Fault closed with reason 'other' — no standard path. Review and document findings.",
 }
 
+# Standard column set fetched by all mutating handlers
+_FAULT_COLS = "id, status, severity, title, metadata, deleted_at"
+
 
 # ─── Private helpers ──────────────────────────────────────────────────────────
+
+def _fetch_fault(db_client, fault_id: str, yacht_id: str) -> dict:
+    """Fetch fault by id+yacht_id. Raises 404 HTTPException if not found."""
+    result = (
+        db_client.table("pms_faults")
+        .select(_FAULT_COLS)
+        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Fault not found")
+    return result.data
+
+
+def _write_ledger(db_client, **kwargs) -> None:
+    """Write one ledger event. Suppresses 204 no-content false-positives from Supabase SDK."""
+    try:
+        db_client.table("ledger_events").insert(build_ledger_event(**kwargs)).execute()
+    except Exception as e:
+        if "204" not in str(e):
+            logger.warning(f"[Ledger] {kwargs.get('action', 'unknown')}: {e}")
+
 
 def _notify_hods(
     db_client, yacht_id: str, actor_user_id: str,
@@ -113,22 +140,15 @@ def _ledger_follow_up(
     db_client, yacht_id: str, user_id: str, user_role: str,
     fault_id: str, entity_name: str, action: str, close_reason: str,
 ) -> None:
-    try:
-        ev = build_ledger_event(
-            yacht_id=yacht_id,
-            user_id=user_id,
-            event_type="follow_up_required",
-            entity_type="fault",
-            entity_id=fault_id,
-            action=action,
-            user_role=user_role,
-            change_summary=_FOLLOW_UP_MESSAGES.get(close_reason, f"Follow up required ({close_reason})."),
-            entity_name=entity_name,
-            metadata={"close_reason": close_reason},
-        )
-        db_client.table("ledger_events").insert(ev).execute()
-    except Exception as e:
-        logger.warning(f"[Ledger] follow_up_required write failed: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="follow_up_required", entity_type="fault", entity_id=fault_id,
+        action=action, user_role=user_role,
+        change_summary=_FOLLOW_UP_MESSAGES.get(close_reason, f"Follow up required ({close_reason})."),
+        entity_name=entity_name,
+        metadata={"close_reason": close_reason},
+    )
 
 
 # ─── Action handlers ──────────────────────────────────────────────────────────
@@ -143,7 +163,7 @@ async def report_fault(
         severity = "medium"
     fault_title = payload.get("title", description[:100] if description else "Reported fault")
 
-    fault_data = {
+    result = db_client.table("pms_faults").insert({
         "yacht_id": yacht_id,
         "equipment_id": payload.get("equipment_id") or None,
         "fault_code": payload.get("fault_code", "MANUAL"),
@@ -153,24 +173,20 @@ async def report_fault(
         "status": "open",
         "detected_at": datetime.now(timezone.utc).isoformat(),
         "metadata": {"reported_by": user_id},
-    }
-    result = db_client.table("pms_faults").insert(fault_data).execute()
+    }).execute()
     if not result.data:
         return {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to create fault record"}
 
     fault_id = result.data[0]["id"]
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="create", entity_type="fault", entity_id=fault_id,
-            action="report_fault", user_role=user_context.get("role"),
-            change_summary=f"Fault reported: {fault_title}",
-            entity_name=fault_title,
-            new_state={"title": fault_title, "status": "open", "severity": severity},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] report_fault: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="create", entity_type="fault", entity_id=fault_id,
+        action="report_fault", user_role=user_context.get("role"),
+        change_summary=f"Fault reported: {fault_title}",
+        entity_name=fault_title,
+        new_state={"title": fault_title, "status": "open", "severity": severity},
+    )
     _notify_hods(
         db_client, yacht_id, user_id,
         notification_type="fault_reported",
@@ -190,18 +206,10 @@ async def acknowledge_fault(
     if not fault_id:
         raise HTTPException(status_code=400, detail="fault_id is required")
 
-    check = (
-        db_client.table("pms_faults")
-        .select("id, status, severity, title, metadata")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not check.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-
-    old_status = check.data.get("status", "unknown")
-    # Bug fix: preserve existing severity, do not reset to "medium" sentinel.
-    current_severity = check.data.get("severity") or "medium"
-    entity_name = check.data.get("title") or ""
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    old_status = fault.get("status", "unknown")
+    current_severity = fault.get("severity") or "medium"
+    entity_name = fault.get("title") or ""
 
     result = (
         db_client.table("pms_faults")
@@ -227,20 +235,18 @@ async def acknowledge_fault(
         }).execute()
     except Exception as e:
         logger.warning(f"[Audit] acknowledge_fault: {e}")
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="status_change", entity_type="fault", entity_id=fault_id,
-            action="acknowledge_fault", user_role=user_context.get("role"),
-            change_summary=f"Fault acknowledged — status: {old_status} → investigating",
-            entity_name=entity_name,
-            previous_state={"status": old_status},
-            new_state={"status": "investigating"},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] acknowledge_fault: {e}")
-    reported_by = (check.data.get("metadata") or {}).get("reported_by")
+
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="status_change", entity_type="fault", entity_id=fault_id,
+        action="acknowledge_fault", user_role=user_context.get("role"),
+        change_summary=f"Fault acknowledged — status: {old_status} → investigating",
+        entity_name=entity_name,
+        previous_state={"status": old_status},
+        new_state={"status": "investigating"},
+    )
+    reported_by = (fault.get("metadata") or {}).get("reported_by")
     _notify_user(
         db_client, yacht_id, reported_by, user_id,
         notification_type="fault_acknowledged",
@@ -259,18 +265,16 @@ async def resolve_fault(
     if not fault_id:
         raise HTTPException(status_code=400, detail="fault_id is required")
 
-    check = (
-        db_client.table("pms_faults")
-        .select("id, status, severity, title")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not check.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-
-    prev_status = check.data.get("status", "unknown")
-    current_severity = check.data.get("severity") or "medium"
-    entity_name = check.data.get("title") or ""
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    prev_status = fault.get("status", "unknown")
+    current_severity = fault.get("severity") or "medium"
+    entity_name = fault.get("title") or ""
     resolution_notes = payload.get("resolution_notes") or payload.get("note") or ""
+
+    # Persist resolution_notes in metadata so entity_routes can surface it
+    metadata = fault.get("metadata") or {}
+    if resolution_notes:
+        metadata["resolution_notes"] = resolution_notes
 
     now = datetime.now(timezone.utc).isoformat()
     result = (
@@ -282,6 +286,7 @@ async def resolve_fault(
             "resolved_at": now,
             "updated_by": user_id,
             "updated_at": now,
+            "metadata": metadata,
         })
         .eq("id", fault_id).eq("yacht_id", yacht_id).execute()
     )
@@ -291,19 +296,16 @@ async def resolve_fault(
     new_state = {"status": "resolved", "resolved_by": user_id}
     if resolution_notes:
         new_state["resolution_notes"] = resolution_notes
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="status_change", entity_type="fault", entity_id=fault_id,
-            action="resolve_fault", user_role=user_context.get("role"),
-            change_summary=f"Fault resolved — status: {prev_status} → resolved",
-            entity_name=entity_name,
-            previous_state={"status": prev_status},
-            new_state=new_state,
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] resolve_fault: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="status_change", entity_type="fault", entity_id=fault_id,
+        action="resolve_fault", user_role=user_context.get("role"),
+        change_summary=f"Fault resolved — status: {prev_status} → resolved",
+        entity_name=entity_name,
+        previous_state={"status": prev_status},
+        new_state=new_state,
+    )
     return {"status": "success", "message": "Fault resolved", "_ledger_written": True}
 
 
@@ -315,17 +317,10 @@ async def diagnose_fault(
     if not fault_id:
         raise HTTPException(status_code=400, detail="fault_id is required")
 
-    current = (
-        db_client.table("pms_faults")
-        .select("id, metadata, severity, title")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not current.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-
-    entity_name = current.data.get("title") or ""
-    current_severity = current.data.get("severity") or "medium"
-    metadata = current.data.get("metadata", {}) or {}
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    entity_name = fault.get("title") or ""
+    current_severity = fault.get("severity") or "medium"
+    metadata = fault.get("metadata") or {}
     metadata.update({
         "diagnosis": payload.get("diagnosis", ""),
         "diagnosed_by": user_id,
@@ -345,18 +340,15 @@ async def diagnose_fault(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to add diagnosis"}
 
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="update", entity_type="fault", entity_id=fault_id,
-            action="diagnose_fault", user_role=user_context.get("role"),
-            change_summary="Fault diagnosed",
-            entity_name=entity_name,
-            new_state={"diagnosis": metadata.get("diagnosis"), "diagnosed_by": user_id},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] diagnose_fault: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="update", entity_type="fault", entity_id=fault_id,
+        action="diagnose_fault", user_role=user_context.get("role"),
+        change_summary="Fault diagnosed",
+        entity_name=entity_name,
+        new_state={"diagnosis": metadata.get("diagnosis"), "diagnosed_by": user_id},
+    )
     return {"status": "success", "message": "Diagnosis added"}
 
 
@@ -376,19 +368,12 @@ async def close_fault(
             "message": f"Invalid close_reason '{close_reason}'. Valid: {', '.join(sorted(_VALID_CLOSE_REASONS))}",
         }
 
-    check = (
-        db_client.table("pms_faults")
-        .select("id, status, severity, title, metadata")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not check.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-
-    current_status = check.data.get("status", "open")
-    current_severity = check.data.get("severity") or "medium"
-    entity_name = check.data.get("title") or ""
-    reported_by = (check.data.get("metadata") or {}).get("reported_by")
-    updated_meta = {**(check.data.get("metadata") or {})}
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    current_status = fault.get("status", "open")
+    current_severity = fault.get("severity") or "medium"
+    entity_name = fault.get("title") or ""
+    reported_by = (fault.get("metadata") or {}).get("reported_by")
+    updated_meta = {**(fault.get("metadata") or {})}
     if close_reason:
         updated_meta["close_reason"] = close_reason
 
@@ -412,20 +397,16 @@ async def close_fault(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close fault"}
 
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="status_change", entity_type="fault", entity_id=fault_id,
-            action="close_fault", user_role=user_context.get("role"),
-            change_summary=f"Fault closed — {current_status} → closed. Reason: {close_reason or 'not specified'}",
-            entity_name=entity_name,
-            previous_state={"status": current_status},
-            new_state={"status": "closed", "close_reason": close_reason},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] close_fault: {e}")
-
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="status_change", entity_type="fault", entity_id=fault_id,
+        action="close_fault", user_role=user_context.get("role"),
+        change_summary=f"Fault closed — {current_status} → closed. Reason: {close_reason or 'not specified'}",
+        entity_name=entity_name,
+        previous_state={"status": current_status},
+        new_state={"status": "closed", "close_reason": close_reason},
+    )
     if close_reason in _FOLLOW_UP_CLOSE_REASONS:
         _ledger_follow_up(
             db_client, yacht_id, user_id, user_context.get("role"),
@@ -458,17 +439,9 @@ async def update_fault(
     if not fault_id:
         raise HTTPException(status_code=400, detail="fault_id is required")
 
-    check = (
-        db_client.table("pms_faults")
-        .select("id, title, description, severity, status")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not check.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-
-    prev = check.data
-    entity_name = prev.get("title") or ""
-    current_severity = prev.get("severity") or "medium"
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    entity_name = fault.get("title") or ""
+    current_severity = fault.get("severity") or "medium"
 
     update_data: dict = {
         "updated_by": user_id,
@@ -478,7 +451,6 @@ async def update_fault(
         update_data["title"] = payload["title"]
     if payload.get("description"):
         update_data["description"] = payload["description"]
-    # Only change severity if caller provides a valid value; otherwise preserve existing.
     new_sev = payload.get("severity")
     update_data["severity"] = new_sev if new_sev in ("low", "medium", "high", "critical") else current_severity
 
@@ -491,23 +463,20 @@ async def update_fault(
 
     diff_fields = ("title", "description", "severity")
     changes = [
-        f"{f}: {prev.get(f)} → {update_data[f]}"
+        f"{f}: {fault.get(f)} → {update_data[f]}"
         for f in diff_fields
-        if f in update_data and update_data[f] != prev.get(f)
+        if f in update_data and update_data[f] != fault.get(f)
     ]
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="update", entity_type="fault", entity_id=fault_id,
-            action="update_fault", user_role=user_context.get("role"),
-            change_summary="Fault updated" + (" — " + ", ".join(changes) if changes else ""),
-            entity_name=entity_name,
-            previous_state={f: prev.get(f) for f in diff_fields},
-            new_state={f: update_data.get(f, prev.get(f)) for f in diff_fields},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] update_fault: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="update", entity_type="fault", entity_id=fault_id,
+        action="update_fault", user_role=user_context.get("role"),
+        change_summary="Fault updated" + (" — " + ", ".join(changes) if changes else ""),
+        entity_name=entity_name,
+        previous_state={f: fault.get(f) for f in diff_fields},
+        new_state={f: update_data.get(f, fault.get(f)) for f in diff_fields},
+    )
     return {"status": "success", "message": "Fault updated"}
 
 
@@ -519,17 +488,10 @@ async def reopen_fault(
     if not fault_id:
         raise HTTPException(status_code=400, detail="fault_id is required")
 
-    check = (
-        db_client.table("pms_faults")
-        .select("id, status, severity, title")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not check.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-
-    current_status = check.data.get("status", "open")
-    current_severity = check.data.get("severity") or "medium"
-    entity_name = check.data.get("title") or ""
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    current_status = fault.get("status", "open")
+    current_severity = fault.get("severity") or "medium"
+    entity_name = fault.get("title") or ""
 
     try:
         validate_state_transition("fault", current_status, "reopen_fault")
@@ -552,19 +514,16 @@ async def reopen_fault(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to reopen fault"}
 
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="status_change", entity_type="fault", entity_id=fault_id,
-            action="reopen_fault", user_role=user_context.get("role"),
-            change_summary=f"Fault reopened — status: {current_status} → open",
-            entity_name=entity_name,
-            previous_state={"status": current_status},
-            new_state={"status": "open"},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] reopen_fault: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="status_change", entity_type="fault", entity_id=fault_id,
+        action="reopen_fault", user_role=user_context.get("role"),
+        change_summary=f"Fault reopened — status: {current_status} → open",
+        entity_name=entity_name,
+        previous_state={"status": current_status},
+        new_state={"status": "open"},
+    )
     return {"status": "success", "message": "Fault reopened"}
 
 
@@ -576,18 +535,11 @@ async def mark_fault_false_alarm(
     if not fault_id:
         raise HTTPException(status_code=400, detail="fault_id is required")
 
-    current = (
-        db_client.table("pms_faults")
-        .select("id, metadata, severity, title, status")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not current.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-
-    entity_name = current.data.get("title") or ""
-    prev_status = current.data.get("status", "open")
-    current_severity = current.data.get("severity") or "medium"
-    metadata = current.data.get("metadata", {}) or {}
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    entity_name = fault.get("title") or ""
+    prev_status = fault.get("status", "open")
+    current_severity = fault.get("severity") or "medium"
+    metadata = fault.get("metadata") or {}
     metadata.update({
         "false_alarm": True,
         "false_alarm_by": user_id,
@@ -597,7 +549,7 @@ async def mark_fault_false_alarm(
     result = (
         db_client.table("pms_faults")
         .update({
-            "status": "closed",
+            "status": "false_alarm",  # Terminal state per state machine — not "closed"
             "metadata": metadata,
             "severity": current_severity,
             "updated_by": user_id,
@@ -608,19 +560,16 @@ async def mark_fault_false_alarm(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to mark as false alarm"}
 
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="status_change", entity_type="fault", entity_id=fault_id,
-            action="mark_fault_false_alarm", user_role=user_context.get("role"),
-            change_summary=f"Fault marked as false alarm — {prev_status} → closed",
-            entity_name=entity_name,
-            previous_state={"status": prev_status},
-            new_state={"status": "closed", "false_alarm": True},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] mark_fault_false_alarm: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="status_change", entity_type="fault", entity_id=fault_id,
+        action="mark_fault_false_alarm", user_role=user_context.get("role"),
+        change_summary=f"Fault marked as false alarm — {prev_status} → false_alarm",
+        entity_name=entity_name,
+        previous_state={"status": prev_status},
+        new_state={"status": "false_alarm", "false_alarm": True},
+    )
     return {"status": "success", "message": "Fault marked as false alarm"}
 
 
@@ -635,16 +584,9 @@ async def add_fault_photo(
     if not photo_url:
         raise HTTPException(status_code=400, detail="photo_url is required")
 
-    current = (
-        db_client.table("pms_faults")
-        .select("id, metadata, severity")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not current.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-
-    current_severity = current.data.get("severity") or "medium"
-    metadata = current.data.get("metadata", {}) or {}
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    current_severity = fault.get("severity") or "medium"
+    metadata = fault.get("metadata") or {}
     photos = metadata.get("photos", [])
     photos.append({"url": photo_url, "added_by": user_id, "added_at": datetime.now(timezone.utc).isoformat()})
     metadata["photos"] = photos
@@ -708,17 +650,10 @@ async def add_fault_note(
     if not note_text:
         raise HTTPException(status_code=400, detail="note_text is required")
 
-    current = (
-        db_client.table("pms_faults")
-        .select("id, metadata, severity, title")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not current.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-
-    entity_name = current.data.get("title") or ""
-    current_severity = current.data.get("severity") or "medium"
-    metadata = current.data.get("metadata", {}) or {}
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    entity_name = fault.get("title") or ""
+    current_severity = fault.get("severity") or "medium"
+    metadata = fault.get("metadata") or {}
     notes = metadata.get("notes", []) or []
     notes.append({"text": note_text, "added_by": user_id, "added_at": datetime.now(timezone.utc).isoformat()})
     metadata["notes"] = notes
@@ -736,18 +671,15 @@ async def add_fault_note(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to add fault note"}
 
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="update", entity_type="fault", entity_id=fault_id,
-            action="add_fault_note", user_role=user_context.get("role"),
-            change_summary="Note added to fault",
-            entity_name=entity_name,
-            new_state={"note_text": note_text, "added_by": user_id},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] add_fault_note: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="update", entity_type="fault", entity_id=fault_id,
+        action="add_fault_note", user_role=user_context.get("role"),
+        change_summary="Note added to fault",
+        entity_name=entity_name,
+        new_state={"note_text": note_text, "added_by": user_id},
+    )
     return {"status": "success", "success": True, "message": "Note added to fault", "notes_count": len(notes)}
 
 
@@ -758,8 +690,10 @@ async def list_faults(
     query = db_client.table("pms_faults").select("*").eq("yacht_id", yacht_id)
     if payload.get("status"):
         query = query.eq("status", payload["status"])
-    if payload.get("priority"):
-        query = query.eq("severity", payload["priority"])
+    # Accept both "severity" (canonical) and "priority" (legacy alias)
+    severity_filter = payload.get("severity") or payload.get("priority")
+    if severity_filter:
+        query = query.eq("severity", severity_filter)
     limit = payload.get("limit", 50)
     result = query.order("detected_at", desc=True).limit(limit).execute()
     return {"status": "success", "success": True, "faults": result.data or [], "total": len(result.data or [])}
@@ -774,18 +708,12 @@ async def archive_fault(
     if not fault_id:
         raise HTTPException(status_code=400, detail="fault_id is required")
 
-    check = (
-        db_client.table("pms_faults")
-        .select("id, status, severity, title, deleted_at")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not check.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
-    if check.data.get("deleted_at"):
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    if fault.get("deleted_at"):
         return {"status": "error", "error_code": "ALREADY_ARCHIVED", "message": "Fault is already archived"}
 
-    entity_name = check.data.get("title") or ""
-    current_severity = check.data.get("severity") or "medium"
+    entity_name = fault.get("title") or ""
+    current_severity = fault.get("severity") or "medium"
     now = datetime.now(timezone.utc).isoformat()
 
     result = (
@@ -803,18 +731,15 @@ async def archive_fault(
     if not result.data:
         return {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to archive fault"}
 
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="archive", entity_type="fault", entity_id=fault_id,
-            action="archive_fault", user_role=user_context.get("role"),
-            change_summary=f"Fault archived — reason: {reason or 'not specified'}",
-            entity_name=entity_name,
-            new_state={"deleted_at": now, "deletion_reason": reason},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] archive_fault: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="archive", entity_type="fault", entity_id=fault_id,
+        action="archive_fault", user_role=user_context.get("role"),
+        change_summary=f"Fault archived — reason: {reason or 'not specified'}",
+        entity_name=entity_name,
+        new_state={"deleted_at": now, "deletion_reason": reason},
+    )
     _notify_hods(
         db_client, yacht_id, user_id,
         notification_type="fault_archived",
@@ -837,12 +762,8 @@ async def link_parts_to_fault(
     if not part_ids:
         raise HTTPException(status_code=400, detail="part_ids is required and must be non-empty")
 
-    check = (
-        db_client.table("pms_faults").select("id")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not check.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    entity_name = fault.get("title") or fault_id
 
     inserted = skipped = 0
     for part_id in part_ids:
@@ -860,18 +781,15 @@ async def link_parts_to_fault(
             logger.warning(f"[link_parts_to_fault] part {part_id}: {e}")
             skipped += 1
 
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="update", entity_type="fault", entity_id=fault_id,
-            action="link_parts_to_fault", user_role=user_context.get("role"),
-            change_summary=f"Parts linked — {inserted} inserted, {skipped} skipped",
-            entity_name=fault_id,
-            new_state={"part_ids": part_ids, "inserted": inserted},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] link_parts_to_fault: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="update", entity_type="fault", entity_id=fault_id,
+        action="link_parts_to_fault", user_role=user_context.get("role"),
+        change_summary=f"Parts linked — {inserted} inserted, {skipped} skipped",
+        entity_name=entity_name,
+        new_state={"part_ids": part_ids, "inserted": inserted},
+    )
     return {"status": "success", "inserted": inserted, "skipped": skipped}
 
 
@@ -886,27 +804,20 @@ async def unlink_part_from_fault(
     if not part_id:
         raise HTTPException(status_code=400, detail="part_id is required")
 
-    check = (
-        db_client.table("pms_faults").select("id")
-        .eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-    )
-    if not check.data:
-        raise HTTPException(status_code=404, detail="Fault not found")
+    fault = _fetch_fault(db_client, fault_id, yacht_id)
+    entity_name = fault.get("title") or fault_id
 
     db_client.table("pms_fault_parts").delete().eq("fault_id", fault_id).eq("part_id", part_id).execute()
 
-    try:
-        db_client.table("ledger_events").insert(build_ledger_event(
-            yacht_id=yacht_id, user_id=user_id,
-            event_type="update", entity_type="fault", entity_id=fault_id,
-            action="unlink_part_from_fault", user_role=user_context.get("role"),
-            change_summary=f"Part unlinked from fault — part_id: {part_id}",
-            entity_name=fault_id,
-            new_state={"unlinked_part_id": part_id},
-        )).execute()
-    except Exception as e:
-        if "204" not in str(e):
-            logger.warning(f"[Ledger] unlink_part_from_fault: {e}")
+    _write_ledger(
+        db_client,
+        yacht_id=yacht_id, user_id=user_id,
+        event_type="update", entity_type="fault", entity_id=fault_id,
+        action="unlink_part_from_fault", user_role=user_context.get("role"),
+        change_summary=f"Part unlinked from fault — part_id: {part_id}",
+        entity_name=entity_name,
+        new_state={"unlinked_part_id": part_id},
+    )
     return {"status": "success", "message": "Part unlinked from fault"}
 
 
@@ -915,7 +826,7 @@ HANDLERS: dict = {
     "acknowledge_fault":      acknowledge_fault,
     "resolve_fault":          resolve_fault,
     "diagnose_fault":         diagnose_fault,
-    "investigate_fault":      diagnose_fault,   # alias — same action, legacy name
+    "investigate_fault":      diagnose_fault,   # legacy alias
     "close_fault":            close_fault,
     "update_fault":           update_fault,
     "reopen_fault":           reopen_fault,
@@ -926,7 +837,7 @@ HANDLERS: dict = {
     "add_fault_note":         add_fault_note,
     "list_faults":            list_faults,
     "archive_fault":          archive_fault,
-    "delete_fault":           archive_fault,    # alias — soft-delete, same behaviour
+    "delete_fault":           archive_fault,    # soft-delete alias
     "link_parts_to_fault":    link_parts_to_fault,
     "unlink_part_from_fault": unlink_part_from_fault,
 }

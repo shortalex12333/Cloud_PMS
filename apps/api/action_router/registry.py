@@ -1128,7 +1128,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     "report_fault": ActionDefinition(
         action_id="report_fault",
         label="Report Fault",
-        endpoint="/v1/faults/create",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         # Canonical: crew + HOD + captain (no manager)
@@ -1158,7 +1158,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     "acknowledge_fault": ActionDefinition(
         action_id="acknowledge_fault",
         label="Acknowledge Fault",
-        endpoint="/v1/faults/acknowledge",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         # Canonical: HOD + captain only
@@ -1176,7 +1176,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     "close_fault": ActionDefinition(
         action_id="close_fault",
         label="Close Fault",
-        endpoint="/v1/faults/close",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         # Canonical: HOD + captain only
@@ -1197,7 +1197,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     "add_fault_photo": ActionDefinition(
         action_id="add_fault_photo",
         label="Add Fault Photo",
-        endpoint="/v1/faults/add-photo",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         # Canonical: crew + HOD + captain
@@ -1219,7 +1219,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     "add_fault_note": ActionDefinition(
         action_id="add_fault_note",
         label="Add Fault Note",
-        endpoint="/v1/faults/add-note",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         # Canonical: crew + HOD + captain
@@ -1240,7 +1240,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     "view_fault_history": ActionDefinition(
         action_id="view_fault_history",
         label="View Fault History",
-        endpoint="/v1/faults/history",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         # Canonical: all including manager and purser
@@ -1261,7 +1261,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     "reopen_fault": ActionDefinition(
         action_id="reopen_fault",
         label="Reopen Fault",
-        endpoint="/v1/faults/reopen",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
         # Canonical: HOD + captain only
