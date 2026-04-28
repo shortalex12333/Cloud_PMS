@@ -13,186 +13,11 @@
  */
 
 import * as React from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
-import { TimeSlider, invertToRestPeriods, type RestPeriod } from './TimeSlider';
+import { TimeSlider, invertToRestPeriods, type RestPeriod } from '../TimeSlider';
 import { ActionPopup, type ActionPopupField } from '@/components/lens/ActionPopup';
-
-// (mock removed — all data comes from GET /v1/hours-of-rest/my-week)
-
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** API returns null for days with no submitted record — replace with an empty unsubmitted slot */
-function normalizeDays(days: any[], weekStart: string): any[] {
-  return days.map((d, i) => {
-    if (d != null) return d;
-    const date = new Date(weekStart);
-    date.setDate(date.getDate() + i);
-    return {
-      date: date.toISOString().slice(0, 10),
-      label: DAY_LABELS[i],
-      rest_periods: [],
-      total_rest_hours: 0,
-      total_work_hours: 0,
-      is_compliant: null,
-      submitted: false,
-      warnings: [],
-    };
-  });
-}
-
-/**
- * Normalises the real API response shape to what the component expects.
- * Real API deviations:
- *  - compliance is flat: {rolling_24h_rest, rolling_7day_rest} — missing mlc_status, min_*, violations_this_month, rolling_7d_work
- *  - prior_weeks may be absent (backend feature not yet implemented)
- *  - templates[].name (backend renames schedule_name → name in response)
- *  - days[].record_date instead of date; no label field
- */
-function normalizeMyWeekResponse(json: any): void {
-  // 1. Derive day.date + day.label from record_date / week_start index
-  if (Array.isArray(json.days)) {
-    const weekStart = json.week_start ?? '';
-    json.days = json.days.map((d: any, i: number) => {
-      if (d == null) return d; // normalizeDays handles null slots
-      const date = d.date ?? d.record_date ?? (() => {
-        const dt = new Date(weekStart);
-        dt.setDate(dt.getDate() + i);
-        return dt.toISOString().slice(0, 10);
-      })();
-      const label = d.label ?? DAY_LABELS[i];
-      // Remap is_daily_compliant (backend) → is_compliant (component)
-      const is_compliant = d.is_compliant ?? d.is_daily_compliant ?? null;
-      return { ...d, date, label, is_compliant };
-    });
-  }
-
-  // 2. Normalise compliance — add missing fields with safe defaults
-  const c: any = json.compliance ?? {};
-  const rolling24 = c.rolling_24h_rest ?? null;
-  const rolling7d = c.rolling_7day_rest ?? null;
-  const min24 = c.min_24h ?? 10;
-  const min7d = c.min_7d ?? 77;
-  const mlcStatus: string | null = c.mlc_status ?? (
-    rolling24 != null && rolling7d != null
-      ? (rolling24 >= min24 && rolling7d >= min7d ? 'COMPLIANT' : 'NON-COMPLIANT')
-      : null
-  );
-  json.compliance = {
-    rolling_24h_rest: rolling24,
-    rolling_7day_rest: rolling7d,
-    rolling_7d_work: c.rolling_7d_work ?? null,
-    min_24h: min24,
-    min_7d: min7d,
-    violations_this_month: c.violations_this_month ?? 0,
-    mlc_status: mlcStatus,
-  };
-
-  // 3. Default prior_weeks to empty array if absent
-  if (!Array.isArray(json.prior_weeks)) {
-    json.prior_weeks = [];
-  }
-
-  // 4. Ensure templates is always an array (backend field: name)
-  if (!Array.isArray(json.templates)) {
-    json.templates = [];
-  }
-}
-
-/**
- * Returns the Authorization header value, or null if no session exists.
- * BUG-HOR-2 fix: previously returned an empty string on null session, causing
- * fetches to send `Authorization: ` which backend rejects with 401. Callers
- * must now null-check before making a request.
- */
-async function getAuthHeader(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session ? `Bearer ${session.access_token}` : null;
-}
-
-function formatMonth(yyyyMm: string): string {
-  const [y, m] = yyyyMm.split('-');
-  const d = new Date(Number(y), Number(m) - 1, 1);
-  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-}
-
-/** Compute total hours from a periods array — always correct, ignores stored totals. */
-function hoursFromPeriods(periods: RestPeriod[]): number {
-  return periods.reduce((sum, p) => {
-    const [sh, sm] = p.start.split(':').map(Number);
-    const [eh, em] = p.end.split(':').map(Number);
-    const startMin = sh * 60 + sm;
-    const endMin = (p.end === '24:00' ? 24 : eh) * 60 + em;
-    return sum + Math.max(0, endMin - startMin) / 60;
-  }, 0);
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function Skeleton({ w = '100%', h = 16 }: { w?: string | number; h?: number }) {
-  return (
-    <div style={{
-      width: w,
-      height: h,
-      background: 'var(--surface-subtle)',
-      borderRadius: 'var(--radius-pill)',
-      animation: 'pulse 1.5s ease-in-out infinite',
-    }} />
-  );
-}
-
-function SectionCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div style={{
-      background: 'var(--surface)',
-      border: '1px solid var(--border-sub)',
-      borderRadius: 'var(--radius-sm)',
-      overflow: 'hidden',
-      marginBottom: 'var(--space-3)',
-      ...style,
-    }}>
-      {children}
-    </div>
-  );
-}
-
-function SectionHeader({ label, right }: { label: React.ReactNode; right?: React.ReactNode }) {
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '10px 16px 8px',
-      borderBottom: '1px solid var(--surface-subtle)',
-    }}>
-      <span style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 9,
-        fontWeight: 600,
-        letterSpacing: '0.14em',
-        textTransform: 'uppercase' as const,
-        color: 'var(--txt-ghost)',
-      }}>{label}</span>
-      {right}
-    </div>
-  );
-}
-
-function StatusBadge({ ok, label }: { ok: boolean | null; label?: string }) {
-  if (ok === null) return <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)' }}>—</span>;
-  return (
-    <span style={{
-      fontFamily: 'var(--font-mono)',
-      fontSize: 9,
-      fontWeight: 600,
-      color: ok ? 'var(--green)' : 'var(--red)',
-    }}>
-      {ok ? '✓' : '⚠'} {label}
-    </span>
-  );
-}
+import { normalizeDays, normalizeMyWeekResponse, getAuthHeader, formatMonth, hoursFromPeriods } from './helpers';
+import { Skeleton, SectionCard, SectionHeader, StatusBadge } from './primitives';
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -488,7 +313,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         // Patch local state from response — NO page reload
         const record = json?.data?.record ?? null;
         const compliance = json?.data?.compliance ?? null;
-        const warnings = json?.data?.warnings_created ?? [];
+        const warningsCreated = json?.data?.warnings_created ?? [];
         const dayPatch = record ? {
           date,
           record_id: record.id ?? null,
@@ -499,14 +324,14 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
           // Use server-authoritative is_daily_compliant — not client re-derive
           is_compliant: record.is_daily_compliant ?? compliance?.is_daily_compliant ?? null,
           submitted: true,
-          warnings,
+          warnings: warningsCreated,
         } : { date, record_id: null, work_periods: workPeriods, rest_periods: [], submitted: true, warnings: [] };
         setSubmittedDays(prev => ({ ...prev, [date]: dayPatch }));
         setSubmitErrors(prev => { const n = { ...prev }; delete n[date]; return n; });
         setCommentRequired(prev => { const n = { ...prev }; delete n[date]; return n; });
         setDraftPeriods(prev => { const n = { ...prev }; delete n[date]; return n; });
         // Keep crew comment in state for display but reset required flag
-        if (warnings.length > 0) {
+        if (warningsCreated.length > 0) {
           // Re-load warnings list after new violation created
           await loadWarnings();
         }
@@ -1012,7 +837,6 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                     key={dstr}
                     title={`${dstr}${rec?.submitted ? (rec.is_compliant === false ? ' — Violation' : ' — Compliant') : ' — Not filed'}`}
                     onClick={() => {
-                      const nowYM = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
                       const todayMonday = (() => {
                         const t = new Date();
                         const diff = (t.getDay() + 6) % 7;
@@ -1121,8 +945,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
             const isSubmittedLocally = !!localSubmit;
             const isSubmitted = day.submitted || isSubmittedLocally || isReadOnly;
             const displayDay = isSubmittedLocally ? localSubmit : day;
-            const warnings: any[] = displayDay.warnings ?? [];
-            const hasWarning = warnings.length > 0;
+            const dayWarnings: any[] = displayDay.warnings ?? [];
+            const hasWarning = dayWarnings.length > 0;
             const draft = isReadOnly ? undefined : draftPeriods[day.date];
             const isSubmitting = submitting[day.date];
             const canUndo = isSubmittedLocally && !weekFinalised.current && !isReadOnly;
@@ -1234,7 +1058,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 {/* Violation warnings */}
                 {isSubmitted && hasWarning && (
                   <div style={{ marginBottom: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {warnings.map((w: any, wi: number) => (
+                    {dayWarnings.map((w: any, wi: number) => (
                       <span key={wi} style={{
                         fontFamily: 'var(--font-mono)',
                         fontSize: 9,
