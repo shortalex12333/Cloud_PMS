@@ -58,7 +58,7 @@ async def _init_connection(conn: asyncpg.Connection) -> None:
 async def get_db_pool() -> asyncpg.Pool:
     """Get or create the signal search connection pool.
 
-    This pool is used ONLY by the signal handler (show_related_signal_routes.py).
+    This pool is used ONLY by the signal handler (related_signal_routes.py).
     The spotlight endpoint (f1_search_streaming.py) has its own pool with 800ms timeout.
 
     command_timeout=15s: must exceed statement_timeout (12s) + network latency.
