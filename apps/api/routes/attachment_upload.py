@@ -32,14 +32,26 @@ router = APIRouter(prefix="/v1/attachments", tags=["attachments"])
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB — mirrors frontend constant
 
 ACCEPTED_MIME_TYPES = {
+    # Documents
     'application/pdf',
-    'image/jpeg', 'image/png', 'image/heic', 'image/webp', 'image/tiff',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'text/plain',
     'application/zip',
+    # Images
+    'image/jpeg', 'image/png', 'image/heic', 'image/webp', 'image/tiff',
+    'image/svg+xml',
+    # Technical drawings (CAD)
+    'image/vnd.dwg',            # AutoCAD DWG
+    'image/vnd.dxf',            # AutoCAD DXF
+    'application/acad',         # AutoCAD (legacy MIME)
+    'application/x-autocad',    # AutoCAD (alternate)
+    'application/dxf',          # DXF alternate
+    # Fallback for unrecognised uploads (browser may report generic type)
     'application/octet-stream',
 }
 

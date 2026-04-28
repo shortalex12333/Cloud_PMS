@@ -67,12 +67,21 @@ const ACCEPTED_MIME_TYPES = [
   'image/heic',
   'image/webp',
   'image/tiff',
+  'image/svg+xml',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'text/plain',
   'application/zip',
+  // CAD / technical drawings
+  'image/vnd.dwg',
+  'image/vnd.dxf',
+  'application/acad',
+  'application/x-autocad',
+  'application/dxf',
   'application/octet-stream',
 ].join(',');
 

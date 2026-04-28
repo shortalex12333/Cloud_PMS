@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 ATTACHMENT_BUCKET = {
     "fault": "pms-discrepancy-photos",
     "work_order": "pms-work-order-photos",
+    "work_order_document": "pms-work-order-documents",  # SOPs, manuals, drawings
     "checklist_item": "pms-work-order-photos",
     "equipment": "pms-work-order-photos",
     "purchase_order": "pms-finance-documents",
