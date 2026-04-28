@@ -262,6 +262,12 @@ export function AssignModal({
 
 // ── AddChecklistItemModal ────────────────────────────────────────────────────
 
+export interface ChecklistRowItem {
+  id: string;
+  description: string;
+  itemType: 'tick' | 'text';
+}
+
 export function AddChecklistItemModal({
   open,
   category,
@@ -271,14 +277,18 @@ export function AddChecklistItemModal({
   open: boolean;
   category: 'general' | 'safety';
   onClose: () => void;
-  onSubmit: (title: string, description: string) => Promise<void>;
+  onSubmit: (items: ChecklistRowItem[]) => Promise<void>;
 }) {
-  const [itemTitle, setItemTitle] = React.useState('');
-  const [itemDesc, setItemDesc] = React.useState('');
+  const [rows, setRows] = React.useState<ChecklistRowItem[]>([
+    { id: '1', description: '', itemType: 'tick' },
+  ]);
   const [submitting, setSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    if (open) { setItemTitle(''); setItemDesc(''); setSubmitting(false); }
+    if (open) {
+      setRows([{ id: '1', description: '', itemType: 'tick' }]);
+      setSubmitting(false);
+    }
   }, [open]);
 
   if (!open) return null;
@@ -286,10 +296,27 @@ export function AddChecklistItemModal({
   const isSafety = category === 'safety';
   const placeholder = isSafety ? 'e.g. Lock out breaker 17B' : 'e.g. Inspect filter housing';
 
+  const updateRow = (id: string, field: keyof ChecklistRowItem, value: string) => {
+    setRows((prev) => {
+      const updated = prev.map((r) => r.id === id ? { ...r, [field]: value } : r);
+      const last = updated[updated.length - 1];
+      if (last.id === id && field === 'description' && value.trim()) {
+        return [...updated, { id: String(Date.now()), description: '', itemType: 'tick' as const }];
+      }
+      return updated;
+    });
+  };
+
+  const removeRow = (id: string) => {
+    setRows((prev) => prev.length > 1 ? prev.filter((r) => r.id !== id) : prev);
+  };
+
+  const validRows = rows.filter((r) => r.description.trim());
+
   const handleSubmit = async () => {
-    if (!itemTitle.trim() || submitting) return;
+    if (!validRows.length || submitting) return;
     setSubmitting(true);
-    try { await onSubmit(itemTitle.trim(), itemDesc.trim()); }
+    try { await onSubmit(validRows); }
     finally { setSubmitting(false); }
   };
 
@@ -300,57 +327,71 @@ export function AddChecklistItemModal({
       background: 'var(--overlay-heavy)',
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        width: '100%', maxWidth: 420, background: 'var(--surface)',
+        width: '100%', maxWidth: 520, background: 'var(--surface)',
         border: '1px solid var(--border-faint)', borderRadius: 10,
         padding: 24, boxShadow: 'var(--shadow-card)',
+        maxHeight: '80vh', display: 'flex', flexDirection: 'column',
       }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--txt)', marginBottom: 16 }}>
-          {isSafety ? 'Add Safety Checkpoint' : 'Add Checklist Item'}
+        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--txt)', marginBottom: 4 }}>
+          {isSafety ? 'Add Safety Checkpoints' : 'Add Checklist Items'}
         </div>
-        <label style={{ fontSize: 13, color: 'var(--txt2)', display: 'block', marginBottom: 4 }}>
-          Title <span style={{ color: 'var(--red)' }}>*</span>
-        </label>
-        <input
-          value={itemTitle}
-          onChange={(e) => setItemTitle(e.target.value)}
-          placeholder={placeholder}
-          autoFocus
-          style={{
-            width: '100%', padding: '8px 10px', borderRadius: 6,
-            border: '1px solid var(--border-sub)', background: 'var(--bg)',
-            color: 'var(--txt)', fontSize: 13, marginBottom: 14,
-            fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
-          }}
-        />
-        <label style={{ fontSize: 13, color: 'var(--txt2)', display: 'block', marginBottom: 4 }}>
-          Guidance / Instructions <span style={{ color: 'var(--txt3)', fontWeight: 400 }}>(optional)</span>
-        </label>
-        <textarea
-          value={itemDesc}
-          onChange={(e) => setItemDesc(e.target.value)}
-          placeholder={isSafety ? 'Isolation steps, test-for-dead procedure…' : 'Additional guidance…'}
-          rows={3}
-          style={{
-            width: '100%', padding: '8px 10px', borderRadius: 6,
-            border: '1px solid var(--border-sub)', background: 'var(--bg)',
-            color: 'var(--txt)', fontSize: 13, marginBottom: 16, resize: 'vertical',
-            fontFamily: 'var(--font-sans)', boxSizing: 'border-box',
-          }}
-        />
+        <div style={{ fontSize: 12, color: 'var(--txt3)', marginBottom: 16 }}>
+          Type an item — a new row appears automatically.
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1, marginBottom: 16 }}>
+          {rows.map((row, idx) => (
+            <div key={row.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--txt3)', minWidth: 18, textAlign: 'right' }}>
+                {idx + 1}
+              </span>
+              <input
+                value={row.description}
+                onChange={(e) => updateRow(row.id, 'description', e.target.value)}
+                placeholder={idx === 0 ? placeholder : 'Next item…'}
+                autoFocus={idx === 0}
+                style={{
+                  flex: 1, padding: '7px 10px', borderRadius: 6,
+                  border: '1px solid var(--border-sub)', background: 'var(--bg)',
+                  color: 'var(--txt)', fontSize: 13, fontFamily: 'var(--font-sans)',
+                }}
+              />
+              <select
+                value={row.itemType}
+                onChange={(e) => updateRow(row.id, 'itemType', e.target.value)}
+                style={{
+                  padding: '7px 8px', borderRadius: 6, fontSize: 12,
+                  border: '1px solid var(--border-sub)', background: 'var(--bg)',
+                  color: 'var(--txt2)', fontFamily: 'var(--font-sans)', cursor: 'pointer',
+                }}
+              >
+                <option value="tick">Tick</option>
+                <option value="text">Text</option>
+              </select>
+              {rows.length > 1 && (
+                <button type="button" onClick={() => removeRow(row.id)} style={{
+                  background: 'none', border: 'none', color: 'var(--txt3)',
+                  cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px',
+                }}>×</button>
+              )}
+            </div>
+          ))}
+        </div>
+
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" onClick={onClose} style={{
             padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-sub)',
             background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
             fontFamily: 'var(--font-sans)',
           }}>Cancel</button>
-          <button type="button" onClick={handleSubmit} disabled={!itemTitle.trim() || submitting} style={{
+          <button type="button" onClick={handleSubmit} disabled={!validRows.length || submitting} style={{
             padding: '8px 14px', borderRadius: 6, border: 'none',
-            background: itemTitle.trim() ? 'var(--mark)' : 'var(--border-faint)',
-            color: itemTitle.trim() ? 'var(--surface)' : 'var(--txt3)',
-            fontSize: 13, cursor: itemTitle.trim() ? 'pointer' : 'not-allowed',
+            background: validRows.length ? 'var(--mark)' : 'var(--border-faint)',
+            color: validRows.length ? 'var(--surface)' : 'var(--txt3)',
+            fontSize: 13, cursor: validRows.length ? 'pointer' : 'not-allowed',
             fontFamily: 'var(--font-sans)', fontWeight: 500,
           }}>
-            {submitting ? 'Adding…' : 'Add Item'}
+            {submitting ? 'Adding…' : validRows.length > 1 ? `Add ${validRows.length} Items` : 'Add Item'}
           </button>
         </div>
       </div>

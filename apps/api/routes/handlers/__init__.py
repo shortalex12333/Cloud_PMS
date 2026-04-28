@@ -1,7 +1,7 @@
 # routes/handlers/__init__.py
 #
 # Phase 4 dispatch table — action name → handler function.
-# Imported by p0_actions_routes.py as _ACTION_HANDLERS.
+# Imported by action_execution_routes.py as _ACTION_HANDLERS.
 #
 # handlers/ is the single source of truth for all domain logic.
 # This file only imports and merges their HANDLERS dicts.

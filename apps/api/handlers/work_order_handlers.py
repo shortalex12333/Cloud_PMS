@@ -825,7 +825,7 @@ async def add_checklist_item(
     payload: dict, context: dict, yacht_id: str, user_id: str,
     user_context: dict, db_client: Client,
 ) -> dict:
-    work_order_id = payload.get("work_order_id")
+    work_order_id = payload.get("work_order_id") or context.get("work_order_id")
     title = payload.get("title")
     if not work_order_id:
         raise HTTPException(status_code=400, detail="work_order_id is required")
