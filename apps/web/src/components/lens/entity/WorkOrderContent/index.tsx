@@ -101,6 +101,7 @@ export function WorkOrderContent() {
   const [sopModalOpen, setSopModalOpen] = React.useState(false);
   const [archiveModalOpen, setArchiveModalOpen] = React.useState(false);
   const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
+  const [docUploadModalOpen, setDocUploadModalOpen] = React.useState(false);
   const [frequencyModalOpen, setFrequencyModalOpen] = React.useState(false);
 
   // Toast feedback for generic dropdown actions
@@ -420,13 +421,33 @@ export function WorkOrderContent() {
     summary: (p.summary ?? p.period_summary) as string ?? '',
   }));
 
-  const attachmentItems: AttachmentItem[] = attachments.map((a, i) => ({
-    id: (a.id as string) ?? `att-${i}`,
-    name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
-    caption: (a.caption ?? a.description) as string | undefined,
-    size: (a.size ?? a.file_size) as string | undefined,
-    kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
-  }));
+  const attachmentItems: AttachmentItem[] = attachments
+    .filter((a) => {
+      const cat = (a.category as string | undefined) ?? '';
+      return cat !== 'document' && cat !== 'work_order_document';
+    })
+    .map((a, i) => ({
+      id: (a.id as string) ?? `att-${i}`,
+      name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
+      caption: (a.caption ?? a.description) as string | undefined,
+      size: (a.size ?? a.file_size) as string | undefined,
+      kind: (((a.mime_type ?? a.content_type) as string) ?? '').startsWith('image') ? 'image' as const : 'document' as const,
+      url: (a.url ?? a.signed_url) as string | undefined,
+    }));
+
+  const documentAttachmentItems: AttachmentItem[] = attachments
+    .filter((a) => {
+      const cat = (a.category as string | undefined) ?? '';
+      return cat === 'document' || cat === 'work_order_document';
+    })
+    .map((a, i) => ({
+      id: (a.id as string) ?? `doc-att-${i}`,
+      name: (a.name ?? a.file_name ?? a.filename) as string ?? 'File',
+      caption: (a.caption ?? a.description) as string | undefined,
+      size: (a.size ?? a.file_size) as string | undefined,
+      kind: 'document' as const,
+      url: (a.url ?? a.signed_url) as string | undefined,
+    }));
 
   const partItems: PartItem[] = parts.map((p, i) => ({
     id: (p.id as string) ?? `part-${i}`,
@@ -519,7 +540,7 @@ export function WorkOrderContent() {
 
   const tabs: LensTab[] = [
     { key: 'checklist', label: 'Checklist', count: checklistItems.length },
-    { key: 'documents', label: 'Documents', count: docItems.length },
+    { key: 'documents', label: 'Documents', count: docItems.length + documentAttachmentItems.length },
     { key: 'faults',    label: 'Faults',    count: faults.length },
     { key: 'equipment', label: 'Equipment', count: equipment_name ? 1 : 0 },
     { key: 'parts',     label: 'Parts',     count: partItems.length },
@@ -540,10 +561,21 @@ export function WorkOrderContent() {
           </div>
         );
       case 'documents':
-        return docItems.length > 0 ? (
-          <DocRowsSection title="Official Documents" docs={docItems} />
-        ) : (
-          <EmptyTab message="No supporting documents linked to this work order." />
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {docItems.length > 0 && (
+              <DocRowsSection title="Linked Documents" docs={docItems} />
+            )}
+            <AttachmentsSection
+              title="SOPs / Manuals / Drawings"
+              attachments={documentAttachmentItems}
+              onAddFile={() => setDocUploadModalOpen(true)}
+              canAddFile
+            />
+            {docItems.length === 0 && documentAttachmentItems.length === 0 && (
+              <EmptyTab message="No documents yet. Upload SOPs, manuals, or drawings using the button above." />
+            )}
+          </div>
         );
       case 'faults':
         return faults.length > 0 ? (
@@ -735,6 +767,21 @@ export function WorkOrderContent() {
           entityId={wo_id}
           bucket="pms-work-order-photos"
           category="photo"
+          yachtId={yacht_id}
+          userId={session.user.id}
+        />
+      )}
+      {wo_id && yacht_id && session?.user?.id && (
+        <AttachmentUploadModal
+          open={docUploadModalOpen}
+          onClose={() => setDocUploadModalOpen(false)}
+          onComplete={() => setDocUploadModalOpen(false)}
+          title="Upload SOP / Manual / Drawing"
+          description="Attach a procedure, manual, or technical drawing to this work order."
+          entityType="work_order"
+          entityId={wo_id}
+          bucket="pms-work-order-documents"
+          category="document"
           yachtId={yacht_id}
           userId={session.user.id}
         />
