@@ -802,6 +802,24 @@ def process_item(cur, item: Dict) -> Tuple[bool, str]:
 
     org_id = str(row.get('org_id') or yacht_id)
 
+    # Custom serializer for HoR entries — builds human-readable compliance text
+    # from numeric/boolean fields that the generic text builder can't interpret.
+    if source_table == 'pms_hours_of_rest' and not search_text_override:
+        compliant = row.get('is_daily_compliant')
+        status_str = 'COMPLIANT' if compliant else 'NON-COMPLIANT'
+        record_date = str(row.get('record_date') or '')[:10]
+        rest_h = row.get('total_rest_hours') or 0
+        work_h = row.get('total_work_hours') or 0
+        notes_text = row.get('daily_compliance_notes') or ''
+        comment = row.get('crew_comment') or ''
+        hor_parts = [f"{status_str} rest record {record_date}",
+                     f"rest {rest_h}h work {work_h}h"]
+        if notes_text:
+            hor_parts.append(notes_text)
+        if comment:
+            hor_parts.append(comment)
+        search_text_override = ' '.join(hor_parts)
+
     # Document-specific: aggregate chunk keywords
     chunk_keywords = ""
     if source_table == 'doc_metadata':
