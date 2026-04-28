@@ -659,6 +659,29 @@
 }
 .checkUndo:hover { text-decoration: underline; }
 
+.checkInput {
+  width: 100%; margin-top: 4px; padding: 4px 8px;
+  font-size: 12px; font-family: var(--font-sans);
+  border: 1px solid var(--split-bg); border-radius: 4px;
+  background: var(--surface); color: var(--txt);
+  outline: none;
+}
+.checkInput:focus { border-color: var(--mark); }
+
+.checklistSubmitRow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0 4px; border-top: 1px solid var(--split-bg); margin-top: 4px;
+}
+.checklistSubmitBtn {
+  padding: 6px 16px; border-radius: var(--radius-sm, 6px);
+  background: var(--mark); color: var(--on-mark, #fff);
+  font-size: 12px; font-weight: 600; font-family: var(--font-sans);
+  border: none; cursor: pointer; transition: opacity 0.15s;
+}
+.checklistSubmitBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.checklistSubmitBtn:not(:disabled):hover { opacity: 0.85; }
+.checklistHint { font-size: 11px; color: var(--txt3); }
+
 .checkPhoto {
   display: inline-flex;
   align-items: center;
