@@ -273,6 +273,7 @@ _WORK_ORDER_ACTIONS = frozenset({
     "add_note_to_work_order", "add_part_to_work_order",
     "reassign_work_order", "archive_work_order",
     "add_parts_to_work_order", "view_work_order_checklist", "add_work_order_note",
+    "add_checklist_item", "mark_checklist_item_complete",
 })
 
 _PART_ACTIONS = frozenset({
@@ -604,6 +605,8 @@ async def execute_action(
                     "message": str(e),
                 }
             )
+        except HTTPException:
+            raise  # Pass handler-raised 404/403/400 through unchanged
         except Exception as e:
             logger.error(f"Handler error for action '{action}': {e}", exc_info=True)
             raise HTTPException(

@@ -48,7 +48,7 @@ import {
 } from '../../sections';
 
 import { EmptyTab, FaultsTabBody, EquipmentTabBody, AddCheckpointButton, SafetyTabBody } from './WOTabBodies';
-import { AddPartModal, AssignModal, AddChecklistItemModal, EditSOPModal, ArchiveWorkOrderModal } from './WOModals';
+import { AddPartModal, AssignModal, AddChecklistItemModal, EditSOPModal, ArchiveWorkOrderModal, type ChecklistRowItem } from './WOModals';
 
 // ─── Colour mapping helpers ───
 
@@ -672,13 +672,15 @@ export function WorkOrderContent() {
         open={checklistModalOpen}
         category={checklistCategory}
         onClose={() => setChecklistModalOpen(false)}
-        onSubmit={async (itemTitle, itemDescription) => {
-          await runAction('add_checklist_item', {
-            title: itemTitle,
-            description: itemDescription || undefined,
-            category: checklistCategory,
-            is_required: true,
-          });
+        onSubmit={async (items: ChecklistRowItem[]) => {
+          for (const item of items) {
+            await runAction('add_checklist_item', {
+              title: item.description,
+              category: checklistCategory,
+              item_type: item.itemType,
+              is_required: true,
+            });
+          }
           setChecklistModalOpen(false);
         }}
       />
