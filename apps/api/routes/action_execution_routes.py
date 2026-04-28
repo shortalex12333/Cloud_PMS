@@ -39,7 +39,8 @@ from handlers.inventory_handlers import InventoryHandlers
 from handlers.handover_handlers import HandoverHandlers, HandoverWorkflowHandlers
 from handlers.manual_handlers import ManualHandlers
 from action_router.validators import validate_payload_entities
-from middleware import validate_action_payload, InputValidationError, validate_state_transition, InvalidStateTransitionError
+from middleware.validation_middleware import validate_action_payload, InputValidationError
+from middleware.state_machine import validate_state_transition, InvalidStateTransitionError
 from action_router.registry import get_action
 from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
