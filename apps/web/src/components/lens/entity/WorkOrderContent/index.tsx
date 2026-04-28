@@ -48,7 +48,7 @@ import {
 } from '../../sections';
 
 import { EmptyTab, FaultsTabBody, EquipmentTabBody, AddCheckpointButton, SafetyTabBody } from './WOTabBodies';
-import { AddPartModal, AssignModal, AddChecklistItemModal, EditSOPModal, ArchiveWorkOrderModal, type ChecklistRowItem } from './WOModals';
+import { AddPartModal, AssignModal, AddChecklistItemModal, EditSOPModal, ArchiveWorkOrderModal, SetFrequencyModal, type ChecklistRowItem } from './WOModals';
 
 // ─── Colour mapping helpers ───
 
@@ -101,6 +101,7 @@ export function WorkOrderContent() {
   const [sopModalOpen, setSopModalOpen] = React.useState(false);
   const [archiveModalOpen, setArchiveModalOpen] = React.useState(false);
   const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
+  const [frequencyModalOpen, setFrequencyModalOpen] = React.useState(false);
 
   // Toast feedback for generic dropdown actions
   const [actionFeedback, setActionFeedback] = React.useState<{ msg: string; ok: boolean } | null>(null);
@@ -272,13 +273,19 @@ export function WorkOrderContent() {
   );
 
   // ── Split button config ──
+  // Checklist gate: any required item still pending blocks completion
+  const checklistIncomplete = !canStart &&
+    checklist.length > 0 &&
+    checklist.some((c) => !(c.is_completed ?? c.completed) && c.is_required !== false);
   const primaryLabel = canStart ? 'Start Work' : 'Mark Complete';
   const primaryDisabled = canStart
     ? (startAction?.disabled ?? false)
-    : !isCloseable || (closeAction?.disabled ?? false);
+    : !isCloseable || (closeAction?.disabled ?? false) || checklistIncomplete;
   const primaryDisabledReason = canStart
     ? startAction?.disabled_reason
-    : closeAction?.disabled_reason;
+    : checklistIncomplete
+      ? 'Complete the checklist before marking this work order done'
+      : closeAction?.disabled_reason;
 
   const handlePrimary = React.useCallback(async () => {
     if (canStart) {
@@ -300,6 +307,7 @@ export function WorkOrderContent() {
     assign_work_order:       () => setAssignOpen(true),
     reassign_work_order:     () => setAssignOpen(true),
     archive_work_order:      () => setArchiveModalOpen(true),
+    set_work_order_frequency: () => setFrequencyModalOpen(true),
   };
   const DANGER_ACTIONS = new Set(['archive_work_order', 'cancel_work_order', 'delete_work_order']);
 
@@ -436,6 +444,9 @@ export function WorkOrderContent() {
     completed: (c.completed ?? c.is_completed ?? c.done) as boolean ?? false,
     completedBy: (c.completed_by ?? c.completed_by_name) as string | undefined,
     completedAt: (c.completed_at) as string | undefined,
+    itemType: ((c.item_type ?? 'tick') as 'tick' | 'text' | 'measurement'),
+    actualValue: (c.actual_value) as string | undefined,
+    isRequired: c.is_required !== false,
   }));
 
   const docItems: DocRowItem[] = documents.map((d, i) => ({
@@ -447,9 +458,11 @@ export function WorkOrderContent() {
     onClick: d.document_id ? () => router.push(getEntityRoute('documents' as Parameters<typeof getEntityRoute>[0], d.document_id as string)) : undefined,
   }));
 
-  // ── Handle checklist toggle ──
-  const handleChecklistToggle = React.useCallback(
-    (itemId: string) => executeAction('mark_checklist_item_complete', { checklist_item_id: itemId }),
+  // ── Handle checklist batch submit ──
+  const handleChecklistSubmit = React.useCallback(
+    async (items: { checklist_item_id: string; actual_value?: string }[]) => {
+      await executeAction('submit_checklist', { items });
+    },
     [executeAction]
   );
 
@@ -522,7 +535,7 @@ export function WorkOrderContent() {
       case 'checklist':
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <ChecklistSection items={checklistItems} onToggle={handleChecklistToggle} />
+            <ChecklistSection items={checklistItems} onSubmit={handleChecklistSubmit} />
             <AddCheckpointButton onClick={handleAddGeneralCheckpoint} label="+ Add Checklist Item" />
           </div>
         );
@@ -577,7 +590,7 @@ export function WorkOrderContent() {
             sopText={sopText}
             sopDocumentId={sopDocumentId}
             safetyItems={safetyItems}
-            onToggle={handleChecklistToggle}
+            onSubmit={handleChecklistSubmit}
             onAddCheckpoint={handleAddSafetyCheckpoint}
             onEditSOP={handleEditSOP}
             onOpenSOPDoc={
@@ -699,6 +712,16 @@ export function WorkOrderContent() {
         onSubmit={async (reason, signature) => {
           await runAction('archive_work_order', { deletion_reason: reason, signature });
           setArchiveModalOpen(false);
+        }}
+      />
+      <SetFrequencyModal
+        open={frequencyModalOpen}
+        currentFrequency={(entity as Record<string, unknown>)?.frequency as number | null | undefined}
+        currentDueDate={(entity as Record<string, unknown>)?.due_date as string | null | undefined}
+        onClose={() => setFrequencyModalOpen(false)}
+        onSubmit={async (frequency, dueDate) => {
+          await runAction('set_work_order_frequency', { frequency, due_date: dueDate });
+          setFrequencyModalOpen(false);
         }}
       />
       {wo_id && yacht_id && session?.user?.id && (

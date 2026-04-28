@@ -575,3 +575,133 @@ export function ArchiveWorkOrderModal({
     </div>
   );
 }
+
+// ── SetFrequencyModal ────────────────────────────────────────────────────────
+
+export function SetFrequencyModal({
+  open,
+  currentFrequency,
+  currentDueDate,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  currentFrequency?: number | null;
+  currentDueDate?: string | null;
+  onClose: () => void;
+  onSubmit: (frequency: number, dueDate: string) => Promise<void>;
+}) {
+  const [frequency, setFrequency] = React.useState<string>(currentFrequency ? String(currentFrequency) : '');
+  const [dueDate, setDueDate] = React.useState<string>(currentDueDate ?? '');
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  React.useEffect(() => {
+    if (open) {
+      setFrequency(currentFrequency ? String(currentFrequency) : '');
+      setDueDate(currentDueDate ?? '');
+      setError('');
+    }
+  }, [open, currentFrequency, currentDueDate]);
+
+  const PRESETS = [
+    { label: 'Daily', days: 1 },
+    { label: 'Weekly', days: 7 },
+    { label: 'Monthly', days: 30 },
+    { label: 'Quarterly', days: 90 },
+    { label: 'Annual', days: 365 },
+  ];
+
+  const freqNum = parseFloat(frequency);
+  const canSubmit = !submitting && !isNaN(freqNum) && freqNum > 0 && dueDate.length > 0;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await onSubmit(freqNum, dueDate);
+      onClose();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to set frequency');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!open) return null;
+
+  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: 'var(--txt2)',
+    marginBottom: 4, display: 'block', fontFamily: 'var(--font-sans)' };
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '7px 10px', fontSize: 13,
+    borderRadius: 6, border: '1px solid var(--border-sub)', background: 'var(--surface)',
+    color: 'var(--txt)', fontFamily: 'var(--font-sans)', outline: 'none', boxSizing: 'border-box' };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 10, padding: 24, width: 360,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--txt)', fontFamily: 'var(--font-sans)' }}>
+          Set Frequency
+        </div>
+
+        {/* Presets */}
+        <div>
+          <label style={labelStyle}>Quick select</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {PRESETS.map((p) => (
+              <button key={p.days} type="button"
+                onClick={() => setFrequency(String(p.days))}
+                style={{ padding: '4px 10px', borderRadius: 4, fontSize: 11,
+                  border: '1px solid var(--border-sub)', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                  background: parseFloat(frequency) === p.days ? 'var(--mark)' : 'transparent',
+                  color: parseFloat(frequency) === p.days ? 'var(--on-mark, #fff)' : 'var(--txt2)' }}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom days */}
+        <div>
+          <label style={labelStyle}>Frequency / days</label>
+          <input style={inputStyle} type="number" min="1" step="1"
+            placeholder="e.g. 14 (fortnightly)"
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value)} />
+          <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 3, fontFamily: 'var(--font-sans)' }}>
+            {freqNum > 0 ? `Next WO due ${freqNum} days after completion` : 'Enter number of days'}
+          </div>
+        </div>
+
+        {/* Due date */}
+        <div>
+          <label style={labelStyle}>Due date / {currentDueDate ?? 'not set'}</label>
+          <input style={inputStyle} type="date" value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)} />
+        </div>
+
+        {error && <div style={{ fontSize: 12, color: 'var(--red)', fontFamily: 'var(--font-sans)' }}>{error}</div>}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} style={{
+            padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-sub)',
+            background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+          }}>Cancel</button>
+          <button type="button" onClick={handleSubmit} disabled={!canSubmit} style={{
+            padding: '8px 14px', borderRadius: 6, border: 'none',
+            background: canSubmit ? 'var(--mark)' : 'var(--border-faint)',
+            color: canSubmit ? 'var(--on-mark, #fff)' : 'var(--txt3)',
+            fontSize: 13, cursor: canSubmit ? 'pointer' : 'not-allowed',
+            fontFamily: 'var(--font-sans)', fontWeight: 500,
+          }}>
+            {submitting ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

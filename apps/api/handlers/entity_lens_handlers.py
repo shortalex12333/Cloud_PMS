@@ -1051,7 +1051,8 @@ class EntityLensHandlers:
 
         try:
             checklist_response = supabase.table('pms_work_order_checklist').select(
-                'id, title, description, is_completed, completed_by, completed_at, sequence'
+                'id, title, description, is_completed, completed_by, completed_at, '
+                'sequence, item_type, actual_value, is_required'
             ).eq('work_order_id', wo_id).order('sequence').execute()
             checklist = checklist_response.data if checklist_response.data else []
         except Exception:
@@ -1085,6 +1086,7 @@ class EntityLensHandlers:
             "created_at": data.get('created_at'),
             "updated_at": data.get('updated_at'),
             "due_date": data.get('due_date'),
+            "frequency": data.get('frequency'),
             "completed_at": data.get('completed_at'),
             "completed_by": data.get('completed_by'),
             "fault_id": data.get('fault_id'),

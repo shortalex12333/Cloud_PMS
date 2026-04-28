@@ -169,7 +169,7 @@ export function SafetyTabBody({
   sopText,
   sopDocumentId,
   safetyItems,
-  onToggle,
+  onSubmit,
   onAddCheckpoint,
   onEditSOP,
   onOpenSOPDoc,
@@ -177,7 +177,7 @@ export function SafetyTabBody({
   sopText?: string;
   sopDocumentId?: string;
   safetyItems: Array<Record<string, unknown>>;
-  onToggle: (itemId: string) => void;
+  onSubmit: (items: { checklist_item_id: string; actual_value?: string }[]) => Promise<void>;
   onAddCheckpoint: () => void;
   onEditSOP: () => void;
   onOpenSOPDoc?: () => void;
@@ -319,7 +319,7 @@ export function SafetyTabBody({
               <button
                 key={r.id}
                 type="button"
-                onClick={!r.is_completed ? () => onToggle(r.id) : undefined}
+                onClick={!r.is_completed ? () => onSubmit([{ checklist_item_id: r.id }]) : undefined}
                 disabled={r.is_completed}
                 style={{
                   appearance: 'none',

@@ -388,8 +388,18 @@ async def close_work_order(
     user_context: dict, db_client: Client,
 ) -> dict:
     work_order_id = payload.get("work_order_id")
-    prev = (db_client.table("pms_work_orders").select("id, title, status")
-            .eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute().data or {})
+    prev = (db_client.table("pms_work_orders").select(
+        "id, title, status, frequency, due_date, work_order_type, priority, "
+        "equipment_id, assigned_to, fault_id, system_name, system_id"
+    ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute().data or {})
+
+    # Checklist gate
+    checklist_check = db_client.table("pms_work_order_checklist").select("id").eq(
+        "work_order_id", work_order_id).eq("yacht_id", yacht_id).eq("is_required", True).eq("is_completed", False).execute()
+    if checklist_check.data:
+        remaining = len(checklist_check.data)
+        return {"status": "error", "error_code": "CHECKLIST_INCOMPLETE",
+                "message": f"Checklist incomplete: {remaining} required item{'s' if remaining > 1 else ''} not yet completed"}
     update_data = {
         "status": "completed",
         "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -405,7 +415,64 @@ async def close_work_order(
     _ledger(db_client, yacht_id, user_id, "status_change", "work_order", work_order_id, "close_work_order",
             user_context.get("role", ""), f"Status: {prev.get('status')} → completed",
             entity_name=prev.get("title", ""))
-    return {"status": "success", "message": "Work order closed", "_ledger_written": True}
+
+    # Frequency spawn
+    next_wo_id = None
+    frequency_days = prev.get("frequency")
+    if frequency_days:
+        from datetime import date, timedelta
+        try:
+            freq = float(frequency_days)
+            base_due = prev.get("due_date")
+            base = date.fromisoformat(str(base_due)) if base_due else date.today()
+            next_due = (base + timedelta(days=freq)).isoformat()
+            next_wo_data = {
+                "yacht_id": yacht_id,
+                "title": prev.get("title", ""),
+                "description": prev.get("description", ""),
+                "priority": prev.get("priority", "routine"),
+                "status": "planned",
+                "work_order_type": prev.get("work_order_type", "planned"),
+                "frequency": freq,
+                "due_date": next_due,
+                "created_by": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            for field in ("equipment_id", "assigned_to", "fault_id", "system_name", "system_id"):
+                if prev.get(field):
+                    next_wo_data[field] = prev[field]
+            next_res = db_client.table("pms_work_orders").insert(next_wo_data).execute()
+            if next_res.data:
+                next_wo_id = next_res.data[0]["id"]
+                checklist_src = db_client.table("pms_work_order_checklist").select(
+                    "title, description, sequence, is_required, item_type, unit"
+                ).eq("work_order_id", work_order_id).eq("yacht_id", yacht_id).order("sequence").execute()
+                for item in (checklist_src.data or []):
+                    db_client.table("pms_work_order_checklist").insert({
+                        "id": str(uuid_module.uuid4()),
+                        "yacht_id": yacht_id,
+                        "work_order_id": next_wo_id,
+                        "title": item["title"],
+                        "description": item.get("description"),
+                        "sequence": item["sequence"],
+                        "is_required": item.get("is_required", True),
+                        "item_type": item.get("item_type", "tick"),
+                        "unit": item.get("unit"),
+                        "is_completed": False,
+                        "created_by": user_id,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }).execute()
+                _ledger(db_client, yacht_id, user_id, "create", "work_order", next_wo_id,
+                        "frequency_spawn", user_context.get("role", ""),
+                        f"Recurring WO spawned from {prev.get('wo_number', work_order_id)}",
+                        metadata={"parent_work_order_id": work_order_id, "frequency_days": freq, "due_date": next_due})
+        except Exception as e:
+            logger.warning(f"Frequency spawn failed (close) for {work_order_id}: {e}")
+
+    result: dict = {"status": "success", "message": "Work order closed", "_ledger_written": True}
+    if next_wo_id:
+        result["next_work_order_id"] = next_wo_id
+    return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -438,7 +505,10 @@ async def mark_work_order_complete(
     if signature.get("user_id") != user_id:
         return {"status": "error", "error_code": "INVALID_SIGNATURE", "message": "Signature does not match user"}
 
-    wo_result = db_client.table("pms_work_orders").select("id, wo_number, status").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    wo_result = db_client.table("pms_work_orders").select(
+        "id, wo_number, status, due_date, frequency, title, description, priority, "
+        "work_order_type, equipment_id, assigned_to, fault_id, system_name, system_id"
+    ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
     if not wo_result.data:
         return {"status": "error", "error_code": "WO_NOT_FOUND", "message": f"Work order not found: {work_order_id}"}
     wo = wo_result.data
@@ -446,6 +516,14 @@ async def mark_work_order_complete(
         return {"status": "error", "error_code": "WO_CLOSED", "message": f"Work order is already {wo['status']}"}
     if len(completion_notes.strip()) < 10:
         return {"status": "error", "error_code": "VALIDATION_ERROR", "message": "Completion notes must be at least 10 characters"}
+
+    # Checklist gate: block completion if required items are outstanding
+    checklist_check = db_client.table("pms_work_order_checklist").select("id, title").eq(
+        "work_order_id", work_order_id).eq("yacht_id", yacht_id).eq("is_required", True).eq("is_completed", False).execute()
+    if checklist_check.data:
+        remaining = len(checklist_check.data)
+        return {"status": "error", "error_code": "CHECKLIST_INCOMPLETE",
+                "message": f"Checklist incomplete: {remaining} required item{'s' if remaining > 1 else ''} not yet completed"}
 
     # Deduct parts from inventory
     inventory_updates = []
@@ -479,8 +557,70 @@ async def mark_work_order_complete(
             user_context.get("role", ""), "Work order marked as complete",
             metadata={"completion_notes": completion_notes, "parts_used_count": len(inventory_updates)})
 
+    # Frequency spawn: if frequency is set, create the next recurrence
+    next_wo_id = None
+    frequency_days = wo.get("frequency")
+    if frequency_days:
+        from datetime import date, timedelta
+        try:
+            freq = float(frequency_days)
+            base_due = wo.get("due_date")
+            if base_due:
+                base = date.fromisoformat(str(base_due))
+            else:
+                base = date.today()
+            next_due = (base + timedelta(days=freq)).isoformat()
+
+            next_wo_data = {
+                "yacht_id": yacht_id,
+                "title": wo["title"],
+                "description": wo.get("description", ""),
+                "priority": wo.get("priority", "routine"),
+                "status": "planned",
+                "work_order_type": wo.get("work_order_type", "planned"),
+                "frequency": freq,
+                "due_date": next_due,
+                "created_by": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            for field in ("equipment_id", "assigned_to", "fault_id", "system_name", "system_id"):
+                if wo.get(field):
+                    next_wo_data[field] = wo[field]
+
+            next_res = db_client.table("pms_work_orders").insert(next_wo_data).execute()
+            if next_res.data:
+                next_wo_id = next_res.data[0]["id"]
+                # Copy checklist definitions (not completion state)
+                checklist_src = db_client.table("pms_work_order_checklist").select(
+                    "title, description, sequence, is_required, item_type, unit"
+                ).eq("work_order_id", work_order_id).eq("yacht_id", yacht_id).order("sequence").execute()
+                for item in (checklist_src.data or []):
+                    db_client.table("pms_work_order_checklist").insert({
+                        "id": str(uuid_module.uuid4()),
+                        "yacht_id": yacht_id,
+                        "work_order_id": next_wo_id,
+                        "title": item["title"],
+                        "description": item.get("description"),
+                        "sequence": item["sequence"],
+                        "is_required": item.get("is_required", True),
+                        "item_type": item.get("item_type", "tick"),
+                        "unit": item.get("unit"),
+                        "is_completed": False,
+                        "created_by": user_id,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }).execute()
+                _ledger(db_client, yacht_id, user_id, "create", "work_order", next_wo_id,
+                        "frequency_spawn", user_context.get("role", ""),
+                        f"Recurring WO spawned from {wo.get('wo_number', work_order_id)}",
+                        metadata={"parent_work_order_id": work_order_id, "frequency_days": freq, "due_date": next_due})
+        except Exception as e:
+            logger.warning(f"Frequency spawn failed for {work_order_id}: {e}")
+
+    result = {"work_order": {**update_data, "id": work_order_id}, "inventory_updates": inventory_updates}
+    if next_wo_id:
+        result["next_work_order_id"] = next_wo_id
     return {"status": "success", "action": "mark_work_order_complete",
-            "result": {"work_order": {**update_data, "id": work_order_id}, "inventory_updates": inventory_updates},
+            "result": result,
             "message": f"Work order marked as complete"}
 
 
@@ -840,7 +980,7 @@ async def add_checklist_item(
     next_seq = (existing.data[0]["sequence"] + 1) if existing.data else 1
 
     item_type = payload.get("item_type", "tick")
-    if item_type not in ("tick", "measurement"):
+    if item_type not in ("tick", "text", "measurement"):
         item_type = "tick"
 
     new_item = {
@@ -872,6 +1012,8 @@ async def add_checklist_item(
     _ledger(db_client, yacht_id, user_id, "create", "checklist_item", new_item["id"], "add_checklist_item",
             user_context.get("role", ""), f"Checklist item added: {title}",
             metadata={"work_order_id": work_order_id})
+    await _audit(db_client, yacht_id, "add_checklist_item", "work_order", work_order_id, user_id,
+                 new_values={"checklist_item_id": new_item["id"], "title": title, "item_type": item_type})
     return {"status": "success", "success": True, "message": "Checklist item added", "data": result_data}
 
 
@@ -914,6 +1056,115 @@ async def mark_checklist_item_complete(
             "mark_checklist_item_complete", user_context.get("role", ""), "Checklist item marked complete",
             metadata={"actual_value": actual_value})
     return {"status": "success", "success": True, "message": "Checklist item marked as complete", "checklist_item_id": checklist_item_id}
+
+
+async def submit_checklist(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Client,
+) -> dict:
+    """Batch-complete checklist items. Accepts array of {checklist_item_id, actual_value?}.
+    Marks all provided items complete in a single operation."""
+    work_order_id = payload.get("work_order_id") or context.get("work_order_id")
+    items = payload.get("items") or []
+    if not work_order_id:
+        raise HTTPException(status_code=400, detail="work_order_id is required")
+    if not items:
+        raise HTTPException(status_code=400, detail="items array is required and must not be empty")
+
+    wo = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not wo.data:
+        raise HTTPException(status_code=404, detail="Work order not found or access denied")
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    updated_ids = []
+    for item in items:
+        item_id = item.get("checklist_item_id") or item.get("id")
+        if not item_id:
+            continue
+        update_data: dict = {
+            "is_completed": True,
+            "completed_at": completed_at,
+            "completed_by": user_id,
+        }
+        actual_value = item.get("actual_value")
+        if actual_value is not None:
+            update_data["actual_value"] = str(actual_value)
+        try:
+            db_client.table("pms_work_order_checklist").update(update_data).eq(
+                "id", item_id).eq("work_order_id", work_order_id).eq("yacht_id", yacht_id).execute()
+            updated_ids.append(item_id)
+        except Exception as e:
+            if "204" not in str(e):
+                logger.warning(f"submit_checklist: failed to update item {item_id}: {e}")
+
+    _ledger(db_client, yacht_id, user_id, "status_change", "work_order", work_order_id,
+            "submit_checklist", user_context.get("role", ""),
+            f"Checklist submitted: {len(updated_ids)} item(s) marked complete",
+            metadata={"item_count": len(updated_ids), "item_ids": updated_ids})
+    await _audit(db_client, yacht_id, "submit_checklist", "work_order", work_order_id, user_id,
+                 new_values={"items_completed": len(updated_ids), "item_ids": updated_ids})
+
+    # Return updated checklist state
+    checklist_res = db_client.table("pms_work_order_checklist").select(
+        "id, title, is_completed, completed_at, completed_by, item_type, actual_value, is_required, sequence"
+    ).eq("work_order_id", work_order_id).eq("yacht_id", yacht_id).order("sequence").execute()
+    checklist = checklist_res.data or []
+    total = len(checklist)
+    completed_count = sum(1 for i in checklist if i.get("is_completed"))
+    return {
+        "status": "success", "success": True,
+        "message": f"{len(updated_ids)} checklist item(s) marked complete",
+        "checklist": checklist,
+        "progress": {"completed": completed_count, "total": total,
+                     "percent": round(completed_count / total * 100, 1) if total else 0},
+    }
+
+
+async def set_work_order_frequency(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Client,
+) -> dict:
+    """Set or update frequency (days) and optionally due_date on a work order."""
+    work_order_id = payload.get("work_order_id") or context.get("work_order_id")
+    frequency = payload.get("frequency")
+    if not work_order_id:
+        raise HTTPException(status_code=400, detail="work_order_id is required")
+    if frequency is None:
+        raise HTTPException(status_code=400, detail="frequency (days) is required")
+    try:
+        frequency = float(frequency)
+        if frequency <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="frequency must be a positive number (days)")
+
+    wo = db_client.table("pms_work_orders").select("id, frequency, due_date").eq(
+        "id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not wo.data:
+        raise HTTPException(status_code=404, detail="Work order not found or access denied")
+
+    update_data: dict = {"frequency": frequency}
+    due_date = payload.get("due_date")
+    if due_date:
+        update_data["due_date"] = due_date
+
+    try:
+        db_client.table("pms_work_orders").update(update_data).eq(
+            "id", work_order_id).eq("yacht_id", yacht_id).execute()
+    except Exception as e:
+        if "204" not in str(e):
+            raise
+
+    _ledger(db_client, yacht_id, user_id, "update", "work_order", work_order_id,
+            "set_work_order_frequency", user_context.get("role", ""),
+            f"Frequency set to {frequency} days",
+            metadata={"frequency_days": frequency, "due_date": due_date})
+    await _audit(db_client, yacht_id, "set_work_order_frequency", "work_order", work_order_id, user_id,
+                 old_values={"frequency": wo.data.get("frequency"), "due_date": wo.data.get("due_date")},
+                 new_values=update_data)
+    return {"status": "success", "success": True,
+            "message": f"Frequency set to {frequency} days",
+            "frequency": frequency, "due_date": due_date}
 
 
 async def add_checklist_note(
@@ -1193,9 +1444,12 @@ HANDLERS: dict = {
     "add_work_order_photo":             add_work_order_photo,
     # Checklist
     "add_checklist_item":               add_checklist_item,
+    "submit_checklist":                 submit_checklist,
     "mark_checklist_item_complete":     mark_checklist_item_complete,
     "add_checklist_note":               add_checklist_note,
     "add_checklist_photo":              add_checklist_photo,
+    # Frequency
+    "set_work_order_frequency":         set_work_order_frequency,
     # Read / view
     "list_work_orders":                 list_work_orders,
     "view_work_order_detail":           view_work_order_detail,
