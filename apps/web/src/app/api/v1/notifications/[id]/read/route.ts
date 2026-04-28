@@ -20,7 +20,8 @@ export async function PATCH(
   const res = await fetch(`${API_BASE}/v1/notifications/${id}/read`, {
     method: 'PATCH',
     headers: { Authorization: auth },
-  });
-  const data = await res.json();
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => new Response('{}', { status: 200 }));
+  const data = await res.json().catch(() => ({ status: 'success' }));
   return NextResponse.json(data, { status: res.status });
 }

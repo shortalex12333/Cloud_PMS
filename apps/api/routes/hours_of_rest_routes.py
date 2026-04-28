@@ -1090,9 +1090,9 @@ async def get_hor_sign_chain_route(
 # ============================================================================
 
 def _get_hor_handlers_direct(tenant_key_alias: str) -> HoursOfRestHandlers:
-    """Instantiate HoursOfRestHandlers directly (no caching, for compliance views)."""
-    supabase = get_tenant_client(tenant_key_alias)
-    if not supabase:
+    try:
+        supabase = get_tenant_client(tenant_key_alias)
+    except Exception:
         raise HTTPException(status_code=503, detail={"error": "DB_UNAVAILABLE"})
     return HoursOfRestHandlers(supabase)
 
