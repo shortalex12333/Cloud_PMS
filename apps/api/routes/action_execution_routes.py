@@ -276,6 +276,7 @@ _WORK_ORDER_ACTIONS = frozenset({
     "add_parts_to_work_order", "view_work_order_checklist", "add_work_order_note",
     "add_checklist_item", "mark_checklist_item_complete",
     "submit_checklist", "set_work_order_frequency",
+    "link_fault_to_work_order", "link_equipment_to_work_order",
 })
 
 _PART_ACTIONS = frozenset({
