@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import HTTPException
-from actions.action_response_schema import ResponseBuilder, AvailableAction
+from schemas.action_response_schema import ResponseBuilder, AvailableAction
 from handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)

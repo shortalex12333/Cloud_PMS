@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from actions.action_response_schema import (
+from schemas.action_response_schema import (
     ResponseBuilder,
     AvailableAction,
 )

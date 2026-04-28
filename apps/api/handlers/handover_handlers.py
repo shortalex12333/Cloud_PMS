@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from actions.action_response_schema import ResponseBuilder
+from schemas.action_response_schema import ResponseBuilder
 from handlers.ledger_utils import build_ledger_event
 from action_router.entity_actions import get_available_actions
 from lib.entity_helpers import _sign_url, _nav
