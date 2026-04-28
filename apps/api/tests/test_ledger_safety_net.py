@@ -103,16 +103,26 @@ async def test_safety_net_fires_for_adapter_action(auth_client):
         chain = MagicMock()
         chain.execute.return_value = MagicMock(data=[{"id": "ok"}])
         chain.eq.return_value = chain
+        chain.like.return_value = chain
+        chain.is_.return_value = chain
         chain.insert.return_value = chain
+
+        # RLS validator calls .maybe_single().execute() and expects data={"yacht_id": ...}
+        _rls_result = MagicMock()
+        _rls_result.data = {"yacht_id": YACHT_ID}
+        _maybe_chain = MagicMock()
+        _maybe_chain.execute.return_value = _rls_result
+        chain.maybe_single.return_value = _maybe_chain
 
         if table_name == "ledger_events":
             def _track_insert(data):
                 ledger_insert_calls.append(data)
                 return chain
-            chain.insert.side_effect = _track_insert
+            tbl.insert.side_effect = _track_insert
+        else:
+            tbl.insert.return_value = chain
 
         tbl.select.return_value = chain
-        tbl.insert.return_value = chain
         tbl.update.return_value = chain
         return tbl
 
@@ -156,17 +166,25 @@ async def test_safety_net_skips_when_ledger_written_set(auth_client):
         chain = MagicMock()
         chain.execute.return_value = MagicMock(data=[{"id": "ok"}])
         chain.eq.return_value = chain
+        chain.like.return_value = chain
+        chain.is_.return_value = chain
+
+        # RLS validator calls .maybe_single().execute() and expects data={"yacht_id": ...}
+        _rls_result = MagicMock()
+        _rls_result.data = {"yacht_id": YACHT_ID}
+        _maybe_chain = MagicMock()
+        _maybe_chain.execute.return_value = _rls_result
+        chain.maybe_single.return_value = _maybe_chain
 
         if table_name == "ledger_events":
             def _track_insert(data):
                 ledger_insert_calls.append(data)
                 return chain
-            chain.insert.side_effect = _track_insert
+            tbl.insert.side_effect = _track_insert
         else:
-            chain.insert.return_value = chain
+            tbl.insert.return_value = chain
 
         tbl.select.return_value = chain
-        tbl.insert.return_value = chain
         tbl.update.return_value = chain
         return tbl
 

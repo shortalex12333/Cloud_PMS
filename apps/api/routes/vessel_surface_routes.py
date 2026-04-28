@@ -1628,13 +1628,13 @@ async def action_prefill(
                     }.items() if v is not None
                 }
 
-        elif action_id == "issue_warranty_claim":
+        elif action_id in ("file_warranty_claim", "draft_warranty_claim"):
             if source_type in ("part", "parts"):
                 prefill = {
                     k: v for k, v in {
                         "part_id": entity.get("id"),
                         "part_name": entity.get("name"),
-                        "supplier": entity.get("supplier"),
+                        "vendor_name": entity.get("supplier"),
                         "equipment_id": entity.get("equipment_id"),
                     }.items() if v is not None
                 }
