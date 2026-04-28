@@ -5,7 +5,7 @@
  * Data layer reuses production hooks (useEntityLens, EntityLensContext).
  *
  * Phase 1: Built in parallel — zero production files touched.
- * Phase 3: Atomic swap — git mv lens lens-deprecated, git mv lens-v2 lens.
+ * 
  */
 
 // Core components

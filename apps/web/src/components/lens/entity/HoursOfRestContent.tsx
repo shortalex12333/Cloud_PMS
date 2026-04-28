@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * HoursOfRestContent — lens-v2 entity view.
+ * HoursOfRestContent — lens entity view.
  * Prototype: public/prototypes/lens-hours-of-rest.html
  *
  * Data flow:

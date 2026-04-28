@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import lensStyles from '@/components/lens-v2/lens.module.css';
+import lensStyles from '@/components/lens/lens.module.css';
 import { useEntityLens } from '@/hooks/useEntityLens';
 import { EntityLensProvider } from '@/contexts/EntityLensContext';
 import { useReadBeacon } from '@/hooks/useReadBeacon';
@@ -13,11 +13,9 @@ import { RelatedDrawer } from './RelatedDrawer';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import type { EntityType, AvailableAction, ActionResult } from '@/types/entity';
 import { getActionDisplay } from '@/types/actions';
-import { ActionPopup } from '@/components/lens-v2/ActionPopup';
-import type { ActionPopupField } from '@/components/lens-v2/ActionPopup';
-
-// Fields handled automatically — never require user input in the form
-const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+import { ActionPopup } from '@/components/lens/ActionPopup';
+import type { ActionPopupField } from '@/components/lens/ActionPopup';
+import { FORM_BACKEND_AUTO as BACKEND_AUTO } from '@/lib/field-schema';
 
 /**
  * Returns true if the action has required fields that are not covered by

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * LensGlassHeader — Glass nav bar for lens-v2.
+ * LensGlassHeader — Glass nav bar for lens.
  * Matches prototype lens-hdr: 56px, frosted glass, back/type/related/theme/close.
  */
 

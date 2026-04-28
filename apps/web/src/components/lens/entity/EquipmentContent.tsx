@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * EquipmentContent — lens-v2 entity view.
+ * EquipmentContent — lens entity view.
  * Prototype: public/prototypes/lens-equipment.html
  *
  * Data flow:
@@ -56,10 +56,10 @@ import {
   type PartItem,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
-import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
-import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens/actions/AttachmentUploadModal';
 import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
-import { FileWarrantyClaimModal } from '@/components/lens-v2/actions/FileWarrantyClaimModal';
+import { FileWarrantyClaimModal } from '@/components/lens/actions/FileWarrantyClaimModal';
 
 // ── Threaded-comment shape (from list_attachment_comments) ──
 // Kept local to this file — the cohort LensImageViewer is single-caption MVP and

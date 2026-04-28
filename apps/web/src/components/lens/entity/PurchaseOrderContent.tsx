@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * PurchaseOrderContent — lens-v2 entity view.
+ * PurchaseOrderContent — lens entity view.
  * Prototype: public/prototypes/lens-purchase-order.html
  *
  * Layout: IdentityStrip (sticky) → 7-tab LensTabBar
@@ -18,7 +18,7 @@ import { LensTabBar, type LensTab } from '../LensTabBar';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
-import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
 import { supabase } from '@/lib/supabaseClient';
 
 // Sections

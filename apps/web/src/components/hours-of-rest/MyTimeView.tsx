@@ -16,7 +16,7 @@ import * as React from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { TimeSlider, invertToRestPeriods, type RestPeriod } from './TimeSlider';
-import { ActionPopup, type ActionPopupField } from '@/components/lens-v2/ActionPopup';
+import { ActionPopup, type ActionPopupField } from '@/components/lens/ActionPopup';
 
 // (mock removed — all data comes from GET /v1/hours-of-rest/my-week)
 

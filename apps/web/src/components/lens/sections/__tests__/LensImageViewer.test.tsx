@@ -1,4 +1,4 @@
-// apps/web/src/components/lens-v2/sections/__tests__/LensImageViewer.test.tsx
+// apps/web/src/components/lens/sections/__tests__/LensImageViewer.test.tsx
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';

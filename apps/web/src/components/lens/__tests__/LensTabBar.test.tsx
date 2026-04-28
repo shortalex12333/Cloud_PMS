@@ -1,4 +1,4 @@
-// apps/web/src/components/lens-v2/__tests__/LensTabBar.test.tsx
+// apps/web/src/components/lens/__tests__/LensTabBar.test.tsx
 //
 // LensTabBar contract tests — the component is shared across lenses
 // (work-orders adopts first in PR-WO-3) so regressions must be caught early.

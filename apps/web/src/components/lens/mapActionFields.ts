@@ -10,9 +10,7 @@
  */
 
 import type { ActionPopupField } from './ActionPopup';
-
-/** Fields the backend handles automatically — never shown in the form */
-const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+import { FORM_BACKEND_AUTO as BACKEND_AUTO } from '@/lib/field-schema';
 
 interface FieldSchemaDef {
   name: string;

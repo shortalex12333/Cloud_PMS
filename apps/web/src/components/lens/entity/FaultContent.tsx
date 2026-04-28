@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * FaultContent — lens-v2 entity view (full redesign, Issue 7 v2).
+ * FaultContent — lens entity view (full redesign, Issue 7 v2).
  *
  * Data flow:
  * - Entity data from useEntityLensContext() → backend /v1/entity/{type}/{id}
@@ -34,8 +34,8 @@ import { ScrollReveal } from '../ScrollReveal';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
-import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
-import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens/actions/AttachmentUploadModal';
 import { useAuth } from '@/hooks/useAuth';
 
 // Sections

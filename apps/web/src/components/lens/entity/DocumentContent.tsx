@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * DocumentContent — lens-v2 entity view (v3 redesign).
+ * DocumentContent — lens entity view (v3 redesign).
  *
  * Per doc_cert_ux_change.md (2026-04-23), the file being rendered is the
  * primary focus of the lens. Metadata is subsidiary. The section order and
@@ -65,8 +65,8 @@ import {
   type RenewalHistoryPeriod,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
-import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
-import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens/actions/AttachmentUploadModal';
 import { useAuth } from '@/hooks/useAuth';
 
 // ─── Colour mapping helpers ───

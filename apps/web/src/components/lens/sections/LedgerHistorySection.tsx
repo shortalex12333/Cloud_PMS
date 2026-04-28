@@ -208,7 +208,7 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
  * LedgerHistorySection - Read-only ledger of audit log entries for an entity.
  *
  * Shows who did what, when — user actions (created, edited, closed, etc.).
- * Distinct from lens-v2/sections/HistorySection (prior service periods).
+ * Distinct from "@/components/lens/sections/HistorySection (prior service periods).
  *
  * - No action button (read-only by design)
  * - Most recent first (caller is responsible for sort order)

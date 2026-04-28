@@ -4,13 +4,13 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
-import { ReceivingContent } from '@/components/lens-v2/entity';
+import { EntityLensPage } from '@/components/lens/EntityLensPage';
+import { ReceivingContent } from '@/components/lens/entity';
 import { RECEIVING_FILTERS } from '@/features/entity-list/types/filter-config';
 import { receivingToListResult } from '@/features/receiving/adapter';
 import { RECEIVING_COLUMNS } from '@/features/receiving/columns';
 import type { ReceivingItem } from '@/features/receiving/types';
-import lensStyles from '@/components/lens-v2/lens.module.css';
+import lensStyles from '@/components/lens/lens.module.css';
 
 function LensContent() {
   return <div className={lensStyles.root}><ReceivingContent /></div>;

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ReceivingContent — lens-v2 entity view.
+ * ReceivingContent — lens entity view.
  * Prototype: public/prototypes/lens-receiving.html
  *
  * Data flow:

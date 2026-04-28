@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * HoRSignoffContent — lens-v2 entity view for monthly HoR sign-offs.
+ * HoRSignoffContent — lens entity view for monthly HoR sign-offs.
  * Prototype: public/prototypes/hor-signoffs.html (detail panel)
  *
  * This is the detail panel that opens when you click a sign-off row on the

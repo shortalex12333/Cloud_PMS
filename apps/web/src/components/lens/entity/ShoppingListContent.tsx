@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ShoppingListContent — lens-v2 entity view for a single shopping-list item.
+ * ShoppingListContent — lens entity view for a single shopping-list item.
  * Prototype: public/prototypes/lens-shopping-list.html
  * UX spec:   /Users/celeste7/Desktop/lens_card_upgrades.md § "shopping list"
  *
@@ -47,7 +47,7 @@ import {
   type KVItem,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
-import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { AttachmentUploadModal } from '@/components/lens/actions/AttachmentUploadModal';
 import { useAuth } from '@/hooks/useAuth';
 
 // ── Pill + format helpers ─────────────────────────────────────────────────────

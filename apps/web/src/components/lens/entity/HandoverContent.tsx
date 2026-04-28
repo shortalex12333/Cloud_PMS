@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * HandoverContent — lens-v2 entity view.
+ * HandoverContent — lens entity view.
  * Prototype: public/prototypes/lens-handover.html
  *
  * Data flow:

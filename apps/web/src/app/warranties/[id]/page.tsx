@@ -11,9 +11,9 @@
  */
 
 import { useParams } from 'next/navigation';
-import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
-import { WarrantyContent } from '@/components/lens-v2/entity';
-import lensStyles from '@/components/lens-v2/lens.module.css';
+import { EntityLensPage } from '@/components/lens/EntityLensPage';
+import { WarrantyContent } from '@/components/lens/entity';
+import lensStyles from '@/components/lens/lens.module.css';
 
 function LensContent() {
   return <div className={lensStyles.root}><WarrantyContent /></div>;

@@ -25,7 +25,7 @@ import '@testing-library/jest-dom/vitest';
 import {
   SignatureBlock,
   canUserAcknowledgeHandover,
-} from '@/components/lens-v2/entity/HandoverContent';
+} from '@/components/lens/entity/HandoverContent';
 
 // ─── 1. Signature block ───────────────────────────────────────────────────
 

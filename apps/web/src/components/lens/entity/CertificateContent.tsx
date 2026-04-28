@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * CertificateContent — lens-v2 entity view.
+ * CertificateContent — lens entity view.
  *
  * Redesign — 2026-04-23 (PR: feat/cert-lens-redesign).
  * Spec: /Users/celeste7/Desktop/celeste-screenshots/doc_cert_ux_change.md
@@ -57,8 +57,8 @@ import {
 } from '../sections';
 
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
-import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
-import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens/actions/AttachmentUploadModal';
 import { useAuth } from '@/hooks/useAuth';
 
 // ─── Colour + label helpers ───────────────────────────────────────────────────

@@ -48,10 +48,10 @@ vi.mock('@/contexts/EntityLensContext', () => ({
   useEntityLensContext: () => currentCtx as Ctx,
 }));
 
-vi.mock('@/components/lens-v2/actions/AddNoteModal', () => ({
+vi.mock('@/components/lens/actions/AddNoteModal', () => ({
   AddNoteModal: () => null,
 }));
-vi.mock('@/components/lens-v2/actions/AttachmentUploadModal', () => ({
+vi.mock('@/components/lens/actions/AttachmentUploadModal', () => ({
   AttachmentUploadModal: () => null,
 }));
 
@@ -102,7 +102,7 @@ function makeCtx(overrides: Record<string, unknown> = {}) {
 }
 
 async function importCertContent() {
-  const mod = await import('@/components/lens-v2/entity/CertificateContent');
+  const mod = await import('@/components/lens/entity/CertificateContent');
   return mod.CertificateContent;
 }
 

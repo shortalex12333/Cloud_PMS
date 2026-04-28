@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * WorkOrderContent — lens-v2 Work Order entity view.
+ * WorkOrderContent — lens entity view.
  * Matches lens-work-order.html prototype exactly.
  * Reads all data from useEntityLensContext() — zero props.
  *
@@ -25,8 +25,8 @@ import { ScrollReveal } from '../ScrollReveal';
 import { LensTabBar, type LensTab } from '../LensTabBar';
 import { useEntityLensContext } from '@/contexts/EntityLensContext';
 import { getEntityRoute } from '@/lib/entityRoutes';
-import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
-import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens/actions/AttachmentUploadModal';
 import { useAuth } from '@/hooks/useAuth';
 import { API_BASE } from '@/lib/apiBase';
 

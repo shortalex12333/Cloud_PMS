@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * PartsInventoryContent — lens-v2 entity view.
+ * PartsInventoryContent — lens entity view.
  * Prototype: public/prototypes/lens-parts.html
  *
  * Data flow:
@@ -42,7 +42,7 @@ import {
   type HistoryPeriod,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
-import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
+import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
 
 // ─── Status colour mapping ───
 

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * WarrantyContent — lens-v2 entity view.
+ * WarrantyContent — lens entity view.
  * Prototype: public/prototypes/lens-warranty.html
  *
  * Data flow:
@@ -36,8 +36,8 @@ import {
   type KVItem,
 } from '../sections';
 import { ActionPopup, type ActionPopupField } from '../ActionPopup';
-import { AddNoteModal } from '@/components/lens-v2/actions/AddNoteModal';
-import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { AddNoteModal } from '@/components/lens/actions/AddNoteModal';
+import { AttachmentUploadModal } from '@/components/lens/actions/AttachmentUploadModal';
 import { useAuth } from '@/hooks/useAuth';
 
 // ─── Helpers ───
