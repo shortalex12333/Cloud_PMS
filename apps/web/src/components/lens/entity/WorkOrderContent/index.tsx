@@ -503,7 +503,7 @@ export function WorkOrderContent() {
     partNumber: (p.part_number ?? p.sku) as string | undefined,
     quantity: (p.quantity as number | undefined) !== undefined ? `× ${p.quantity}` : undefined,
     stock: (p.stock_level as number | undefined) !== undefined ? `Stock: ${p.stock_level}` : undefined,
-    onNavigate: p.part_id ? () => router.push(getEntityRoute('parts' as Parameters<typeof getEntityRoute>[0], p.part_id as string)) : undefined,
+    onNavigate: p.part_id ? () => router.push(getEntityRoute('part' as Parameters<typeof getEntityRoute>[0], p.part_id as string)) : undefined,
   }));
 
   const checklistItems: ChecklistItem[] = checklist.map((c, i) => ({
@@ -524,7 +524,7 @@ export function WorkOrderContent() {
     code: (d.code ?? d.document_code ?? d.reference) as string | undefined,
     meta: (d.meta ?? d.description) as string | undefined,
     date: (d.date ?? d.effective_date ?? d.expires_at) as string | undefined,
-    onClick: d.document_id ? () => router.push(getEntityRoute('documents' as Parameters<typeof getEntityRoute>[0], d.document_id as string)) : undefined,
+    onClick: d.document_id ? () => router.push(getEntityRoute('document' as Parameters<typeof getEntityRoute>[0], d.document_id as string)) : undefined,
   }));
 
   // ── Handle checklist batch submit ──
@@ -655,7 +655,7 @@ export function WorkOrderContent() {
         return (
           <FaultsTabBody
             faults={faults}
-            onOpen={(faultId) => router.push(getEntityRoute('faults' as Parameters<typeof getEntityRoute>[0], faultId))}
+            onOpen={(faultId) => router.push(getEntityRoute('fault' as Parameters<typeof getEntityRoute>[0], faultId))}
             onLinkFault={() => setFaultLinkOpen(true)}
           />
         );
@@ -703,7 +703,7 @@ export function WorkOrderContent() {
             onOpenSOPDoc={
               sopDocumentId
                 ? () => router.push(
-                    getEntityRoute('documents' as Parameters<typeof getEntityRoute>[0], sopDocumentId),
+                    getEntityRoute('document' as Parameters<typeof getEntityRoute>[0], sopDocumentId),
                   )
                 : undefined
             }

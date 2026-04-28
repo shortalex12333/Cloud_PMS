@@ -60,7 +60,7 @@ DOMAIN_TABLE_MAP = {
 DOMAIN_SELECT = {
     "work_orders": "id, title, wo_number, status, priority, assigned_to, equipment_id, due_date, severity, type, work_order_type, frequency, completed_at, created_at, updated_at",
     "faults": "id, title, fault_code, status, severity, equipment_id, created_at, updated_at",
-    "equipment": "id, name, code, system_type, location, status, manufacturer, model, serial_number, criticality, running_hours, deleted_at, created_at, updated_at",
+    "equipment": "id, name, code, system_type, location, status, manufacturer, model, serial_number, criticality, running_hours, description, deleted_at, created_at, updated_at",
     "parts": "id, name, part_number, quantity_on_hand, minimum_quantity, location, unit_cost, manufacturer, category, is_critical, created_at, updated_at",
     # domain + person_name added so crew cert rows surface the owner name
     # in the register and list views (v_certificates_enriched exposes both).
