@@ -7,9 +7,9 @@
 # This file only imports and merges their HANDLERS dicts.
 
 from handlers.work_order_handlers import HANDLERS as WO_HANDLERS
-from handlers.media_phase4 import HANDLERS as MEDIA_HANDLERS
+from handlers.media_handlers import HANDLERS as MEDIA_HANDLERS
 from handlers.handover_handlers import HANDLERS as HAND_HANDLERS
-from handlers.purchase_order_phase4 import HANDLERS as PO_HANDLERS
+from handlers.purchase_order_handlers import HANDLERS as PO_HANDLERS
 from handlers.receiving_handlers import HANDLERS as RECV_HANDLERS
 from handlers.certificate_handlers import CERT_HANDLERS
 from handlers.document_handler import HANDLERS as DOC_HANDLERS

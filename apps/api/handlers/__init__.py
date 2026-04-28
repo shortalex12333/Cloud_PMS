@@ -1,45 +1,29 @@
 """
 Handlers Module
 ===============
-All action handlers: P0, P1, P2, P3, and Situations.
+All action handlers.
 """
 
-# P0 Action Handlers
 from .inventory_handlers import InventoryHandlers
 from .handover_handlers import HandoverHandlers
 from .manual_handlers import ManualHandlers
 
-# P1 Action Handlers
-from .p1_compliance_handlers import P1ComplianceHandlers, get_p1_compliance_handlers
+from .delivery_compliance_handlers import P1ComplianceHandlers, get_p1_compliance_handlers
+from .shared_mutation_handlers import P2MutationLightHandlers, get_p2_mutation_light_handlers
+from .shared_read_handlers import P3ReadOnlyHandlers, get_p3_read_only_handlers
 
-# P2 Action Handlers
-from .p2_mutation_light_handlers import P2MutationLightHandlers, get_p2_mutation_light_handlers
-
-# P3 Read-Only Handlers
-from .p3_read_only_handlers import P3ReadOnlyHandlers, get_p3_read_only_handlers
-
-# Certificate Handlers (Certificate Lens v2)
 from .certificate_handlers import CertificateHandlers
 
 
 __all__ = [
-    # P0 Action Handlers
     'InventoryHandlers',
     'HandoverHandlers',
     'ManualHandlers',
-
-    # P1 Action Handlers
     'P1ComplianceHandlers',
     'get_p1_compliance_handlers',
-
-    # P2 Action Handlers
     'P2MutationLightHandlers',
     'get_p2_mutation_light_handlers',
-
-    # P3 Read-Only Handlers
     'P3ReadOnlyHandlers',
     'get_p3_read_only_handlers',
-
-    # Certificate Handlers
     'CertificateHandlers',
 ]

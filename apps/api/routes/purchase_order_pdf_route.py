@@ -24,7 +24,7 @@ from fastapi.responses import StreamingResponse
 from db import get_supabase_client
 from routes.auth import get_authenticated_user
 from utils.yacht_resolver import resolve_yacht_id
-from handlers.purchase_order_phase4 import fetch_po_for_pdf
+from handlers.purchase_order_handlers import fetch_po_for_pdf
 
 logger = logging.getLogger(__name__)
 

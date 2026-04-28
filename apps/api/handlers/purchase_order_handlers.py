@@ -1,5 +1,5 @@
 """
-handlers/purchase_order_phase4.py — Purchase Order domain, single source of truth.
+handlers/purchase_order_handlers.py — Purchase Order domain, single source of truth.
 
 Consolidates all PO handler logic previously split across:
   routes/handlers/purchase_order_handler.py  (Phase 4 — 13 actions)
