@@ -19,7 +19,7 @@ import logging
 from fastapi import HTTPException
 from supabase import Client
 from handlers.ledger_utils import build_ledger_event
-from middleware import validate_state_transition, InvalidStateTransitionError
+from middleware.state_machine import validate_state_transition, InvalidStateTransitionError
 
 logger = logging.getLogger(__name__)
 
