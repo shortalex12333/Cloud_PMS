@@ -48,7 +48,9 @@ import {
 } from '../../sections';
 
 import { EmptyTab, FaultsTabBody, EquipmentTabBody, AddCheckpointButton, SafetyTabBody } from './WOTabBodies';
-import { AddPartModal, AssignModal, AddChecklistItemModal, EditSOPModal, ArchiveWorkOrderModal, SetFrequencyModal, type ChecklistRowItem } from './WOModals';
+import { AddPartModal, AssignModal, AddChecklistItemModal, EditSOPModal, ArchiveWorkOrderModal, SetFrequencyModal, WOFaultLinkModal, type ChecklistRowItem } from './WOModals';
+import { EquipmentPickerModal, type EquipmentPickerItem } from '../../sections/EquipmentPickerModal';
+import { API_BASE } from '@/lib/apiBase';
 
 // ─── Colour mapping helpers ───
 
@@ -103,6 +105,8 @@ export function WorkOrderContent() {
   const [uploadModalOpen, setUploadModalOpen] = React.useState(false);
   const [docUploadModalOpen, setDocUploadModalOpen] = React.useState(false);
   const [frequencyModalOpen, setFrequencyModalOpen] = React.useState(false);
+  const [faultLinkOpen, setFaultLinkOpen] = React.useState(false);
+  const [equipmentLinkOpen, setEquipmentLinkOpen] = React.useState(false);
 
   // Toast feedback for generic dropdown actions
   const [actionFeedback, setActionFeedback] = React.useState<{ msg: string; ok: boolean } | null>(null);
@@ -412,6 +416,9 @@ export function WorkOrderContent() {
     'update_work_order',            // No-op without an edit form (updates only updated_at)
     'update_worklist_progress',     // Needs progress % form + broken registry config
     'view_checklist',
+    // ── Tab-inline link actions (handled by Faults/Equipment tabs directly) ─
+    'link_fault_to_work_order',
+    'link_equipment_to_work_order',
   ]);
 
   // Dropdown-display label overrides.
@@ -441,7 +448,8 @@ export function WorkOrderContent() {
   // ── Map section data ──
   const noteItems: NoteItem[] = notes.map((n, i) => ({
     id: (n.id as string) ?? `note-${i}`,
-    author: (n.author ?? n.created_by ?? n.user_name) as string ?? 'Unknown',
+    author: (n.author_name ?? n.author ?? n.created_by ?? n.user_name) as string ?? 'Unknown',
+    role: (n.author_role ?? n.role) as string | undefined,
     timestamp: (n.created_at ?? n.timestamp) as string ?? '',
     body: (n.body ?? n.note_text ?? n.text) as string ?? '',
   }));
@@ -565,6 +573,32 @@ export function WorkOrderContent() {
     []
   );
 
+  const handleFaultLink = React.useCallback(
+    async (faultId: string) => {
+      await runAction('link_fault_to_work_order', { fault_id: faultId });
+      await refetch();
+    },
+    [runAction, refetch]
+  );
+
+  const handleEquipmentLink = React.useCallback(
+    async (equipmentId: string) => {
+      await runAction('link_equipment_to_work_order', { equipment_id: equipmentId });
+      await refetch();
+    },
+    [runAction, refetch]
+  );
+
+  const loadEquipment = React.useCallback(async (): Promise<EquipmentPickerItem[]> => {
+    if (!yacht_id || !token) return [];
+    const res = await fetch(`${API_BASE}/api/vessel/${yacht_id}/domain/equipment/records?limit=500`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`Failed to load equipment (${res.status})`);
+    const d = await res.json() as { records?: EquipmentPickerItem[] };
+    return d.records ?? [];
+  }, [yacht_id, token]);
+
   // ── Tab contract (UX sheet line 382) ──
   //   Checklist · Documents · Faults · Equipment · Parts · Uploads · Notes ·
   //   Audit Trail · History · Safety
@@ -584,7 +618,7 @@ export function WorkOrderContent() {
     { key: 'faults',    label: 'Faults',    count: faults.length },
     { key: 'equipment', label: 'Equipment', count: equipment_name ? 1 : 0 },
     { key: 'parts',     label: 'Parts',     count: partItems.length },
-    { key: 'uploads',   label: 'Uploads',   count: attachmentItems.length },
+    { key: 'uploads',   label: 'Images',    count: attachmentItems.length },
     { key: 'notes',     label: 'Notes',     count: noteItems.length },
     { key: 'audit',     label: 'Audit Trail', count: auditEvents.length },
     { key: 'history',   label: 'History',   count: historyPeriods.length },
@@ -618,21 +652,22 @@ export function WorkOrderContent() {
           </div>
         );
       case 'faults':
-        return faults.length > 0 ? (
-          <FaultsTabBody faults={faults} onOpen={(faultId) => router.push(getEntityRoute('faults' as Parameters<typeof getEntityRoute>[0], faultId))} />
-        ) : (
-          <EmptyTab message="No linked faults. Use 'Report Fault' from the Equipment lens to link one." />
+        return (
+          <FaultsTabBody
+            faults={faults}
+            onOpen={(faultId) => router.push(getEntityRoute('faults' as Parameters<typeof getEntityRoute>[0], faultId))}
+            onLinkFault={() => setFaultLinkOpen(true)}
+          />
         );
       case 'equipment':
-        return equipment_id && equipment_name ? (
+        return (
           <EquipmentTabBody
             equipmentId={equipment_id}
             equipmentName={equipment_name}
             equipmentCode={equipment_code}
-            onOpen={() => router.push(getEntityRoute('equipment' as Parameters<typeof getEntityRoute>[0], equipment_id))}
+            onOpen={() => equipment_id && router.push(getEntityRoute('equipment' as Parameters<typeof getEntityRoute>[0], equipment_id))}
+            onAssignEquipment={() => setEquipmentLinkOpen(true)}
           />
-        ) : (
-          <EmptyTab message="No equipment linked." />
         );
       case 'parts':
         return (
@@ -822,6 +857,23 @@ export function WorkOrderContent() {
           showMetadataFields
         />
       )}
+      {/* Fault link modal — alphabetical fault search picker */}
+      <WOFaultLinkModal
+        open={faultLinkOpen}
+        onClose={() => setFaultLinkOpen(false)}
+        yachtId={yacht_id ?? ''}
+        token={token ?? ''}
+        onSubmit={handleFaultLink}
+      />
+      {/* Equipment assign modal — reuse shared EquipmentPickerModal */}
+      <EquipmentPickerModal
+        open={equipmentLinkOpen}
+        onClose={() => setEquipmentLinkOpen(false)}
+        loadEquipment={loadEquipment}
+        alreadyLinkedIds={equipment_id ? [equipment_id] : []}
+        onSelect={handleEquipmentLink}
+        title="Assign Equipment to Work Order"
+      />
     </>
   );
 }

@@ -30,9 +30,11 @@ export interface FaultRow {
 export function FaultsTabBody({
   faults,
   onOpen,
+  onLinkFault,
 }: {
   faults: Array<Record<string, unknown>>;
   onOpen: (faultId: string) => void;
+  onLinkFault?: () => void;
 }) {
   const rows: FaultRow[] = faults.map((f, i) => ({
     id: (f.id as string) ?? `fault-${i}`,
@@ -41,6 +43,34 @@ export function FaultsTabBody({
     status: f.status as string | undefined,
     severity: f.severity as string | undefined,
   }));
+
+  if (rows.length === 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--txt3)', fontStyle: 'italic' }}>
+          No linked faults.
+        </div>
+        {onLinkFault && (
+          <button
+            type="button"
+            onClick={onLinkFault}
+            style={{
+              appearance: 'none', WebkitAppearance: 'none',
+              alignSelf: 'flex-start',
+              background: 'var(--neutral-bg)',
+              border: '1px dashed var(--border-sub)',
+              borderRadius: 6, padding: '8px 12px',
+              cursor: 'pointer', color: 'var(--txt2)',
+              fontSize: 12, fontWeight: 500,
+            }}
+          >
+            + Link Fault
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {rows.map((r) => (
@@ -80,16 +110,45 @@ export function FaultsTabBody({
 }
 
 export function EquipmentTabBody({
-  equipmentId: _equipmentId,
+  equipmentId,
   equipmentName,
   equipmentCode,
   onOpen,
+  onAssignEquipment,
 }: {
-  equipmentId: string;
-  equipmentName: string;
+  equipmentId?: string;
+  equipmentName?: string;
   equipmentCode?: string;
   onOpen: () => void;
+  onAssignEquipment?: () => void;
 }) {
+  if (!equipmentId || !equipmentName) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--txt3)', fontStyle: 'italic' }}>
+          No equipment assigned.
+        </div>
+        {onAssignEquipment && (
+          <button
+            type="button"
+            onClick={onAssignEquipment}
+            style={{
+              appearance: 'none', WebkitAppearance: 'none',
+              alignSelf: 'flex-start',
+              background: 'var(--neutral-bg)',
+              border: '1px dashed var(--border-sub)',
+              borderRadius: 6, padding: '8px 12px',
+              cursor: 'pointer', color: 'var(--txt2)',
+              fontSize: 12, fontWeight: 500,
+            }}
+          >
+            + Assign Equipment
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"

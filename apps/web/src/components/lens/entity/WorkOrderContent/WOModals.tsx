@@ -39,7 +39,7 @@ export function AddPartModal({
     setSelected(null);
     setSearch('');
     setQuantity(1);
-    fetch(`${API_BASE}/v1/${yachtId}/domain/parts/records?limit=200`, {
+    fetch(`${API_BASE}/api/vessel/${yachtId}/domain/parts/records?limit=200`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
@@ -699,6 +699,177 @@ export function SetFrequencyModal({
             fontFamily: 'var(--font-sans)', fontWeight: 500,
           }}>
             {submitting ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── WOFaultLinkModal ──────────────────────────────────────────────────────────
+
+export interface FaultRecord {
+  id: string;
+  fault_code?: string;
+  title?: string;
+  status?: string;
+  severity?: string;
+}
+
+export function WOFaultLinkModal({
+  open,
+  onClose,
+  yachtId,
+  token,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  yachtId: string;
+  token: string;
+  onSubmit: (faultId: string) => Promise<void>;
+}) {
+  const [faults, setFaults] = React.useState<FaultRecord[]>([]);
+  const [search, setSearch] = React.useState('');
+  const [selected, setSelected] = React.useState<FaultRecord | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open || !token || !yachtId) return;
+    setLoading(true);
+    setSelected(null);
+    setSearch('');
+    fetch(`${API_BASE}/api/vessel/${yachtId}/domain/faults/records?limit=200`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        const records = (d.records ?? []) as FaultRecord[];
+        records.sort((a, b) => {
+          const ac = (a.fault_code ?? '').toLowerCase();
+          const bc = (b.fault_code ?? '').toLowerCase();
+          if (ac && bc && ac !== bc) return ac.localeCompare(bc);
+          return (a.title ?? '').toLowerCase().localeCompare((b.title ?? '').toLowerCase());
+        });
+        setFaults(records);
+      })
+      .catch(() => setFaults([]))
+      .finally(() => setLoading(false));
+  }, [open, token, yachtId]);
+
+  if (!open) return null;
+
+  const filtered = faults.filter(
+    (f) =>
+      !search ||
+      (f.fault_code ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (f.title ?? '').toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const handleSubmit = async () => {
+    if (!selected) return;
+    setSubmitting(true);
+    try {
+      await onSubmit(selected.id);
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9000,
+        background: 'var(--overlay-bg)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div style={{
+        background: 'var(--surface)', borderRadius: 10, padding: 24,
+        width: 420, maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+        border: '1px solid var(--border-sub)', boxShadow: 'var(--shadow-card)',
+      }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--txt)', marginBottom: 16 }}>
+          Link Fault to Work Order
+        </div>
+        <input
+          placeholder="Search by code or title…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border-sub)',
+            background: 'var(--bg)', color: 'var(--txt)', fontSize: 13,
+            marginBottom: 8, fontFamily: 'var(--font-sans)',
+          }}
+        />
+        {loading ? (
+          <div style={{ color: 'var(--txt3)', fontSize: 13, padding: '12px 0' }}>Loading faults…</div>
+        ) : (
+          <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-faint)', borderRadius: 6, marginBottom: 12 }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: '12px 10px', color: 'var(--txt3)', fontSize: 13 }}>
+                {search ? 'No matching faults.' : 'No open faults.'}
+              </div>
+            ) : (
+              filtered.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setSelected(selected?.id === f.id ? null : f)}
+                  style={{
+                    appearance: 'none', WebkitAppearance: 'none',
+                    width: '100%', textAlign: 'left',
+                    padding: '8px 10px',
+                    background: selected?.id === f.id ? 'var(--teal-bg)' : 'transparent',
+                    border: 0,
+                    borderBottom: '1px solid var(--border-faint)',
+                    cursor: 'pointer', color: 'var(--txt)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                    {f.fault_code && (
+                      <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--txt2)', flexShrink: 0 }}>
+                        {f.fault_code}
+                      </span>
+                    )}
+                    <span style={{ fontWeight: 500 }}>{f.title ?? 'Fault'}</span>
+                  </div>
+                  {(f.severity || f.status) && (
+                    <div style={{ marginTop: 2, fontSize: 11, color: 'var(--txt3)' }}>
+                      {[f.severity, f.status].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border-sub)',
+              background: 'transparent', color: 'var(--txt2)', fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!selected || submitting}
+            style={{
+              padding: '8px 14px', borderRadius: 6, border: 0,
+              background: selected ? 'var(--mark)' : 'var(--border-sub)',
+              color: selected ? '#fff' : 'var(--txt3)',
+              fontSize: 13, fontWeight: 600, cursor: selected ? 'pointer' : 'default',
+            }}
+          >
+            {submitting ? 'Linking…' : 'Link Fault'}
           </button>
         </div>
       </div>

@@ -342,6 +342,44 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         search_keywords=["cancel", "void", "abort", "work", "order", "wo"],
     ),
 
+    "link_fault_to_work_order": ActionDefinition(
+        action_id="link_fault_to_work_order",
+        label="Link Fault",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "work_order_id", "fault_id"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["link", "fault", "attach", "work", "order", "wo"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("work_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("fault_id", FieldClassification.REQUIRED,
+                          lookup_required=True, description="Fault to link to this work order"),
+        ],
+    ),
+
+    "link_equipment_to_work_order": ActionDefinition(
+        action_id="link_equipment_to_work_order",
+        label="Assign Equipment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain"],
+        required_fields=["yacht_id", "work_order_id", "equipment_id"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["link", "assign", "equipment", "work", "order", "wo"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("work_order_id", FieldClassification.CONTEXT),
+            FieldMetadata("equipment_id", FieldClassification.REQUIRED,
+                          lookup_required=True, description="Equipment to assign to this work order"),
+        ],
+    ),
+
     "view_work_order_detail": ActionDefinition(
         action_id="view_work_order_detail",
         label="View Work Order Detail",

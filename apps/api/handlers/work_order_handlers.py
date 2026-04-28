@@ -908,29 +908,90 @@ async def add_part_to_work_order(
             "message": f"Part added to {wo.data[0].get('wo_number', work_order_id)}"}
 
 
-async def add_parts_to_work_order(
+async def link_fault_to_work_order(
     payload: dict, context: dict, yacht_id: str, user_id: str,
     user_context: dict, db_client: Client,
 ) -> dict:
-    """Append part reference to WO metadata.parts (legacy metadata path)."""
-    work_order_id = payload.get("work_order_id")
-    part_id = payload.get("part_id")
+    """Link an existing fault to this work order. Updates pms_work_orders.fault_id (1:1 FK)."""
+    work_order_id = payload.get("work_order_id") or context.get("work_order_id")
+    fault_id = payload.get("fault_id")
     if not work_order_id:
         raise HTTPException(status_code=400, detail="work_order_id is required")
-    if not part_id:
-        raise HTTPException(status_code=400, detail="part_id is required")
-    check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
-    if not check.data:
+    if not fault_id:
+        raise HTTPException(status_code=400, detail="fault_id is required")
+
+    wo = db_client.table("pms_work_orders").select("id, title, status, fault_id").eq(
+        "id", work_order_id
+    ).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not wo.data:
         raise HTTPException(status_code=404, detail="Work order not found")
-    wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).maybe_single().execute()
-    metadata = (wo_data.data or {}).get("metadata") or {}
-    parts = metadata.get("parts", [])
-    parts.append({"part_id": part_id, "quantity": payload.get("quantity", 1), "added_by": user_id, "added_at": datetime.now(timezone.utc).isoformat()})
-    metadata["parts"] = parts
-    db_client.table("pms_work_orders").update({"metadata": metadata, "updated_at": datetime.now(timezone.utc).isoformat()}).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-    _ledger(db_client, yacht_id, user_id, "update", "work_order", work_order_id, "add_parts_to_work_order",
-            user_context.get("role", ""), f"Part {part_id} added (qty: {payload.get('quantity', 1)})")
-    return {"status": "success", "success": True, "work_order_id": work_order_id, "part_id": part_id, "message": "Part added to work order"}
+    if wo.data["status"] in ("closed", "cancelled", "completed"):
+        return {"status": "error", "error_code": "WO_TERMINAL", "message": "Cannot modify a closed/cancelled work order"}
+
+    fault = db_client.table("pms_faults").select("id, title, fault_code").eq(
+        "id", fault_id
+    ).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not fault.data:
+        raise HTTPException(status_code=404, detail="Fault not found")
+
+    db_client.table("pms_work_orders").update({
+        "fault_id": fault_id,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user_id,
+    }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+
+    await _audit(db_client, yacht_id, "link_fault_to_work_order", "work_order", work_order_id, user_id,
+                 old_values={"fault_id": wo.data.get("fault_id")},
+                 new_values={"fault_id": fault_id, "fault_code": fault.data.get("fault_code")})
+    _ledger(db_client, yacht_id, user_id, "update", "work_order", work_order_id, "link_fault_to_work_order",
+            user_context.get("role", ""), f"Linked fault {fault.data.get('fault_code') or fault_id}",
+            entity_name=wo.data.get("title", ""))
+    return {"status": "success", "success": True, "work_order_id": work_order_id, "fault_id": fault_id,
+            "message": "Fault linked to work order"}
+
+
+async def link_equipment_to_work_order(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Client,
+) -> dict:
+    """Assign equipment to this work order. Updates pms_work_orders.equipment_id + equipment_name."""
+    work_order_id = payload.get("work_order_id") or context.get("work_order_id")
+    equipment_id = payload.get("equipment_id")
+    if not work_order_id:
+        raise HTTPException(status_code=400, detail="work_order_id is required")
+    if not equipment_id:
+        raise HTTPException(status_code=400, detail="equipment_id is required")
+
+    wo = db_client.table("pms_work_orders").select("id, title, status, equipment_id").eq(
+        "id", work_order_id
+    ).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not wo.data:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    if wo.data["status"] in ("closed", "cancelled", "completed"):
+        return {"status": "error", "error_code": "WO_TERMINAL", "message": "Cannot modify a closed/cancelled work order"}
+
+    eq_r = db_client.table("pms_equipment").select("id, name, code").eq(
+        "id", equipment_id
+    ).eq("yacht_id", yacht_id).maybe_single().execute()
+    if not eq_r.data:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+
+    db_client.table("pms_work_orders").update({
+        "equipment_id": equipment_id,
+        "equipment_name": eq_r.data.get("name"),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user_id,
+    }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+
+    await _audit(db_client, yacht_id, "link_equipment_to_work_order", "work_order", work_order_id, user_id,
+                 old_values={"equipment_id": wo.data.get("equipment_id")},
+                 new_values={"equipment_id": equipment_id, "equipment_name": eq_r.data.get("name")})
+    _ledger(db_client, yacht_id, user_id, "update", "work_order", work_order_id, "link_equipment_to_work_order",
+            user_context.get("role", ""), f"Linked equipment: {eq_r.data.get('name', equipment_id)}",
+            entity_name=wo.data.get("title", ""))
+    return {"status": "success", "success": True, "work_order_id": work_order_id,
+            "equipment_id": equipment_id, "equipment_name": eq_r.data.get("name"),
+            "message": "Equipment linked to work order"}
 
 
 async def add_work_order_photo(
@@ -1440,7 +1501,7 @@ HANDLERS: dict = {
     "add_wo_part":                      add_wo_part,
     "add_part_to_wo":                   add_wo_part,
     "add_part_to_work_order":           add_part_to_work_order,
-    "add_parts_to_work_order":          add_parts_to_work_order,
+    "add_parts_to_work_order":          add_part_to_work_order,
     "add_work_order_photo":             add_work_order_photo,
     # Checklist
     "add_checklist_item":               add_checklist_item,
@@ -1460,6 +1521,9 @@ HANDLERS: dict = {
     # Aliases — frontend suppresses these; kept so action doesn't 404
     "add_wo_photo":                     add_work_order_photo,
     "delete_work_order":                archive_work_order,
+    # Link actions (backwards compat — fault + equipment tabs on WO lens)
+    "link_fault_to_work_order":         link_fault_to_work_order,
+    "link_equipment_to_work_order":     link_equipment_to_work_order,
     # Worklist
     "view_worklist":                    view_worklist,
     "add_worklist_task":                add_worklist_task,

@@ -12,6 +12,7 @@ import { CollapsibleSection } from '../CollapsibleSection';
 export interface NoteItem {
   id: string;
   author: string;
+  role?: string;
   timestamp: string;
   body: string;
 }
@@ -52,7 +53,14 @@ function NoteRow({ note }: { note: NoteItem }) {
   return (
     <div className={styles.note}>
       <div className={styles.noteMeta}>
-        <span className={styles.noteAuthor}>{note.author}</span>
+        <span className={styles.noteAuthor}>
+          {note.author}
+          {note.role && (
+            <span style={{ fontWeight: 400, color: 'var(--txt3)', marginLeft: 4 }}>
+              · {note.role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+            </span>
+          )}
+        </span>
         <span className={styles.noteTime}>{note.timestamp}</span>
       </div>
       <div className={`${styles.noteBody} ${!expanded ? styles.noteBodyClamped : ''}`}>

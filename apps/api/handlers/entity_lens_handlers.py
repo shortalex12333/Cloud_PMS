@@ -167,6 +167,12 @@ class EntityLensHandlers:
             equipment_ids_raw = []
         related_equipment = resolve_equipment_batch(supabase, yacht_id, equipment_ids_raw)
 
+        if domain == "vessel":
+            for _eq in related_equipment[:3]:
+                _eq_n = _nav("equipment", _eq.get("id"), _eq.get("name") or "Equipment")
+                if _eq_n:
+                    nav.append(_eq_n)
+
         yacht_name = resolve_yacht_name(supabase, yacht_id)
 
         _DELETE_ACTIONS = {
@@ -906,6 +912,18 @@ class EntityLensHandlers:
             n = _nav("part", it.get("part_id"), it.get("description") or it.get("name") or "Part")
             if n:
                 nav.append(n)
+        try:
+            recv_r = supabase.table("pms_receiving").select(
+                "id, po_number, received_date, status"
+            ).eq("po_id", po_id).eq("yacht_id", yacht_id).is_("deleted_at", "null").limit(5).execute()
+            for _recv in (recv_r.data or []):
+                _recv_po_num = _recv.get("po_number") or data.get("po_number")
+                _label = f"Receiving · {_recv_po_num}" if _recv_po_num else "Receiving"
+                _n = _nav("receiving", _recv.get("id"), _label)
+                if _n:
+                    nav.append(_n)
+        except Exception as _re:
+            logger.warning(f"get_purchase_order_entity: receiving backwards compat failed po={po_id}: {_re}")
 
         _entity_response = {
             "id": data.get("id"),
@@ -1042,12 +1060,48 @@ class EntityLensHandlers:
         notes_response = supabase.table('pms_work_order_notes').select(
             'id, note_text, note_type, created_by, created_at'
         ).eq('work_order_id', wo_id).order('created_at', desc=True).execute()
-        notes = notes_response.data if notes_response.data else []
+        _raw_notes = notes_response.data if notes_response.data else []
+
+        # Enrich notes: resolve created_by UUID → name + role for display
+        _note_user_ids = list({n.get('created_by') for n in _raw_notes if n.get('created_by')})
+        _profile_map: dict = {}
+        _role_map: dict = {}
+        if _note_user_ids:
+            try:
+                _prof_r = supabase.table('auth_users_profiles').select('id, name, email').in_(
+                    'id', _note_user_ids
+                ).execute()
+                for _p in (_prof_r.data or []):
+                    _profile_map[_p['id']] = _p.get('name') or _p.get('email')
+            except Exception as _e:
+                logger.warning(f"get_work_order_entity: notes profile lookup failed: {_e}")
+            try:
+                _role_r = supabase.table('auth_users_roles').select('user_id, role').in_(
+                    'user_id', _note_user_ids
+                ).eq('yacht_id', yacht_id).eq('is_active', True).execute()
+                for _r in (_role_r.data or []):
+                    _role_map[_r['user_id']] = _r.get('role')
+            except Exception as _e:
+                logger.warning(f"get_work_order_entity: notes role lookup failed: {_e}")
+        notes = []
+        for _n in _raw_notes:
+            _uid = _n.get('created_by')
+            notes.append({**_n, 'author_name': _profile_map.get(_uid) if _uid else None,
+                          'author_role': _role_map.get(_uid) if _uid else None})
 
         parts_response = supabase.table('pms_work_order_parts').select(
             'id, part_id, quantity, notes, created_at, pms_parts(id, name, part_number, location)'
         ).eq('work_order_id', wo_id).execute()
-        parts = parts_response.data if parts_response.data else []
+        # Flatten pms_parts join so frontend reads name/part_number at top level
+        parts = []
+        for _row in (parts_response.data or []):
+            _nested = _row.get('pms_parts') or {}
+            parts.append({
+                'id': _row.get('id'), 'part_id': _row.get('part_id'),
+                'quantity': _row.get('quantity'), 'notes': _row.get('notes'),
+                'created_at': _row.get('created_at'), 'name': _nested.get('name'),
+                'part_number': _nested.get('part_number'), 'location': _nested.get('location'),
+            })
 
         try:
             checklist_response = supabase.table('pms_work_order_checklist').select(
@@ -1061,7 +1115,18 @@ class EntityLensHandlers:
         audit_response = supabase.table('pms_audit_log').select(
             'id, action, old_values, new_values, user_id, created_at'
         ).eq('entity_type', 'work_order').eq('entity_id', wo_id).eq('yacht_id', yacht_id).order('created_at', desc=True).limit(50).execute()
-        audit_history = audit_response.data if audit_response.data else []
+        _read_prefixes = ('view_', 'list_', 'get_', 'read_')
+        audit_history = [
+            a for a in (audit_response.data or [])
+            if not any((a.get('action') or '').startswith(p) for p in _read_prefixes)
+        ]
+        _audit_user_ids = list({a['user_id'] for a in audit_history if a.get('user_id')})
+        if _audit_user_ids:
+            _audit_actor_map = resolve_users(supabase, yacht_id, _audit_user_ids)
+            for _a in audit_history:
+                _uid = _a.get('user_id')
+                if _uid and _uid in _audit_actor_map:
+                    _a['actor'] = _audit_actor_map[_uid]
 
         is_hod = await self._is_user_hod(user_id, yacht_id)
 
@@ -1104,6 +1169,19 @@ class EntityLensHandlers:
         except Exception as _doc_err:
             logger.warning(f"get_work_order_entity: linked docs failed: {_doc_err}")
 
+        # Fault enrichment — resolve fault_id → full fault card data for Faults tab
+        faults_data = []
+        _fault_id = data.get('fault_id')
+        if _fault_id:
+            try:
+                _fault_r = supabase.table('pms_faults').select(
+                    'id, title, fault_code, status, severity'
+                ).eq('id', _fault_id).eq('yacht_id', yacht_id).maybe_single().execute()
+                if _fault_r and _fault_r.data:
+                    faults_data = [_fault_r.data]
+            except Exception as _fe:
+                logger.warning(f"get_work_order_entity: fault enrichment failed: {_fe}")
+
         _entity_response = {
             "id": wo_id,
             "yacht_id": data.get('yacht_id'),
@@ -1124,6 +1202,7 @@ class EntityLensHandlers:
             "completed_at": data.get('completed_at'),
             "completed_by": data.get('completed_by'),
             "fault_id": data.get('fault_id'),
+            "faults": faults_data,
             "notes": notes,
             "parts": parts,
             "checklist": checklist,
@@ -1272,6 +1351,61 @@ class EntityLensHandlers:
         except Exception:
             part_notes = []
 
+        # Related WOs — surface work orders that use this part (backwards compat)
+        related_wo_nav = []
+        try:
+            wo_part_r = supabase.table('pms_work_order_parts').select(
+                'work_order_id, pms_work_orders(id, title, wo_number, yacht_id)'
+            ).eq('part_id', part_id).limit(5).execute()
+            for _row in (wo_part_r.data or []):
+                _wo = _row.get('pms_work_orders')
+                if _wo and _wo.get('yacht_id') == yacht_id:
+                    _label = _wo.get('title') or f"WO {_wo.get('wo_number') or ''}".strip()
+                    _n = _nav("work_order", _wo.get("id"), _label or "Work Order")
+                    if _n:
+                        related_wo_nav.append(_n)
+        except Exception as _we:
+            logger.warning(f"get_part_entity: related WOs lookup failed: {_we}")
+
+        # Shopping list items that reference this part (backwards compat)
+        # Use shopping_list_id (list header), not item id — item id 404s on the V2 doc page.
+        related_sl_nav = []
+        try:
+            sl_r = supabase.table("pms_shopping_list_items").select(
+                "shopping_list_id, part_name, part_number, status"
+            ).eq("part_id", part_id).eq("yacht_id", yacht_id).limit(5).execute()
+            _seen_sl: set = set()
+            for _sl in (sl_r.data or []):
+                _sl_id = _sl.get("shopping_list_id")
+                if _sl_id and _sl_id not in _seen_sl:
+                    _seen_sl.add(_sl_id)
+                    _label = _sl.get("part_name") or _sl.get("part_number") or "Shopping List"
+                    _n = _nav("shopping_list", _sl_id, _label)
+                    if _n:
+                        related_sl_nav.append(_n)
+        except Exception as _se:
+            logger.warning(f"get_part_entity: related shopping lists lookup failed: {_se}")
+
+        # PO items that reference this part (backwards compat)
+        related_po_nav = []
+        try:
+            poi_r = supabase.table("pms_purchase_order_items").select(
+                "purchase_order_id, pms_purchase_orders(id, po_number, status, yacht_id)"
+            ).eq("part_id", part_id).eq("yacht_id", yacht_id).limit(5).execute()
+            _seen_po_ids: set = set()
+            for _row in (poi_r.data or []):
+                _po = _row.get("pms_purchase_orders") or {}
+                _po_id_val = _po.get("id")
+                if _po_id_val and _po.get("yacht_id") == yacht_id and _po_id_val not in _seen_po_ids:
+                    _seen_po_ids.add(_po_id_val)
+                    _po_num = _po.get("po_number")
+                    _label = f"PO {_po_num}" if _po_num else "Purchase Order"
+                    _n = _nav("purchase_order", _po_id_val, _label)
+                    if _n:
+                        related_po_nav.append(_n)
+        except Exception as _pe:
+            logger.warning(f"get_part_entity: related POs lookup failed: {_pe}")
+
         _entity_response = {
             "id": data.get('id'),
             "name": data.get('name') or 'Unknown Part',
@@ -1291,7 +1425,7 @@ class EntityLensHandlers:
             "updated_at": data.get('updated_at'),
             "image_url": image_url,
             "attachments": attachments,
-            "related_entities": [],
+            "related_entities": related_wo_nav + related_sl_nav + related_po_nav,
             "notes": part_notes,
         }
         _entity_response["available_actions"] = get_available_actions(
