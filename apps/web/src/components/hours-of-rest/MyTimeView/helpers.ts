@@ -78,6 +78,15 @@ export function normalizeMyWeekResponse(json: any): void {
   if (!Array.isArray(json.templates)) {
     json.templates = [];
   }
+
+  // 5. Flatten signoff: backend returns {signoff: {id, status}}, component reads
+  //    pending_signoff.id and signoff_status. Map them so all consumers are consistent.
+  if (json.signoff && !json.pending_signoff) {
+    json.pending_signoff = json.signoff;
+  }
+  if (!json.signoff_status && json.signoff?.status) {
+    json.signoff_status = json.signoff.status;
+  }
 }
 
 /**

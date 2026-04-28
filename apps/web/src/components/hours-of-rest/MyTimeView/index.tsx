@@ -723,6 +723,10 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
                 {signoffStatus === 'hod_signed' ? 'Awaiting Captain' : signoffStatus === 'finalized' ? 'Finalized' : 'Read-only'}
               </span>
             ) : undefined
+          ) : signoffStatus === 'crew_signed' ? (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', letterSpacing: '0.06em' }}>Submitted — Awaiting HOD</span>
+          ) : signoffStatus === 'hod_signed' ? (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', letterSpacing: '0.06em' }}>Awaiting Captain</span>
           ) : isCurrentWeek && canSubmitWeek ? (
             <button
               data-testid="hor-submit-week"
