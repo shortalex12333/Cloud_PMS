@@ -1,878 +1,675 @@
 # Cloud PMS — Codebase Map
 
-Use this to task an agent precisely. Every file has one job. Find the job, task that file.
+Plain English. Every file. Exact locations. Use this to task agents without guessing.
 
 Last updated: 2026-04-28
 
 ---
 
-## HOW TO USE
+## UNDERSTAND THE APP IN ONE MINUTE
 
-Bug in button placement → find the component in `apps/web/src/components/`
-Bug in action logic → find the handler in `apps/api/handlers/`
-Bug in what actions are visible → `action_router/entity_actions.py`
-Bug in API routing → `apps/api/routes/`
-Bug in data shape between API and UI → `apps/web/src/lib/apiClient.ts` + the handler
+The app has two halves:
 
----
+**Backend** (`apps/api/`) — the server. It talks to the database and does the real work.
+**Frontend** (`apps/web/`) — the website. It shows things on screen and sends requests to the backend.
 
-## BACKEND — `apps/api/`
+When you click a button on screen, this is what happens:
+```
+You click button
+  → frontend sends a request to the backend
+    → backend runs the logic (handler)
+      → backend reads/writes the database
+        → backend sends data back
+          → frontend shows the result
+```
 
-### Entry Points
-
-| File | Job |
-|---|---|
-| `pipeline_service.py` | Main FastAPI app — all routes mounted here, rate limiting, health checks |
-| `combined_service.py` | Subprocess supervisor — runs FastAPI + 5 background workers as one Render process |
-
----
-
-### `routes/` — HTTP endpoints only. No business logic.
-
-| File | Job |
-|---|---|
-| `p0_actions_routes.py` | `POST /v1/actions/execute` — the single action dispatch endpoint; `/prefill` |
-| `entity_routes.py` | `GET /v1/entity/{type}/{id}` — entity detail lens data (12 types + handover) |
-| `vessel_surface_routes.py` | Vessel/dashboard overview data |
-| `document_routes.py` | Document CRUD and search |
-| `part_routes.py` | Part/equipment management |
-| `hours_of_rest_routes.py` | Hours of rest logging and compliance |
-| `handover_export_routes.py` | Handover export and PDF generation |
-| `import_routes.py` | File import pipeline (dry-run, commit, validate) |
-| `ledger_routes.py` | Audit ledger query and export |
-| `notification_routes.py` | Notification management |
-| `related_routes.py` | Legacy related entity discovery |
-| `related_signal_routes.py` | Signal-based related entity discovery |
-| `context_navigation_routes.py` | `GET /v1/context-navigation/{type}/{id}` FK-based related expansion |
-| `attachment_upload.py` | File upload proxy to TENANT Supabase storage |
-| `receiving_upload.py` | Receiving item upload |
-| `receiving_label_routes.py` | Barcode label generation for received goods |
-| `purchase_order_pdf_route.py` | Purchase order PDF generation |
-| `shopping_list_pdf_route.py` | Shopping list PDF generation |
-| `email.py` | Email integration orchestration |
-| `email_inbox_routes.py` | Email inbox sync and listing |
-| `email_thread_routes.py` | Email thread grouping and retrieval |
-| `email_link_routes.py` | Email-to-entity linking |
-| `email_sync_routes.py` | Email sync orchestration |
-| `auth_routes.py` | OAuth token exchange for Microsoft Graph |
-| `attention_routes.py` | Needs-attention priority management |
-| `decisions_routes.py` | Decision history and audit |
-| `orchestrated_search_routes.py` | High-level orchestrated search |
-| `search_streaming.py` | Legacy SSE search streaming (deprecated) |
-| `f1_search_streaming.py` | `GET /api/f1/search/stream` — SSE streaming search with RRF scoring |
-| `rag_endpoint.py` | RAG question-answering |
-
-#### `routes/handlers/` — dispatch table (not HTTP code)
-
-| File | Job |
-|---|---|
-| `__init__.py` | Merges all domain HANDLERS dicts into one master lookup table |
-| `internal_adapter.py` | Shim bridging legacy INTERNAL_HANDLERS to Phase 4 calling convention — serves docs + parts until those domains are rewritten |
+Every bug lives somewhere in that chain. This map tells you exactly where.
 
 ---
 
-### `handlers/` — All business logic. One file per domain.
+## THE GOLDEN RULE: EDIT OR CREATE NEW FILE?
 
-| File | Job |
-|---|---|
-| `warranty_handlers.py` | Warranty claim lifecycle (draft, file, compose email, notes, audit) |
-| `work_order_handlers.py` | Work order lifecycle (create, update, close, assign, status transitions) |
-| `purchase_order_handlers.py` | Purchase order creation and tracking |
-| `equipment_handler.py` | Equipment management and status tracking |
-| `equipment_utils.py` | Equipment utility functions (calculations, lookups) |
-| `fault_handler.py` | Fault/issue management |
-| `certificate_handlers.py` | Vessel certificate management |
-| `handover_handlers.py` | Handover workflow state machine and export |
-| `hours_of_rest_handlers.py` | Hours of rest compliance and tracking |
-| `inventory_handlers.py` | Inventory/parts management |
-| `part_handlers.py` | Part lifecycle (create, update, inventory) |
-| `document_handler.py` | Document lifecycle (create, update, metadata) |
-| `document_comment_handlers.py` | Document comment CRUD |
-| `attachment_comment_handlers.py` | Attachment comment CRUD |
-| `shopping_list_handlers.py` | Shopping list CRUD and item management |
-| `receiving_handlers.py` | Goods receiving and acceptance |
-| `list_handlers.py` | Generic list query handlers |
-| `entity_lens_handlers.py` | Entity detail view (all entity types, single responsibility) |
-| `context_navigation_handlers.py` | Related entity discovery |
-| `related_handlers.py` | Legacy related entity discovery (superseded by context_nav) |
-| `related_signal_handlers.py` | Signal-based related entity discovery |
-| `email_handlers.py` | Email integration and thread management |
-| `manual_handlers.py` | Manual task and procedure handlers |
-| `media_handlers.py` | Media/image attachment handlers |
-| `delivery_compliance_handlers.py` | P1 compliance — delivery/receiving workflows |
-| `shared_mutation_handlers.py` | Generic mutation handlers (notes, updates) |
-| `shared_read_handlers.py` | Generic read-only handlers (views, lists) |
-| `compliance_handler.py` | Compliance status and audit logic |
-| `pm_handler.py` | Preventive maintenance |
-| `universal_handlers.py` | Cross-domain handlers (soft delete, archive) |
-| `stub_handlers.py` | Placeholder stubs for not-yet-implemented actions |
-| `ledger_utils.py` | Ledger event building and writing utilities |
-| `schema_mapping.py` | Maps entity types to database tables |
-| `db_client.py` | Per-request RLS-enforced database client factory |
-| `__init__.py` | Handler class exports and factories |
+**Almost always: edit an existing file.**
+
+Only create a new file when:
+1. You are adding a **completely new domain** — a new type of thing the app tracks (like a new module "insurance" that doesn't exist at all)
+2. You are adding a **brand new reusable section** that will appear on multiple entity pages AND nothing like it exists yet
+3. An agent explicitly tells you the file doesn't exist and explains where it would live
+
+**If the thing already exists on screen, the file already exists. Edit it.**
+
+Examples:
+- "Change how the checklist looks" → edit existing checklist files, do NOT create new ones
+- "Add upload button to warranty page" → edit `WarrantyContent.tsx`, do NOT create a new component
+- "Make the notes section show differently" → edit `NotesSection.tsx`, do NOT create a new notes component
+- "Add a new action button to equipment" → edit `equipment_handler.py` + `registry.py`, do NOT create a new handler
 
 ---
 
-### `action_router/` — Action discovery and routing (no HTTP, no DB writes)
+## SCENARIO GUIDE — "I WANT TO..."
 
-| File | Job |
+### Change something on the WORK ORDER detail page
+
+The work order detail page is split across 3 files. Here's which one to touch:
+
+| What you want to change | File |
 |---|---|
-| `entity_actions.py` | Discovers available actions for an entity by type + state + user role (pure logic, no DB) |
-| `registry.py` | Single source of truth — all action definitions, schemas, permissions, variants |
-| `entity_prefill.py` | Static map: entity type + action → form field dot-paths for pre-populating forms |
-| `ledger_metadata.py` | Maps action names to ledger event types for audit trail |
-| `logger.py` | Logs all action executions to Supabase for analytics |
-
-#### `action_router/dispatchers/` — thin param-unpack wrappers
-
-| File | Job |
-|---|---|
-| `index.py` | INTERNAL_HANDLERS legacy adapter shim — blocked pending docs + parts Phase 4 rewrite |
-| `document.py` | Document action dispatchers |
-| `parts.py` | Parts action dispatchers |
-| `p3.py` | P3 read-only action dispatchers |
-| `shared.py` | Shared dispatcher utilities |
+| The **checklist tab** — how items look, tick behaviour, submit button | `apps/web/src/components/lens/sections/ChecklistSection.tsx` |
+| The **checklist tab** — which tab it's on, what order tabs appear | `apps/web/src/components/lens/entity/WorkOrderContent/WOTabBodies.tsx` |
+| A **modal/popup** that appears when you click a work order action | `apps/web/src/components/lens/entity/WorkOrderContent/WOModals.tsx` |
+| What **actions show** in the action dropdown on a work order | `apps/api/action_router/entity_actions.py` + `apps/api/action_router/registry.py` |
+| What happens **when an action is executed** (the logic) | `apps/api/handlers/work_order_handlers.py` |
+| The **overall layout** — which sections appear, in what order | `apps/web/src/components/lens/entity/WorkOrderContent/index.tsx` |
+| The **frequency / auto-spawn** logic | `apps/api/handlers/work_order_handlers.py` |
 
 ---
 
-### `middleware/` — Request processing. Applied before handlers.
+### Change something on ANY entity detail page (certificates, faults, equipment, etc.)
 
-| File | Job |
-|---|---|
-| `auth.py` | JWT validation, tenant lookup, yacht context injection, RBAC |
-| `action_security.py` | `@secure_action` decorator — ownership validation, idempotency, yacht freeze checks |
-| `action_gating.py` | Execution class rules — which actions are AUTO / SUGGEST / CONFIRM |
-| `handover_gating.py` | Role matrix for add-to-handover visibility per entity type |
-| `state_machine.py` | Validates state transitions (shopping lists, stateful entities) |
-| `validation_middleware.py` | Input validation utils (UUID, string length, quantity) |
-| `vessel_access.py` | Multi-vessel access validation for fleet users |
-| `rate_limit.py` | Redis token-bucket rate limiting (org-level, HTTP middleware) |
+Every entity detail page ("lens") follows the same pattern. When you open `/equipment/abc123`, three layers are involved:
 
----
+**Layer 1 — The page shell** (same for all entities)
+- `apps/web/src/components/lens/EntityLensPage.tsx` — the overall wrapper (header, tabs, action bar)
+- `apps/web/src/components/lens/LensGlassHeader.tsx` — the top strip with the entity name and action button
+- `apps/web/src/components/lens/LensTabBar.tsx` — the row of tabs
 
-### `validators/` — Input and entity validation.
+**Layer 2 — The content for that specific entity** (one file per domain)
+This is where you control what sections appear and in what order on each entity type:
+- Equipment page content → `apps/web/src/components/lens/entity/EquipmentContent.tsx`
+- Fault page content → `apps/web/src/components/lens/entity/FaultContent.tsx`
+- Certificate page content → `apps/web/src/components/lens/entity/CertificateContent.tsx`
+- Work order page content → `apps/web/src/components/lens/entity/WorkOrderContent/index.tsx`
+- Purchase order content → `apps/web/src/components/lens/entity/PurchaseOrderContent.tsx`
+- Warranty content → `apps/web/src/components/lens/entity/WarrantyContent.tsx`
+- Inventory/parts content → `apps/web/src/components/lens/entity/PartsInventoryContent.tsx`
+- Receiving content → `apps/web/src/components/lens/entity/ReceivingContent.tsx`
+- Shopping list content → `apps/web/src/components/lens/entity/ShoppingListContent.tsx`
+- Document content → `apps/web/src/components/lens/entity/DocumentContent.tsx`
+- Handover content → `apps/web/src/components/lens/entity/HandoverContent.tsx`
+- Hours of rest content → `apps/web/src/components/lens/entity/HoursOfRestContent.tsx`
 
-| File | Job |
-|---|---|
-| `jwt_validator.py` | JWT token validation and user context extraction |
-| `yacht_validator.py` | Yacht/vessel access and isolation validation |
-| `role_validator.py` | User role permission validation |
-| `rls_entity_validator.py` | RLS entity access — prevents cross-yacht data leakage |
-| `field_validator.py` | Individual field value validation |
-| `schema_validator.py` | Payload validation against action schemas |
-| `ownership.py` | Entity ownership check against user's yacht |
-| `validation_result.py` | ValidationResult / ValidationError dataclasses |
-
----
-
-### `schemas/` — Response type definitions.
-
-| File | Job |
-|---|---|
-| `action_response_schema.py` | Universal response envelope — ResponseBuilder, ActionResponseEnvelope, AvailableAction, SignedUrlGenerator |
-
----
-
-### `services/` — High-level business features.
-
-| File | Job |
-|---|---|
-| `import_service.py` | Core import logic (row transform, dry-run, commit, rollback) |
-| `hyper_search.py` | f1_search_cards RPC wrapper + signal connection pool |
-| `decision_engine.py` | Converts E017/E019 policy specs into action decisions with confidence tiers |
-| `decision_audit_service.py` | Audits and logs action decisions |
-| `action_surfacing.py` | Surfaces recommended actions to UI based on entity state |
-| `candidate_finder.py` | Finds candidate entities for suggestions |
-| `entity_serializer.py` | Converts entity data to text for embedding |
-| `entity_serializer_sync.py` | Synchronous entity serializer |
-| `scoring_engine.py` | Scores and ranks entities by relevance |
-| `handover_export_service.py` | Exports handover to PDF/HTML with ledger sealing |
-| `handover_html_parser.py` | Parses handover HTML for submission |
-| `handover_microservice_client.py` | RPC client for handover microservice |
-| `file_reference_resolver.py` | Resolves file references in import data to paths |
-| `intent_parser.py` | Parses user intent from search queries |
-| `linking_ladder.py` | Entity linking and relationship inference |
-| `cache.py` | Caching service |
-| `rate_limit.py` | Async token-bucket rate limiter for streaming endpoints (in-memory, per-user) — different from middleware/rate_limit.py |
-| `domain_microactions.py` | Domain-specific micro-action implementations |
-| `types.py` | Shared type definitions for services |
-| `email_sync_service.py` | Synchronises emails from Microsoft Graph |
-| `email_search_service.py` | Full-text and semantic search over email |
-| `email_link_service.py` | Links emails to entities via content analysis |
-| `email_suggestion_service.py` | Generates action suggestions from email content |
-| `email_embedding_service.py` | Generates email embeddings |
-| `email_graph_helpers.py` | Microsoft Graph API helpers |
-| `embedding_shadow_logger.py` | Logs embedding requests for monitoring |
-| `ms_graph_rate_limiter.py` | Rate limiter for Microsoft Graph API |
-| `token_extractor.py` | Token extraction for search |
-| `status_mapper.py` | Legacy status value mapping (deprecated — see mappers/) |
+**Layer 3 — Reusable sections** (shared across multiple entities)
+These are building blocks that plug into any entity page above. Edit these when the section itself is broken, not which entity it appears on:
+- Notes section (comments) → `apps/web/src/components/lens/sections/NotesSection.tsx`
+- Attachments/files section → `apps/web/src/components/lens/sections/AttachmentsSection.tsx`
+- Checklist section → `apps/web/src/components/lens/sections/ChecklistSection.tsx`
+- Audit trail (who changed what) → `apps/web/src/components/lens/sections/AuditTrailSection.tsx`
+- History timeline → `apps/web/src/components/lens/sections/HistorySection.tsx`
+- Ledger/transaction history → `apps/web/src/components/lens/sections/LedgerHistorySection.tsx`
+- Related equipment → `apps/web/src/components/lens/sections/RelatedEquipmentSection.tsx`
+- Parts used → `apps/web/src/components/lens/sections/PartsSection.tsx`
+- Renewal history (certs/warranties) → `apps/web/src/components/lens/sections/RenewalHistorySection.tsx`
+- Key-value data → `apps/web/src/components/lens/sections/KVSection.tsx`
+- File viewer (PDFs) → `apps/web/src/components/lens/sections/LensFileViewer.tsx`
+- Image viewer (photos) → `apps/web/src/components/lens/sections/LensImageViewer.tsx`
 
 ---
 
-### `workers/` — Background async jobs.
+### Add the document upload / attachment button to an entity page
 
-| File | Job |
-|---|---|
-| `projection_worker.py` | F1 Search projection — chunks, embeddings, Hard Tiers |
-| `embedding_worker_1536.py` | Generates 1536-dim embeddings for search_index rows |
-| `extraction_worker.py` | Downloads documents, extracts text for search indexing |
-| `email_watcher_worker.py` | Monitors and processes email changes |
-| `nightly_certificate_expiry.py` | Nightly job: check certificate expiration dates |
-| `nightly_feedback_loop.py` | Nightly job: extraction quality feedback |
-| `healthcheck.py` | Worker readiness health check |
-| `shutdown.py` | Graceful shutdown handler |
-| `extraction/extractor.py` | Text extraction logic (PDF, images) |
+The upload button and section live in two places:
 
----
+1. **The section that shows files** → `apps/web/src/components/lens/sections/AttachmentsSection.tsx`
+   (this already shows an "upload" button — if it's broken or needs changing, edit here)
 
-### `evidence/` — Production code (not test artifacts)
+2. **Where on the entity page it appears** → the `*Content.tsx` file for that entity
+   (if attachments section isn't showing on a particular entity page, add `<AttachmentsSection />` to that entity's Content file)
 
-| File | Job |
-|---|---|
-| `sealing.py` | PDF/A-3 + PAdES-B-LT sealing with RFC 3161 timestamp — used by ledger exports |
-| `fonts/` | Font files for PDF generation |
-| `icc/` | ICC color profile for PDF generation |
+3. **The backend that receives the upload** → `apps/api/routes/attachment_upload.py`
+   (if uploads are failing or going to wrong storage, edit here)
+
+You do NOT need a new file. The section already exists. You're just plugging it into the right content page.
 
 ---
 
-### `extraction/` — 5-stage entity extraction pipeline.
+### Add a new ACTION button to an entity (something the user can do)
 
-| File | Job |
-|---|---|
-| `orchestrator.py` | Coordinates the 5 stages: clean → regex → coverage → AI → merge |
-| `text_cleaner.py` | Stage 0: normalise whitespace, encoding |
-| `regex_extractor.py` | Stage 1: regex-based extraction using bundled patterns |
-| `coverage_controller.py` | Stage 2: decides whether AI extraction is needed |
-| `ai_extractor_openai.py` | Stage 3: OpenAI fallback for low-coverage scenarios |
-| `entity_merger.py` | Stage 4: merges regex + AI results with conflict resolution |
-| `action_detector.py` | Detects action phrases and verbs in text |
-| `text_normalizer.py` | Normalises extracted values to canonical forms |
-| `entity_extractor.py` | High-level delegation wrapper |
-| `gpt_extractor.py` | Legacy GPT extraction (superseded) |
-| `extraction_config.py` | Pipeline configuration parameters |
+Actions are buttons like "Add Note", "Close Work Order", "File Warranty Claim". They follow a fixed chain. ALL of these files need touching:
 
----
+1. **Define the action** — `apps/api/action_router/registry.py`
+   (add the action name, what fields it needs, what role can use it)
 
-### `orchestration/` — Search query planning and execution.
+2. **Make it appear on the right entity** — `apps/api/action_router/entity_actions.py`
+   (add a rule: "show this action when entity is in X state")
 
-| File | Job |
-|---|---|
-| `search_orchestrator.py` | intent → classification → RetrievalPlan |
-| `prepare_module.py` | Builds RetrievalPlan from extracted entities |
-| `executor.py` | Executes query plans |
-| `ranking_recipes.py` | RRF and result ranking recipe definitions |
-| `retrieval_plan.py` | RetrievalPlan data model |
-| `term_classifier.py` | Classifies extracted terms into search dimensions |
-| `surface_state.py` | Surface context state during search |
-| `email_retrieval.py` | Email retrieval and sync orchestration |
+3. **Write what it does** — `apps/api/handlers/{domain}_handlers.py`
+   (e.g. for a work order action → `work_order_handlers.py`)
+
+4. **Wire the backend dispatch** — `apps/api/routes/handlers/__init__.py`
+   (make sure the action name maps to the handler function)
+
+5. **If the action has a custom popup/form** — add a modal to the entity's `WOModals.tsx` equivalent, or use the standard `ActionPopup` which handles it automatically
+
+If the action uses the standard form popup (most do), steps 1-4 are enough. The ActionPopup renders the form automatically based on the registry definition.
 
 ---
 
-### `config/` — Configuration files.
+### Change what shows in the LIST view (before clicking into an entity)
 
-| File | Job |
+The list pages (`/equipment`, `/work-orders`, etc.) are separate from the detail pages.
+
+| What you want to change | File |
 |---|---|
-| `env.py` | Typed env config with secure deny-by-default |
-| `E017_TRIGGER_CONTRACTS.yaml` | Trigger contracts — action condition specs |
-| `E019_STATE_GUARDS.yaml` | State guard rules — mutual exclusion / state machine |
-| `projection.yaml` | F1 Search projection worker config |
+| Columns in the work order list table | `apps/web/src/features/work-orders/columns.tsx` |
+| Columns in the equipment list table | `apps/web/src/features/equipment/columns.tsx` |
+| How work order data is fetched for the list | `apps/web/src/features/work-orders/api.ts` |
+| How equipment data is fetched for the list | `apps/web/src/features/equipment/api.ts` |
+| The filter bar (filter chips, search input) | `apps/web/src/features/entity-list/components/FilterBar.tsx` |
+| A single row in any list | `apps/web/src/features/entity-list/components/EntityRecordRow.tsx` |
+| The work order calendar view | `apps/web/src/features/work-orders/WorkOrderCalendar.tsx` |
 
 ---
 
-### `integrations/`
+### Change the action POPUP FORM (the modal that appears when you click an action)
 
-| File | Job |
+The popup is shared across all actions. It has field types:
+
+| Field type | File |
 |---|---|
-| `supabase.py` | Supabase client factory — MASTER/TENANT routing + RLS enforcement |
-| `graph_client.py` | Microsoft Graph API client |
-| `feature_flags.py` | Feature flag management |
+| A text box | `apps/web/src/components/lens/ActionPopup/fields/FieldTextArea.tsx` |
+| A date picker | `apps/web/src/components/lens/ActionPopup/fields/FieldDatePick.tsx` |
+| A dropdown (select one option) | `apps/web/src/components/lens/ActionPopup/fields/FieldSelect.tsx` |
+| A file/attachment upload | `apps/web/src/components/lens/ActionPopup/fields/FieldAttachment.tsx` |
+| Assign a person | `apps/web/src/components/lens/ActionPopup/fields/FieldPersonAssign.tsx` |
+| Search and link another entity | `apps/web/src/components/lens/ActionPopup/fields/FieldEntitySearch.tsx` |
+| The popup shell itself (title, submit button) | `apps/web/src/components/lens/ActionPopup/ActionPopup.tsx` |
+| Which field renders for which type | `apps/web/src/components/lens/ActionPopup/fields/renderField.tsx` |
+
+To add a new field TYPE (e.g. a colour picker that doesn't exist yet), add a new file in `ActionPopup/fields/` and register it in `renderField.tsx`. To change an existing field, just edit the field's file directly.
 
 ---
 
-### `utils/`
+### Change what the backend DOES when an action is clicked
 
-| File | Job |
+Every domain has one handler file. Find the domain, find the function:
+
+| Domain | Handler file |
 |---|---|
-| `errors.py` | Shared error classes |
-| `cache_keys.py` | Cache key generation |
-| `filenames.py` | Filename sanitisation |
+| Work orders | `apps/api/handlers/work_order_handlers.py` |
+| Equipment | `apps/api/handlers/equipment_handler.py` |
+| Faults | `apps/api/handlers/fault_handler.py` |
+| Warranty | `apps/api/handlers/warranty_handlers.py` |
+| Certificates | `apps/api/handlers/certificate_handlers.py` |
+| Inventory / parts | `apps/api/handlers/inventory_handlers.py` + `part_handlers.py` |
+| Purchase orders | `apps/api/handlers/purchase_order_handlers.py` |
+| Receiving | `apps/api/handlers/receiving_handlers.py` |
+| Shopping list | `apps/api/handlers/shopping_list_handlers.py` |
+| Hours of rest | `apps/api/handlers/hours_of_rest_handlers.py` |
+| Handover | `apps/api/handlers/handover_handlers.py` |
+| Documents | `apps/api/handlers/document_handler.py` |
+
+**Rule: one domain = one handler file. Never split logic across two handler files for the same domain.**
 
 ---
 
-### `entity_extraction_loader.py` / `regex_production_data.py`
+### Change the TOP BAR, SIDEBAR, or overall layout
 
-| File | Job |
+| What | File |
 |---|---|
-| `entity_extraction_loader.py` | Loads 1,955 bundled regex patterns for entity extraction |
-| `regex_production_data.py` | Pattern library (1,330 equipment + 485 diagnostic patterns) |
+| The top bar (vessel dropdown, search icon, user menu) | `apps/web/src/components/shell/Topbar.tsx` |
+| The left sidebar (navigation links, counts) | `apps/web/src/components/shell/Sidebar.tsx` |
+| The bar below the topbar (breadcrumb, filter chips) | `apps/web/src/components/shell/Subbar.tsx` |
+| The overall grid layout (how topbar/sidebar/body fit together) | `apps/web/src/components/shell/AppShell.tsx` |
+| The home page (vessel overview) | `apps/web/src/components/shell/VesselSurface.tsx` |
+| The notification bell | `apps/web/src/components/shell/NotificationBell.tsx` |
+| The vessel switcher (multi-vessel dropdown) | `apps/web/src/contexts/VesselContext.tsx` |
 
 ---
 
-### `cache/`
+### Change search behaviour
 
-| File | Job |
+| What | File |
 |---|---|
-| `invalidation_listener.py` | Listens to pg_notify and evicts Redis keys for F1 search cache |
+| The search overlay that appears when you press the search icon | `apps/web/src/components/spotlight/SpotlightSearch.tsx` |
+| How search results are grouped/ordered | `apps/web/src/lib/spotlightGrouping.ts` |
+| The backend search logic (what gets returned) | `apps/api/orchestration/search_orchestrator.py` |
+| Search result ranking | `apps/api/orchestration/ranking_recipes.py` |
 
 ---
 
-### `parsers/`
+### Change who can see/use something (permissions)
 
-| File | Job |
+| What | File |
 |---|---|
-| `base_parser.py` | Base types and file reference detection |
-| `csv_parser.py` | CSV file parser with schema detection |
-| `xlsx_parser.py` | Excel/XLSX parser with sheet detection |
-| `sql_parser.py` | SQL import parser |
-| `zip_handler.py` | Zip archive handler for batch imports |
+| Which actions are visible to which roles | `apps/api/action_router/registry.py` (each action has a `roles` field) |
+| Which actions appear based on entity state | `apps/api/action_router/entity_actions.py` |
+| Whether a user can access a vessel at all | `apps/api/middleware/vessel_access.py` |
+| Whether an action requires confirmation | `apps/api/middleware/action_gating.py` |
 
 ---
 
-### `mappers/`
+## FILE DIRECTORY
 
-| File | Job |
-|---|---|
-| `column_matcher.py` | Matches import columns to DB schema fields |
-| `date_normalizer.py` | Normalises date values across formats |
-| `source_profiles.py` | Source-specific column mapping profiles |
-| `status_mapper.py` | Maps source statuses to canonical CelesteOS statuses |
+This section lists every file. Use the scenario guide above first — only come here if you need a file not covered above.
 
 ---
 
-### `lib/`
+### BACKEND ENTRY POINTS
+*(These start the server. You almost never touch these.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `entity_helpers.py` | Entity operation helpers |
-| `user_resolver.py` | Resolves user UUIDs to display names for audit trail |
+| `apps/api/pipeline_service.py` | Starts the backend server. Registers all the URL routes. Like the front door of the building. |
+| `apps/api/combined_service.py` | Runs the server plus 5 background workers at the same time on Render. Don't touch unless changing how the server starts. |
 
 ---
 
-### `context_nav/`
+### BACKEND: `routes/`
+*(These files just receive a web request and hand it to the right handler. No logic here.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `related_expansion.py` | Deterministic FK/JOIN-based related entity expansion (no LLMs) |
-| `schemas.py` | Context navigation data models |
+| `action_execution_routes.py` | Receives every button-click action from the frontend. The single entry point for all actions. |
+| `entity_routes.py` | Sends back all the data for an entity detail page (e.g. all the work order information when you open a work order). |
+| `vessel_surface_routes.py` | Sends back the home page / dashboard data. |
+| `document_routes.py` | Document search and CRUD requests. |
+| `part_routes.py` | Parts and equipment list requests. |
+| `hours_of_rest_routes.py` | Hours of rest data requests. |
+| `handover_export_routes.py` | Handover PDF generation requests. |
+| `import_routes.py` | File import (CSV/XLSX) requests. |
+| `ledger_routes.py` | Audit ledger download requests. |
+| `notification_routes.py` | Notification fetch requests. |
+| `related_routes.py` | Legacy related-entity requests. (Old, kept for compatibility.) |
+| `related_signal_routes.py` | Related-entity discovery using signals. |
+| `context_navigation_routes.py` | Related-entity discovery using database relationships. |
+| `attachment_upload.py` | File upload requests. Passes the file to Supabase storage. |
+| `receiving_upload.py` | Receiving item uploads. |
+| `receiving_label_routes.py` | Generates barcode labels for received items. |
+| `purchase_order_pdf_route.py` | Generates purchase order PDFs. |
+| `shopping_list_pdf_route.py` | Generates shopping list PDFs. |
+| `email.py` | Email integration requests (main). |
+| `email_inbox_routes.py` | Email inbox data. |
+| `email_thread_routes.py` | Email thread data. |
+| `email_link_routes.py` | Requests to link an email to an entity. |
+| `email_sync_routes.py` | Email sync trigger requests. |
+| `auth_routes.py` | Microsoft login token exchange. |
+| `attention_routes.py` | "Needs attention" priority data. |
+| `decisions_routes.py` | Decision history data. |
+| `orchestrated_search_routes.py` | Main search requests. |
+| `f1_search_streaming.py` | Live streaming search (results appear as you type). |
+| `search_streaming.py` | Old streaming search. Kept but not used. |
+| `rag_endpoint.py` | AI question-answering requests. |
+| `routes/handlers/__init__.py` | The lookup table. Maps every action name to the function that handles it. If an action returns 404, it's probably missing from here. |
+| `routes/handlers/internal_adapter.py` | Temporary bridge for document and parts actions that haven't been updated yet. Will be deleted once those are updated. |
 
 ---
 
-### `cortex/`
+### BACKEND: `handlers/`
+*(This is where all the real work happens. One file per domain. If a button does the wrong thing, it's in here.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `rewrites.py` | Tenant-aware query rewrites for hybrid search (150ms budget, 3-rewrite limit) |
+| `work_order_handlers.py` | Everything work orders do: create, update, close, assign, checklist, frequency spawn. |
+| `equipment_handler.py` | Everything equipment does: status, notes, hours, manuals, archive. |
+| `fault_handler.py` | Everything faults do: create, update, resolve, link parts, notes. |
+| `warranty_handlers.py` | Everything warranty claims do: draft, file, email, notes, audit. |
+| `certificate_handlers.py` | Everything certificates do: register, renew, expire, notes. |
+| `inventory_handlers.py` | Inventory/stock management logic. |
+| `part_handlers.py` | Individual part lifecycle: create, update, reorder. |
+| `purchase_order_handlers.py` | Purchase order creation and status tracking. |
+| `receiving_handlers.py` | Goods receiving and acceptance logic. |
+| `shopping_list_handlers.py` | Shopping list creation and item management. |
+| `hours_of_rest_handlers.py` | Hours of rest recording and compliance checks. |
+| `handover_handlers.py` | Handover workflow: draft, sign, countersign, export. |
+| `document_handler.py` | Document creation, update, metadata. |
+| `document_comment_handlers.py` | Comments on documents. |
+| `attachment_comment_handlers.py` | Comments on attachments. |
+| `entity_lens_handlers.py` | Builds the full data package sent to any entity detail page. |
+| `list_handlers.py` | Generic list queries used by multiple domains. |
+| `shared_mutation_handlers.py` | Generic "add note", "update field" logic used across domains. |
+| `shared_read_handlers.py` | Generic "view entity", "list items" logic used across domains. |
+| `universal_handlers.py` | "Soft delete" and "archive" logic, shared across all domains. |
+| `email_handlers.py` | Email reading, thread management, linking to entities. |
+| `media_handlers.py` | Photo and image attachment handling. |
+| `manual_handlers.py` | Manual task and procedure handling. |
+| `delivery_compliance_handlers.py` | Compliance checks on deliveries. |
+| `compliance_handler.py` | General compliance status and audit logic. |
+| `pm_handler.py` | Preventive maintenance logic. |
+| `context_navigation_handlers.py` | Finds related entities using database relationships. |
+| `related_signal_handlers.py` | Finds related entities using signals. |
+| `related_handlers.py` | Old related-entity logic. Kept for compatibility. |
+| `ledger_utils.py` | Writes entries to the audit ledger. Used by handlers after any important action. |
+| `schema_mapping.py` | Lookup table: entity type name → database table name. |
+| `db_client.py` | Creates a database connection that enforces who can see what data. |
+| `stub_handlers.py` | Placeholder functions for actions that aren't built yet. Returns a "not implemented" response. |
+| `equipment_utils.py` | Helper calculations for equipment (running hours, status checks). |
 
 ---
 
-### `rag/`
+### BACKEND: `action_router/`
+*(Controls which actions appear on screen and what they're called. No database writes here.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `answer_generator.py` | Generates answers using retrieved context + LLM |
-| `context_builder.py` | Retrieves top-K docs via f1_search_fusion for answer context |
-| `normalizer.py` | Normalises RAG results and metadata |
-| `verifier.py` | Verifies answer quality and citation accuracy |
+| `registry.py` | The master list of every action in the system. Defines: action name, what fields it shows, who can use it, what it's called in the UI. **If you want to add a new action, start here.** |
+| `entity_actions.py` | Rules for when each action is visible. E.g. "only show Close Work Order if status is open". **If an action isn't appearing when it should, check here.** |
+| `entity_prefill.py` | When you open an action form, some fields are pre-filled. This file maps which fields to pre-fill for which action on which entity. |
+| `ledger_metadata.py` | Maps each action name to the right audit log entry type. |
+| `logger.py` | Records every action execution to the database for analytics. |
+
+#### `action_router/dispatchers/`
+*(Thin wrappers that unpack request data and call the right handler. Normally don't need to touch these.)*
+
+| File | Plain English |
+|---|---|
+| `index.py` | Temporary compatibility layer for old document/parts actions. Will be deleted. |
+| `document.py` | Passes document actions to the document handler. |
+| `parts.py` | Passes parts actions to the parts handler. |
+| `p3.py` | Passes read-only actions (view document etc.) to the right handler. |
+| `shared.py` | Shared helper utilities used by the dispatchers above. |
 
 ---
 
-### `execute/`
+### BACKEND: `middleware/`
+*(Runs before every request. Security, validation, rate limiting.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `capability_executor.py` | Executes RPC capabilities and DB queries |
-| `capability_observability.py` | Observability hooks for capability execution |
-| `result_normalizer.py` | Normalises capability results to consistent schema |
-| `result_ranker.py` | Ranks and scores query results |
-| `table_capabilities.py` | Capability definitions for table queries |
+| `auth.py` | Checks your login token is valid. Looks up which vessel you're on. Checks your role. Every request goes through here first. |
+| `action_security.py` | Extra security checks on actions: does this user own this entity? Is the vessel frozen? Has this action already been run (duplicate prevention)? |
+| `action_gating.py` | Decides if an action needs a confirmation step (like "are you sure?") or can run automatically. |
+| `handover_gating.py` | Controls which roles can add things to a handover, per entity type. |
+| `state_machine.py` | Validates status changes. E.g. you can't go from "closed" back to "draft". |
+| `validation_middleware.py` | Checks that UUIDs look like UUIDs, strings aren't too long, quantities are positive numbers. |
+| `vessel_access.py` | For fleet users who have access to multiple vessels: checks they're allowed to view the vessel they're requesting. |
+| `rate_limit.py` | Prevents too many requests per second from flooding the server. |
 
 ---
 
-### `prepare/`
+### BACKEND: `validators/`
+*(Checks that data is correct before it's used.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `capability_composer.py` | Multi-entity parallel capability dispatch and result merging |
+| `jwt_validator.py` | Validates the login token sent with every request. |
+| `yacht_validator.py` | Checks the user has access to the vessel they're requesting. |
+| `role_validator.py` | Checks the user's role allows the action they're trying to do. |
+| `rls_entity_validator.py` | Prevents one vessel from accessing another vessel's data. Critical security check. |
+| `field_validator.py` | Checks individual field values (e.g. email format, date format). |
+| `schema_validator.py` | Checks the whole action payload matches the expected shape. |
+| `ownership.py` | Checks an entity (e.g. a work order) belongs to the vessel making the request. |
+| `validation_result.py` | The standard "pass/fail" wrapper returned by all validators. |
 
 ---
 
-### `rankers/`
+### BACKEND: `schemas/`
+*(Defines what every API response looks like.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `onnx_reranker.py` | ONNX-based semantic reranking for search results |
+| `action_response_schema.py` | The standard wrapper around every response. Every handler uses `ResponseBuilder` from here to format its response. If the response shape is wrong, look here. |
 
 ---
 
-### `email_rag/`
+### BACKEND: `services/`
+*(Complex business features that don't fit in a single handler.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `embedder.py` | Email embedding service |
-| `entity_extractor.py` | Regex entity extraction for email queries |
-| `micro_actions.py` | Micro-actions triggered by email content |
-| `query_parser.py` | Parses email query text to structured intent |
-| `triggers.py` | Event triggers for email-driven actions |
+| `import_service.py` | The engine that processes CSV/XLSX file imports. Dry-run mode, then commit mode. |
+| `hyper_search.py` | Runs the F1 search database call and manages the connection. |
+| `decision_engine.py` | Reads the policy config files (E017, E019) and decides which actions to suggest and how confident to be. |
+| `action_surfacing.py` | Decides which actions to show as "suggested" based on entity state. |
+| `handover_export_service.py` | Builds the handover PDF/HTML with all items, then seals it. |
+| `handover_microservice_client.py` | Talks to the separate handover microservice. |
+| `file_reference_resolver.py` | When an import file references another file, this resolves the path. |
+| `linking_ladder.py` | Tries to automatically link entities to each other based on content similarity. |
+| `cache.py` | Stores frequently-used data in memory so the database isn't hit every time. |
+| `rate_limit.py` | Rate limiter specifically for the live streaming search (different from middleware rate limiter). |
+| `entity_serializer.py` | Converts an entity's data into a text string so it can be indexed for search. |
+| `scoring_engine.py` | Scores search results for relevance. |
+| `email_sync_service.py` | Pulls emails from Microsoft Outlook into the app. |
+| `email_search_service.py` | Searches across stored emails. |
+| `email_link_service.py` | Automatically links emails to entities (work orders, equipment etc.) based on content. |
+| `email_suggestion_service.py` | Suggests actions based on email content. |
 
 ---
 
-## FRONTEND — `apps/web/src/`
+### BACKEND: `workers/`
+*(Background jobs that run automatically. Not triggered by user clicks.)*
 
-### Entry + Styles
-
-| File | Job |
+| File | Plain English |
 |---|---|
-| `middleware.ts` | Domain routing — app.celeste7.ai/auth.celeste7.ai redirects, CORS, deprecated redirects |
-| `styles/globals.css` | Global styles, typography, base element resets |
-| `styles/tokens.css` | Design tokens — shell dimensions, colours, spacing, shadows, theme vars |
-| `styles/lens.css` | Scoped styles for entity detail lens and modal dialogs |
-| `styles/spotlight.css` | Styles for command palette / spotlight overlay |
+| `projection_worker.py` | Runs in the background indexing entities for search. Keeps the search index up to date. |
+| `embedding_worker_1536.py` | Generates AI embeddings (numerical representations) of entity text for semantic search. |
+| `extraction_worker.py` | Downloads documents and extracts their text content for search indexing. |
+| `email_watcher_worker.py` | Watches for new emails and processes them automatically. |
+| `nightly_certificate_expiry.py` | Runs every night. Checks if any certificates are expiring soon and creates alerts. |
+| `nightly_feedback_loop.py` | Runs every night. Checks extraction quality and adjusts. |
 
 ---
 
-### `contexts/` — React state shared across the tree
+### BACKEND: `evidence/`
+*(Production code for the ledger export. Not test files — don't delete.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `AuthContext.tsx` | User session, bootstrap status, yacht context, fleet vessels |
-| `VesselContext.tsx` | Active vessel ID + switchable dropdown for fleet managers |
-| `EntityLensContext.tsx` | Entity data, available actions, action execution callback for a lens page |
-| `BackdropContext.tsx` | Ambient orb pulse animation triggers on successful saves |
+| `sealing.py` | When you export the audit ledger as a PDF, this seals it with a legal timestamp so it can't be tampered with. |
+| `fonts/` | Font files used when generating sealed PDFs. |
+| `icc/` | Colour profile used when generating sealed PDFs. |
 
 ---
 
-### `providers/`
+### FRONTEND: HOW THE SCREEN IS BUILT
 
-| File | Job |
-|---|---|
-| `QueryProvider.tsx` | React Query client — data fetching, caching, sync config |
-| `MicroactionsProvider.tsx` | Registers all action handlers on mount |
+Every page on screen is built from these layers, from outside in:
 
----
-
-### `hooks/` — Data fetching and state
-
-| File | Job |
-|---|---|
-| `useAuth.ts` | Access auth context (user, session, login, logout, bootstrapping) |
-| `useActiveVessel.ts` | Access active vessel + fleet list |
-| `useEntityLens.ts` | Fetch entity detail + available actions + execute action |
-| `useActionHandler.ts` | Execute actions with loading / error / confirmation handling |
-| `useCelesteSearch.ts` | Spotlight/search with debouncing and result fetching |
-| `useEntityLedger.ts` | Fetch entity transaction/ledger history |
-| `useNeedsAttention.ts` | Fetch entities needing user attention |
-| `useRelated.ts` | Fetch related entities for graph navigation |
-| `useRelatedDrawer.ts` | Open/close state of the related entities drawer |
-| `useSignalRelated.ts` | Broadcast entity relationship changes to trigger refetches |
-| `useEmailData.ts` | Fetch email inbox, threads, messages |
-| `useReadBeacon.ts` | Track entity detail page views for read status |
+```
+AppShell (the frame: topbar + sidebar + body area)
+  └── RouteLayout (padding, max-width for the page body)
+       └── Page file (e.g. work-orders/[id]/page.tsx — just loads the lens)
+            └── EntityLensPage (the detail page wrapper)
+                 └── {Domain}Content (e.g. WorkOrderContent — what sections appear)
+                      └── Sections (ChecklistSection, NotesSection, etc.)
+```
 
 ---
 
-### `lib/` — Utilities and client-side business logic
+### FRONTEND: `styles/`
+*(Visual design. Colours, spacing, sizes. All values come from tokens — never hardcode.)*
 
-| File | Job |
+| File | Plain English |
 |---|---|
-| `utils.ts` | `cn`, `formatDate`, `debounce`, `truncate`, `formatRelativeTime` |
-| `apiClient.ts` | Secure API wrapper — JWT/yacht signature headers, auto token refresh, 401 retry |
-| `actionClient.ts` | Backend action execution client with auth |
-| `authHelpers.ts` | `getAuthHeaders`, `handle401`, `getYachtId`, `getYachtSignature`, AuthError |
-| `tokenRefresh.ts` | JWT token refresh and expiration management |
-| `apiBase.ts` | Base API URL and env var management |
-| `supabaseClient.ts` | Supabase client init |
-| `field-schema.ts` | Canonical form field schema — PREFILL_NEVER_RENDER, PREFILL_MONO_KEYS, FORM_BACKEND_AUTO |
-| `entityRoutes.ts` | Entity type → URL mapping and route builder |
-| `documentLoader.ts` | Document fetch and tree construction loader |
-| `documentTypes.ts` | Document type definitions and metadata |
-| `normalizeWarranty.ts` | Warranty entity normalisation and calculation helpers |
-| `spotlightGrouping.ts` | Search result grouping for spotlight |
-| `handoverExportClient.ts` | Client for handover export API (acknowledge, countersign, submit) |
-| `domain/catalog.ts` | Entity type metadata and relationships |
-| `domain/context.tsx` | Domain context provider and hooks |
-| `domain/hooks.ts` | Domain hook helpers |
-| `attention/types.ts` | Needs-attention / urgency scoring types |
-| `attention/scoring.ts` | Scoring logic for which entities need attention |
-| `email/oauth-utils.ts` | Outlook/O365 OAuth utilities |
-| `filters/catalog.ts` | Filter type definitions |
-| `filters/infer.ts` | Filter inference from entity values |
-| `filters/execute.ts` | Filter execution/matching logic |
-| `filters/mapLegacyFilter.ts` | Migration helpers for legacy filter formats |
-| `actions/index.ts` | Action system public API |
-| `actions/types.ts` | Action type definitions |
-| `actions/registry.ts` | Complete registry of all microactions organised by cluster |
-| `actions/executor.ts` | Microaction executor — routes to handler, manages confirmation |
-| `actions/handlers/index.ts` | Handler registration aggregator |
-| `actions/handlers/inventory.ts` | Inventory/parts action handlers |
-| `actions/handlers/workOrders.ts` | Work order action handlers |
-| `actions/handlers/handover.ts` | Handover export action handlers |
-| `actions/handlers/compliance.ts` | Hours of rest and compliance action handlers |
-| `actions/handlers/procurement.ts` | Purchase order and procurement action handlers |
-| `actions/handlers/equipment.ts` | Equipment management action handlers |
-| `receiving/saveExtractedData.ts` | Save extracted receiving document data to backend |
+| `styles/tokens.css` | The single source of truth for colours, sizes, and spacing. Every visual value in the app comes from here. **If you want to change a colour or size globally, edit here.** |
+| `styles/globals.css` | Base styles applied to the whole page (fonts, resets). |
+| `styles/lens.css` | Styles specific to entity detail pages. |
+| `styles/spotlight.css` | Styles for the search overlay. |
 
 ---
 
-### `app/` — Next.js pages (routing only, no business logic)
+### FRONTEND: `contexts/`
+*(Shared state available to the whole app.)*
 
-#### Auth + Login
-
-| File | Job |
+| File | Plain English |
 |---|---|
-| `layout.tsx` | Root layout — QueryProvider, AuthProvider, VesselProvider, MicroactionsProvider, ShellWrapper |
-| `page.tsx` | Home — VesselSurface component |
-| `error.tsx` | Global runtime error boundary |
-| `not-found.tsx` | 404 page |
-| `login/page.tsx` | Login page |
-| `login/LoginContent.tsx` | Interactive login form |
-| `reset-password/page.tsx` | Password reset page |
-| `reset-password/ResetPasswordClient.tsx` | Reset token validation + form |
-| `auth/callback/page.tsx` | OAuth callback receiver |
-| `auth/callback/AuthCallbackClient.tsx` | OAuth code exchange + redirect |
-| `open/page.tsx` | Public unauthenticated landing |
-
-#### Entity Pages (each domain follows the same pattern)
-
-| Route | Page file | Job |
-|---|---|---|
-| `/certificates` | `certificates/page.tsx` | Certificate list |
-| `/certificates/[id]` | `certificates/[id]/page.tsx` | Certificate detail lens |
-| `/certificates/register` | `certificates/register/page.tsx` | Register new certificate |
-| `/documents` | `documents/page.tsx` | Document tree list |
-| `/documents/[id]` | `documents/[id]/page.tsx` | Document detail lens |
-| `/equipment` | `equipment/page.tsx` | Equipment list |
-| `/equipment/[id]` | `equipment/[id]/page.tsx` | Equipment detail lens |
-| `/faults` | `faults/page.tsx` | Faults list |
-| `/faults/[id]` | `faults/[id]/page.tsx` | Fault detail lens |
-| `/handover-export` | `handover-export/page.tsx` | Handover queue + submitted |
-| `/handover-export/[id]` | `handover-export/[id]/page.tsx` | Handover document lens |
-| `/hours-of-rest` | `hours-of-rest/page.tsx` | HoR compliance overview |
-| `/hours-of-rest/[id]` | `hours-of-rest/[id]/page.tsx` | Crew member HoR detail |
-| `/hours-of-rest/signoffs` | `hours-of-rest/signoffs/page.tsx` | Signoff records |
-| `/hours-of-rest/signoffs/[id]` | `hours-of-rest/signoffs/[id]/page.tsx` | Signoff detail |
-| `/inventory` | `inventory/page.tsx` | Parts/inventory list |
-| `/inventory/[id]` | `inventory/[id]/page.tsx` | Part detail lens |
-| `/purchasing` | `purchasing/page.tsx` | Purchase orders list |
-| `/purchasing/[id]` | `purchasing/[id]/page.tsx` | Purchase order detail lens |
-| `/receiving` | `receiving/page.tsx` | Receiving records list |
-| `/receiving/[id]` | `receiving/[id]/page.tsx` | Receiving detail lens |
-| `/receiving/new` | `receiving/new/page.tsx` | New receiving record |
-| `/shopping-list` | `shopping-list/page.tsx` | Shopping lists |
-| `/shopping-list/[id]` | `shopping-list/[id]/page.tsx` | Shopping list detail lens |
-| `/shopping-list/new` | `shopping-list/new/page.tsx` | New shopping list |
-| `/warranties` | `warranties/page.tsx` | Warranties list |
-| `/warranties/[id]` | `warranties/[id]/page.tsx` | Warranty detail lens |
-| `/work-orders` | `work-orders/page.tsx` | Work orders list |
-| `/work-orders/[id]` | `work-orders/[id]/page.tsx` | Work order detail lens |
-| `/email` | `email/page.tsx` | Email module router |
-| `/email/inbox` | `email/inbox/page.tsx` | Email inbox |
-| `/email/[threadId]` | `email/[threadId]/page.tsx` | Email thread viewer |
-
-#### Next.js API Routes (`app/api/`)
-
-| File | Job |
-|---|---|
-| `whoami/route.ts` | Returns current user identity |
-| `cron/keep-warm/route.ts` | Keeps deployment warm |
-| `search/fallback/route.ts` | Search fallback endpoint |
-| `email/search/route.ts` | Email search |
-| `integrations/outlook/auth-url/route.ts` | Generate Outlook OAuth URL |
-| `integrations/outlook/callback/route.ts` | Handle Outlook OAuth callback |
-| `integrations/outlook/status/route.ts` | Outlook connection status |
-| `integrations/outlook/disconnect/route.ts` | Revoke Outlook integration |
-| `handover-export/[id]/acknowledge/route.ts` | Acknowledge handover export |
-| `handover-export/[id]/content/route.ts` | Get handover export PDF/HTML |
-| `handover-export/[id]/countersign/route.ts` | Countersign handover export |
-| `handover-export/[id]/submit/route.ts` | Submit handover export |
-| `v1/actions/execute/route.ts` | Proxy to backend action execution with auth |
-| `v1/hours-of-rest/[...path]/route.ts` | Proxy to hours of rest backend |
-| `v1/notifications/route.ts` | Fetch notifications |
-| `v1/notifications/[id]/read/route.ts` | Mark notification read |
-| `v1/notifications/mark-all-read/route.ts` | Mark all notifications read |
+| `AuthContext.tsx` | Stores who is logged in, their role, their vessel. Available everywhere. |
+| `VesselContext.tsx` | Stores which vessel is currently active (for fleet users who can switch). |
+| `EntityLensContext.tsx` | On a detail page: stores the entity data and handles action execution. |
+| `BackdropContext.tsx` | Controls the animated background orb effect on successful saves. |
 
 ---
 
-### `components/` — UI components
+### FRONTEND: `hooks/`
+*(Reusable data-fetching logic. These talk to the backend and return data to components.)*
 
-#### `ui/` — Base primitives (no domain logic)
-
-| File | Job |
+| File | Plain English |
 |---|---|
-| `button.tsx` | Base button with variants |
-| `checkbox.tsx` | Checkbox |
-| `dialog.tsx` | Modal dialog wrapper |
-| `dropdown-menu.tsx` | Dropdown menu |
-| `input.tsx` | Text input |
-| `label.tsx` | Form label |
-| `select.tsx` | Select dropdown |
-| `textarea.tsx` | Textarea |
-| `EntityLink.tsx` | Hyperlink for entity references |
-| `GhostButton.tsx` | Transparent button variant |
-| `PrimaryButton.tsx` | Primary button |
-| `SectionContainer.tsx` | Grouped content container |
-| `StatusPill.tsx` | Status badge |
-| `Toast.tsx` | Toast notification |
-| `VitalSignsRow.tsx` | Vital/status information row |
-
-#### `shell/` — App layout chrome
-
-| File | Job |
-|---|---|
-| `AppShell.tsx` | Main layout grid — topbar + sidebar + subbar + body |
-| `ShellWrapper.tsx` | Initialises shell providers and layout |
-| `ShellContext.tsx` | Shell state — sidebar open/closed, modal visibility |
-| `Topbar.tsx` | Top nav — vessel dropdown, global search, user menu |
-| `Sidebar.tsx` | Left nav — domain links with counts |
-| `Subbar.tsx` | Below-topbar — breadcrumb, scoped search, filter chips |
-| `VesselSurface.tsx` | Home page vessel status and vital signs |
-| `SearchOverlay.tsx` | Global search/spotlight overlay with keyboard shortcuts |
-| `Tier3SearchPopup.tsx` | Drill-down tertiary search results |
-| `NotificationBell.tsx` | Bell icon + notification dropdown |
-| `SettingsModal.tsx` | Settings/preferences modal |
-| `hooks.ts` | `useSidebarCounts`, `useShellState` |
-| `api.ts` | Shell API calls (counts, notifications) |
-| `useBreakpoint.ts` | Responsive breakpoint detection |
-
-#### `lens/` — Entity detail view system
-
-| File | Job |
-|---|---|
-| `EntityLensPage.tsx` | Main lens page — coordinates all detail sub-views |
-| `IdentityStrip.tsx` | Header: entity title, status, avatar |
-| `LensGlassHeader.tsx` | Glass-morphism header with entity info + action bar |
-| `LensTabBar.tsx` | Tabbed navigation within entity detail |
-| `LensPill.tsx` | Entity badge/chip |
-| `RelatedDrawer.tsx` | Drawer: related entities from entity graph |
-| `CollapsibleSection.tsx` | Collapsible content section |
-| `ScrollReveal.tsx` | Reveal content on scroll |
-| `SplitButton.tsx` | Button group with split dropdown |
-| `mapActionFields.ts` | Maps action field definitions to form components |
-| `ActionPopup/ActionPopup.tsx` | Action form modal — renders any action form |
-| `ActionPopup/fields/renderField.tsx` | Dispatches to correct field component by type |
-| `ActionPopup/fields/FieldAttachment.tsx` | File upload field |
-| `ActionPopup/fields/FieldDatePick.tsx` | Date picker field |
-| `ActionPopup/fields/FieldEntitySearch.tsx` | Entity search/reference field |
-| `ActionPopup/fields/FieldKvEdit.tsx` | Key-value editor field |
-| `ActionPopup/fields/FieldKvRead.tsx` | Key-value read-only display |
-| `ActionPopup/fields/FieldPersonAssign.tsx` | Person/crew assignment field |
-| `ActionPopup/fields/FieldSelect.tsx` | Dropdown select field |
-| `ActionPopup/fields/FieldTextArea.tsx` | Multiline text field |
-| `ActionPopup/shared/types.ts` | Form field and popup type definitions |
-| `ActionPopup/shared/helpers.ts` | Form helper utilities |
-| `ActionPopup/shared/SignatureLevels.tsx` | Signature requirement level UI |
-| `ActionPopup/shared/SourceBlock.tsx` | Source/origin display |
-
-#### `lens/entity/` — Per-domain entity content (one file per domain)
-
-| File | Job |
-|---|---|
-| `CertificateContent.tsx` | Certificate detail content |
-| `DocumentContent.tsx` | Document detail content |
-| `EquipmentContent.tsx` | Equipment detail content |
-| `FaultContent.tsx` | Fault/alarm detail content |
-| `HandoverContent.tsx` | Handover export detail content |
-| `HoursOfRestContent.tsx` | Hours of rest detail content |
-| `HoRSignoffContent.tsx` | HoR signoff detail content |
-| `PartsInventoryContent.tsx` | Parts/inventory detail content |
-| `PurchaseOrderContent.tsx` | Purchase order detail content |
-| `ReceivingContent.tsx` | Receiving detail content |
-| `ShoppingListContent.tsx` | Shopping list detail content |
-| `WarrantyContent.tsx` | Warranty detail content |
-| `WorkOrderContent/index.tsx` | Work order detail content |
-| `WorkOrderContent/WOModals.tsx` | Modals for work order actions |
-| `WorkOrderContent/WOTabBodies.tsx` | Tab panel bodies for work order |
-
-#### `lens/sections/` — Reusable lens sections (plug into any entity)
-
-| File | Job |
-|---|---|
-| `AttachmentsSection.tsx` | Attachments/files section |
-| `AuditTrailSection.tsx` | Change audit log section |
-| `ChecklistSection.tsx` | Checklist items and task progress |
-| `DocRowsSection.tsx` | Document rows/line items |
-| `HistorySection.tsx` | Entity history/timeline |
-| `KVSection.tsx` | Key-value custom data |
-| `LedgerHistorySection.tsx` | Transaction/ledger history |
-| `LensFileViewer.tsx` | File previewer |
-| `LensImageViewer.tsx` | Image viewer |
-| `NotesSection.tsx` | Notes and comments |
-| `PartsSection.tsx` | Parts used in work order |
-| `ReceivingDiscrepancies.tsx` | Receiving item discrepancies |
-| `ReceivingLabelPrint.tsx` | Label printing for received items |
-| `ReceivingLinkedPO.tsx` | Linked purchase order on receiving |
-| `ReceivingOfficialDocuments.tsx` | Official/compliance documents |
-| `ReceivingPackingList.tsx` | Packing list from receiving |
-| `RelatedEquipmentSection.tsx` | Related equipment items |
-| `RenewalHistorySection.tsx` | Certificate/warranty renewal history |
-| `EquipmentPickerModal.tsx` | Modal to select and link equipment |
-
-#### `lens/actions/` — Action-specific modals
-
-| File | Job |
-|---|---|
-| `AddNoteModal.tsx` | Add notes to entities |
-| `AttachmentUploadModal.tsx` | Upload attachments |
-| `FileWarrantyClaimModal.tsx` | File warranty claim |
-
-#### `components/documents/`
-
-| File | Job |
-|---|---|
-| `DocumentTree.tsx` | Hierarchical document tree with folders |
-| `DocumentsTableList.tsx` | Table view for documents |
-| `DocumentsSearchResults.tsx` | Document search result cards |
-| `docTreeBuilder.ts` | Builds tree hierarchy from flat document list |
-| `filterDocs.ts` | Filter and search logic for documents |
-
-#### `components/email/`
-
-| File | Job |
-|---|---|
-| `EmailSurface.tsx` | Email module layout |
-| `EmailInboxView.tsx` | Inbox list |
-| `EmailThreadViewer.tsx` | Thread/conversation viewer |
-| `LinkEmailModal.tsx` | Link email to entity |
-
-#### `components/handover/`
-
-| File | Job |
-|---|---|
-| `HandoverQueueView.tsx` | Queue of handovers awaiting action |
-| `ExportedHandoversView.tsx` | Submitted/completed handovers |
-| `HandoverDraftPanel.tsx` | Draft new handover panel |
-| `AddDraftItemModal.tsx` | Add item to handover draft |
-| `ConfirmExportModal.tsx` | Confirm and export handover |
-| `useHandoverExport.ts` | Handover export state + API calls |
-
-#### `components/hours-of-rest/`
-
-| File | Job |
-|---|---|
-| `FleetView.tsx` | Fleet-wide HoR compliance overview |
-| `DepartmentView.tsx` | Department-level HoR view |
-| `VesselComplianceView.tsx` | Vessel-specific compliance tracking |
-| `TimeSlider.tsx` | Time slider for HoR adjustment |
-| `MyTimeView/index.tsx` | Current crew member's HoR view |
-| `MyTimeView/helpers.ts` | Hours calculation helpers |
-| `MyTimeView/primitives.tsx` | Primitive time display components |
-
-#### `components/media/`
-
-| File | Job |
-|---|---|
-| `DocumentCard.tsx` | Document card |
-| `MediaRenderer.tsx` | Renders media by MIME type (image/pdf/etc) |
-| `fileUtils.ts` | File type detection and size formatting |
-
-#### `components/spotlight/`
-
-| File | Job |
-|---|---|
-| `SpotlightSearch.tsx` | Search/command palette |
-| `CommandPalette.tsx` | Command palette overlay |
-| `SmartPointers.tsx` | Search result highlighting |
-| `SpotlightResultRow.tsx` | Single search result row |
-| `FilterChips.tsx` | Filter chip buttons |
-| `QueryInterpretation.tsx` | Interpreted query and synonyms display |
-| `LensPillStrip.tsx` | Entity pill strip for quick navigation |
-
-#### Other component directories
-
-| File | Job |
-|---|---|
-| `backdrop/BackdropRoot.tsx` | Root backdrop provider |
-| `backdrop/LensBackdrop.tsx` | Animated orb backdrop for lens pages |
-| `backdrop/lensColors.ts` | Backdrop orb colour definitions |
-| `celeste/EntityLine.tsx` | Single-line entity reference display |
-| `celeste/StatusLine.tsx` | Single-line status display |
-| `modals/CreateShoppingListDrawer.tsx` | Create new shopping list drawer |
-| `modals/ReportFaultModal.tsx` | Report new fault/alarm |
-| `actions/modals/CreateWorkOrderModal.tsx` | Create work order |
-| `actions/modals/CreatePurchaseOrderModal.tsx` | Create purchase order |
-| `receiving/ReceivingDocumentUpload.tsx` | Document upload for receiving |
-| `layout/RouteLayout.tsx` | Standard route layout wrapper |
-| `ledger/LedgerPanel.tsx` | Transaction/ledger entries panel |
-| `settings/Settings.tsx` | Settings/preferences panel |
-| `viewer/DocumentViewerOverlay.tsx` | Full-screen document viewer overlay |
-| `shopping-list/ShoppingListTableList.tsx` | Shopping list items table |
-| `SuggestedActions.tsx` | Suggested actions for current entity |
+| `useAuth.ts` | Get the current user, their login status, login/logout functions. |
+| `useActiveVessel.ts` | Get the current active vessel and the list of all vessels for this user. |
+| `useEntityLens.ts` | Fetch all the data for an entity detail page, plus run actions on it. |
+| `useActionHandler.ts` | Handle clicking an action button: loading state, error handling, confirmation step. |
+| `useCelesteSearch.ts` | Run a search query and get results back. |
+| `useEntityLedger.ts` | Fetch the ledger/transaction history for an entity. |
+| `useNeedsAttention.ts` | Fetch the list of items flagged as needing attention. |
+| `useRelated.ts` | Fetch related entities for the "related" panel. |
+| `useRelatedDrawer.ts` | Open/close the related entities side drawer. |
+| `useEmailData.ts` | Fetch email inbox and thread data. |
+| `useReadBeacon.ts` | Mark an entity as "viewed" when the detail page opens. |
 
 ---
 
-### `features/` — Domain feature modules (list views + data adapters)
+### FRONTEND: `lib/`
+*(Utilities and client-side logic. Not visual — pure functions and API calls.)*
 
-#### `features/entity-list/`
-
-| File | Job |
+| File | Plain English |
 |---|---|
-| `components/FilteredEntityList.tsx` | List + filtering combined |
-| `components/EntityTableList.tsx` | Table-based entity list |
-| `components/EntityRecordRow.tsx` | Single entity row |
-| `components/FilterBar.tsx` | Filter input + controls |
-| `components/FilterPanel.tsx` | Filter options panel |
-| `components/EmptyState.tsx` | Empty list state |
-| `components/EntityDetailOverlay.tsx` | Overlay for entity quick-view |
-| `components/PaginationFooter.tsx` | Pagination controls |
-| `components/UrgencyGroupHeaders.tsx` | Urgency group headers |
-| `hooks/useEntityList.ts` | Entity list data fetching |
-| `hooks/useFilteredEntityList.ts` | Filtering layer on entity list |
-| `types/certificate-columns.tsx` | Certificate table column definitions |
-| `types/filter-config.ts` | Filter config per entity type |
-
-#### `features/work-orders/`
-
-| File | Job |
-|---|---|
-| `types.ts` | Work order types |
-| `api.ts` | Work order API calls |
-| `adapter.ts` | Work order data transformer |
-| `columns.tsx` | Work order table columns |
-| `useMonthWorkOrders.ts` | Fetch work orders for month calendar view |
-| `WorkOrderCalendar.tsx` | Calendar view of work orders |
-
-#### Other feature modules (same pattern per domain)
-
-| Directory | Files | Job |
-|---|---|---|
-| `features/faults/` | `types.ts`, `api.ts`, `adapter.ts` | Faults list data layer |
-| `features/equipment/` | `types.ts`, `api.ts`, `adapter.ts`, `columns.tsx` | Equipment list data layer |
-| `features/inventory/` | `types.ts`, `api.ts`, `adapter.ts`, `components/` | Inventory list data layer |
-| `features/purchasing/` | `columns.tsx` | PO table columns |
-| `features/receiving/` | `types.ts`, `adapter.ts`, `columns.tsx` | Receiving list data layer |
-| `features/shopping-list/` | `types.ts`, `adapter.ts` | Shopping list data layer |
+| `apiClient.ts` | The main HTTP client. Adds your login token and vessel ID to every request. Handles token refresh. **If API calls are failing with auth errors, start here.** |
+| `actionClient.ts` | Specifically sends action execution requests to the backend. |
+| `authHelpers.ts` | Helper functions: get your token, get your vessel ID, handle a 401 error. |
+| `tokenRefresh.ts` | Keeps your login token fresh so you don't get logged out unexpectedly. |
+| `apiBase.ts` | Stores the backend URL. Changes based on whether you're in development or production. |
+| `supabaseClient.ts` | The Supabase database client for the frontend (auth only). |
+| `field-schema.ts` | Defines which form fields should be hidden, shown as read-only, or auto-filled. If a form field is appearing when it shouldn't, or is missing a label, check here. |
+| `entityRoutes.ts` | Maps entity types to their URL. E.g. "work_order" → "/work-orders". Used to build links. |
+| `utils.ts` | Small helper functions used everywhere: format a date, merge CSS class names, debounce a function. |
+| `normalizeWarranty.ts` | Cleans up warranty data into a consistent shape before displaying it. |
+| `spotlightGrouping.ts` | Groups search results by category for display in the search overlay. |
+| `handoverExportClient.ts` | API calls for handover export actions (acknowledge, countersign, submit). |
+| `documentLoader.ts` | Fetches the document list and builds the folder tree structure. |
+| `domain/catalog.ts` | Master list of entity types with their display names and metadata. |
+| `filters/catalog.ts` | Defines what filters are available for each entity type. |
+| `filters/infer.ts` | Automatically suggests filters based on what you've typed. |
+| `filters/execute.ts` | Applies active filters to a list of results. |
+| `actions/registry.ts` | Frontend copy of the action registry — action names, display labels, icons. |
+| `actions/executor.ts` | Sends actions to the backend and handles the response (success/error/confirmation). |
+| `actions/handlers/workOrders.ts` | Frontend-side work order action logic (what to do after the backend responds). |
+| `actions/handlers/equipment.ts` | Frontend-side equipment action logic. |
+| `actions/handlers/inventory.ts` | Frontend-side inventory action logic. |
+| `actions/handlers/procurement.ts` | Frontend-side procurement/purchasing action logic. |
+| `actions/handlers/handover.ts` | Frontend-side handover action logic. |
+| `actions/handlers/compliance.ts` | Frontend-side compliance action logic. |
 
 ---
 
-## WHAT'S DEFERRED (not yet restructured)
+### FRONTEND: `components/shell/`
+*(The persistent frame around every page: topbar, sidebar, subbar.)*
 
-| Item | Blocked on |
+| File | Plain English |
 |---|---|
-| `routes/handlers/internal_adapter.py` deletion | Documents + parts handlers rewritten to Phase 4 native |
-| `action_router/` root files (registry.py, entity_prefill.py, etc.) | CEO sign-off on target structure — registry.py is 5,173L and imported everywhere |
+| `AppShell.tsx` | The layout grid that places the topbar, sidebar, and body. The skeleton of every page. |
+| `Topbar.tsx` | The bar at the top: vessel name dropdown, search icon, notification bell, user avatar. |
+| `Sidebar.tsx` | The left navigation bar with links to each domain and their item counts. |
+| `Subbar.tsx` | The bar below the topbar: breadcrumb trail, scoped search, active filter chips. |
+| `VesselSurface.tsx` | The home page content showing vessel status, vital signs, and overview data. |
+| `SearchOverlay.tsx` | The full-screen search that appears when you click the search icon. |
+| `NotificationBell.tsx` | The bell icon and the dropdown list of notifications. |
+| `SettingsModal.tsx` | The settings panel. |
 
 ---
 
-## QUICK TASKING REFERENCE
+### FRONTEND: `components/lens/`
+*(Everything on entity detail pages.)*
 
-| Symptom | File(s) to task |
+| File | Plain English |
 |---|---|
-| Wrong actions visible for an entity | `action_router/entity_actions.py` |
-| Action requires wrong role | `action_router/registry.py` |
-| Action form field wrong / missing | `action_router/entity_prefill.py`, `apps/web/src/lib/field-schema.ts` |
-| Action executes but returns wrong data | `handlers/{domain}_handlers.py` |
-| Action renders wrong in UI | `components/lens/entity/{Domain}Content.tsx` |
-| Action form field UI broken | `components/lens/ActionPopup/fields/Field*.tsx` |
-| Button placement / section order | `components/lens/entity/{Domain}Content.tsx` |
-| API call fails (auth/headers) | `apps/web/src/lib/apiClient.ts` |
-| Route not found / wrong URL | `apps/web/src/lib/entityRoutes.ts` |
-| Entity list not loading | `features/{domain}/api.ts` + `hooks/useEntityList.ts` |
-| Sidebar counts wrong | `components/shell/api.ts` |
-| Notifications broken | `routes/notification_routes.py` + `app/api/v1/notifications/` |
-| Search not returning results | `orchestration/search_orchestrator.py` |
-| Search result ranked wrong | `orchestration/ranking_recipes.py` |
-| Audit trail missing entry | `handlers/ledger_utils.py` + `action_router/logger.py` |
-| State transition rejected | `middleware/state_machine.py` |
-| JWT / auth rejected | `middleware/auth.py` + `validators/jwt_validator.py` |
-| Cross-yacht data leak | `validators/rls_entity_validator.py` |
-| PDF generation broken | `evidence/sealing.py` |
-| Import failing | `services/import_service.py` + `parsers/` |
-| Vessel switcher broken | `contexts/VesselContext.tsx` + `components/shell/Topbar.tsx` |
+| `EntityLensPage.tsx` | The wrapper for every detail page. Coordinates the header, tabs, action button, and content. |
+| `LensGlassHeader.tsx` | The top section of a detail page: entity name, status pill, action button. |
+| `LensTabBar.tsx` | The row of tabs on a detail page (e.g. "Overview", "Checklist", "History"). |
+| `RelatedDrawer.tsx` | The panel that slides in from the right showing related entities. |
+| `CollapsibleSection.tsx` | A section that can be expanded/collapsed with a click. Used inside content pages. |
+| `ActionPopup/ActionPopup.tsx` | The modal form that appears when you click any action. Handles the title, fields, submit button. |
+| `ActionPopup/fields/renderField.tsx` | Looks at the field type and renders the right input component. The dispatcher for form fields. |
+
+#### Per-entity content files (`lens/entity/`)
+*(Each entity type has its own file that defines what appears on its detail page and in what order.)*
+
+| File | What it controls |
+|---|---|
+| `WorkOrderContent/index.tsx` | Work order detail page layout and section order |
+| `WorkOrderContent/WOTabBodies.tsx` | Content inside each work order tab |
+| `WorkOrderContent/WOModals.tsx` | Modals specific to work order actions (e.g. SetFrequencyModal) |
+| `EquipmentContent.tsx` | Equipment detail page layout |
+| `FaultContent.tsx` | Fault detail page layout |
+| `CertificateContent.tsx` | Certificate detail page layout |
+| `WarrantyContent.tsx` | Warranty detail page layout |
+| `PurchaseOrderContent.tsx` | Purchase order detail page layout |
+| `ReceivingContent.tsx` | Receiving detail page layout |
+| `ShoppingListContent.tsx` | Shopping list detail page layout |
+| `PartsInventoryContent.tsx` | Parts/inventory detail page layout |
+| `DocumentContent.tsx` | Document detail page layout |
+| `HandoverContent.tsx` | Handover export detail page layout |
+| `HoursOfRestContent.tsx` | Hours of rest detail page layout |
+| `HoRSignoffContent.tsx` | Hours of rest signoff detail page layout |
+
+#### Reusable sections (`lens/sections/`)
+*(These are building blocks. They render a specific section and can be placed in any entity content file.)*
+
+| File | What it shows |
+|---|---|
+| `ChecklistSection.tsx` | A list of checklist items with tick/text inputs and a submit button |
+| `NotesSection.tsx` | A thread of notes/comments with an "add note" input |
+| `AttachmentsSection.tsx` | A grid of uploaded files with an upload button |
+| `AuditTrailSection.tsx` | A timeline of every change ever made to this entity (who did what, when) |
+| `HistorySection.tsx` | A timeline of key events in the entity's life |
+| `LedgerHistorySection.tsx` | The financial/transaction ledger for this entity |
+| `PartsSection.tsx` | Parts used in a work order with quantities |
+| `RelatedEquipmentSection.tsx` | Equipment linked to this entity |
+| `RenewalHistorySection.tsx` | History of certificate or warranty renewals |
+| `KVSection.tsx` | Custom key-value data (flexible fields) |
+| `LensFileViewer.tsx` | Embedded PDF viewer |
+| `LensImageViewer.tsx` | Embedded image viewer |
+| `ReceivingDiscrepancies.tsx` | Discrepancies found during goods receiving |
+| `ReceivingLabelPrint.tsx` | Print barcode labels for received items |
+| `ReceivingLinkedPO.tsx` | The purchase order linked to this receiving record |
+| `ReceivingPackingList.tsx` | The packing list from this receiving record |
+| `DocRowsSection.tsx` | Line items / rows within a document |
+| `EquipmentPickerModal.tsx` | Modal to search and link a piece of equipment |
+
+---
+
+### FRONTEND: `features/`
+*(Domain-specific list page logic. Data fetching and column definitions for the list views.)*
+
+| File | Plain English |
+|---|---|
+| `entity-list/components/FilteredEntityList.tsx` | The list component used on every list page. Handles filtering, pagination, and display. |
+| `entity-list/components/EntityTableList.tsx` | Table layout for entity lists. |
+| `entity-list/components/EntityRecordRow.tsx` | A single row in any list. Edit here to change how all list rows look. |
+| `entity-list/components/FilterBar.tsx` | The filter input bar above a list. |
+| `entity-list/hooks/useEntityList.ts` | Fetches entity list data from the backend. |
+| `work-orders/columns.tsx` | Which columns appear in the work orders list. |
+| `work-orders/api.ts` | API calls for the work orders list. |
+| `work-orders/adapter.ts` | Converts raw work order data into the shape the list needs. |
+| `work-orders/WorkOrderCalendar.tsx` | The calendar view of work orders. |
+| `equipment/columns.tsx` | Which columns appear in the equipment list. |
+| `equipment/api.ts` | API calls for the equipment list. |
+| `faults/api.ts` | API calls for the faults list. |
+| `inventory/api.ts` | API calls for the inventory list. |
+| `purchasing/columns.tsx` | Which columns appear in the purchase orders list. |
+| `receiving/columns.tsx` | Which columns appear in the receiving list. |
+
+---
+
+## WHAT'S DEFERRED (not yet done — do not touch these without checking)
+
+| Item | Why it's waiting |
+|---|---|
+| `routes/handlers/internal_adapter.py` | Temporary bridge for documents and parts. Gets deleted once those domains are rewritten. Don't add new things to it. |
+| `action_router/registry.py` reorganisation | It's 5,000+ lines and imported everywhere. Moving it requires a full session with sign-off first. |
+
+---
+
+## IMPORT RULES FOR AGENTS
+*(If you're writing a prompt for an agent that touches backend code, include these lines.)*
+
+```
+Canonical import paths (use these — not the old paths):
+- from middleware.X import ...          (NOT action_router.middleware)
+- from validators.X import ...          (NOT action_router.validators)
+- from schemas.action_response_schema import ResponseBuilder
+- from handlers.{domain}_handlers import ...
+
+NEVER use git add -A. Stage only the exact files you changed.
+Every claim must cite file:line. No guessing.
+```
+
+---
+
+## DONE MEANS (include this in every agent brief)
+
+```
+Done = full chain verified:
+  Button clicked → API returns 200 → correct row in database → correct data shown on screen
+
+NOT done: "compiles", "no TypeScript errors", "tests pass", "looks right"
+```
