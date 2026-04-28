@@ -30,7 +30,7 @@ from fastapi import status as http_status
 from middleware.auth import get_authenticated_user
 from services.hyper_search import get_db_pool
 from services.types import UserContext
-from handlers.show_related_signal_handlers import get_signal_related, get_signal_related_supabase
+from handlers.related_signal_handlers import get_signal_related, get_signal_related_supabase
 from integrations.supabase import get_tenant_client
 
 logger = logging.getLogger(__name__)

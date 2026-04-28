@@ -10,7 +10,7 @@ Two concerns:
 
 Consumers:
 - routes/f1_search_streaming.py     (spotlight — uses call_hyper_search only, own pool)
-- handlers/show_related_signal_handlers.py  (signal — uses both pool + call_hyper_search)
+- handlers/related_signal_handlers.py  (signal — uses both pool + call_hyper_search)
 """
 
 from __future__ import annotations

@@ -1,11 +1,10 @@
-#!/usr/bin/env python3
 """
-Show Related — Signal Discovery Handlers
-=========================================
+Related Signal Handlers
+========================
 
-Standalone signal-based discovery layer. Parallel to the FK-based
-related_handlers.py — runs independently so signal quality can be
-validated before the two systems are merged.
+Signal-based discovery layer. Parallel to the FK-based related_handlers.py —
+runs independently so signal quality can be validated before the two systems
+are merged.
 
 How it works:
     entity (type + id)
