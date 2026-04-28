@@ -6,7 +6,7 @@ import { useActiveVessel } from '@/contexts/VesselContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import { API_BASE } from '@/lib/apiBase';
-import { ActionPopup } from '@/components/lens-v2/ActionPopup';
+import { ActionPopup } from '@/components/lens/ActionPopup';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

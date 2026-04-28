@@ -40,8 +40,8 @@ import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrde
 import { CreatePurchaseOrderModal } from '@/components/actions/modals/CreatePurchaseOrderModal';
 import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
 import { CreateShoppingListDrawer } from '@/components/modals/CreateShoppingListDrawer';
-import { FileWarrantyClaimModal } from '@/components/lens-v2/actions/FileWarrantyClaimModal';
-import { AttachmentUploadModal } from '@/components/lens-v2/actions/AttachmentUploadModal';
+import { FileWarrantyClaimModal } from '@/components/lens/actions/FileWarrantyClaimModal';
+import { AttachmentUploadModal } from '@/components/lens/actions/AttachmentUploadModal';
 import { LedgerPanel } from '@/components/ledger';
 import { useHandoverExport } from '@/components/handover/useHandoverExport';
 import { ConfirmExportModal } from '@/components/handover/ConfirmExportModal';

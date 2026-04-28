@@ -25,6 +25,7 @@ from fastapi.responses import StreamingResponse
 import io
 
 from integrations.supabase import get_supabase_client
+from handlers.shopping_list_handlers import ShoppingListV2Handlers
 
 logger = logging.getLogger(__name__)
 
@@ -381,35 +382,8 @@ async def list_shopping_lists(
     department: str = Query(None),
 ):
     """Return all shopping lists for a vessel, newest first."""
-    supabase = get_supabase_client()
-    q = supabase.table("pms_shopping_lists").select(
-        "id, list_number, name, department, status, currency, "
-        "estimated_total, created_by, created_at, submitted_at, "
-        "approved_at, converted_at, converted_to_po_id, notes"
-    ).eq("yacht_id", yacht_id).order("created_at", desc=True)
-
-    if status:
-        q = q.eq("status", status)
-    if department:
-        q = q.eq("department", department)
-
-    r = q.execute()
-    rows = r.data or []
-
-    # Count items per list in one shot
-    items_r = supabase.table("pms_shopping_list_items").select(
-        "shopping_list_id"
-    ).eq("yacht_id", yacht_id).neq("status", "deleted").execute()
-    item_counts: dict[str, int] = {}
-    for it in (items_r.data or []):
-        lid = it.get("shopping_list_id")
-        if lid:
-            item_counts[lid] = item_counts.get(lid, 0) + 1
-
-    for row in rows:
-        row["item_count"] = item_counts.get(row["id"], 0)
-
-    return {"status": "success", "data": rows}
+    h = ShoppingListV2Handlers(get_supabase_client())
+    return await h.list_shopping_lists(yacht_id=yacht_id, status=status, department=department)
 
 
 @router.get("/{list_id}")
@@ -418,24 +392,11 @@ async def get_shopping_list(
     yacht_id: str = Query(...),
 ):
     """Return a shopping list header + all its items."""
-    supabase = get_supabase_client()
-
-    sl_r = supabase.table("pms_shopping_lists").select("*") \
-        .eq("id", list_id).eq("yacht_id", yacht_id).single().execute()
-
-    if not sl_r.data:
+    h = ShoppingListV2Handlers(get_supabase_client())
+    result = await h.get_shopping_list(yacht_id=yacht_id, list_id=list_id)
+    if result is None:
         raise HTTPException(status_code=404, detail="Shopping list not found")
-
-    sl = sl_r.data
-
-    items_r = supabase.table("pms_shopping_list_items").select("*") \
-        .eq("shopping_list_id", list_id).eq("yacht_id", yacht_id) \
-        .neq("status", "deleted") \
-        .order("created_at", desc=False) \
-        .execute()
-
-    sl["items"] = items_r.data or []
-    return {"status": "success", "data": sl}
+    return {"status": "success", "data": result}
 
 
 @router.get("/{list_id}/pdf")
@@ -446,36 +407,18 @@ async def export_shopping_list_pdf(
     """
     Export a shopping list as a PDF requisition document.
     Available for: draft, submitted, hod_approved, converted_to_po.
+
+    All data fetching is delegated to ShoppingListV2Handlers.get_shopping_list_for_pdf().
     """
-    supabase = get_supabase_client()
+    h = ShoppingListV2Handlers(get_supabase_client())
+    pdf_data = await h.get_shopping_list_for_pdf(yacht_id=yacht_id, list_id=list_id)
 
-    # Fetch list header
-    sl_r = supabase.table("pms_shopping_lists").select("*") \
-        .eq("id", list_id).eq("yacht_id", yacht_id).single().execute()
-
-    if not sl_r.data:
+    sl = pdf_data["shopping_list"]
+    if sl is None:
         raise HTTPException(status_code=404, detail="Shopping list not found")
 
-    sl = sl_r.data
-
-    # Fetch items (exclude soft-deleted)
-    items_r = supabase.table("pms_shopping_list_items").select("*") \
-        .eq("shopping_list_id", list_id).eq("yacht_id", yacht_id) \
-        .neq("status", "deleted") \
-        .order("created_at", desc=False) \
-        .execute()
-
-    items = items_r.data or []
-
-    # Resolve vessel name
-    vessel_name = "Vessel"
-    try:
-        v_r = supabase.table("fleet_vessels").select("name") \
-            .eq("id", yacht_id).single().execute()
-        if v_r.data:
-            vessel_name = v_r.data.get("name", "Vessel")
-    except Exception:
-        pass
+    items = pdf_data["items"]
+    vessel_name = pdf_data["vessel_name"]
 
     try:
         pdf_bytes = _build_shopping_list_pdf(sl, items, vessel_name)

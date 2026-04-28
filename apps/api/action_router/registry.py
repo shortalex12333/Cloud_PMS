@@ -1809,7 +1809,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     # Domain: documents
     # Table: doc_metadata (yacht-scoped, RLS enabled)
     # Storage: documents bucket, path: {yacht_id}/documents/{document_id}/{filename}
-    # Handlers: apps/api/handlers/document_handlers.py
+    # Handlers: apps/api/handlers/document_handler.py
     #
     # Actions:
     #   upload_document     - MUTATE (All Crew) - Upload new document

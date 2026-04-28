@@ -1,10 +1,10 @@
 """
-Unit tests for PO handler — purchase_order_phase4.py (canonical single source of truth).
+Unit tests for PO handler — purchase_order_handlers.py (canonical single source of truth).
 """
 import pytest
 from unittest.mock import MagicMock
 
-from handlers.purchase_order_phase4 import HANDLERS
+from handlers.purchase_order_handlers import HANDLERS
 
 
 def make_db(rows=None):

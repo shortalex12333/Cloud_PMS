@@ -18,7 +18,7 @@ from action_router.entity_prefill import (
     resolve_prefill,
     get_field_schema,
 )
-from actions.add_to_handover_gating import user_can_add_entity_type_to_handover
+from middleware.handover_gating import user_can_add_entity_type_to_handover
 
 # ── Work Order status sets ─────────────────────────────────────────────────────
 _PRE_START_STATUSES = {"draft", "open", "planned"}

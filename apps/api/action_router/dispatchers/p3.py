@@ -3,7 +3,7 @@
 from typing import Dict, Any
 import logging
 from integrations.supabase import get_supabase_client
-from handlers.p3_read_only_handlers import P3ReadOnlyHandlers
+from handlers.shared_read_handlers import P3ReadOnlyHandlers
 
 logger = logging.getLogger(__name__)
 

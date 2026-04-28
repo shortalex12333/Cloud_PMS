@@ -4,7 +4,7 @@
  * SuggestedActions Component
  *
  * Renders backend-provided action suggestions as buttons from spotlight search.
- * Uses the prototype-matched ActionPopup (lens-v2) for all action execution —
+ * Uses the ActionPopup for all action execution —
  * schema-driven fields, signature levels, data gates, proper styling.
  *
  * After successful action execution, navigates to the entity's fragment route.
@@ -15,12 +15,10 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { PenLine } from 'lucide-react';
 import { executeAction, type ActionSuggestion } from '@/lib/actionClient';
-import { ActionPopup, type ActionPopupField } from '@/components/lens-v2/ActionPopup';
+import { ActionPopup, type ActionPopupField } from '@/components/lens/ActionPopup';
 import { getEntityRoute } from '@/lib/entityRoutes';
 import { toast } from 'sonner';
-
-// Fields handled automatically — never shown in the form
-const BACKEND_AUTO = new Set(['yacht_id', 'signature', 'idempotency_key']);
+import { FORM_BACKEND_AUTO as BACKEND_AUTO } from '@/lib/field-schema';
 
 // Priority options (reused across domains)
 const PRIORITY_OPTIONS = [

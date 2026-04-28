@@ -35,6 +35,7 @@ def make_db(rows=None):
     # select chains (limit)
     db.table.return_value.select.return_value.eq.return_value.or_.return_value.limit.return_value.execute.return_value.data = rows
     db.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = rows
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = rows
     # select chains (all - for export_handover items)
     db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = rows
     # delete chains
@@ -51,6 +52,7 @@ def make_db_empty():
     db.table.return_value.select.return_value.eq.return_value.eq.return_value.single.return_value.execute.return_value.data = None
     db.table.return_value.select.return_value.eq.return_value.or_.return_value.limit.return_value.execute.return_value.data = []
     db.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+    db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
     db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
     db.table.return_value.delete.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
     return db
@@ -223,8 +225,8 @@ class TestDocumentV2Rbac:
     @pytest.mark.asyncio
     async def test_get_document_url_rbac_allowed_for_crew(self):
         """crew role should be allowed for get_document_url."""
-        # Patch the lazy import target (handlers.document_handlers module)
-        with patch("handlers.document_handlers.get_document_handlers") as mock_get:
+        # Patch the lazy import target (handlers.document_handler module)
+        with patch("handlers.document_handler.get_document_handlers") as mock_get:
             mock_fn = AsyncMock(return_value={"status": "success"})
             mock_get.return_value = {"get_document_url": mock_fn}
             result = await DOC_HANDLERS["get_document_url"](

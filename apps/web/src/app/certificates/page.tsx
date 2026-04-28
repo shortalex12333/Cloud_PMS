@@ -7,13 +7,13 @@ import { FilteredEntityList } from '@/features/entity-list/components/FilteredEn
 import { CERTIFICATE_FILTERS } from '@/features/entity-list/types/filter-config';
 import { CERTIFICATE_COLUMNS } from '@/features/entity-list/types/certificate-columns';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
-import { CertificateContent } from '@/components/lens-v2/entity';
-import { ActionPopup } from '@/components/lens-v2/ActionPopup';
-import { mapActionFields } from '@/components/lens-v2/mapActionFields';
+import { EntityLensPage } from '@/components/lens/EntityLensPage';
+import { CertificateContent } from '@/components/lens/entity';
+import { ActionPopup } from '@/components/lens/ActionPopup';
+import { mapActionFields } from '@/components/lens/mapActionFields';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useAuth } from '@/hooks/useAuth';
-import lensStyles from '@/components/lens-v2/lens.module.css';
+import lensStyles from '@/components/lens/lens.module.css';
 import type { EntityListResult } from '@/features/entity-list/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';

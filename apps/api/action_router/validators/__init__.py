@@ -1,12 +1,12 @@
-"""Action Router Validators"""
+"""Compatibility shim — real implementations moved to validators/."""
 
-from .validation_result import ValidationResult, ValidationError
-from .jwt_validator import validate_jwt
-from .yacht_validator import validate_yacht_isolation
-from .role_validator import validate_role_permission
-from .field_validator import validate_required_fields
-from .schema_validator import validate_schema
-from .rls_entity_validator import validate_payload_entities, validate_entity_yacht_ownership
+from validators.validation_result import ValidationResult, ValidationError
+from validators.jwt_validator import validate_jwt
+from validators.yacht_validator import validate_yacht_isolation
+from validators.role_validator import validate_role_permission
+from validators.field_validator import validate_required_fields
+from validators.schema_validator import validate_schema
+from validators.rls_entity_validator import validate_payload_entities, validate_entity_yacht_ownership
 
 __all__ = [
     "ValidationResult",

@@ -5,7 +5,7 @@ as object paths. Not for HTTP Content-Disposition headers (use
 routes/email.py:sanitize_filename for that — different rules apply).
 
 Extracted 2026-04-15 from duplicated copies in:
-- handlers/document_handlers.py:269 (_sanitize_filename)
+- handlers/document_handler.py (via merged get_document_handlers, _sanitize_filename)
 - routes/document_routes.py:97       (_sanitize_filename, was duplicated
                                      during the POST /v1/documents/upload work)
 Both now import from this module.

@@ -1,23 +1,15 @@
-"""
-Actions Module
-==============
-Action execution class rules and response schemas.
+"""Compatibility shim — real implementations moved to schemas/ and middleware/."""
 
-Components:
-- action_gating - AUTO/SUGGEST/CONFIRM execution class rules
-- action_response_schema - Response structure
-"""
-
-from .action_gating import (
-    ExecutionClass,
-    GATED_ACTIONS,
-    STATE_CHANGING_ACTIONS,
-)
-from .action_response_schema import (
+from schemas.action_response_schema import (
     ActionResponseEnvelope,
     ResponseBuilder,
     AvailableAction,
     get_available_actions_for_entity,
+)
+from middleware.action_gating import (
+    ExecutionClass,
+    GATED_ACTIONS,
+    STATE_CHANGING_ACTIONS,
 )
 
 __all__ = [

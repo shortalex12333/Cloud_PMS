@@ -18,9 +18,6 @@ _SOFT_DELETE_ENTITY_TYPES: Dict[str, str] = {
     "archive_part": "part",
     "delete_part": "part",
     "archive_document": "document",
-    "archive_warranty": "warranty",
-    "void_warranty": "warranty",
-    "archive_equipment": "equipment",
 }
 
 
@@ -62,49 +59,27 @@ def _make_adapter(action_id: str) -> Callable:
     return _adapted
 
 
-# All actions that exist in INTERNAL_HANDLERS but NOT in Phase 4 routes/handlers/
+# Actions served via INTERNAL_HANDLERS (class-based handlers) not yet rewritten
+# to Phase 4 flat-function style. Equipment/fault/WO/warranty actions have been migrated;
+# only document and parts actions remain here.
 _ACTIONS_TO_ADAPT = [
+    # Document domain (served by DocumentHandlers via dispatchers/document.py)
     "add_document_comment",
     "add_document_note",
-    "add_entity_link",
-    "add_note",
-    "add_part_note",
-    "add_warranty_note",
-    "approve_warranty_claim",
     "archive_document",
-    "archive_equipment",
-    "archive_part",
-    "archive_warranty",
-    "assign_parent_equipment",
-    "attach_file_to_equipment",
-    "attach_image_with_comment",
-    "close_warranty_claim",
-    "compose_warranty_email",
-    "create_equipment",
-    "decommission_and_replace_equipment",
-    "draft_warranty_claim",
-    "decommission_equipment",
     "delete_document_comment",
-    "delete_part",
-    "file_warranty_claim",
-    "flag_equipment_attention",
-    "get_open_faults_for_equipment",
-    "get_related_entities_for_equipment",
-    "link_document_to_equipment",
-    "link_part_to_equipment",
     "list_document_comments",
     "open_document",
-    "record_equipment_hours",
-    "reject_warranty_claim",
-    "reorder_part",
-    "restore_archived_equipment",
-    "set_equipment_status",
-    "submit_warranty_claim",
     "update_document_comment",
-    "update_part_details",
     "view_document",
-    "view_maintenance_history",
-    "void_warranty",
+    # Parts domain (served by PartHandlers via dispatchers/parts.py)
+    "add_note",
+    "add_part_note",
+    "archive_part",
+    "delete_part",
+    "suggest_parts",
+    "reorder_part",
+    "update_part_details",
 ]
 
 HANDLERS: Dict[str, Callable] = {

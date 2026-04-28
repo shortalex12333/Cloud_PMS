@@ -14,7 +14,7 @@
 
 import * as React from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { ActionPopup } from '@/components/lens-v2/ActionPopup';
+import { ActionPopup } from '@/components/lens/ActionPopup';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

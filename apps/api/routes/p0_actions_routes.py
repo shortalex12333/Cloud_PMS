@@ -38,9 +38,8 @@ from integrations.supabase import get_supabase_client, get_tenant_client
 from handlers.inventory_handlers import InventoryHandlers
 from handlers.handover_handlers import HandoverHandlers, HandoverWorkflowHandlers
 from handlers.manual_handlers import ManualHandlers
-from handlers.part_handlers import PartHandlers
 from action_router.validators import validate_payload_entities
-from action_router.middleware import validate_action_payload, InputValidationError, validate_state_transition, InvalidStateTransitionError
+from middleware import validate_action_payload, InputValidationError, validate_state_transition, InvalidStateTransitionError
 from action_router.registry import get_action
 from middleware.auth import get_authenticated_user
 from middleware.vessel_access import resolve_yacht_id
@@ -179,7 +178,6 @@ def get_handlers_for_tenant(tenant_key_alias: str):
                     "handover_handlers": HandoverHandlers(supabase),
                     "handover_workflow_handlers": HandoverWorkflowHandlers(supabase),
                     "manual_handlers": ManualHandlers(supabase),
-                    "part_handlers": PartHandlers(supabase),
                 }
                 logger.info(f"✅ All P0 action handlers initialized for {tenant_key_alias}")
             except Exception as e:
@@ -200,20 +198,17 @@ if supabase:
         handover_handlers = HandoverHandlers(supabase)
         handover_workflow_handlers = HandoverWorkflowHandlers(supabase)
         manual_handlers = ManualHandlers(supabase)
-        part_handlers = PartHandlers(supabase)
         logger.info("✅ All P0 action handlers initialized (default tenant fallback)")
     except Exception as e:
         logger.error(f"Failed to initialize handlers: {e}")
         inventory_handlers = None
         handover_handlers = None
         manual_handlers = None
-        part_handlers = None
 else:
     logger.warning("⚠️ P0 handlers not initialized - no database connection")
     inventory_handlers = None
     handover_handlers = None
     manual_handlers = None
-    part_handlers = None
 
 
 # ============================================================================
@@ -321,6 +316,9 @@ _HANDOVER_ACTIONS = frozenset({
 
 _WARRANTY_ACTIONS = frozenset({
     "file_warranty_claim", "draft_warranty_claim",
+    "submit_warranty_claim", "approve_warranty_claim",
+    "reject_warranty_claim", "close_warranty_claim",
+    "compose_warranty_email", "view_warranty_claim",
     "archive_warranty", "void_warranty",
     "add_warranty_note",
 })
@@ -543,7 +541,7 @@ async def execute_action(
                 meta = ACTION_METADATA.get(action)
                 if meta:
                     try:
-                        from handlers.ledger_utils import build_ledger_event
+                        from handlers.ledger_utils import build_ledger_event, write_ledger_event
                         _ACTION_SUMMARY = {
                             "add_note": "Note added",
                             "upload_document": "Document uploaded",
@@ -581,7 +579,7 @@ async def execute_action(
                             entity_name=_entity_name,
                             metadata=_ledger_metadata,
                         )
-                        db_client.table("ledger_events").insert(ledger_event).execute()
+                        write_ledger_event(db_client, ledger_event)
                     except Exception as _ledger_err:
                         if "204" not in str(_ledger_err):
                             logger.warning(
@@ -1210,11 +1208,6 @@ async def export_handover_route(
     user_id = auth["user_id"]
     user_role = auth.get("role")
 
-    # Require officer+ role
-    officer_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
-    if user_role not in officer_roles:
-        raise HTTPException(status_code=403, detail=f"Requires officer+ role. Your role: {user_role}")
-
     handlers = get_handlers_for_tenant(auth["tenant_key_alias"])
     _handover_wf = handlers.get("handover_workflow_handlers")
     if not _handover_wf:
@@ -1225,7 +1218,8 @@ async def export_handover_route(
         user_id=user_id,
         export_type=export_type,
         department=department,
-        shift_date=shift_date
+        shift_date=shift_date,
+        user_role=user_role,
     )
 
     if result.get("status") == "error":
@@ -1241,6 +1235,8 @@ async def export_handover_route(
             status_code = 503
         elif error_code in ["DATABASE_ERROR", "EXPORT_FAILED"]:
             status_code = 500
+        elif error_code == "FORBIDDEN":
+            status_code = 403
 
         raise HTTPException(
             status_code=status_code,

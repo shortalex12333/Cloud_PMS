@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from actions.action_response_schema import ResponseBuilder
+from schemas.action_response_schema import ResponseBuilder
 from handlers.ledger_utils import build_ledger_event
 from action_router.entity_actions import get_available_actions
 from lib.entity_helpers import _sign_url, _nav
@@ -1074,7 +1074,15 @@ class HandoverWorkflowHandlers:
         section: Optional[str] = None,
         department: Optional[str] = None,
         shift_date: Optional[str] = None,
+        user_role: Optional[str] = None,
     ) -> Dict:
+        _OFFICER_ROLES = {"chief_engineer", "chief_officer", "captain", "manager"}
+        if user_role and user_role not in _OFFICER_ROLES:
+            return {
+                "status": "error",
+                "error_code": "FORBIDDEN",
+                "message": f"Requires officer+ role. Your role: {user_role}",
+            }
         query = self.db.table("handover_items").select("content_hash, is_finalized").eq("yacht_id", yacht_id).is_("deleted_at", None)
         if section:
             query = query.eq("section", section)
@@ -1717,11 +1725,11 @@ async def add_to_handover(
         description = payload.get("description", "")
         summary = f"{title}\n\n{description}" if title and description else (title or description or "")
 
-    if not summary or len(summary.strip()) < 3:
+    if not summary or len(summary.strip()) < 6:
         raise HTTPException(
             status_code=400,
             detail={"status": "error", "error_code": "VALIDATION_ERROR",
-                    "message": "Summary must be at least 3 characters"},
+                    "message": "Summary must be at least 6 characters"},
         )
 
     entity_type = payload.get("entity_type", "note")

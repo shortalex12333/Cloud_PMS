@@ -24,6 +24,7 @@ from fastapi.responses import StreamingResponse
 from db import get_supabase_client
 from routes.auth import get_authenticated_user
 from utils.yacht_resolver import resolve_yacht_id
+from handlers.purchase_order_handlers import fetch_po_for_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -322,36 +323,10 @@ async def export_purchase_order_pdf(
         yacht_id = resolve_yacht_id(auth, yacht_id)
         supabase = get_supabase_client()
 
-        po_r = supabase.table("pms_purchase_orders").select("*").eq(
-            "id", po_id).eq("yacht_id", yacht_id).is_("deleted_at", "null").maybe_single().execute()
-        if not po_r or not po_r.data:
-            raise HTTPException(status_code=404, detail="Purchase order not found")
-        po = po_r.data
-
-        items_r = supabase.table("pms_purchase_order_items").select("*").eq(
-            "purchase_order_id", po_id).execute()
-        items = items_r.data or []
-
-        # Resolve vessel name
-        vessel_name = "Vessel"
-        try:
-            vessel_r = supabase.table("vessels").select("name").eq(
-                "id", yacht_id).maybe_single().execute()
-            if vessel_r and vessel_r.data:
-                vessel_name = vessel_r.data.get("name") or "Vessel"
-        except Exception:
-            pass
-
-        # Resolve ordered_by name
-        ordered_by_id = po.get("ordered_by")
-        if ordered_by_id:
-            try:
-                profile_r = supabase.table("user_yacht_profiles").select("full_name").eq(
-                    "user_id", ordered_by_id).eq("yacht_id", yacht_id).maybe_single().execute()
-                if profile_r and profile_r.data:
-                    po["ordered_by_name"] = profile_r.data.get("full_name") or ordered_by_id[:8]
-            except Exception:
-                pass
+        pdf_data = fetch_po_for_pdf(supabase, po_id, yacht_id)
+        po = pdf_data["po"]
+        items = pdf_data["items"]
+        vessel_name = pdf_data["vessel_name"]
 
         pdf_bytes = _build_po_pdf(po, items, vessel_name)
         filename = f"{po.get('po_number', po_id)}.pdf"

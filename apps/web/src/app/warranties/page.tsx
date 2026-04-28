@@ -4,9 +4,9 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FilteredEntityList } from '@/features/entity-list/components/FilteredEntityList';
 import { EntityDetailOverlay } from '@/features/entity-list/components/EntityDetailOverlay';
-import { EntityLensPage } from '@/components/lens-v2/EntityLensPage';
-import { WarrantyContent } from '@/components/lens-v2/entity';
-import lensStyles from '@/components/lens-v2/lens.module.css';
+import { EntityLensPage } from '@/components/lens/EntityLensPage';
+import { WarrantyContent } from '@/components/lens/entity';
+import lensStyles from '@/components/lens/lens.module.css';
 import type { EntityListResult } from '@/features/entity-list/types';
 
 interface Warranty {

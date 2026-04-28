@@ -44,7 +44,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import HTTPException
 
-from actions.action_response_schema import (
+from schemas.action_response_schema import (
     ResponseBuilder,
     AvailableAction,
 )
@@ -2171,36 +2171,312 @@ class SignatureRequiredError(Exception):
 # ============================================================================
 
 def get_part_handlers(supabase_client) -> Dict[str, callable]:
-    """Get part handler functions for registration."""
-    handlers = PartHandlers(supabase_client)
-
+    """Get part handler functions for dispatchers/parts.py."""
+    h = PartHandlers(supabase_client)
     return {
-        # READ handlers (with read-audit)
-        "view_part_details": handlers.view_part_details,
-        "open_document": handlers.open_document,
-
-        # READ prefill handlers (Phase C — moved from part_routes.py)
-        "get_part_suggestions": handlers.get_part_suggestions,
-        "get_shopping_list_prefill": handlers.get_shopping_list_prefill,
-        "get_adjust_stock_prefill": handlers.get_adjust_stock_prefill,
-        "get_low_stock": handlers.get_low_stock,
-
-        # MUTATE handlers
-        "add_to_shopping_list": handlers.add_to_shopping_list,
-        "consume_part": handlers.consume_part,
-        "receive_part": handlers.receive_part,
-        "transfer_part": handlers.transfer_part,
-
-        # SIGNED handlers
-        "adjust_stock_quantity": handlers.adjust_stock_quantity,
-        "write_off_part": handlers.write_off_part,
-
-        # Label handlers
-        "generate_part_labels": handlers.generate_part_labels,
-        "request_label_output": handlers.request_label_output,
-
-        # Image handlers (MVP)
-        "upload_part_image": handlers.upload_part_image,
-        "update_part_image": handlers.update_part_image,
-        "delete_part_image": handlers.delete_part_image,
+        "view_part_details": h.view_part_details,
+        "open_document": h.open_document,
+        "get_part_suggestions": h.get_part_suggestions,
+        "get_shopping_list_prefill": h.get_shopping_list_prefill,
+        "get_adjust_stock_prefill": h.get_adjust_stock_prefill,
+        "get_low_stock": h.get_low_stock,
+        "add_to_shopping_list": h.add_to_shopping_list,
+        "consume_part": h.consume_part,
+        "receive_part": h.receive_part,
+        "transfer_part": h.transfer_part,
+        "adjust_stock_quantity": h.adjust_stock_quantity,
+        "write_off_part": h.write_off_part,
+        "generate_part_labels": h.generate_part_labels,
+        "request_label_output": h.request_label_output,
+        "upload_part_image": h.upload_part_image,
+        "update_part_image": h.update_part_image,
+        "delete_part_image": h.delete_part_image,
+        "update_part_details": h.update_part_details,
+        "view_part_stock": h.view_part_stock,
+        "view_part_location": h.view_part_location,
+        "view_part_usage": h.view_part_usage,
+        "view_linked_equipment": h.view_linked_equipment,
+        "order_part": h.order_part,
+        "scan_part_barcode": h.scan_part_barcode,
+        "check_stock_level": h.check_stock_level,
+        "log_part_usage": h.log_part_usage,
     }
+
+
+# ============================================================================
+# PHASE 4 DISPATCH TABLE
+# Signature: async def fn(payload, context, yacht_id, user_id, user_context, db_client)
+# Used by routes/handlers/__init__.py (replaces parts_handler_p5.py).
+# ============================================================================
+
+async def _p4_view_part_details(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    return await PartHandlers(db_client).view_part_details(entity_id=part_id, yacht_id=yacht_id, user_id=user_id)
+
+
+async def _p4_update_part_details(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    return await PartHandlers(db_client).update_part_details(
+        part_id=part_id, yacht_id=yacht_id, user_id=user_id,
+        name=payload.get("name"), description=payload.get("description"),
+        manufacturer=payload.get("manufacturer"), part_number=payload.get("part_number"),
+        category=payload.get("category"), unit_cost=payload.get("unit_cost"),
+        min_level=payload.get("min_level"), reorder_multiple=payload.get("reorder_multiple"),
+        location=payload.get("location"), is_critical=payload.get("is_critical"),
+    )
+
+
+async def _p4_add_to_shopping_list(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    qty = payload.get("suggested_qty") if payload.get("suggested_qty") is not None else payload.get("quantity_requested", 1)
+    return await PartHandlers(db_client).add_to_shopping_list(
+        yacht_id=yacht_id, user_id=user_id, part_id=part_id,
+        quantity_requested=qty, urgency=payload.get("urgency", "medium"),
+        notes=payload.get("notes"), shopping_list_id=payload.get("shopping_list_id"),
+    )
+
+
+async def _p4_consume_part(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    quantity = payload.get("quantity")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    if quantity is None:
+        from fastapi import HTTPException; raise HTTPException(400, "quantity is required")
+    result = await PartHandlers(db_client).consume_part(
+        yacht_id=yacht_id, user_id=user_id, part_id=part_id, quantity=quantity,
+        work_order_id=payload.get("work_order_id"), notes=payload.get("notes"),
+    )
+    if result.get("status") == "success":
+        try:
+            from handlers.ledger_utils import build_ledger_event
+            le = build_ledger_event(yacht_id=yacht_id, user_id=user_id, event_type="update",
+                entity_type="part", entity_id=part_id, action="consume_part",
+                user_role=user_context.get("role"), change_summary="Part consumed")
+            db_client.table("ledger_events").insert(le).execute()
+        except Exception as e:
+            if "204" not in str(e): logger.warning(f"[Ledger] consume_part: {e}")
+    return result
+
+
+async def _p4_receive_part(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    idempotency_key = payload.get("idempotency_key")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    if not idempotency_key:
+        from fastapi import HTTPException; raise HTTPException(400, "idempotency_key is required")
+    qty = payload.get("quantity_received") or payload.get("quantity")
+    if qty is None:
+        from fastapi import HTTPException; raise HTTPException(400, "quantity_received is required")
+    return await PartHandlers(db_client).receive_part(
+        yacht_id=yacht_id, user_id=user_id, part_id=part_id, quantity_received=qty,
+        idempotency_key=idempotency_key, supplier_id=payload.get("supplier_id"),
+        invoice_number=payload.get("po_number") or payload.get("invoice_number"),
+        location=payload.get("to_location_id") or payload.get("location"),
+        notes=payload.get("notes"),
+    )
+
+
+async def _p4_transfer_part(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    quantity = payload.get("quantity")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    if quantity is None:
+        from fastapi import HTTPException; raise HTTPException(400, "quantity is required")
+    return await PartHandlers(db_client).transfer_part(
+        yacht_id=yacht_id, user_id=user_id, part_id=part_id, quantity=quantity,
+        from_location=payload.get("from_location_id") or payload.get("from_location"),
+        to_location=payload.get("to_location_id") or payload.get("to_location"),
+        notes=payload.get("notes"),
+    )
+
+
+async def _p4_adjust_stock_quantity(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    reason = payload.get("reason")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    if not reason:
+        from fastapi import HTTPException; raise HTTPException(400, "reason is required")
+    new_quantity = payload.get("new_quantity") if payload.get("new_quantity") is not None else payload.get("quantity_change")
+    if new_quantity is None:
+        from fastapi import HTTPException; raise HTTPException(400, "new_quantity is required")
+    result = await PartHandlers(db_client).adjust_stock_quantity(
+        yacht_id=yacht_id, user_id=user_id, part_id=part_id, new_quantity=new_quantity,
+        reason=reason, signature=payload.get("signature"), location=payload.get("location"),
+    )
+    if result.get("status") == "success":
+        try:
+            from handlers.ledger_utils import build_ledger_event
+            le = build_ledger_event(yacht_id=yacht_id, user_id=user_id, event_type="update",
+                entity_type="part", entity_id=part_id, action="adjust_stock_quantity",
+                user_role=user_context.get("role"), change_summary="Stock adjusted")
+            db_client.table("ledger_events").insert(le).execute()
+        except Exception as e:
+            if "204" not in str(e): logger.warning(f"[Ledger] adjust_stock: {e}")
+    return result
+
+
+async def _p4_write_off_part(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    quantity = payload.get("quantity")
+    reason = payload.get("reason")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    if quantity is None:
+        from fastapi import HTTPException; raise HTTPException(400, "quantity is required")
+    if not reason:
+        from fastapi import HTTPException; raise HTTPException(400, "reason is required")
+    result = await PartHandlers(db_client).write_off_part(
+        yacht_id=yacht_id, user_id=user_id, part_id=part_id, quantity=quantity,
+        reason=reason, signature=payload.get("signature"),
+    )
+    if result.get("status") == "success":
+        try:
+            from handlers.ledger_utils import build_ledger_event
+            le = build_ledger_event(yacht_id=yacht_id, user_id=user_id, event_type="delete",
+                entity_type="part", entity_id=part_id, action="write_off_part",
+                user_role=user_context.get("role"), change_summary=f"Written off: qty={quantity}")
+            db_client.table("ledger_events").insert(le).execute()
+        except Exception as e:
+            if "204" not in str(e): logger.warning(f"[Ledger] write_off: {e}")
+    return result
+
+
+async def _p4_generate_part_labels(payload, context, yacht_id, user_id, user_context, db_client):
+    part_ids = payload.get("part_ids")
+    if not part_ids:
+        from fastapi import HTTPException; raise HTTPException(400, "part_ids is required")
+    return await PartHandlers(db_client).generate_part_labels(
+        part_ids=part_ids, yacht_id=yacht_id, user_id=user_id,
+        label_format=payload.get("label_format", "medium"),
+        include_qr=payload.get("include_qr", True),
+        include_barcode=payload.get("include_barcode", True),
+    )
+
+
+async def _p4_request_label_output(payload, context, yacht_id, user_id, user_context, db_client):
+    document_id = payload.get("document_id") or payload.get("label_request_id")
+    output = payload.get("output") or payload.get("output_format") or payload.get("output_method")
+    if not document_id:
+        from fastapi import HTTPException; raise HTTPException(400, "document_id is required")
+    if not output:
+        from fastapi import HTTPException; raise HTTPException(400, "output is required")
+    return await PartHandlers(db_client).request_label_output(
+        yacht_id=yacht_id, user_id=user_id, document_id=document_id, output=output,
+        email_address=payload.get("email_address") or payload.get("recipient_email"),
+        printer_id=payload.get("printer_id"),
+    )
+
+
+async def _p4_view_part_stock(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    return await PartHandlers(db_client).view_part_stock(part_id=part_id, yacht_id=yacht_id)
+
+
+async def _p4_view_part_location(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    return await PartHandlers(db_client).view_part_location(part_id=part_id, yacht_id=yacht_id)
+
+
+async def _p4_view_part_usage(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    return await PartHandlers(db_client).view_part_usage(part_id=part_id, yacht_id=yacht_id)
+
+
+async def _p4_view_linked_equipment(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    return await PartHandlers(db_client).view_linked_equipment(part_id=part_id, yacht_id=yacht_id)
+
+
+async def _p4_order_part(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    return await PartHandlers(db_client).order_part(
+        part_id=part_id, yacht_id=yacht_id, user_id=user_id, quantity=payload.get("quantity", 1)
+    )
+
+
+async def _p4_scan_part_barcode(payload, context, yacht_id, user_id, user_context, db_client):
+    barcode = payload.get("barcode")
+    if not barcode:
+        from fastapi import HTTPException; raise HTTPException(400, "barcode is required")
+    return await PartHandlers(db_client).scan_part_barcode(barcode=barcode, yacht_id=yacht_id)
+
+
+async def _p4_check_stock_level(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    return await PartHandlers(db_client).check_stock_level(part_id=part_id, yacht_id=yacht_id, user_id=user_id)
+
+
+async def _p4_log_part_usage(payload, context, yacht_id, user_id, user_context, db_client):
+    part_id = context.get("part_id") or payload.get("part_id")
+    quantity = payload.get("quantity")
+    usage_reason = payload.get("usage_reason")
+    if not part_id:
+        from fastapi import HTTPException; raise HTTPException(400, "part_id is required")
+    if quantity is None:
+        from fastapi import HTTPException; raise HTTPException(400, "quantity is required")
+    if not usage_reason:
+        from fastapi import HTTPException; raise HTTPException(400, "usage_reason is required")
+    return await PartHandlers(db_client).log_part_usage(
+        part_id=part_id, yacht_id=yacht_id, user_id=user_id,
+        quantity=quantity, usage_reason=usage_reason,
+        work_order_id=payload.get("work_order_id"), equipment_id=payload.get("equipment_id"),
+        notes=payload.get("notes"),
+    )
+
+
+async def _p4_view_low_stock(payload, context, yacht_id, user_id, user_context, db_client):
+    return await PartHandlers(db_client).get_low_stock(
+        yacht_id=yacht_id,
+        department=payload.get("department"),
+        threshold_percent=payload.get("threshold_percent"),
+        limit=int(payload.get("limit", 50)),
+        offset=int(payload.get("offset", 0)),
+    )
+
+
+# Single Phase 4 HANDLERS dict — replaces parts_handler_p5.py
+HANDLERS: Dict[str, Any] = {
+    "view_part_details": _p4_view_part_details,
+    "update_part_details": _p4_update_part_details,
+    "add_to_shopping_list": _p4_add_to_shopping_list,
+    "reorder_part": _p4_add_to_shopping_list,
+    "consume_part": _p4_consume_part,
+    "receive_part": _p4_receive_part,
+    "transfer_part": _p4_transfer_part,
+    "adjust_stock_quantity": _p4_adjust_stock_quantity,
+    "write_off_part": _p4_write_off_part,
+    "generate_part_labels": _p4_generate_part_labels,
+    "request_label_output": _p4_request_label_output,
+    "view_part_stock": _p4_view_part_stock,
+    "view_part_location": _p4_view_part_location,
+    "view_part_usage": _p4_view_part_usage,
+    "view_linked_equipment": _p4_view_linked_equipment,
+    "order_part": _p4_order_part,
+    "scan_part_barcode": _p4_scan_part_barcode,
+    "check_stock_level": _p4_check_stock_level,
+    "log_part_usage": _p4_log_part_usage,
+    "view_low_stock": _p4_view_low_stock,
+    # archive_part, delete_part, suggest_parts served via ADAPTER_HANDLERS (INTERNAL_HANDLERS)
+}

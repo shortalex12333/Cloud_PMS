@@ -1,6 +1,6 @@
-"""Action Router Middleware"""
+"""Compatibility shim — real implementations moved to middleware/."""
 
-from .validation_middleware import (
+from middleware.validation_middleware import (
     InputValidationError,
     validate_uuid,
     validate_positive_number,
@@ -9,7 +9,7 @@ from .validation_middleware import (
     validate_action_payload,
 )
 
-from .state_machine import (
+from middleware.state_machine import (
     InvalidStateTransitionError,
     validate_state_transition,
     get_valid_next_statuses,

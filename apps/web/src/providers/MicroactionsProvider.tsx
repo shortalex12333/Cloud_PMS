@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { registerAllHandlers } from '@/lib/microactions';
+import { registerAllHandlers } from '@/lib/actions';
 
 /**
  * Microactions Provider

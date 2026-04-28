@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import HTTPException
-from actions.action_response_schema import ResponseBuilder, AvailableAction
+from schemas.action_response_schema import ResponseBuilder, AvailableAction
 from handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
@@ -411,17 +411,6 @@ class ShoppingListHandlers:
             if not user_result or not user_result.data or user_result.data["yacht_id"] != yacht_id:
                 logger.warning(f"Yacht isolation breach attempt: user {user_id} != yacht {yacht_id}")
                 builder.set_error("FORBIDDEN", "Access denied", 403)
-                return builder.build()
-
-            is_hod_result = self.db.rpc("is_hod", {"p_user_id": user_id, "p_yacht_id": yacht_id}).execute()
-
-            if not is_hod_result or not is_hod_result.data:
-                logger.warning(f"Non-HoD attempted approve: user={user_id}, yacht={yacht_id}")
-                builder.set_error(
-                    "FORBIDDEN",
-                    "Only HoD (chief engineer, chief officer, captain, manager) can approve shopping list items",
-                    403
-                )
                 return builder.build()
 
             item_result = self.db.table("pms_shopping_list_items").select(
@@ -1456,6 +1445,84 @@ class ShoppingListV2Handlers:
         except Exception as exc:
             logger.warning(f"[sl_v2] _notify_purser_captain failed (non-critical): {exc}")
 
+    async def list_shopping_lists(
+        self, yacht_id: str, status: str = None, department: str = None,
+    ) -> dict:
+        """Read: list all shopping list headers for a vessel."""
+        q = self.db.table("pms_shopping_lists").select(
+            "id, list_number, name, department, status, currency, "
+            "estimated_total, created_by, created_at, submitted_at, "
+            "approved_at, converted_at, converted_to_po_id, notes"
+        ).eq("yacht_id", yacht_id).order("created_at", desc=True)
+        if status:
+            q = q.eq("status", status)
+        if department:
+            q = q.eq("department", department)
+        rows = (q.execute()).data or []
+        items_r = self.db.table("pms_shopping_list_items").select(
+            "shopping_list_id"
+        ).eq("yacht_id", yacht_id).neq("status", "deleted").execute()
+        item_counts: dict = {}
+        for it in (items_r.data or []):
+            lid = it.get("shopping_list_id")
+            if lid:
+                item_counts[lid] = item_counts.get(lid, 0) + 1
+        for row in rows:
+            row["item_count"] = item_counts.get(row["id"], 0)
+        return {"status": "success", "data": rows}
+
+    async def get_shopping_list(self, yacht_id: str, list_id: str) -> dict:
+        """Read: fetch one shopping list header + its items."""
+        sl_r = self.db.table("pms_shopping_lists").select("*") \
+            .eq("id", list_id).eq("yacht_id", yacht_id).single().execute()
+        if not sl_r.data:
+            return None
+        sl = sl_r.data
+        items_r = self.db.table("pms_shopping_list_items").select("*") \
+            .eq("shopping_list_id", list_id).eq("yacht_id", yacht_id) \
+            .neq("status", "deleted").order("created_at", desc=False).execute()
+        sl["items"] = items_r.data or []
+        return sl
+
+    async def get_shopping_list_for_pdf(self, yacht_id: str, list_id: str) -> dict:
+        """
+        Fetch shopping list header, items, and vessel name for PDF generation.
+
+        Returns:
+            {
+                "shopping_list": <header row or None>,
+                "items": <list of item rows>,
+                "vessel_name": <str>,
+            }
+        Raises nothing — callers must check whether shopping_list is None.
+        """
+        sl_r = self.db.table("pms_shopping_lists").select("*") \
+            .eq("id", list_id).eq("yacht_id", yacht_id).single().execute()
+        shopping_list = sl_r.data if sl_r.data else None
+
+        if shopping_list is None:
+            return {"shopping_list": None, "items": [], "vessel_name": "Vessel"}
+
+        items_r = self.db.table("pms_shopping_list_items").select("*") \
+            .eq("shopping_list_id", list_id).eq("yacht_id", yacht_id) \
+            .neq("status", "deleted").order("created_at", desc=False).execute()
+        items = items_r.data or []
+
+        vessel_name = "Vessel"
+        try:
+            v_r = self.db.table("fleet_vessels").select("name") \
+                .eq("id", yacht_id).single().execute()
+            if v_r.data:
+                vessel_name = v_r.data.get("name", "Vessel")
+        except Exception:
+            pass
+
+        return {
+            "shopping_list": shopping_list,
+            "items": items,
+            "vessel_name": vessel_name,
+        }
+
 
 # =============================================================================
 # PHASE 4 — INTERNAL DISPATCH HELPERS
@@ -1510,10 +1577,8 @@ async def delete_shopping_item(
 ) -> dict:
     user_role = user_context.get("role", "")
     if user_role not in _DELETE_ITEM_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Role '{user_role}' is not authorized to perform 'delete_shopping_item'",
-        )
+        return {"success": False, "code": "FORBIDDEN",
+                "reason": f"Role '{user_role}' is not authorized to perform 'delete_shopping_item'"}
 
     item_id = payload.get("item_id")
     if not item_id:
@@ -1559,10 +1624,17 @@ async def delete_shopping_item(
         raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
 
 
+_CREATE_ITEM_ROLES = frozenset({"crew", "chief_engineer", "chief_officer", "captain", "manager"})
+
+
 async def create_shopping_list_item(
     payload: dict, context: dict, yacht_id: str, user_id: str,
     user_context: dict, db_client: Any,
 ) -> dict:
+    user_role = user_context.get("role", "")
+    if user_role not in _CREATE_ITEM_ROLES:
+        return {"success": False, "code": "FORBIDDEN",
+                "reason": f"Role '{user_role}' is not authorized to create shopping list items"}
     return await _v1_dispatch("create_shopping_list_item", payload, context, yacht_id, user_id, user_context, db_client)
 
 
@@ -1570,6 +1642,10 @@ async def approve_shopping_list_item(
     payload: dict, context: dict, yacht_id: str, user_id: str,
     user_context: dict, db_client: Any,
 ) -> dict:
+    user_role = user_context.get("role", "")
+    if user_role not in HOD_ROLES:
+        return {"success": False, "code": "FORBIDDEN",
+                "reason": "Only HoD (chief engineer, chief officer, captain, manager) can approve shopping list items"}
     return await _v1_dispatch("approve_shopping_list_item", payload, context, yacht_id, user_id, user_context, db_client)
 
 

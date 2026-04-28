@@ -41,11 +41,12 @@ _AUTH = {
     "is_fleet_user": False,
 }
 
-# Payload for an adapter action that exists in ACTION_METADATA
-# Using "archive_fault" (event_type=update, entity_type=fault, entity_id_field=fault_id)
-ARCHIVE_FAULT_PAYLOAD = {
-    "action": "archive_fault",
-    "payload": {"fault_id": str(uuid.uuid4())},
+# Payload for an adapter action that exists in ACTION_METADATA.
+# Using "archive_part" (event_type=update, entity_type=part, entity_id_field=part_id).
+# archive_fault is now a Phase 4 direct handler; archive_part is still in the adapter path.
+ARCHIVE_PART_PAYLOAD = {
+    "action": "archive_part",
+    "payload": {"part_id": str(uuid.uuid4())},
     "context": {"yacht_id": YACHT_ID},
 }
 
@@ -102,30 +103,40 @@ async def test_safety_net_fires_for_adapter_action(auth_client):
         chain = MagicMock()
         chain.execute.return_value = MagicMock(data=[{"id": "ok"}])
         chain.eq.return_value = chain
+        chain.like.return_value = chain
+        chain.is_.return_value = chain
         chain.insert.return_value = chain
+
+        # RLS validator calls .maybe_single().execute() and expects data={"yacht_id": ...}
+        _rls_result = MagicMock()
+        _rls_result.data = {"yacht_id": YACHT_ID}
+        _maybe_chain = MagicMock()
+        _maybe_chain.execute.return_value = _rls_result
+        chain.maybe_single.return_value = _maybe_chain
 
         if table_name == "ledger_events":
             def _track_insert(data):
                 ledger_insert_calls.append(data)
                 return chain
-            chain.insert.side_effect = _track_insert
+            tbl.insert.side_effect = _track_insert
+        else:
+            tbl.insert.return_value = chain
 
         tbl.select.return_value = chain
-        tbl.insert.return_value = chain
         tbl.update.return_value = chain
         return tbl
 
     mock_db.table.side_effect = _track_table
 
-    # The adapter action calls INTERNAL_HANDLERS["archive_fault"] → must return success
-    async def _mock_archive_fault(params):
-        return {"status": "success", "message": "Fault archived"}
+    # The adapter action calls INTERNAL_HANDLERS["archive_part"] → must return success
+    async def _mock_archive_part(params):
+        return {"status": "success", "message": "Part archived"}
         # Note: no _ledger_written key — safety net should fire
 
     with patch("routes.p0_actions_routes.get_tenant_supabase_client", return_value=mock_db), \
-         patch("action_router.dispatchers.internal_dispatcher.INTERNAL_HANDLERS",
-               {"archive_fault": _mock_archive_fault}):
-        resp = await auth_client.post("/v1/actions/execute", json=ARCHIVE_FAULT_PAYLOAD)
+         patch("action_router.dispatchers.index.INTERNAL_HANDLERS",
+               {"archive_part": _mock_archive_part}):
+        resp = await auth_client.post("/v1/actions/execute", json=ARCHIVE_PART_PAYLOAD)
 
     # The action itself should succeed (200 or at least not 500)
     assert resp.status_code in (200, 400), f"Unexpected status: {resp.status_code} — {resp.text}"
@@ -135,8 +146,8 @@ async def test_safety_net_fires_for_adapter_action(auth_client):
         "Safety net did not write to ledger_events — _ledger_written flag not working"
     )
     written = ledger_insert_calls[0]
-    assert written.get("action") == "archive_fault"
-    assert written.get("entity_type") == "fault"
+    assert written.get("action") == "archive_part"
+    assert written.get("entity_type") == "part"
     assert written.get("event_type") == "update"
     assert written.get("yacht_id") == YACHT_ID
 
@@ -155,17 +166,25 @@ async def test_safety_net_skips_when_ledger_written_set(auth_client):
         chain = MagicMock()
         chain.execute.return_value = MagicMock(data=[{"id": "ok"}])
         chain.eq.return_value = chain
+        chain.like.return_value = chain
+        chain.is_.return_value = chain
+
+        # RLS validator calls .maybe_single().execute() and expects data={"yacht_id": ...}
+        _rls_result = MagicMock()
+        _rls_result.data = {"yacht_id": YACHT_ID}
+        _maybe_chain = MagicMock()
+        _maybe_chain.execute.return_value = _rls_result
+        chain.maybe_single.return_value = _maybe_chain
 
         if table_name == "ledger_events":
             def _track_insert(data):
                 ledger_insert_calls.append(data)
                 return chain
-            chain.insert.side_effect = _track_insert
+            tbl.insert.side_effect = _track_insert
         else:
-            chain.insert.return_value = chain
+            tbl.insert.return_value = chain
 
         tbl.select.return_value = chain
-        tbl.insert.return_value = chain
         tbl.update.return_value = chain
         return tbl
 
@@ -176,13 +195,13 @@ async def test_safety_net_skips_when_ledger_written_set(auth_client):
         return {"status": "success", "message": "Done", "_ledger_written": True}
 
     with patch("routes.p0_actions_routes.get_tenant_supabase_client", return_value=mock_db), \
-         patch("action_router.dispatchers.internal_dispatcher.INTERNAL_HANDLERS",
-               {"archive_fault": _mock_handler_with_flag}):
-        resp = await auth_client.post("/v1/actions/execute", json=ARCHIVE_FAULT_PAYLOAD)
+         patch("action_router.dispatchers.index.INTERNAL_HANDLERS",
+               {"archive_part": _mock_handler_with_flag}):
+        resp = await auth_client.post("/v1/actions/execute", json=ARCHIVE_PART_PAYLOAD)
 
     assert resp.status_code in (200, 400)
     # Safety net must NOT have added an extra entry (handler already wrote one if it wanted)
-    safety_net_writes = [c for c in ledger_insert_calls if c.get("action") == "archive_fault"]
+    safety_net_writes = [c for c in ledger_insert_calls if c.get("action") == "archive_part"]
     assert len(safety_net_writes) == 0, (
         f"Safety net fired despite _ledger_written=True: {safety_net_writes}"
     )

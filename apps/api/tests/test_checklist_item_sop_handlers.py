@@ -7,8 +7,8 @@ Unit tests for PR-WO-4 additions on P2MutationLightHandlers:
       on the WO's metadata.sop{} object.
 
 Both handlers read + write `pms_work_orders.metadata` as a JSON blob (the
-canonical storage path today — see p3_read_only_handlers.view_checklist_execute
-+ p2_mutation_light_handlers.mark_checklist_item_complete_execute). The real
+canonical storage path today — see shared_read_handlers.view_checklist_execute
++ shared_mutation_handlers.mark_checklist_item_complete_execute). The real
 `pms_checklists` / `pms_checklist_items` tables are unused by the live code
 path; migration to them is deferred (documented in
 docs/ongoing_work/work_orders/PLAN.md).
@@ -61,7 +61,7 @@ class _DB:
 
 
 def _make_handler(db, initial_metadata):
-    from handlers.p2_mutation_light_handlers import P2MutationLightHandlers
+    from handlers.shared_mutation_handlers import P2MutationLightHandlers
     db.canned = {
         ("pms_work_orders", "select"): {
             "data": [{"id": WO, "wo_number": "WO-0001", "metadata": initial_metadata}],
@@ -169,7 +169,7 @@ async def test_add_checklist_item_wo_not_found():
     db.canned = {
         ("pms_work_orders", "select"): {"data": [], "count": 0},
     }
-    from handlers.p2_mutation_light_handlers import P2MutationLightHandlers
+    from handlers.shared_mutation_handlers import P2MutationLightHandlers
     handler = P2MutationLightHandlers(supabase_client=db)
     result = await handler.add_checklist_item_execute(
         work_order_id=WO, yacht_id=YACHT, user_id=USER, title="X",

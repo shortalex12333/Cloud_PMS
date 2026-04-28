@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from actions.action_response_schema import ResponseBuilder
+from schemas.action_response_schema import ResponseBuilder
 from handlers.ledger_utils import build_ledger_event
 
 logger = logging.getLogger(__name__)
