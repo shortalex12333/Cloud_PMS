@@ -811,11 +811,14 @@ def process_item(cur, item: Dict) -> Tuple[bool, str]:
         rest_h = row.get('total_rest_hours') or 0
         work_h = row.get('total_work_hours') or 0
         notes_text = row.get('daily_compliance_notes') or ''
+        weekly_notes = row.get('weekly_compliance_notes') or ''
         comment = row.get('crew_comment') or ''
         hor_parts = [f"{status_str} rest record {record_date}",
                      f"rest {rest_h}h work {work_h}h"]
         if notes_text:
             hor_parts.append(notes_text)
+        if weekly_notes:
+            hor_parts.append(weekly_notes)
         if comment:
             hor_parts.append(comment)
         search_text_override = ' '.join(hor_parts)
