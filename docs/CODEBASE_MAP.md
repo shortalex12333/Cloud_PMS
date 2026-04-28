@@ -259,7 +259,7 @@ This section lists every file. Use the scenario guide above first — only come 
 
 | File | What it does + when you'd touch it |
 |---|---|
-| `action_execution_routes.py` | Receives every button-click action from the frontend. The single entry point for all actions. *Touch this if an action is returning 404 or 500 before even reaching the handler — the routing itself is broken.* |
+| `action_execution_routes.py` | Receives every button-click action from the frontend. The single entry point for all actions. After every successful mutation it: (1) writes a ledger event via the Phase-B safety net (using `action_router/ledger_metadata.py`), and (2) calls `enqueue_for_projection()` to re-index the entity in `search_index`. *Touch this if an action is returning 404 or 500 before even reaching the handler — the routing itself is broken. If a successful mutation never appears in search, check that the action is in `ledger_metadata.py`.* |
 | `entity_routes.py` | Sends back all the data when you open an entity detail page. *e.g. you open a work order and the page is blank or missing fields → the data fetch starts here.* |
 | `vessel_surface_routes.py` | Sends back the home dashboard data. *Touch this if the home page isn't loading or is showing stale vessel info.* |
 | `document_routes.py` | Document search and CRUD. *e.g. document search returns no results or the wrong ones → start here.* |
@@ -271,7 +271,7 @@ This section lists every file. Use the scenario guide above first — only come 
 | `notification_routes.py` | Notification fetch. *If the notification bell never loads or always shows 0, this is where the request comes in.* |
 | `related_signal_routes.py` | Related-entity discovery. *Touch this if the "Related" panel on an entity never populates.* |
 | `context_navigation_routes.py` | Related-entity discovery using DB relationships. *Alternative to signal routes — touch if related items are wrong or missing.* |
-| `attachment_upload.py` | Receives uploaded files and stores them. *If an upload button silently fails or the file goes to the wrong bucket, start here.* |
+| `attachment_upload.py` | Receives uploaded files and stores them. Also calls `enqueue_for_projection()` after every successful upload so the attachment appears in search. *If an upload button silently fails or the file goes to the wrong bucket, start here. If uploaded files never appear in search, check the enqueue call in this file.* |
 | `receiving_upload.py` | Receiving item uploads. *Touch this if a receiving upload returns an error the frontend doesn't explain.* |
 | `receiving_label_routes.py` | Generates barcode labels. *e.g. "Print Label" button produces a blank page → the label generation starts here.* |
 | `purchase_order_pdf_route.py` | Generates PO PDFs. *Touch this if "Download PO" returns an error or a corrupt file.* |
@@ -340,7 +340,7 @@ This section lists every file. Use the scenario guide above first — only come 
 | `registry.py` | The master list of every action. Defines the name, fields, roles, and UI label for each one. *If you want to add a new action anywhere in the app, this is always the first file to touch. If an action shows the wrong name or wrong fields, it's here.* |
 | `entity_actions.py` | Rules for when each action is visible. *If an action isn't appearing when it should — or is appearing when it shouldn't — the visibility rule is here.* |
 | `entity_prefill.py` | Maps which fields to pre-fill when an action form opens. *e.g. you open "Add Note" on a work order and the work order ID field is blank instead of pre-filled → this file is missing that mapping.* |
-| `ledger_metadata.py` | Maps action names to their audit log event types. *Touch this if an action runs but creates the wrong type of ledger entry.* |
+| `ledger_metadata.py` | Maps action names to their audit log event types AND controls which actions trigger `enqueue_for_projection()` re-indexing. `entity_id_field` tells the dispatcher which key to use as the search index `object_id`. If an action is not in this map, the mutation will NOT be re-indexed — it will silently disappear from search. *Touch this if an action runs but creates the wrong type of ledger entry, or if a mutation succeeds but the entity stops appearing in search results.* |
 | `logger.py` | Records every action execution for analytics. *Touch this if action analytics are missing or logging the wrong data.* |
 
 #### `action_router/dispatchers/`
@@ -427,7 +427,7 @@ This section lists every file. Use the scenario guide above first — only come 
 
 | File | What it does + when you'd touch it |
 |---|---|
-| `projection_worker.py` | Continuously indexes entities so they appear in search. *If newly created work orders or equipment aren't showing up in search after a few minutes, this worker may be failing.* |
+| `projection_worker.py` | Continuously indexes entities so they appear in search. Reads `pending` rows from `search_index`, fetches the source row from `search_projection_map`-registered tables (e.g. `pms_work_orders`, `pms_work_order_notes`, `pms_faults`, `pms_equipment`, etc.), builds `search_text`, and writes `embedding_status='indexed'`. Supports 19 entity types. Run `--once` flag for a single batch (used in tests and smoke tests). *If newly created or updated entities aren't showing up in search after a few minutes, this worker may be failing. Key invariant: always supply both `yacht_id` and `org_id` when manually inserting into `search_index` — the worker casts both to string and will crash with `'None'` if either is NULL.* |
 | `embedding_worker_1536.py` | Generates AI embeddings for semantic search. *Touch this if semantic search (finding things by meaning, not just keywords) is broken.* |
 | `extraction_worker.py` | Downloads documents and extracts text for indexing. *Touch this if documents are visible in the app but their content never appears in search results.* |
 | `email_watcher_worker.py` | Watches for new emails and processes them. *Touch this if the email module stops receiving new emails without any user action.* |
@@ -441,9 +441,10 @@ This section lists every file. Use the scenario guide above first — only come 
 
 | File | What it does + when you'd touch it |
 |---|---|
-| `tests/pridx_integration_test.py` | 6-test suite proving the full indexing + visibility chain: `search_projection_map` config, `enqueue_for_projection` trigger, `allowed_roles` on HoR rows, role-gated `f1_search_cards` RPC, and `trg_propagate_visibility_change`. *Run after any change to the indexing pipeline, search routes, or visibility config.* Run: `cd apps/api && python3 tests/pridx_integration_test.py` |
+| `tests/pridx_integration_test.py` | 7-test suite proving the full indexing + visibility chain: T1 `search_projection_map` has all 19 entries; T2 pending-row fields correct; T3 HoR rows have non-empty `search_text`; T4 `f1_search_cards` RPC returns role-gated results; T5 `trg_propagate_visibility_change` trigger exists; T6 `add_work_order_note` wired in `ACTION_METADATA`; T7 full worker end-to-end — `work_order_note` INSERT → `search_index` pending → worker `--once` → `indexed` with correct `search_text`. *Run after any change to the indexing pipeline, search routes, or visibility config.* Run: `cd apps/api && DATABASE_URL="postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres" F1_PROJECTION_WORKER_ENABLED=true python3 tests/pridx_integration_test.py` |
 
 ---
+
 
 ### BACKEND: `evidence/`
 *(Production code for the ledger export. Not test files — don't delete.)*
