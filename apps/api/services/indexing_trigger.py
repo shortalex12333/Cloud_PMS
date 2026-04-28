@@ -48,6 +48,8 @@ def enqueue_for_projection(
             "object_type": entity_type,
             "object_id": str(entity_id),
             "yacht_id": str(yacht_id),
+            "org_id": str(yacht_id),     # NOT NULL — projection worker overwrites from source row
+            "search_text": "",           # NOT NULL — projection worker replaces with real text
             "embedding_status": "pending",
             "filters": json.dumps(filters),
         }
