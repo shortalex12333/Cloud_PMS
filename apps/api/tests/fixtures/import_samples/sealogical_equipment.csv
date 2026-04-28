@@ -1,0 +1,13 @@
+Sealogical Export - Equipment Register,,,,,,,,,,,,
+Vessel: M/Y Horizon,,,,,,,,,,,,
+Export Date: 01/04/2026,,,,,,,,,,,,
+,,,,,,,,,,,,
+Equipment Name,Equipment Code,Type,Manufacturer,Model,Serial Number,Location,System Category,Criticality,Status,Running Hours,Service Interval (Hours),Last Service Date
+Main Engine Port,ME-001,Engine,MTU,16V4000 M93L,MTU-2019-7834,Engine Room Deck 3,Propulsion,Critical,Active,12847.5,500,15/03/2026
+Main Engine Starboard,ME-002,Engine,MTU,16V4000 M93L,MTU-2019-7835,Engine Room Deck 3,Propulsion,Critical,Active,12691,500,15/03/2026
+LO Pump Main Engine Port,ME-001-LO-001,Pump,Alfa Laval,MAB 103,AL-LP-29381,Engine Room Deck 3,Propulsion,High,Active,12847.5,2000,10/02/2026
+Generator 1,GEN-001,Generator,Caterpillar,C32 ACERT,CAT-2019-4421,Engine Room Deck 2,Power,Critical,Active,9234,500,20/03/2026
+Generator 2,GEN-002,Generator,Caterpillar,C32 ACERT,CAT-2019-4422,Engine Room Deck 2,Power,Critical,Active,8912,500,20/03/2026
+Air Conditioning Plant,AC-001,HVAC,Heinen & Hopman,MCC-100,HH-AC-5567,Technical Space,Hotel,Medium,Active,,8760,12/03/2026
+Watermaker,WM-001,Watermaker,Sea Recovery,Aqua Matic 1800,SR-WM-6612,Engine Room Deck 1,Utility,High,Active,4521,1000,01/03/2026
+Bow Thruster,BOW-001,Thruster,ABB,Azipod VI,ABB-BT-1192,Bow Thruster Room,Propulsion,High,Active,3891,2000,22/02/2026

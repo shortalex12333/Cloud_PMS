@@ -1,0 +1,75 @@
+{
+  "id": "test-session-001",
+  "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+  "source": "idea_yacht",
+  "status": "mapping",
+  "file_paths": ["85fe1119-b04c-41ac-80f1-829d23322598/test-session-001/idea_yacht_equipment.csv"],
+  "detection_result": {
+    "source_detected": "idea_yacht",
+    "data_files": [
+      {
+        "filename": "idea_yacht_equipment.csv",
+        "domain": "equipment",
+        "encoding_detected": "utf-8",
+        "delimiter_detected": ";",
+        "header_row": 0,
+        "row_count": 15,
+        "date_format_detected": "DD-MMM-YYYY",
+        "columns": [
+          {"source_name": "EQUIP_ID", "suggested_target": "source_id", "confidence": 1.0, "action": "map", "sample_values": ["1001", "1002", "1003", "1004", "1005"], "inferred_type": "text"},
+          {"source_name": "EQUIP_CODE", "suggested_target": "code", "confidence": 1.0, "action": "map", "sample_values": ["ME-001", "ME-002", "ME-001-LO-001", "ME-001-CW-001", "GEN-001"], "inferred_type": "text"},
+          {"source_name": "EQUIP_NAME", "suggested_target": "name", "confidence": 1.0, "action": "map", "sample_values": ["Main Engine Port", "Main Engine Starboard", "LO Pump Main Engine Port", "Cooling Water Pump ME Port", "Generator 1"], "inferred_type": "text"},
+          {"source_name": "EQUIP_TYPE", "suggested_target": "category", "confidence": 0.9, "action": "map", "sample_values": ["engine", "engine", "pump", "pump", "generator"], "inferred_type": "text"},
+          {"source_name": "PARENT_EQUIP_ID", "suggested_target": null, "confidence": 0.0, "action": "skip", "sample_values": ["0", "0", "1001", "1001", "0"], "inferred_type": "text"},
+          {"source_name": "MAKER", "suggested_target": "manufacturer", "confidence": 1.0, "action": "map", "sample_values": ["MTU", "MTU", "Alfa Laval", "Johnson", "Caterpillar"], "inferred_type": "text"},
+          {"source_name": "MODEL", "suggested_target": "model", "confidence": 1.0, "action": "map", "sample_values": ["16V4000 M93L", "16V4000 M93L", "MAB 103", "SPX 40", "C32 ACERT"], "inferred_type": "text"},
+          {"source_name": "SERIAL_NO", "suggested_target": "serial_number", "confidence": 1.0, "action": "map", "sample_values": ["MTU-2019-7834", "MTU-2019-7835", "AL-LP-29381", "JN-CW-11923", "CAT-2019-4421"], "inferred_type": "text"},
+          {"source_name": "LOCATION", "suggested_target": "location", "confidence": 1.0, "action": "map", "sample_values": ["Engine Room Deck 3", "Engine Room Deck 3", "Engine Room Deck 3", "Engine Room Deck 3", "Engine Room Deck 2"], "inferred_type": "text"},
+          {"source_name": "CLASS_CODE", "suggested_target": "system_type", "confidence": 0.85, "action": "map", "sample_values": ["1.1.1", "1.1.2", "1.1.1.1", "1.1.1.2", "1.2.1"], "inferred_type": "text"},
+          {"source_name": "CRITICALITY", "suggested_target": "criticality", "confidence": 1.0, "action": "map", "sample_values": ["critical", "critical", "high", "high", "critical"], "inferred_type": "text"},
+          {"source_name": "STATUS", "suggested_target": "status", "confidence": 1.0, "action": "map", "sample_values": ["ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE"], "inferred_type": "text"},
+          {"source_name": "CREATED_DATE", "suggested_target": null, "confidence": 0.0, "action": "skip", "sample_values": ["01-JAN-2019", "01-JAN-2019", "01-JAN-2019", "01-JAN-2019", "15-FEB-2019"], "inferred_type": "text"},
+          {"source_name": "MODIFIED_DATE", "suggested_target": null, "confidence": 0.0, "action": "skip", "sample_values": ["15-MAR-2026", "15-MAR-2026", "10-FEB-2026", "28-JAN-2026", "20-MAR-2026"], "inferred_type": "text"},
+          {"source_name": "RUNNING_HOURS", "suggested_target": "running_hours", "confidence": 1.0, "action": "map", "sample_values": ["12847.5", "12691.0", "12847.5", "12847.5", "9234.0"], "inferred_type": "text"},
+          {"source_name": "SERVICE_INTERVAL_HOURS", "suggested_target": "service_interval_hours", "confidence": 1.0, "action": "map", "sample_values": ["500", "500", "2000", "4000", "500"], "inferred_type": "text"}
+        ],
+        "warnings": []
+      }
+    ],
+    "documents": [],
+    "unclassified": []
+  },
+  "celeste_vocabulary": {
+    "equipment": {
+      "mappable": ["name", "description", "code", "manufacturer", "model", "serial_number", "location", "category", "status", "criticality", "system_type", "running_hours", "service_interval_hours"],
+      "auto_set": ["id", "yacht_id", "created_at", "updated_at", "metadata", "source", "source_id", "import_session_id", "imported_at"]
+    },
+    "work_orders": {
+      "mappable": ["title", "description", "status", "priority", "type", "work_order_type", "due_date", "completed_at", "completion_notes", "notes"],
+      "auto_set": ["id", "yacht_id", "wo_number", "created_by", "created_at", "updated_at", "source", "source_id", "import_session_id", "imported_at", "source_assigned_to", "source_created_by"]
+    },
+    "faults": {
+      "mappable": ["title", "description", "severity", "status", "fault_code", "detected_at", "resolved_at", "resolution_notes"],
+      "auto_set": ["id", "yacht_id", "created_at", "updated_at", "metadata", "source", "source_id", "import_session_id", "imported_at", "source_reported_by", "source_resolved_by"]
+    },
+    "parts": {
+      "mappable": ["name", "description", "part_number", "category", "manufacturer", "unit", "quantity_on_hand", "minimum_quantity", "location"],
+      "auto_set": ["id", "yacht_id", "created_at", "updated_at", "metadata", "source", "source_id", "import_session_id", "imported_at"]
+    },
+    "vessel_certificates": {
+      "mappable": ["certificate_type", "certificate_name", "certificate_number", "issuing_authority", "issue_date", "expiry_date", "last_survey_date", "next_survey_due", "status"],
+      "auto_set": ["id", "yacht_id", "created_at", "source", "source_id", "import_session_id", "imported_at"]
+    },
+    "crew_certificates": {
+      "mappable": ["person_name", "certificate_type", "certificate_number", "issuing_authority", "issue_date", "expiry_date"],
+      "auto_set": ["id", "yacht_id", "created_at", "source", "source_id", "import_session_id", "imported_at"]
+    }
+  },
+  "column_map": null,
+  "preview_summary": null,
+  "records_created": null,
+  "created_by": "dev@celeste7.ai",
+  "created_at": "2026-04-01T12:00:00Z",
+  "completed_at": null,
+  "rolled_back_at": null
+}

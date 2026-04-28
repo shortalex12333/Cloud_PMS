@@ -1,0 +1,9 @@
+equipment_id,equipment_name,equipment_code,parent_id,category,maker,model,serial_number,location,criticality,status,running_hours,service_interval_hours
+EQ-001,Main Engine Port,ME-001,,engine,MTU,16V4000 M93L,MTU-2019-7834,Engine Room Deck 3,critical,active,12847.5,500
+EQ-002,Main Engine Starboard,ME-002,,engine,MTU,16V4000 M93L,MTU-2019-7835,Engine Room Deck 3,critical,active,12691.0,500
+EQ-003,LO Pump Main Engine Port,ME-001-LO-001,EQ-001,pump,Alfa Laval,MAB 103,AL-LP-29381,Engine Room Deck 3,high,active,12847.5,2000
+EQ-004,Generator 1,GEN-001,,generator,Caterpillar,C32 ACERT,CAT-2019-4421,Engine Room Deck 2,critical,active,9234.0,500
+EQ-005,Generator 2,GEN-002,,generator,Caterpillar,C32 ACERT,CAT-2019-4422,Engine Room Deck 2,critical,active,8912.0,500
+EQ-006,Air Conditioning Plant,AC-001,,hvac,Heinen & Hopman,MCC-100,HH-AC-5567,Technical Space,medium,active,,8760
+EQ-007,Watermaker,WM-001,,watermaker,Sea Recovery,Aqua Matic 1800,SR-WM-6612,Engine Room Deck 1,high,active,4521.0,1000
+EQ-008,Bow Thruster,BOW-001,,thruster,ABB,Azipod VI,ABB-BT-1192,Bow Thruster Room,high,active,3891.0,2000

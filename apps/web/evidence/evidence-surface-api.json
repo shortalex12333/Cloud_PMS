@@ -1,0 +1,192 @@
+{
+  "work_orders": {
+    "open_count": 11,
+    "overdue_count": 0,
+    "items": [
+      {
+        "id": "800c4295-12a9-4912-8204-9c68c77ab8b8",
+        "title": "Rudder bearing inspection",
+        "equipment_id": null,
+        "equipment_name": "",
+        "assigned_to": null,
+        "status": "in_progress",
+        "priority": "critical",
+        "age_days": 62,
+        "due_date": "2026-02-04"
+      },
+      {
+        "id": "47eb697c-2910-4695-acbc-287fa7be6275",
+        "title": "Stern thruster hydraulic leak repair",
+        "equipment_id": "ab53eb87-f7c0-4270-8214-e2afef71d9d8",
+        "equipment_name": "Stern Thruster",
+        "assigned_to": null,
+        "status": "in_progress",
+        "priority": "critical",
+        "age_days": 63,
+        "due_date": "2026-02-04"
+      },
+      {
+        "id": "d1c582d4-defc-4555-aad6-0d1569971d3e",
+        "title": "Shore power inlet repair",
+        "equipment_id": null,
+        "equipment_name": "",
+        "assigned_to": null,
+        "status": "in_progress",
+        "priority": "critical",
+        "age_days": 68,
+        "due_date": "2026-02-05"
+      }
+    ],
+    "limit": 3
+  },
+  "faults": {
+    "open_count": 4,
+    "critical_count": 0,
+    "items": [
+      {
+        "id": "13fcb9e8-c104-44fe-9291-1c1310c0d929",
+        "title": "Smoke Detected",
+        "severity": "medium",
+        "status": "open",
+        "assigned_to": "",
+        "equipment_id": "e1000001-0001-4001-8001-000000000013",
+        "age_display": "3mo"
+      },
+      {
+        "id": "68d8e4f2-c524-444f-91eb-8df4c6ba4226",
+        "title": "Navigation Light Failure",
+        "severity": "medium",
+        "status": "open",
+        "assigned_to": "",
+        "equipment_id": "eb31f284-2cf6-4518-aea8-2d611892b284",
+        "age_display": "3mo"
+      },
+      {
+        "id": "00786beb-419a-4de6-9ab4-bed5c4b42ad2",
+        "title": "LPG Leak Detected",
+        "severity": "medium",
+        "status": "open",
+        "assigned_to": "",
+        "equipment_id": "cca3d329-fb9f-4dd1-9529-3a7c2935d12c",
+        "age_display": "3mo"
+      }
+    ]
+  },
+  "last_handover": {
+    "id": "e0cc56b4-799c-44f9-af58-ab0233638c55",
+    "from_crew": "Alex Short",
+    "to_crew": "",
+    "signed_at": "2026-03-26T01:45:44.081673+00:00",
+    "status": "DRAFT",
+    "is_draft": true
+  },
+  "parts_below_min": {
+    "count": 12,
+    "items": [
+      {
+        "id": "fbf6031e-ebbb-48e8-8a5c-949fdd0a7f4b",
+        "name": "Bearing Main",
+        "stock_level": 0,
+        "min_stock": 2,
+        "location": null
+      },
+      {
+        "id": "2bac1025-e64e-4123-8d43-904eb604b8b2",
+        "name": "Bearing Rod",
+        "stock_level": 0,
+        "min_stock": 6,
+        "location": null
+      },
+      {
+        "id": "3ca506bd-1df7-4ed5-b362-9175398de2c1",
+        "name": "Bearing Main",
+        "stock_level": 0,
+        "min_stock": 2,
+        "location": null
+      },
+      {
+        "id": "9c1f8332-73b9-4a19-9b32-c7cc80810dd9",
+        "name": "Air Filter Element",
+        "stock_level": 0,
+        "min_stock": 5,
+        "location": null
+      },
+      {
+        "id": "5ceefd28-7cd6-4269-8717-04a9752cfb6d",
+        "name": "Bow Thruster Propeller",
+        "stock_level": 0,
+        "min_stock": 3,
+        "location": null
+      }
+    ]
+  },
+  "recent_activity": [
+    {
+      "entity_type": "work_order",
+      "entity_type_label": "Work Order",
+      "entity_id": "981ef653-b1fd-4f5e-9185-a63cc26e03c9",
+      "entity_ref": "WO·981ef6",
+      "action": "updated work order",
+      "actor": "Alex Short",
+      "timestamp": "2026-03-29T21:16:39.937059+00:00",
+      "summary": "Alex Short updated work order",
+      "time_display": "1w"
+    },
+    {
+      "entity_type": "work_order",
+      "entity_type_label": "Work Order",
+      "entity_id": "2855f48e-36b2-4cae-b198-b344307b6227",
+      "entity_ref": "WO·2855f4",
+      "action": "updated work order",
+      "actor": "Alex Short",
+      "timestamp": "2026-03-29T21:16:39.937059+00:00",
+      "summary": "Alex Short updated work order",
+      "time_display": "1w"
+    },
+    {
+      "entity_type": "work_order",
+      "entity_type_label": "Work Order",
+      "entity_id": "26aebd52-f447-4225-86be-5e54ac36920b",
+      "entity_ref": "WO·26aebd",
+      "action": "updated work order",
+      "actor": "Alex Short",
+      "timestamp": "2026-03-29T21:16:39.937059+00:00",
+      "summary": "Alex Short updated work order",
+      "time_display": "1w"
+    },
+    {
+      "entity_type": "work_order",
+      "entity_type_label": "Work Order",
+      "entity_id": "b0971ee3-0631-425d-af81-38da6faa83bf",
+      "entity_ref": "WO·b0971e",
+      "action": "updated work order",
+      "actor": "Alex Short",
+      "timestamp": "2026-03-29T21:16:39.937059+00:00",
+      "summary": "Alex Short updated work order",
+      "time_display": "1w"
+    },
+    {
+      "entity_type": "work_order",
+      "entity_type_label": "Work Order",
+      "entity_id": "d1c582d4-defc-4555-aad6-0d1569971d3e",
+      "entity_ref": "WO·d1c582",
+      "action": "updated work order",
+      "actor": "Alex Short",
+      "timestamp": "2026-03-29T21:16:39.937059+00:00",
+      "summary": "Alex Short updated work order",
+      "time_display": "1w"
+    }
+  ],
+  "certificates_expiring": {
+    "count": 0,
+    "items": []
+  },
+  "domain_counts": {
+    "work_orders": 11,
+    "work_orders_overdue": 0,
+    "faults": 4,
+    "faults_critical": 0,
+    "parts_below_min": 12,
+    "certificates_expiring": 0
+  }
+}

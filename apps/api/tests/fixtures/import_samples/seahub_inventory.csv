@@ -1,0 +1,11 @@
+part_id,part_name,part_number,description,equipment_id,equipment_name,category,maker,unit,rob_qty,min_qty,location,last_ordered
+PRT-001,Engine Oil Filter,MTU-X00032269,Lube oil filter element for MTU 16V4000,EQ-001,Main Engine Port,filters,MTU,each,6,4,Store Room 1,2024-11-15
+PRT-002,Fuel Filter Element,MTU-X00040897,Primary fuel filter for MTU 16V4000,EQ-001,Main Engine Port,filters,MTU,each,4,2,Store Room 1,2024-11-15
+PRT-003,Mechanical Seal,AL-527284,Shaft seal for MAB 103 LO pump,EQ-003,LO Pump Main Engine Port,seals,Alfa Laval,each,1,1,Store Room 2,2025-01-06
+PRT-004,HP Pressure Switch,DAN-060-5241,High pressure cut-out switch,EQ-006,Air Conditioning Plant,electrical,Danfoss,each,2,1,Store Room 3,2025-03-01
+PRT-005,R410a Refrigerant,R410A-12.5,Refrigerant gas 12.5kg bottle,EQ-006,Air Conditioning Plant,consumables,Chemours,kg,25.0,12.5,Hazmat Store,2024-12-01
+PRT-006,Watermaker Membrane,SR-SWRO-8040,RO membrane element 8x40,EQ-007,Watermaker,membranes,Sea Recovery,each,1,1,Store Room 2,2024-06-15
+PRT-007,Hydraulic Oil,MOBIL-DTE-26,Hydraulic oil for bow thruster,EQ-008,Bow Thruster,lubricants,Mobil,L,200,100,Tank Room,2025-02-10
+PRT-008,Zinc Anode,ABB-AZ-400,Sacrificial anode for Azipod,EQ-008,Bow Thruster,anodes,ABB,each,4,2,Store Room 2,2024-09-20
+PRT-009,Fuel Injector,MTU-X00055112,Complete fuel injector assembly,EQ-001,Main Engine Port,injectors,MTU,each,2,2,Store Room 1,2025-03-18
+PRT-010,Oil Analysis Kit,FLU-OAK-100,Oil sample kit with prepaid shipping,,,consumables,Fluid Life,each,8,4,Store Room 1,2024-10-01

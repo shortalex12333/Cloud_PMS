@@ -1,0 +1,13 @@
+WO_NUMBER;WO_TYPE;EQUIP_ID;EQUIP_CODE;DESCRIPTION;PRIORITY;STATUS;PLANNED_DATE;DUE_DATE;COMPLETED_DATE;ASSIGNED_TO;INTERVAL_HOURS;INTERVAL_DAYS;LAST_DONE_DATE;REMARKS
+WO-2025-001;PM;1001;ME-001;Main Engine Port 500hr Service;HIGH;COMPLETED;01-JAN-2025;15-JAN-2025;12-JAN-2025;J. Martinez;500;;12-JAN-2025;Oil and filter change completed. No abnormalities found.
+WO-2025-002;PM;1002;ME-002;Main Engine Stbd 500hr Service;HIGH;COMPLETED;01-JAN-2025;15-JAN-2025;14-JAN-2025;J. Martinez;500;;14-JAN-2025;Oil and filter change. Noted slight discolouration in LO sample - sent for analysis.
+WO-2025-003;CM;1003;ME-001-LO-001;LO Pump Seal Replacement;CRITICAL;COMPLETED;05-JAN-2025;07-JAN-2025;06-JAN-2025;A. Petrov;;;06-JAN-2025;Mechanical seal failure detected during routine check. Replaced with spare. Old seal showed scoring on carbon face.
+WO-2025-004;PM;1005;GEN-001;Generator 1 500hr Service;NORMAL;COMPLETED;10-JAN-2025;20-JAN-2025;18-JAN-2025;J. Martinez;500;;18-JAN-2025;Standard service completed.
+WO-2025-005;PM;1008;AC-001;AC System Annual Service;NORMAL;COMPLETED;15-JAN-2025;30-JAN-2025;28-JAN-2025;R. Singh;;;28-JAN-2025;Refrigerant levels checked; topped up R410a by 2kg. All temperatures within spec.
+WO-2025-006;CM;1010;WM-001;Watermaker Membrane Flush;HIGH;COMPLETED;20-JAN-2025;22-JAN-2025;21-JAN-2025;A. Petrov;;;21-JAN-2025;Emergency flush after high salinity alarm. Membranes flushed; TDS reading now 180ppm.
+WO-2025-007;PM;1012;BOW-001;Bow Thruster Annual Inspection;NORMAL;COMPLETED;01-FEB-2025;15-FEB-2025;12-FEB-2025;J. Martinez;;;12-FEB-2025;Hydraulic oil changed; anodes inspected. Port anode at 40% - schedule replacement.
+WO-2025-008;PM;1001;ME-001;Main Engine Port 1000hr Service;HIGH;COMPLETED;15-FEB-2025;28-FEB-2025;25-FEB-2025;J. Martinez;1000;;25-FEB-2025;Full 1000hr service. Replaced fuel filters; injectors cleaned. Valve clearances within tolerance.
+WO-2025-009;CM;1009;AC-001-CMP-001;AC Compressor 1 High Pressure Alarm;CRITICAL;COMPLETED;01-MAR-2025;03-MAR-2025;02-MAR-2025;R. Singh;;;02-MAR-2025;HP switch tripping at 28 bar. Condenser cleaned; fan motor checked. Faulty HP switch replaced.
+WO-2025-010;PM;1006;GEN-002;Generator 2 500hr Service;NORMAL;OPEN;10-MAR-2025;20-MAR-2025;;J. Martinez;500;;;Scheduled. Parts staged.
+WO-2025-011;INSP;1013;STP-001;MCA Sewage Plant Inspection;HIGH;OPEN;15-MAR-2025;01-APR-2025;;R. Singh;;;Pre-survey inspection ahead of MCA annual. Check chlorine levels; UV lamp hours; MBR membrane condition.
+WO-2025-012;CM;1014;ME-001-FI-001;Fuel Injector 1 Replacement ME Port;HIGH;IN_PROGRESS;18-MAR-2025;25-MAR-2025;;A. Petrov;;;Injector showing 8% deviation on test bench. New injector ordered; ETA 22-MAR.

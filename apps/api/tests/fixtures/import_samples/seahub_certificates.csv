@@ -1,0 +1,9 @@
+certificate_id,certificate_type,certificate_name,certificate_number,issuing_authority,issue_date,expiry_date,vessel_name,status,survey_due,remarks
+CERT-001,class,Certificate of Class,LR-2019-MY-44821,Lloyds Register,2019-06-15,2024-06-15,M/Y Horizon,expired,,Annual survey overdue. Interim certification in progress.
+CERT-002,class,Certificate of Class (Interim),LR-2025-MY-44821-INT,Lloyds Register,2025-01-10,2025-07-10,M/Y Horizon,valid,,Interim cert pending full class renewal survey.
+CERT-003,ism,Safety Management Certificate,ISM-2022-MY-998,Lloyds Register,2022-03-01,2027-03-01,M/Y Horizon,valid,2025-03-01,Intermediate audit completed. Next annual audit due MAR 2025.
+CERT-004,isps,International Ship Security Certificate,ISPS-2023-MY-221,RMI Maritime,2023-08-15,2028-08-15,M/Y Horizon,valid,,Issued by Republic of Marshall Islands.
+CERT-005,loadline,International Load Line Certificate,LL-2019-MY-3392,Lloyds Register,2019-06-15,2024-06-15,M/Y Horizon,expired,,Renewal aligned with class survey.
+CERT-006,safety_radio,Safety Radio Certificate,SRC-2024-MY-1102,MCA,2024-05-20,2025-05-20,M/Y Horizon,valid,,Annual renewal. All GMDSS equipment tested satisfactory.
+CERT-007,tonnage,International Tonnage Certificate,ITC-2019-MY-661,RMI Maritime,2019-06-15,,M/Y Horizon,valid,,No expiry. Permanent certificate unless vessel modified.
+CERT-008,registry,Certificate of Registry,REG-2019-MY-5539,RMI Maritime,2019-04-01,,M/Y Horizon,valid,,Permanent. Flag state: Marshall Islands.
