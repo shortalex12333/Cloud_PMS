@@ -20,7 +20,7 @@ Two execution paths:
 
 Endpoint: GET /v1/show-related-signal?entity_type=...&entity_id=...
 
-Consumed by: routes/show_related_signal_routes.py
+Consumed by: routes/related_signal_routes.py
 """
 
 from __future__ import annotations

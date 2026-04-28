@@ -354,7 +354,7 @@ except Exception as e:
     logger.error("Show Related endpoints will not be available")
 
 try:
-    from routes.show_related_signal_routes import router as signal_related_router
+    from routes.related_signal_routes import router as signal_related_router
     app.include_router(signal_related_router)
     logger.info("✅ Show Related Signal routes registered at /v1/show-related-signal/*")
 except Exception as e:
