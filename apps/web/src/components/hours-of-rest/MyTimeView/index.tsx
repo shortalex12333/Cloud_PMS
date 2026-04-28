@@ -50,8 +50,9 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
   // Once weekly submit succeeds, Undo buttons are locked
   const weekFinalised = React.useRef(false);
 
-  // Template selector
+  // Template selector — separate from week data so they survive week navigation
   const [selectedTemplate, setSelectedTemplate] = React.useState('');
+  const [templates, setTemplates] = React.useState<any[]>([]);
 
   // Phase 7: week locked when finalized (signoff_status === 'finalized' OR LOCKED error)
   const [weekLocked, setWeekLocked] = React.useState(false);
@@ -208,6 +209,28 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     }
   }
 
+  async function loadTemplates() {
+    try {
+      const auth = await getAuthHeader();
+      if (!auth) return;
+      const resp = await fetch('/api/v1/hours-of-rest/templates', {
+        headers: { 'Authorization': auth },
+      });
+      if (resp.ok) {
+        const json = await resp.json();
+        const list: any[] = json.data?.templates ?? json.templates ?? [];
+        setTemplates(list.map((t: any) => ({
+          id: t.id,
+          name: t.name ?? t.schedule_name,
+          applies_to: t.applies_to ?? 'normal',
+          is_default: t.is_default ?? false,
+        })));
+      }
+    } catch {
+      // non-critical
+    }
+  }
+
   async function loadCalendar(month: string) {
     setCalendarLoading(true);
     try {
@@ -255,6 +278,12 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     loadWarnings();
   }, [viewWeekStart]);
 
+  // Templates load once on mount — they don't change per week
+  React.useEffect(() => {
+    loadTemplates();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   React.useEffect(() => {
     if (calendarOpen) loadCalendar(calendarMonth);
   }, [calendarOpen, calendarMonth]);
@@ -265,6 +294,16 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
     // draftPeriods[date] holds WORK periods from the slider.
     // Blank (no work blocks) = valid 24h rest day — still submittable.
     const workPeriods: RestPeriod[] = draftPeriods[date] ?? [];
+
+    // Client-side overlap guard — TimeSlider resolves on mouseup, but validate before send
+    const sorted = [...workPeriods].sort((a, b) => a.start.localeCompare(b.start));
+    for (let i = 0; i < sorted.length - 1; i++) {
+      if (sorted[i].end > sorted[i + 1].start) {
+        setSubmitErrors(prev => ({ ...prev, [date]: 'Work periods must not overlap — adjust the time slider.' }));
+        return;
+      }
+    }
+
     const crewComment = crewComments[date] ?? '';
     setSubmitting(prev => ({ ...prev, [date]: true }));
     try {
@@ -447,16 +486,13 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         setCreateTemplateError(envelopeError ?? `Create failed (${resp.status})`);
         return;
       }
-      // Add new template to local state — no page reload so draft content is preserved
+      // Add new template to the persistent templates state — survives week navigation
       const newTemplate = json?.data?.template;
       if (newTemplate?.id) {
-        setData((prev: any) => prev ? {
+        setTemplates(prev => [
           ...prev,
-          templates: [
-            ...(prev.templates ?? []),
-            { id: newTemplate.id, name: newTemplate.schedule_name, applies_to: newTemplate.applies_to ?? 'normal', is_default: false },
-          ],
-        } : prev);
+          { id: newTemplate.id, name: newTemplate.schedule_name ?? newTemplate.name, applies_to: newTemplate.applies_to ?? 'normal', is_default: false },
+        ]);
       }
       setCreateTemplateOpen(false);
       setNewTemplateName('');
@@ -727,6 +763,8 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', letterSpacing: '0.06em' }}>Submitted — Awaiting HOD</span>
           ) : signoffStatus === 'hod_signed' ? (
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', letterSpacing: '0.06em' }}>Awaiting Captain</span>
+          ) : signoffStatus === 'draft' ? (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', letterSpacing: '0.06em' }}>Submitted</span>
           ) : isCurrentWeek && canSubmitWeek ? (
             <button
               data-testid="hor-submit-week"
@@ -1132,7 +1170,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
         </div>
 
         {/* ── Apply existing template ── */}
-        {data.templates.length > 0 && (
+        {templates.length > 0 && (
           <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <select
               value={selectedTemplate}
@@ -1150,7 +1188,7 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
               }}
             >
               <option value="">Select a template…</option>
-              {data.templates.map((t: any) => (
+              {templates.map((t: any) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
@@ -1176,12 +1214,12 @@ export function MyTimeView({ targetUserId, readOnly: forceReadOnly }: MyTimeView
             </button>
           </div>
         )}
-        {data.templates.length === 0 && !createTemplateOpen && (
+        {templates.length === 0 && !createTemplateOpen && (
           <p style={{ padding: '6px 16px 10px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', lineHeight: 1.5 }}>
             No templates yet. Create one to prefill unsubmitted days.
           </p>
         )}
-        {data.templates.length > 0 && (
+        {templates.length > 0 && (
           <p style={{ padding: '0 16px 10px', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--txt-ghost)', lineHeight: 1.5 }}>
             Template populates unsubmitted days only. Your signature is still required.
           </p>

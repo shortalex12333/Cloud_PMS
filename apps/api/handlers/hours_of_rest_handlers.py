@@ -522,6 +522,24 @@ class HoursOfRestHandlers:
                 )
                 return builder.build()
 
+            # MLC 7-day rolling rest (needed so check_hor_violations RPC can evaluate weekly branch).
+            # Sum all OTHER submitted days this week (Mon–yesterday), then add today's total.
+            # Using lt(record_date) avoids double-counting an existing UPDATE row.
+            try:
+                week_prior_r = self.db.table("pms_hours_of_rest").select(
+                    "total_rest_hours"
+                ).eq("yacht_id", yacht_id).eq("user_id", user_id).gte(
+                    "record_date", week_mon
+                ).lt("record_date", str(record_date)).execute()
+                prior_rest = sum(
+                    float(r.get("total_rest_hours") or 0)
+                    for r in (week_prior_r.data or [])
+                )
+                weekly_rest_hours = round(prior_rest + total_rest_hours, 2)
+            except Exception:
+                weekly_rest_hours = total_rest_hours
+            is_weekly_compliant = weekly_rest_hours >= MLC_WEEKLY_MIN_REST_HOURS
+
             # Upsert record
             upsert_data = {
                 "yacht_id": yacht_id,
@@ -532,6 +550,8 @@ class HoursOfRestHandlers:
                 "total_rest_hours": total_rest_hours,
                 "total_work_hours": total_work_hours,
                 "is_daily_compliant": is_daily_compliant,
+                "weekly_rest_hours": weekly_rest_hours,
+                "is_weekly_compliant": is_weekly_compliant,
                 "daily_compliance_notes": daily_compliance_notes,
                 "crew_comment": crew_comment or None,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
