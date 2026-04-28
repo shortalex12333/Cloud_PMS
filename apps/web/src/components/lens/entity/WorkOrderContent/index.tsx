@@ -87,7 +87,7 @@ function formatLabel(str: string): string {
 
 export function WorkOrderContent() {
   const router = useRouter();
-  const { entity, availableActions, executeAction, getAction, isLoading } = useEntityLensContext();
+  const { entity, availableActions, executeAction, getAction, isLoading, refetch } = useEntityLensContext();
 
   const { session } = useAuth();
   const token = session?.access_token ?? null;
@@ -760,7 +760,7 @@ export function WorkOrderContent() {
         <AttachmentUploadModal
           open={uploadModalOpen}
           onClose={() => setUploadModalOpen(false)}
-          onComplete={() => setUploadModalOpen(false)}
+          onComplete={() => { setUploadModalOpen(false); refetch(); }}
           title="Upload Photo / Document"
           description="Attach a file to this work order."
           entityType="work_order"
@@ -775,7 +775,7 @@ export function WorkOrderContent() {
         <AttachmentUploadModal
           open={docUploadModalOpen}
           onClose={() => setDocUploadModalOpen(false)}
-          onComplete={() => setDocUploadModalOpen(false)}
+          onComplete={() => { setDocUploadModalOpen(false); refetch(); }}
           title="Upload SOP / Manual / Drawing"
           description="Attach a procedure, manual, or technical drawing to this work order."
           entityType="work_order"
