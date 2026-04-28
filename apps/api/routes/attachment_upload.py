@@ -143,6 +143,16 @@ async def upload_entity_attachment(
         result = supabase.table("pms_attachments").insert(row).execute()
         if not result.data:
             raise Exception("Insert returned no data")
+        try:
+            from services.indexing_trigger import enqueue_for_projection
+            enqueue_for_projection(
+                entity_id=attachment_id,
+                entity_type="attachment",
+                yacht_id=yacht_id,
+                db_client=supabase,
+            )
+        except Exception as _idx_err:
+            logger.warning(f"[Indexing trigger] attachment/{attachment_id[:8]}: {_idx_err}")
     except Exception as exc:
         logger.error(f"[attachments/upload] pms_attachments insert failed, rolling back blob: {exc}")
         try:

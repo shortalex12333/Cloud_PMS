@@ -588,6 +588,24 @@ async def execute_action(
                             logger.warning(
                                 f"[Ledger safety net] {action}: {_ledger_err}"
                             )
+            # ── Indexing trigger (PR-IDX-1) ───────────────────────────────
+            try:
+                from services.indexing_trigger import enqueue_for_projection
+                _index_entity_id = (
+                    payload.get(_id_field)
+                    or (isinstance(result, dict) and (result.get(_id_field) or result.get("id")))
+                    or yacht_id
+                ) if meta else None
+                _index_entity_type = meta["entity_type"] if meta else None
+                if _index_entity_id and _index_entity_type:
+                    enqueue_for_projection(
+                        entity_id=str(_index_entity_id),
+                        entity_type=_index_entity_type,
+                        yacht_id=yacht_id,
+                        db_client=db_client,
+                    )
+            except Exception as _idx_err:
+                logger.warning(f"[Indexing trigger] {action}: {_idx_err}")
             # ─────────────────────────────────────────────────────────────
             # Normalize: frontend expects {success: true} (boolean) but many
             # handlers return {status: "success"} (string). Inject success=true
