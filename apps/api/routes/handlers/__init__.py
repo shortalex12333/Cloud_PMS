@@ -20,6 +20,7 @@ from handlers.equipment_handler import HANDLERS as EQUIP_HANDLERS
 from handlers.part_handlers import HANDLERS as PARTS_HANDLERS
 from handlers.compliance_handler import HANDLERS as COMPLIANCE_HANDLERS
 from handlers.hours_of_rest_handlers import HANDLERS as HOR_HANDLERS
+from handlers.warranty_handlers import WARRANTY_HANDLERS
 from .internal_adapter import HANDLERS as ADAPTER_HANDLERS
 
 HANDLERS: dict = {
@@ -37,6 +38,7 @@ HANDLERS: dict = {
     **MEDIA_HANDLERS,
     **COMPLIANCE_HANDLERS,
     **PO_HANDLERS,
+    **WARRANTY_HANDLERS,
     **{k: v for k, v in ADAPTER_HANDLERS.items()
        if k not in WO_HANDLERS
        and k not in PO_HANDLERS
@@ -52,5 +54,6 @@ HANDLERS: dict = {
        and k not in PARTS_HANDLERS
        and k not in MEDIA_HANDLERS
        and k not in COMPLIANCE_HANDLERS
-       and k not in PO_HANDLERS},
+       and k not in PO_HANDLERS
+       and k not in WARRANTY_HANDLERS},
 }

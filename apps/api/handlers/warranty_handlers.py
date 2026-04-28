@@ -379,3 +379,155 @@ class WarrantyHandlers:
             extra_key=note_id,
         )
         return result
+
+
+# =============================================================================
+# PHASE 4 NATIVE HANDLERS
+# Signature: (payload, context, yacht_id, user_id, user_context, db_client)
+# These replace the internal_adapter.py shim for the warranty domain.
+# =============================================================================
+
+async def _p4_draft_warranty_claim(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    return await WarrantyHandlers(db_client).draft_warranty_claim(
+        yacht_id=yacht_id,
+        user_id=user_id,
+        title=payload.get("title", ""),
+        description=payload.get("description", ""),
+        equipment_id=payload.get("equipment_id") or context.get("equipment_id"),
+        fault_id=payload.get("fault_id") or context.get("fault_id"),
+        work_order_id=payload.get("work_order_id") or context.get("work_order_id"),
+        vendor_name=payload.get("vendor_name"),
+        manufacturer=payload.get("manufacturer"),
+        warranty_expiry=payload.get("warranty_expiry"),
+        claimed_amount=payload.get("claimed_amount"),
+        currency=payload.get("currency"),
+        manufacturer_email=payload.get("manufacturer_email"),
+    )
+
+
+async def _p4_submit_warranty_claim(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    warranty_id = context.get("warranty_id") or context.get("entity_id") or payload.get("warranty_id")
+    return await WarrantyHandlers(db_client).submit_warranty_claim(
+        warranty_id=warranty_id,
+        yacht_id=yacht_id,
+        user_id=user_id,
+    )
+
+
+async def _p4_approve_warranty_claim(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    warranty_id = context.get("warranty_id") or context.get("entity_id") or payload.get("warranty_id")
+    return await WarrantyHandlers(db_client).approve_warranty_claim(
+        warranty_id=warranty_id,
+        yacht_id=yacht_id,
+        user_id=user_id,
+        approved_amount=payload.get("approved_amount"),
+    )
+
+
+async def _p4_reject_warranty_claim(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    warranty_id = context.get("warranty_id") or context.get("entity_id") or payload.get("warranty_id")
+    return await WarrantyHandlers(db_client).reject_warranty_claim(
+        warranty_id=warranty_id,
+        yacht_id=yacht_id,
+        user_id=user_id,
+        rejection_reason=payload.get("rejection_reason", ""),
+    )
+
+
+async def _p4_close_warranty_claim(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    warranty_id = context.get("warranty_id") or context.get("entity_id") or payload.get("warranty_id")
+    return await WarrantyHandlers(db_client).close_warranty_claim(
+        warranty_id=warranty_id,
+        yacht_id=yacht_id,
+        user_id=user_id,
+    )
+
+
+async def _p4_compose_warranty_email(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    warranty_id = context.get("warranty_id") or context.get("entity_id") or payload.get("warranty_id")
+    return await WarrantyHandlers(db_client).compose_warranty_email(
+        warranty_id=warranty_id,
+        yacht_id=yacht_id,
+        user_id=user_id,
+    )
+
+
+async def _p4_view_warranty_claim(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    warranty_id = context.get("warranty_id") or context.get("entity_id") or payload.get("warranty_id")
+    return await WarrantyHandlers(db_client).view_warranty_claim(
+        warranty_id=warranty_id,
+        yacht_id=yacht_id,
+        user_id=user_id,
+    )
+
+
+async def _p4_add_warranty_note(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    warranty_id = context.get("warranty_id") or context.get("entity_id") or payload.get("warranty_id")
+    note_text = payload.get("note_text") or payload.get("text", "")
+    return await WarrantyHandlers(db_client).add_warranty_note(
+        warranty_id=warranty_id,
+        yacht_id=yacht_id,
+        user_id=user_id,
+        note_text=note_text,
+    )
+
+
+async def _p4_archive_warranty(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    from handlers.universal_handlers import soft_delete_entity
+    entity_id = context.get("warranty_id") or context.get("entity_id") or payload.get("warranty_id")
+    params = {"entity_id": entity_id, "entity_type": "warranty",
+              "yacht_id": yacht_id, "user_id": user_id}
+    return await soft_delete_entity(params)
+
+
+async def _p4_void_warranty(
+    payload: dict, context: dict, yacht_id: str, user_id: str,
+    user_context: dict, db_client: Any,
+) -> dict:
+    from handlers.universal_handlers import soft_delete_entity
+    entity_id = context.get("warranty_id") or context.get("entity_id") or payload.get("warranty_id")
+    params = {"entity_id": entity_id, "entity_type": "warranty",
+              "yacht_id": yacht_id, "user_id": user_id}
+    return await soft_delete_entity(params)
+
+
+WARRANTY_HANDLERS: dict = {
+    "draft_warranty_claim":   _p4_draft_warranty_claim,
+    "file_warranty_claim":    _p4_draft_warranty_claim,   # alias
+    "submit_warranty_claim":  _p4_submit_warranty_claim,
+    "approve_warranty_claim": _p4_approve_warranty_claim,
+    "reject_warranty_claim":  _p4_reject_warranty_claim,
+    "close_warranty_claim":   _p4_close_warranty_claim,
+    "compose_warranty_email": _p4_compose_warranty_email,
+    "view_warranty_claim":    _p4_view_warranty_claim,
+    "add_warranty_note":      _p4_add_warranty_note,
+    "archive_warranty":       _p4_archive_warranty,
+    "void_warranty":          _p4_void_warranty,
+}

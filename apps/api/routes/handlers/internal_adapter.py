@@ -18,8 +18,6 @@ _SOFT_DELETE_ENTITY_TYPES: Dict[str, str] = {
     "archive_part": "part",
     "delete_part": "part",
     "archive_document": "document",
-    "archive_warranty": "warranty",
-    "void_warranty": "warranty",
 }
 
 
@@ -62,8 +60,8 @@ def _make_adapter(action_id: str) -> Callable:
 
 
 # Actions served via INTERNAL_HANDLERS (class-based handlers) not yet rewritten
-# to Phase 4 flat-function style. Equipment/fault/WO actions have been migrated;
-# only warranty, document, and parts actions remain here.
+# to Phase 4 flat-function style. Equipment/fault/WO/warranty actions have been migrated;
+# only document and parts actions remain here.
 _ACTIONS_TO_ADAPT = [
     # Document domain (served by DocumentHandlers via dispatchers/document.py)
     "add_document_comment",
@@ -82,18 +80,6 @@ _ACTIONS_TO_ADAPT = [
     "suggest_parts",
     "reorder_part",
     "update_part_details",
-    # Warranty domain (served by WarrantyHandlers via dispatchers/warranty.py)
-    "add_warranty_note",
-    "approve_warranty_claim",
-    "archive_warranty",
-    "close_warranty_claim",
-    "compose_warranty_email",
-    "draft_warranty_claim",
-    "file_warranty_claim",
-    "reject_warranty_claim",
-    "submit_warranty_claim",
-    "view_warranty_claim",
-    "void_warranty",
 ]
 
 HANDLERS: Dict[str, Callable] = {
