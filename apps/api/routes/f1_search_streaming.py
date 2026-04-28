@@ -52,6 +52,7 @@ from middleware.auth import get_authenticated_user
 
 # F1 Search types and services
 from services.types import UserContext, SearchBudget, DEFAULT_BUDGET
+from services.hyper_search import call_hyper_search
 
 # Cortex rewrites and embeddings
 from cortex.rewrites import generate_rewrites, generate_embeddings, Rewrite, RewriteResult
@@ -743,104 +744,6 @@ async def call_match_search_index(
 
 
 # ============================================================================
-# hyper_search_multi RPC Call (asyncpg - single round-trip)
-# ============================================================================
-
-async def call_hyper_search_multi(
-    conn: asyncpg.Connection,
-    rewrites: List[Rewrite],
-    ctx: UserContext,
-    rrf_k: int = 60,
-    page_limit: int = 20,
-    object_types: Optional[List[str]] = None,
-    vessel_ids: Optional[List[str]] = None,
-    allowed_roles: Optional[List[str]] = None,
-) -> List[Dict[str, Any]]:
-    """
-    Call hyper_search_multi RPC via asyncpg (single round-trip).
-
-    GUARDRAILS:
-    - Must have ctx.org_id (RLS requirement)
-    - Max 3 rewrites
-    - statement_timeout enforced by connection
-
-    Args:
-        conn: asyncpg connection
-        rewrites: List of Rewrite objects (max 3)
-        ctx: UserContext with org_id and yacht_id
-        rrf_k: RRF smoothing constant (default 60)
-        page_limit: Max results to return (default 20)
-        object_types: Optional list of object_types to filter results
-        vessel_ids: Optional list of yacht UUIDs for multi-vessel search (overview mode)
-        allowed_roles: Caller's roles for visibility gating (None = no filter)
-    """
-    # Ensure max 3 rewrites
-    rewrites = rewrites[:3]
-
-    texts = [r.text for r in rewrites]
-
-    # Convert vectors: asyncpg needs explicit casts
-    # If embedding is None, pass NULL
-    vec_literals = []
-    for r in rewrites:
-        if r.embedding is not None:
-            vec_literals.append(f"[{','.join(str(x) for x in r.embedding)}]")
-        else:
-            vec_literals.append(None)
-
-    # Dynamic trigram threshold based on query length
-    # Short queries (IDs/codes ≤6 chars): lower threshold for recall
-    # Long queries: higher threshold to avoid flooding with weak matches
-    original_query = texts[0] if texts else ""
-    trgm_limit = 0.07 if len(original_query.strip()) <= 6 else 0.15
-
-    # Multi-vessel search: run per-vessel and merge by fused_score
-    if vessel_ids and len(vessel_ids) > 1:
-        all_results = []
-        for vid in vessel_ids:
-            try:
-                vid_uuid = uuid.UUID(vid)
-            except ValueError:
-                continue
-            vessel_rows = await conn.fetch(
-                """
-                SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-                FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[], $9::text[])
-                """,
-                texts, vec_literals, uuid.UUID(ctx.org_id), vid_uuid,
-                rrf_k, page_limit, trgm_limit, object_types, allowed_roles,
-            )
-            for r in vessel_rows:
-                d = dict(r)
-                if isinstance(d.get("payload"), dict):
-                    d["payload"]["yacht_id"] = vid
-                all_results.append(d)
-
-        all_results.sort(key=lambda r: r.get("fused_score", 0), reverse=True)
-        rows = all_results[:page_limit]
-    else:
-        # Single vessel search (existing behavior)
-        rows = await conn.fetch(
-            """
-            SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-            FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[], $9::text[])
-            """,
-            texts,
-            vec_literals,
-            uuid.UUID(ctx.org_id),
-            uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
-            rrf_k,
-            page_limit,
-            trgm_limit,
-            object_types,
-            allowed_roles,
-        )
-
-    # Convert asyncpg Records to dicts
-    return [dict(r) for r in rows]
-
-
-# ============================================================================
 # F1 Streaming Search Endpoint
 # ============================================================================
 
@@ -1079,13 +982,13 @@ async def f1_search_stream(
                             span.set_attribute("rewrite_count", len(rewrites))
                             span.set_attribute("global_search", True)
                             # NO object_type filter - all entities compete
-                            results = await call_hyper_search_multi(
+                            results = await call_hyper_search(
                                 conn, rewrites, ctx,
                                 rrf_k=60,
                                 page_limit=60,  # LAW 22: Fetch more for RRF candidate pool
                                 object_types=None,  # ALL types compete globally
                                 vessel_ids=fleet_vessel_ids,  # Multi-vessel fan-out for fleet users
-                                allowed_roles=[ctx.role] if ctx.role else None,
+                                allowed_roles=[ctx.role] if ctx.role else ['crew'],
                             )
                             span.set_attribute("result_count", len(results))
                             return results

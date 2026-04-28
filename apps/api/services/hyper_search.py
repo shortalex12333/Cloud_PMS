@@ -9,7 +9,7 @@ Two concerns:
    Spotlight maintains its own pool in routes/f1_search_streaming.py (800ms).
 
 Consumers:
-- routes/f1_search_streaming.py     (spotlight — uses call_hyper_search only, own pool)
+- routes/f1_search_streaming.py        (spotlight — imports call_hyper_search, own pool)
 - handlers/related_signal_handlers.py  (signal — uses both pool + call_hyper_search)
 """
 

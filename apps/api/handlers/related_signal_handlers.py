@@ -153,7 +153,7 @@ async def get_signal_related(
             ctx=ctx,
             page_limit=effective_limit,
             exclude_ids=[entity_id],  # never return the source entity itself
-            allowed_roles=[ctx.role] if ctx.role else None,
+            allowed_roles=[ctx.role] if ctx.role else ['crew'],
         )
     except HTTPException:
         raise
