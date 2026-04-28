@@ -77,6 +77,9 @@ LINK_MANAGE_ROLES = ['admin', 'captain', 'chief_engineer', 'chief_officer', 'chi
 UPLOAD_DOCUMENT_ROLES = [
     'chief_engineer', 'chief_officer', 'chief_steward',
     'purser', 'captain', 'manager',
+    'engineer', 'bosun', 'officer', 'crew_member', 'crew', 'deckhand',
+    'electrician', 'mechanic', 'steward', 'chef', 'second_officer',
+    'second_engineer', 'third_officer', 'third_engineer',
 ]
 
 # Upload constraints (must mirror frontend AttachmentUploadModal).
@@ -594,6 +597,7 @@ async def upload_document(
     tags_csv: Optional[str] = Form(None, description="Comma-separated tags"),
     equipment_ids_csv: Optional[str] = Form(None, description="Comma-separated equipment UUIDs"),
     notes: Optional[str] = Form(None, description="Upload notes"),
+    storage_bucket: Optional[str] = Form(None, description="Target storage bucket (defaults to 'documents'). Use per-lens buckets e.g. 'pms-work-order-documents'."),
     yacht_id: Optional[str] = Query(None, description="Vessel scope (fleet users)"),
     auth: dict = Depends(get_authenticated_user),
 ):
@@ -614,6 +618,7 @@ async def upload_document(
     yacht_id = resolve_yacht_id(auth, yacht_id)
     user_id = auth['user_id']
     user_role = auth.get('role', '')
+    effective_bucket = storage_bucket or DOCUMENTS_BUCKET
 
     # -----------------------------------------------------------------------
     # Role gate
@@ -678,7 +683,7 @@ async def upload_document(
     # If this fails, no doc_metadata row is written (no ghost).
     # -----------------------------------------------------------------------
     try:
-        supabase.storage.from_(DOCUMENTS_BUCKET).upload(
+        supabase.storage.from_(effective_bucket).upload(
             path=storage_path,
             file=file_content,
             file_options={
@@ -706,7 +711,7 @@ async def upload_document(
         'source': 'document_lens',
         'filename': filename,
         'storage_path': storage_path,
-        'storage_bucket': DOCUMENTS_BUCKET,
+        'storage_bucket': effective_bucket,
         'content_type': content_type,
         'size_bytes': size_bytes,
         'uploaded_by': user_id,
@@ -747,12 +752,12 @@ async def upload_document(
         # Compensating delete — best-effort. If this fails, we've leaked a blob
         # but we still surface the original error to the caller.
         try:
-            supabase.storage.from_(DOCUMENTS_BUCKET).remove([storage_path])
+            supabase.storage.from_(effective_bucket).remove([storage_path])
             logger.info(f"[documents/upload] rolled back storage blob {storage_path}")
         except Exception as rollback_err:
             logger.error(
                 f"[documents/upload] ROLLBACK FAILED — orphan blob: "
-                f"bucket={DOCUMENTS_BUCKET} path={storage_path} err={rollback_err}"
+                f"bucket={effective_bucket} path={storage_path} err={rollback_err}"
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -774,7 +779,7 @@ async def upload_document(
             'doc_type': doc_type,
             'title': title,
             'size_bytes': size_bytes,
-            'storage_bucket': DOCUMENTS_BUCKET,
+            'storage_bucket': effective_bucket,
         },
         'signature': {
             'timestamp': datetime.utcnow().isoformat(),
@@ -842,7 +847,7 @@ async def upload_document(
         success=True,
         document_id=inserted_id,
         storage_path=storage_path,
-        storage_bucket=DOCUMENTS_BUCKET,
+        storage_bucket=effective_bucket,
         filename=filename,
         size_bytes=size_bytes,
         content_type=content_type,

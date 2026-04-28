@@ -1071,8 +1071,42 @@ class EntityLensHandlers:
             _nav("fault", data.get("fault_id"), "Fault"),
         ] if n]
 
+        # Linked documents — uploaded via /v1/documents/upload + /v1/documents/link
+        linked_docs = []
+        try:
+            links_resp = supabase.table('email_attachment_object_links').select(
+                'id, document_id, link_reason, created_at'
+            ).eq('object_type', 'work_order').eq('object_id', wo_id).eq(
+                'yacht_id', yacht_id
+            ).eq('is_active', True).execute()
+            for link in (links_resp.data or []):
+                doc_id = link['document_id']
+                # doc_metadata first (documents uploaded via /v1/documents/upload)
+                dm = supabase.table('doc_metadata').select(
+                    'id, title, doc_type, description, created_at'
+                ).eq('id', doc_id).eq('yacht_id', yacht_id).maybe_single().execute()
+                doc = dm.data if dm and dm.data else None
+                if not doc:
+                    # fallback: doc_yacht_library (email-sourced documents)
+                    lib = supabase.table('doc_yacht_library').select(
+                        'id, document_name, document_type, created_at'
+                    ).eq('id', doc_id).maybe_single().execute()
+                    raw = lib.data if lib and lib.data else {}
+                    doc = {'title': raw.get('document_name'), 'doc_type': raw.get('document_type'), 'created_at': raw.get('created_at')}
+                linked_docs.append({
+                    'id': link['id'],
+                    'document_id': doc_id,
+                    'name': doc.get('title') or 'Document',
+                    'code': doc.get('doc_type'),
+                    'meta': link.get('link_reason'),
+                    'date': (doc.get('created_at') or link.get('created_at') or '')[:10],
+                })
+        except Exception as _doc_err:
+            logger.warning(f"get_work_order_entity: linked docs failed: {_doc_err}")
+
         _entity_response = {
             "id": wo_id,
+            "yacht_id": data.get('yacht_id'),
             "wo_number": data.get('wo_number'),
             "title": data.get('title', 'Untitled Work Order'),
             "description": data.get('description', ''),
@@ -1099,6 +1133,7 @@ class EntityLensHandlers:
             "checklist_count": len(checklist),
             "checklist_completed": len([c for c in checklist if c.get('is_completed')]),
             "attachments": attachments,
+            "documents": linked_docs,
             "related_entities": nav,
         }
         _entity_response["available_actions"] = get_available_actions(
