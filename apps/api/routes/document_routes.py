@@ -77,6 +77,9 @@ LINK_MANAGE_ROLES = ['admin', 'captain', 'chief_engineer', 'chief_officer', 'chi
 UPLOAD_DOCUMENT_ROLES = [
     'chief_engineer', 'chief_officer', 'chief_steward',
     'purser', 'captain', 'manager',
+    'engineer', 'bosun', 'officer', 'crew_member', 'crew', 'deckhand',
+    'electrician', 'mechanic', 'steward', 'chef', 'second_officer',
+    'second_engineer', 'third_officer', 'third_engineer',
 ]
 
 # Upload constraints (must mirror frontend AttachmentUploadModal).

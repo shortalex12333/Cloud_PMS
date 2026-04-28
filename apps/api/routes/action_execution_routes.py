@@ -589,18 +589,22 @@ async def execute_action(
                                 f"[Ledger safety net] {action}: {_ledger_err}"
                             )
             # ── Indexing trigger (PR-IDX-1) ───────────────────────────────
+            # Self-contained: never borrows meta/_id_field from the ledger
+            # block above — that block is skipped when _ledger_written=True.
             try:
                 from services.indexing_trigger import enqueue_for_projection
-                _index_entity_id = (
-                    payload.get(_id_field)
-                    or (isinstance(result, dict) and (result.get(_id_field) or result.get("id")))
-                    or yacht_id
-                ) if meta else None
-                _index_entity_type = meta["entity_type"] if meta else None
-                if _index_entity_id and _index_entity_type:
+                from action_router.ledger_metadata import ACTION_METADATA as _IDX_META_MAP
+                _idx_meta = _IDX_META_MAP.get(action)
+                if _idx_meta:
+                    _idx_id_field = _idx_meta["entity_id_field"]
+                    _index_entity_id = (
+                        payload.get(_idx_id_field)
+                        or (isinstance(result, dict) and (result.get(_idx_id_field) or result.get("id")))
+                        or yacht_id
+                    )
                     enqueue_for_projection(
                         entity_id=str(_index_entity_id),
-                        entity_type=_index_entity_type,
+                        entity_type=_idx_meta["entity_type"],
                         yacht_id=yacht_id,
                         db_client=db_client,
                     )
