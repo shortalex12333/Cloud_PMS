@@ -94,6 +94,7 @@ ACTION_METADATA: dict = {
     "track_po_delivery":                 {"event_type": "update",        "entity_type": "purchase_order","entity_id_field": "purchase_order_id"},
 
     # ── Work Orders ──────────────────────────────────────────────────────────
+    "add_work_order_note":               {"event_type": "update",        "entity_type": "work_order_note","entity_id_field": "note_id"},
     "add_wo_photo":                      {"event_type": "update",        "entity_type": "work_order",    "entity_id_field": "work_order_id"},
     "delete_work_order":                 {"event_type": "delete",        "entity_type": "work_order",    "entity_id_field": "work_order_id"},
 
