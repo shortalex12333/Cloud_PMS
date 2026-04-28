@@ -195,6 +195,45 @@ export function WorkOrderContent() {
   const yacht_id = (entity?.yacht_id ?? payload.yacht_id) as string | undefined;
   const wo_id = (entity?.id ?? payload.id) as string | undefined;
 
+  // Custom upload handler — uploads to doc_metadata via /v1/documents/upload then
+  // links to this work order via /v1/documents/link. Produces an inspectable
+  // document entity card at /documents/{id} rather than a raw pms_attachments row.
+  const handleDocUpload = React.useCallback(
+    async (file: File, metadata?: { title?: string; doc_type?: string; tags_csv?: string }): Promise<void> => {
+      if (!wo_id || !token) throw new Error('Work order not ready');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+      const authHeader = { Authorization: `Bearer ${token}` };
+
+      const form = new FormData();
+      form.append('file', file);
+      if (metadata?.title) form.append('title', metadata.title);
+      if (metadata?.doc_type) form.append('doc_type', metadata.doc_type);
+      if (metadata?.tags_csv) form.append('tags_csv', metadata.tags_csv);
+
+      const upRes = await fetch(`${apiUrl}/v1/documents/upload`, {
+        method: 'POST', headers: authHeader, body: form,
+      });
+      if (!upRes.ok) {
+        let msg = `Upload failed (${upRes.status})`;
+        try { const b = await upRes.json(); msg = (b as { detail?: string }).detail ?? msg; } catch { /* non-JSON */ }
+        throw new Error(msg);
+      }
+      const { document_id } = await upRes.json() as { document_id: string };
+
+      const linkRes = await fetch(`${apiUrl}/v1/documents/link`, {
+        method: 'POST',
+        headers: { ...authHeader, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_id, object_type: 'work_order', object_id: wo_id }),
+      });
+      if (!linkRes.ok) {
+        let msg = `File saved but failed to link to work order (${linkRes.status})`;
+        try { const b = await linkRes.json(); msg = (b as { detail?: string }).detail ?? msg; } catch { /* non-JSON */ }
+        throw new Error(msg);
+      }
+    },
+    [wo_id, token]
+  );
+
   const canStart = startAction !== null && ['draft', 'planned', 'open'].includes(status);
   const isCloseable = !['completed', 'closed', 'cancelled'].includes(status);
 
@@ -771,19 +810,15 @@ export function WorkOrderContent() {
           userId={session.user.id}
         />
       )}
-      {wo_id && yacht_id && session?.user?.id && (
+      {wo_id && session?.user?.id && (
         <AttachmentUploadModal
           open={docUploadModalOpen}
           onClose={() => setDocUploadModalOpen(false)}
           onComplete={() => { setDocUploadModalOpen(false); refetch(); }}
           title="Upload SOP / Manual / Drawing"
           description="Attach a procedure, manual, or technical drawing to this work order."
-          entityType="work_order"
-          entityId={wo_id}
-          bucket="pms-work-order-documents"
-          category="document"
-          yachtId={yacht_id}
-          userId={session.user.id}
+          onUpload={handleDocUpload}
+          showMetadataFields
         />
       )}
     </>
