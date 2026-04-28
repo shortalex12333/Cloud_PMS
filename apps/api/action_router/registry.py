@@ -57,6 +57,21 @@ class FieldMetadata:
     options: Optional[List[str]] = None        # Valid options for enum fields
 
 
+# Maps registry domain strings to search_index object_type values.
+# Only domains whose name differs from the entity_type need an entry here.
+_DOMAIN_TO_ENTITY: Dict[str, str] = {
+    "work_orders":    "work_order",
+    "faults":         "fault",
+    "purchase_orders":"purchase_order",
+    "hours_of_rest":  "hor_entry",
+    "shopping_lists": "shopping_list",
+    # Domains that already match their entity_type are not listed:
+    # equipment, documents→document, certificates→certificate,
+    # parts→part, handover, receiving, warranties→warranty,
+    # shopping_list
+}
+
+
 class ActionDefinition:
     """
     Definition of a single action.
@@ -68,6 +83,7 @@ class ActionDefinition:
     - Context gating (context_required)
     - Signature role requirement (signature_roles_required)
     - Discoverability (search_keywords)
+    - Search indexing (index_entity_type, index_id_field)
     """
 
     def __init__(
@@ -89,6 +105,8 @@ class ActionDefinition:
         storage_path_template: str = None,            # Path pattern for storage
         context_required: Dict[str, Any] = None,      # Context gating: {"entity_type": "fault"}
         signature_roles_required: List[str] = None,   # For SIGNED: roles that can sign
+        index_entity_type: str = None,                # Override search entity type; defaults via _DOMAIN_TO_ENTITY
+        index_id_field: str = None,                   # Payload/result key for entity UUID; defaults to f"{entity_type}_id"
     ):
         self.action_id = action_id
         self.label = label
@@ -105,8 +123,29 @@ class ActionDefinition:
         self.prefill_endpoint = prefill_endpoint
         self.storage_bucket = storage_bucket
         self.storage_path_template = storage_path_template
-        self.context_required = context_required  # e.g., {"entity_type": "fault", "entity_id": True}
-        self.signature_roles_required = signature_roles_required  # e.g., ["captain", "manager"]
+        self.context_required = context_required
+        self.signature_roles_required = signature_roles_required
+        self._index_entity_type = index_entity_type
+        self._index_id_field = index_id_field
+
+    @property
+    def resolved_entity_type(self) -> str:
+        """Entity type for search_index; None for READ actions or unknown domains."""
+        if self.variant == ActionVariant.READ:
+            return None
+        if self._index_entity_type:
+            return self._index_entity_type
+        if not self.domain:
+            return None
+        return _DOMAIN_TO_ENTITY.get(self.domain, self.domain)
+
+    @property
+    def resolved_index_id_field(self) -> str:
+        """Payload/result key used as object_id when indexing."""
+        if self._index_id_field:
+            return self._index_id_field
+        et = self.resolved_entity_type
+        return f"{et}_id" if et else None
 
 
 # ============================================================================
@@ -3694,6 +3733,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "work_order_id", "note_text"],
         domain="work_orders",
         variant=ActionVariant.MUTATE,
+        index_entity_type="work_order_note",
+        index_id_field="note_id",
     ),
 
     "mark_checklist_item_complete": ActionDefinition(

@@ -221,23 +221,35 @@ def test_t5_propagate_visibility_trigger():
         conn.close()
 
 
-def test_t6_action_metadata_wiring():
-    """T6: add_work_order_note is in ACTION_METADATA with entity_type=work_order_note."""
+def test_t6_registry_indexing_wiring():
+    """T6: Registry drives indexing — add_work_order_note resolves correctly via registry properties."""
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     try:
-        from action_router.ledger_metadata import ACTION_METADATA
+        from action_router.registry import ACTION_REGISTRY
     except ImportError as e:
-        return fail_("T6", f"cannot import ACTION_METADATA: {e}")
+        return fail_("T6", f"cannot import ACTION_REGISTRY: {e}")
 
-    entry = ACTION_METADATA.get("add_work_order_note")
-    if not entry:
-        return fail_("T6", "add_work_order_note missing from ACTION_METADATA")
-    if entry.get("entity_type") != "work_order_note":
-        return fail_("T6", f"entity_type wrong: expected 'work_order_note', got '{entry.get('entity_type')}'")
-    if entry.get("entity_id_field") != "note_id":
-        return fail_("T6", f"entity_id_field wrong: expected 'note_id', got '{entry.get('entity_id_field')}'")
+    defn = ACTION_REGISTRY.get("add_work_order_note")
+    if not defn:
+        return fail_("T6", "add_work_order_note missing from ACTION_REGISTRY")
+    if defn.resolved_entity_type != "work_order_note":
+        return fail_("T6", f"resolved_entity_type wrong: expected 'work_order_note', got '{defn.resolved_entity_type}'")
+    if defn.resolved_index_id_field != "note_id":
+        return fail_("T6", f"resolved_index_id_field wrong: expected 'note_id', got '{defn.resolved_index_id_field}'")
 
-    pass_("T6: add_work_order_note in ACTION_METADATA → entity_type=work_order_note, entity_id_field=note_id")
+    # MUTATE action with no override uses domain→entity_type convention
+    for _aid in ("update_work_order", "close_work_order"):
+        _d = ACTION_REGISTRY.get(_aid)
+        if _d and _d.resolved_entity_type != "work_order":
+            return fail_("T6", f"{_aid}: expected resolved_entity_type='work_order', got '{_d.resolved_entity_type}'")
+
+    # READ action never enqueues (resolved_entity_type must be None)
+    for _aid in ("view_work_order_detail", "view_my_work_orders"):
+        _d = ACTION_REGISTRY.get(_aid)
+        if _d and _d.resolved_entity_type is not None:
+            return fail_("T6", f"READ action {_aid} should not index, got resolved_entity_type={_d.resolved_entity_type!r}")
+
+    pass_("T6: registry drives indexing — add_work_order_note→work_order_note/note_id, MUTATE→work_order, READ→None")
     return True
 
 
@@ -346,7 +358,7 @@ def main():
         test_t3_hor_rows_have_search_text,
         test_t4_f1_search_cards_rpc,
         test_t5_propagate_visibility_trigger,
-        test_t6_action_metadata_wiring,
+        test_t6_registry_indexing_wiring,
         test_t7_worker_processes_work_order_note,
     ]
 

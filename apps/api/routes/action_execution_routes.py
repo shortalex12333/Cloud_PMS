@@ -588,26 +588,35 @@ async def execute_action(
                             logger.warning(
                                 f"[Ledger safety net] {action}: {_ledger_err}"
                             )
-            # ── Indexing trigger (PR-IDX-1) ───────────────────────────────
-            # Self-contained: never borrows meta/_id_field from the ledger
-            # block above — that block is skipped when _ledger_written=True.
+            # ── Indexing trigger ──────────────────────────────────────────
+            # Registry is the primary source. ledger_metadata is a fallback
+            # for adapter-only actions not in the registry (e.g. receiving,
+            # shopping list mutations that bypass the main registry path).
+            # READ-variant actions never enqueue (resolved_entity_type=None).
             try:
                 from services.indexing_trigger import enqueue_for_projection
-                from action_router.ledger_metadata import ACTION_METADATA as _IDX_META_MAP
-                _idx_meta = _IDX_META_MAP.get(action)
-                if _idx_meta:
-                    _idx_id_field = _idx_meta["entity_id_field"]
+                from action_router.registry import ACTION_REGISTRY as _IDX_REGISTRY
+                _idef = _IDX_REGISTRY.get(action)
+                _idx_entity_type = _idef.resolved_entity_type if _idef else None
+                _idx_id_field    = _idef.resolved_index_id_field if _idef else None
+                if not _idx_entity_type:
+                    from action_router.ledger_metadata import ACTION_METADATA as _IDX_META
+                    _m = _IDX_META.get(action)
+                    if _m:
+                        _idx_entity_type = _m["entity_type"]
+                        _idx_id_field    = _m["entity_id_field"]
+                if _idx_entity_type and _idx_id_field:
                     _index_entity_id = (
                         payload.get(_idx_id_field)
                         or (isinstance(result, dict) and (result.get(_idx_id_field) or result.get("id")))
-                        or yacht_id
                     )
-                    enqueue_for_projection(
-                        entity_id=str(_index_entity_id),
-                        entity_type=_idx_meta["entity_type"],
-                        yacht_id=yacht_id,
-                        db_client=db_client,
-                    )
+                    if _index_entity_id:
+                        enqueue_for_projection(
+                            entity_id=str(_index_entity_id),
+                            entity_type=_idx_entity_type,
+                            yacht_id=yacht_id,
+                            db_client=db_client,
+                        )
             except Exception as _idx_err:
                 logger.warning(f"[Indexing trigger] {action}: {_idx_err}")
             # ─────────────────────────────────────────────────────────────
