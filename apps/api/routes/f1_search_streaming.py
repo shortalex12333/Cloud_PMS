@@ -976,7 +976,7 @@ async def f1_search_stream(
                     # LAW 23: L1 Fast Path - Run text search first
                     # ============================================================
                     async def run_text_search():
-                        with tracer.start_as_current_span("db.hyper_search_multi") as span:
+                        with tracer.start_as_current_span("db.hyper_search") as span:
                             span.set_attribute("search_id", search_id)
                             span.set_attribute("org_id", ctx.org_id)
                             span.set_attribute("rewrite_count", len(rewrites))
