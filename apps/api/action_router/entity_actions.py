@@ -33,6 +33,7 @@ _WO_ACTIVE_DISABLED = {"start_work_order"}
 _WO_TERMINAL_DISABLED = {
     "start_work_order", "add_wo_part", "add_wo_hours",
     "log_part_usage", "add_work_order_photo", "assign_work_order",
+    "link_fault_to_work_order", "link_equipment_to_work_order",
 }
 
 # ── Fault status sets ──────────────────────────────────────────────────────────

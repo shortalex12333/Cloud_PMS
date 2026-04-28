@@ -296,7 +296,7 @@ This section lists every file. Use the scenario guide above first — only come 
 
 | File | What it does + when you'd touch it |
 |---|---|
-| `work_order_handlers.py` | Everything work orders do: create, update, close, assign, checklist, frequency spawn. *If "Close Work Order" doesn't update the status, or checklist items aren't saving, the bug is in here.* |
+| `work_order_handlers.py` | Everything work orders do: create, update, close, assign, checklist, frequency spawn, `link_fault_to_work_order`, `link_equipment_to_work_order`, `add_parts_to_work_order` (writes to `pms_work_order_parts`). *If "Close Work Order" doesn't update the status, or checklist items aren't saving, the bug is in here.* |
 | `equipment_handler.py` | Everything equipment does: status, notes, running hours, manuals, archive. *e.g. "Record Hours" action saves but the hours don't update on screen → the logic is here.* |
 | `fault_handler.py` | Everything faults do: create, update, resolve, link parts, notes. *Touch this if resolving a fault doesn't change its status or the audit trail entry is wrong.* |
 | `warranty_handlers.py` | Everything warranty claims do: draft, file, compose email, notes, audit. *If filing a warranty claim returns 500, or the draft isn't saved, start here.* |
@@ -311,7 +311,7 @@ This section lists every file. Use the scenario guide above first — only come 
 | `document_handler.py` | Document creation, update, metadata. *If uploading a document saves the file but doesn't create the metadata record, start here.* |
 | `document_comment_handlers.py` | Comments on documents. *Touch this if adding a comment to a document returns an error.* |
 | `attachment_comment_handlers.py` | Comments on attachments (files). *Same but for attachment comments specifically.* |
-| `entity_lens_handlers.py` | Builds the full data package sent to any entity detail page. *If an entity page loads but fields are missing or showing wrong data, the data assembly is here.* |
+| `entity_lens_handlers.py` | Builds the full data package sent to any entity detail page. WO handler: enriches fault_id → `faults[]`, resolves note `created_by` UUIDs → `author_name`/`author_role`, resolves audit `user_id` → `actor`, flattens `pms_work_order_parts` to parts array, filters read-prefix audit noise. Interlink chain (all bidirectional): **Part** card shows related WOs (via `pms_work_order_parts`), shopping list items (via `pms_shopping_list_items.part_id`), and POs (via `pms_purchase_order_items.part_id`). **PO** card shows source shopping list + line-item parts + receiving records (via `pms_receiving.po_id`). **Certificate** (vessel) card shows equipment it covers (via `properties.equipment_ids`). *If an entity page loads but fields are missing or showing wrong data, the data assembly is here.* |
 | `list_handlers.py` | Generic list queries used across domains. *Touch this if a list endpoint returns the wrong set of items.* |
 | `shared_mutation_handlers.py` | Generic "add note", "update field" logic shared across domains. *e.g. notes are saving but not appearing on screen → check here if it's not a domain-specific handler issue.* |
 | `shared_read_handlers.py` | Generic "view entity" and "list items" logic. *Touch this if a read-only view action returns incorrect data.* |
@@ -404,6 +404,7 @@ This section lists every file. Use the scenario guide above first — only come 
 |---|---|
 | `import_service.py` | Processes CSV/XLSX imports. Dry-run shows what would happen; commit makes it real. *If imported data is landing in the wrong columns or rows are being skipped, the transformation logic is here.* |
 | `hyper_search.py` | Runs the F1 search database call and manages the connection pool. *Touch this if search is timing out or returning connection errors.* |
+| `indexing_trigger.py` | Fire-and-forget sync hook that upserts a `pending` row into `search_index` after any entity change or file upload. Called by `action_execution_routes.py` and `attachment_upload.py`. *Touch this if newly created or updated entities never appear in search at all — this is the first link in the indexing chain.* |
 | `decision_engine.py` | Reads the E017/E019 policy files and decides which actions to suggest with what confidence. *e.g. the wrong action is being suggested for a fault → the policy evaluation is here.* |
 | `action_surfacing.py` | Decides which actions appear as "suggested" based on entity state. *Touch this if the suggested action strip is showing irrelevant actions.* |
 | `handover_export_service.py` | Builds the handover PDF/HTML with all items and seals it. *If a handover export generates but is missing items or has broken formatting, start here.* |
@@ -432,6 +433,15 @@ This section lists every file. Use the scenario guide above first — only come 
 | `email_watcher_worker.py` | Watches for new emails and processes them. *Touch this if the email module stops receiving new emails without any user action.* |
 | `nightly_certificate_expiry.py` | Runs every night checking for expiring certificates. *Touch this if expiry alerts aren't appearing, or are appearing for the wrong certificates.* |
 | `nightly_feedback_loop.py` | Runs every night adjusting extraction quality. *Touch this only if extraction accuracy is degrading over time.* |
+
+---
+
+### BACKEND: `tests/`
+*(Integration test suites that hit the live TENANT DB. Not unit tests — these require a real DB connection and prove the full chain.)*
+
+| File | What it does + when you'd touch it |
+|---|---|
+| `tests/pridx_integration_test.py` | 6-test suite proving the full indexing + visibility chain: `search_projection_map` config, `enqueue_for_projection` trigger, `allowed_roles` on HoR rows, role-gated `f1_search_cards` RPC, and `trg_propagate_visibility_change`. *Run after any change to the indexing pipeline, search routes, or visibility config.* Run: `cd apps/api && python3 tests/pridx_integration_test.py` |
 
 ---
 
@@ -590,9 +600,9 @@ AppShell (the frame: topbar + sidebar + body area)
 
 | File | What it controls + when you'd touch it |
 |---|---|
-| `WorkOrderContent/index.tsx` | Work order detail page: which sections appear and where. *Touch this to add, remove, or reorder sections on the work order page. The Documents tab splits uploads into two pools — photos (general attachments) vs documents (category=document, goes to pms-work-order-documents bucket). Edit here to change that split or add a new pool.* |
-| `WorkOrderContent/WOTabBodies.tsx` | What's inside each tab on the work order page. *Touch this if a tab shows the wrong content or a section is in the wrong tab.* |
-| `WorkOrderContent/WOModals.tsx` | Custom modals for work order actions (e.g. SetFrequencyModal, multi-row checklist modal). *Touch this to change a work order specific popup — not the generic action popup.* |
+| `WorkOrderContent/index.tsx` | Work order detail page: which sections appear and where. Faults tab opens `WOFaultLinkModal`, Equipment tab opens `EquipmentPickerModal`. Tab label "Images" = key "uploads". `handleFaultLink`/`handleEquipmentLink` use `runAction` (toast feedback). Both link actions are `HIDDEN_FROM_DROPDOWN` (tab-inline only). |
+| `WorkOrderContent/WOTabBodies.tsx` | Tab body components: `FaultsTabBody` (with `onLinkFault` dashed button), `EquipmentTabBody` (with `onAssignEquipment` dashed button), `SafetyTabBody`, `EmptyTab`. *Touch this if a tab shows the wrong content.* |
+| `WorkOrderContent/WOModals.tsx` | ALL WO-specific modal components: `AddPartModal`, `AssignModal`, `AddChecklistItemModal`, `EditSOPModal`, `ArchiveWorkOrderModal`, `SetFrequencyModal`, `WOFaultLinkModal`. *Add new WO modals here — never create a separate file for a single WO modal.* |
 | `EquipmentContent.tsx` | Equipment detail page layout. *Add a section here if you want it to appear on every equipment detail page.* |
 | `FaultContent.tsx` | Fault detail page layout. *Touch this if a section is missing from the fault page that exists on other pages.* |
 | `CertificateContent.tsx` | Certificate detail page layout. *Touch this to add the renewal history section, or reorder how certificate details are shown.* |
