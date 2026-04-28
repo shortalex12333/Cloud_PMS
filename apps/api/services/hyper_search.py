@@ -104,6 +104,7 @@ async def call_hyper_search(
     object_types: Optional[List[str]] = None,
     exclude_ids: Optional[List[str]] = None,
     vessel_ids: Optional[List[str]] = None,
+    allowed_roles: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Call f1_search_cards RPC via asyncpg (single round-trip).
@@ -121,6 +122,8 @@ async def call_hyper_search(
         page_limit: Max results to return (default 20)
         object_types: Optional filter by object_type list (None = all types)
         exclude_ids: Optional list of object_ids to exclude post-RPC
+        vessel_ids: Optional list of yacht UUIDs for multi-vessel search
+        allowed_roles: Caller's roles for visibility gating (None = pass-through, no filter)
 
     Returns:
         List of dicts with keys: object_type, object_id, payload,
@@ -146,7 +149,6 @@ async def call_hyper_search(
     # Multi-vessel search: run search per vessel and merge by fused_score.
     # Each vessel gets its own f1_search_cards call — results are attributed.
     if vessel_ids and len(vessel_ids) > 1:
-        import asyncio
         all_results = []
 
         async def search_vessel(vid: str):
@@ -157,10 +159,10 @@ async def call_hyper_search(
             vessel_rows = await conn.fetch(
                 """
                 SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-                FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
+                FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[], $9::text[])
                 """,
                 texts, vec_literals, uuid.UUID(ctx.org_id), vid_uuid,
-                rrf_k, page_limit, trgm_limit, object_types,
+                rrf_k, page_limit, trgm_limit, object_types, allowed_roles,
             )
             results = []
             for r in vessel_rows:
@@ -184,11 +186,11 @@ async def call_hyper_search(
         rows = await conn.fetch(
             """
             SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-            FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
+            FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[], $9::text[])
             """,
             texts, vec_literals, uuid.UUID(ctx.org_id),
             uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
-            rrf_k, page_limit, trgm_limit, object_types,
+            rrf_k, page_limit, trgm_limit, object_types, allowed_roles,
         )
         results = [dict(r) for r in rows]
 

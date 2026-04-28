@@ -754,6 +754,7 @@ async def call_hyper_search_multi(
     page_limit: int = 20,
     object_types: Optional[List[str]] = None,
     vessel_ids: Optional[List[str]] = None,
+    allowed_roles: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Call hyper_search_multi RPC via asyncpg (single round-trip).
@@ -771,6 +772,7 @@ async def call_hyper_search_multi(
         page_limit: Max results to return (default 20)
         object_types: Optional list of object_types to filter results
         vessel_ids: Optional list of yacht UUIDs for multi-vessel search (overview mode)
+        allowed_roles: Caller's roles for visibility gating (None = no filter)
     """
     # Ensure max 3 rewrites
     rewrites = rewrites[:3]
@@ -803,10 +805,10 @@ async def call_hyper_search_multi(
             vessel_rows = await conn.fetch(
                 """
                 SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-                FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
+                FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[], $9::text[])
                 """,
                 texts, vec_literals, uuid.UUID(ctx.org_id), vid_uuid,
-                rrf_k, page_limit, trgm_limit, object_types,
+                rrf_k, page_limit, trgm_limit, object_types, allowed_roles,
             )
             for r in vessel_rows:
                 d = dict(r)
@@ -821,7 +823,7 @@ async def call_hyper_search_multi(
         rows = await conn.fetch(
             """
             SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-            FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
+            FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[], $9::text[])
             """,
             texts,
             vec_literals,
@@ -831,6 +833,7 @@ async def call_hyper_search_multi(
             page_limit,
             trgm_limit,
             object_types,
+            allowed_roles,
         )
 
     # Convert asyncpg Records to dicts
@@ -1082,6 +1085,7 @@ async def f1_search_stream(
                                 page_limit=60,  # LAW 22: Fetch more for RRF candidate pool
                                 object_types=None,  # ALL types compete globally
                                 vessel_ids=fleet_vessel_ids,  # Multi-vessel fan-out for fleet users
+                                allowed_roles=[ctx.role] if ctx.role else None,
                             )
                             span.set_attribute("result_count", len(results))
                             return results

@@ -260,7 +260,8 @@ def load_mappings(cur) -> None:
     """
     global MAPPINGS
     cur.execute("""
-        SELECT domain, source_table, object_type, search_text_cols, filter_map, payload_map
+        SELECT domain, source_table, object_type, search_text_cols,
+               filter_map, payload_map, visibility_roles
         FROM search_projection_map
         WHERE enabled = true
     """)
@@ -271,7 +272,8 @@ def load_mappings(cur) -> None:
             'object_type': row['object_type'],
             'search_text_cols': row['search_text_cols'] or [],
             'filter_map': row['filter_map'] or {},
-            'payload_map': row['payload_map'] or {}
+            'payload_map': row['payload_map'] or {},
+            'visibility_roles': row['visibility_roles'],  # None → no restriction
         }
     logger.info(f"Loaded {len(MAPPINGS)} domain mappings: {list(MAPPINGS.keys())}")
 
@@ -558,6 +560,9 @@ def upsert_search_index(cur, item: Dict, row: Dict, mapping: Dict,
             if ident_norm:
                 payload['ident_norm'] = ident_norm
 
+        # Visibility: read from projection map; None → no restriction (NULL in DB).
+        allowed_roles = mapping.get('visibility_roles')  # list or None
+
         # Upsert with source_version guard
         #
         # LAW 9: PROJECTION IMMUTABILITY
@@ -578,23 +583,26 @@ def upsert_search_index(cur, item: Dict, row: Dict, mapping: Dict,
                 object_type, object_id, org_id, yacht_id,
                 search_text, filters, payload,
                 recency_ts, ident_norm,
+                allowed_roles,
                 source_version, content_hash, updated_at
             ) VALUES (
                 %(object_type)s, %(object_id)s, %(org_id)s, %(yacht_id)s,
                 %(search_text)s, %(filters)s, %(payload)s,
                 %(recency_ts)s, %(ident_norm)s,
+                %(allowed_roles)s,
                 %(source_version)s, %(content_hash)s, now()
             )
             ON CONFLICT (object_type, object_id)
             DO UPDATE SET
-                search_text = EXCLUDED.search_text,
-                filters = EXCLUDED.filters,
-                payload = EXCLUDED.payload,
-                recency_ts = EXCLUDED.recency_ts,
-                ident_norm = EXCLUDED.ident_norm,
+                search_text   = EXCLUDED.search_text,
+                filters       = EXCLUDED.filters,
+                payload       = EXCLUDED.payload,
+                recency_ts    = EXCLUDED.recency_ts,
+                ident_norm    = EXCLUDED.ident_norm,
+                allowed_roles = EXCLUDED.allowed_roles,
                 source_version = EXCLUDED.source_version,
-                content_hash = EXCLUDED.content_hash,
-                updated_at = now()
+                content_hash  = EXCLUDED.content_hash,
+                updated_at    = now()
             WHERE search_index.source_version < EXCLUDED.source_version
             RETURNING id
         """, {
@@ -607,6 +615,7 @@ def upsert_search_index(cur, item: Dict, row: Dict, mapping: Dict,
             'payload': json.dumps(payload),
             'recency_ts': recency_ts,
             'ident_norm': ident_norm,
+            'allowed_roles': allowed_roles,
             'source_version': item['source_version'],
             'content_hash': content_hash,
         })
