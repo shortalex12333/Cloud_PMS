@@ -206,6 +206,7 @@ export function WorkOrderContent() {
 
       const form = new FormData();
       form.append('file', file);
+      form.append('storage_bucket', 'pms-work-order-documents');
       if (metadata?.title) form.append('title', metadata.title);
       if (metadata?.doc_type) form.append('doc_type', metadata.doc_type);
       if (metadata?.tags_csv) form.append('tags_csv', metadata.tags_csv);
